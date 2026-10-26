@@ -1,0 +1,427 @@
+{
+    "openrpc": "1.0.0",
+    "info": {
+        "title": "asbplayer External API",
+        "version": "1.0.0",
+        "description": "JSON-RPC 2.0 API for external clients of asbplayer: the WebSocket servers (Go server, Anki addon server) and the external extension API (browser.runtime port `asbplayer-external-v1`). See external-api/README.md for transport framings, error codes, and licensing.",
+        "license": {
+            "name": "Unlicense"
+        }
+    },
+    "methods": [
+        {
+            "name": "mine-subtitle",
+            "summary": "Dispatch the mining flow for the given Anki fields.",
+            "description": "Runs the mining flow for the given Anki fields. The response means the flow was accepted (dispatched), not that a card was completed - the user may still be interacting with the Anki dialog long after the response. Invoked as a notification (no id), it is published fire-and-forget and never answered, even on error.",
+            "tags": [],
+            "paramStructure": "by-name",
+            "params": [
+                {
+                    "name": "fields",
+                    "required": true,
+                    "schema": {
+                        "type": "object",
+                        "propertyNames": {
+                            "type": "string"
+                        },
+                        "additionalProperties": {
+                            "type": "string"
+                        }
+                    },
+                    "description": "Anki field name to value mapping."
+                },
+                {
+                    "name": "postMineAction",
+                    "required": true,
+                    "schema": {
+                        "anyOf": [
+                            {
+                                "type": "number",
+                                "const": 0
+                            },
+                            {
+                                "type": "number",
+                                "const": 1
+                            },
+                            {
+                                "type": "number",
+                                "const": 2
+                            },
+                            {
+                                "type": "number",
+                                "const": 3
+                            },
+                            {
+                                "type": "number",
+                                "const": 4
+                            }
+                        ]
+                    },
+                    "description": "What asbplayer should do after mining (PostMineAction values 0-4)."
+                },
+                {
+                    "name": "mediaId",
+                    "required": false,
+                    "schema": {
+                        "type": "string"
+                    },
+                    "description": "Target media. Omit to target the active media."
+                },
+                {
+                    "name": "noteId",
+                    "required": false,
+                    "schema": {
+                        "type": "number"
+                    },
+                    "description": "Id of an existing note to update."
+                }
+            ],
+            "result": [
+                {
+                    "name": "result",
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "published": {
+                                "type": "boolean"
+                            }
+                        },
+                        "required": [
+                            "published"
+                        ]
+                    },
+                    "description": "Whether the command was accepted and dispatched to the mining flow."
+                }
+            ]
+        },
+        {
+            "name": "load-subtitles",
+            "summary": "Load subtitle files into a player.",
+            "description": "Loads the given subtitle files into the media identified by `mediaId`.",
+            "tags": [],
+            "paramStructure": "by-name",
+            "params": [
+                {
+                    "name": "files",
+                    "required": false,
+                    "schema": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "base64": {
+                                    "type": "string"
+                                },
+                                "name": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "base64",
+                                "name"
+                            ]
+                        }
+                    },
+                    "description": "Subtitle files, base64-encoded, with their file names."
+                },
+                {
+                    "name": "mediaId",
+                    "required": false,
+                    "schema": {
+                        "type": "string"
+                    },
+                    "description": "Target media. Omit to target the active media."
+                }
+            ],
+            "result": [
+                {
+                    "name": "result",
+                    "schema": {
+                        "type": "object",
+                        "properties": {}
+                    },
+                    "description": "Empty object on success."
+                }
+            ]
+        },
+        {
+            "name": "seek-timestamp",
+            "summary": "Seek the target media to a timestamp.",
+            "description": "Seeks the media identified by `mediaId` to the given timestamp.",
+            "tags": [],
+            "paramStructure": "by-name",
+            "params": [
+                {
+                    "name": "timestamp",
+                    "required": true,
+                    "schema": {
+                        "type": "number"
+                    },
+                    "description": "Timestamp to seek to, in seconds."
+                },
+                {
+                    "name": "mediaId",
+                    "required": false,
+                    "schema": {
+                        "type": "string"
+                    },
+                    "description": "Target media. Omit to target the active media."
+                }
+            ],
+            "result": [
+                {
+                    "name": "result",
+                    "schema": {
+                        "type": "object",
+                        "properties": {}
+                    },
+                    "description": "Empty object on success."
+                }
+            ]
+        },
+        {
+            "name": "get-bound-media",
+            "summary": "List media currently bound to asbplayer.",
+            "description": "Returns every media (streaming video elements and asbplayer instances) currently known.",
+            "tags": [],
+            "paramStructure": "by-name",
+            "params": [],
+            "result": [
+                {
+                    "name": "result",
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "media": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "id": {
+                                            "type": "string"
+                                        },
+                                        "type": {
+                                            "type": "string",
+                                            "enum": [
+                                                "streaming",
+                                                "local"
+                                            ]
+                                        },
+                                        "title": {
+                                            "type": "string"
+                                        },
+                                        "faviconUrl": {
+                                            "type": "string"
+                                        },
+                                        "loadedSubtitles": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "trackNumber": {
+                                                        "type": "number"
+                                                    },
+                                                    "fileName": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "required": [
+                                                    "trackNumber",
+                                                    "fileName"
+                                                ]
+                                            }
+                                        },
+                                        "active": {
+                                            "type": "boolean"
+                                        }
+                                    },
+                                    "required": [
+                                        "id",
+                                        "type",
+                                        "loadedSubtitles",
+                                        "active"
+                                    ]
+                                }
+                            }
+                        },
+                        "required": [
+                            "media"
+                        ]
+                    },
+                    "description": "The bound media."
+                }
+            ]
+        },
+        {
+            "name": "get-subtitles",
+            "summary": "List the subtitle cues loaded into a player.",
+            "description": "Returns the subtitle cues currently loaded into the media identified by `mediaId`.",
+            "tags": [],
+            "paramStructure": "by-name",
+            "params": [
+                {
+                    "name": "mediaId",
+                    "required": false,
+                    "schema": {
+                        "type": "string"
+                    },
+                    "description": "Target media. Omit to target the active media."
+                },
+                {
+                    "name": "trackNumbers",
+                    "required": false,
+                    "schema": {
+                        "type": "array",
+                        "items": {
+                            "type": "number"
+                        }
+                    },
+                    "description": "Restrict the result to these subtitle tracks. Omit to return all tracks."
+                }
+            ],
+            "result": [
+                {
+                    "name": "result",
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "subtitles": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "text": {
+                                            "type": "string"
+                                        },
+                                        "start": {
+                                            "type": "number"
+                                        },
+                                        "end": {
+                                            "type": "number"
+                                        },
+                                        "track": {
+                                            "type": "number"
+                                        }
+                                    },
+                                    "required": [
+                                        "text",
+                                        "start",
+                                        "end",
+                                        "track"
+                                    ]
+                                }
+                            }
+                        },
+                        "required": [
+                            "subtitles"
+                        ]
+                    },
+                    "description": "The loaded subtitle cues."
+                }
+            ]
+        },
+        {
+            "name": "hello",
+            "summary": "Register and request approval (external extension API).",
+            "description": "Handshake sent by an external extension right after connecting. Returns the current approval state immediately: `{state: 'approved'}` when the extension is already approved, otherwise the connection is registered as pending, the approval prompt is shown (at most once per pending state), and the response is `{state: 'pending'}`. Idempotent. On denial, `approval-state` returns `{state: 'denied'}` once and the connection is closed.",
+            "tags": [
+                {
+                    "name": "external-extension-only"
+                }
+            ],
+            "paramStructure": "by-name",
+            "params": [
+                {
+                    "name": "name",
+                    "required": false,
+                    "schema": {
+                        "type": "string"
+                    },
+                    "description": "Self-reported display name."
+                },
+                {
+                    "name": "version",
+                    "required": false,
+                    "schema": {
+                        "type": "string"
+                    },
+                    "description": "Self-reported version string."
+                }
+            ],
+            "result": [
+                {
+                    "name": "result",
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "state": {
+                                "type": "string",
+                                "enum": [
+                                    "approved",
+                                    "pending"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "state"
+                        ]
+                    },
+                    "description": "The current approval state: `'approved'` or `'pending'`."
+                }
+            ]
+        },
+        {
+            "name": "approval-state",
+            "summary": "Read the current approval state (external extension API).",
+            "description": "Pure read of the connection's approval state; never triggers approval prompts. Poll this roughly every second while pending. `{state: 'denied'}` is returned at most once, after which the connection is closed.",
+            "tags": [
+                {
+                    "name": "external-extension-only"
+                }
+            ],
+            "paramStructure": "by-name",
+            "params": [],
+            "result": [
+                {
+                    "name": "result",
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "state": {
+                                "type": "string",
+                                "enum": [
+                                    "approved",
+                                    "pending",
+                                    "denied"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "state"
+                        ]
+                    },
+                    "description": "The current approval state: `'approved'`, `'pending'`, or `'denied'`."
+                }
+            ]
+        },
+        {
+            "name": "rpc.discover",
+            "summary": "Discover the API surface.",
+            "description": "Returns the OpenRPC document describing this API.",
+            "tags": [],
+            "paramStructure": "by-name",
+            "params": [],
+            "result": [
+                {
+                    "name": "result",
+                    "schema": {
+                        "type": "object",
+                        "properties": {},
+                        "additionalProperties": {}
+                    },
+                    "description": "An OpenRPC document."
+                }
+            ]
+        }
+    ]
+}

@@ -34,5 +34,9 @@ jobs:
               run: uv lock --project plugins/anki --check
 
             - run: pnpm install --filter @project/extension --filter @project/common --filter @project/client
+
+            - name: Check external API document is up to date
+              run: pnpm run check:external-api
+
             - run: pnpm --filter @project/extension run zip
             - run: pnpm --filter @project/client run build
