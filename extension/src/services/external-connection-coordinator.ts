@@ -199,8 +199,8 @@ export class ExternalConnectionCoordinator {
         }
 
         switch (method) {
-            case 'hello':
-                await this._hello(senderId, parsed.data as { name?: string });
+            case 'initialize':
+                await this._initialize(senderId, parsed.data as { name?: string });
                 return { state: (await this._approvedIds()).has(senderId) ? 'approved' : 'pending' };
             case 'approval-state': {
                 if ((await this._approvedIds()).has(senderId)) {
@@ -243,7 +243,7 @@ export class ExternalConnectionCoordinator {
         }
     }
 
-    private async _hello(senderId: string, params: { name?: string }) {
+    private async _initialize(senderId: string, params: { name?: string }) {
         const name = params.name !== undefined && params.name.length > 0 ? params.name : undefined;
         await mutateExternalConnections(this._globalStateProvider, (externalConnections) => {
             const connection = externalConnections.connections[senderId];

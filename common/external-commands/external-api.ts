@@ -188,7 +188,7 @@ export const getSubtitlesResultSchema = z.object({
     subtitles: z.array(subtitleCueSchema),
 });
 
-export const helloParamsSchema = z.object({
+export const initializeParamsSchema = z.object({
     // Self-reported, untrusted; shown next to the (trusted) extension ID in the approval UI.
     name: z.string().optional(),
     version: z.string().optional(),
@@ -196,7 +196,7 @@ export const helloParamsSchema = z.object({
 
 // Returns immediately. On first contact, the connection is registered as pending and the
 // approval prompt is shown (at most once per pending state); the client polls `approval-state`.
-export const helloResultSchema = z.object({
+export const initializeResultSchema = z.object({
     state: z.enum(['approved', 'pending']),
 });
 
@@ -295,8 +295,8 @@ export const externalApiMethods: Record<string, ExternalApiMethod> = {
         resultSchema: getSubtitlesResultSchema,
         resultDescription: 'The loaded subtitle cues.',
     },
-    hello: {
-        name: 'hello',
+    initialize: {
+        name: 'initialize',
         summary: 'Register and request approval (external extension API).',
         description:
             'Handshake sent by an external extension right after connecting. Returns the current approval state ' +
@@ -305,12 +305,12 @@ export const externalApiMethods: Record<string, ExternalApiMethod> = {
             "response is `{state: 'pending'}`. Idempotent. On denial, `approval-state` returns `{state: 'denied'}` " +
             'once and the connection is closed.',
         tags: [externalExtensionOnlyTag],
-        paramsSchema: helloParamsSchema,
+        paramsSchema: initializeParamsSchema,
         paramDescriptions: {
             name: 'Self-reported display name.',
             version: 'Self-reported version string.',
         },
-        resultSchema: helloResultSchema,
+        resultSchema: initializeResultSchema,
         resultDescription: "The current approval state: `'approved'` or `'pending'`.",
     },
     'approval-state': {

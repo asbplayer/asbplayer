@@ -18,13 +18,13 @@ Any extension wishing to communicate with asbplayer must first connect using cod
 const port = browser.runtime.connect(<asbplayer extension ID>);
 ```
 
-The port speaks [JSON-RPC 2.0](https://www.jsonrpc.org/specification). Request approval with `hello`, which answers immediately with the current state.
+The port speaks [JSON-RPC 2.0](https://www.jsonrpc.org/specification). Request approval with `initialize`, which answers immediately with the current state.
 
 ```typescript
 port.postMessage({
     jsonrpc: '2.0',
     id: crypto.randomUUID(),
-    method: 'hello',
+    method: 'initialize',
     params: {
         name: 'external-extension-name', // Self-reported name
         version: '1.2.3', // Self-reported version
@@ -37,7 +37,7 @@ If the extension is not approved, asbplayer registers the connection as pending,
 ```json
 {
     "jsonrpc": "2.0",
-    "id": "<the id from the hello request>",
+    "id": "<the id from the initialize request>",
     "result": { "state": "pending" }
 }
 ```
