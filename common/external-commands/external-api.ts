@@ -362,7 +362,7 @@ interface MethodDefinition {
     tags: { name: string }[];
     paramStructure: 'by-name';
     params: ContentDescriptor[];
-    result: ContentDescriptor[];
+    result: ContentDescriptor;
 }
 
 function methodDefinition(method: ExternalApiMethod): MethodDefinition {
@@ -390,13 +390,11 @@ function methodDefinition(method: ExternalApiMethod): MethodDefinition {
         tags: method.tags.map((name) => ({ name })),
         paramStructure: 'by-name',
         params,
-        result: [
-            {
-                name: 'result',
-                schema: toJsonSchema(method.resultSchema),
-                description: method.resultDescription,
-            },
-        ],
+        result: {
+            name: 'result',
+            schema: toJsonSchema(method.resultSchema),
+            description: method.resultDescription,
+        },
     };
 }
 
