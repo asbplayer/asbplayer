@@ -123,8 +123,7 @@ describe('external API schemas', () => {
             expect(names).toEqual(Object.keys(externalApiMethods));
 
             for (const method of document.methods) {
-                expect(method.result).toHaveLength(1);
-                expect(method.result[0].name).toBe('result');
+                expect(method.result).toEqual(expect.objectContaining({ name: 'result', schema: expect.any(Object) }));
                 expect(method.paramStructure).toBe('by-name');
             }
         });
