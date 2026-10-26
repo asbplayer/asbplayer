@@ -669,6 +669,7 @@ export default function SettingsForm({
                     <About
                         appVersionRepoPath={insideApp ? appVersionRepoPath : undefined}
                         extensionVersion={extensionInstalled ? extensionVersion : undefined}
+                        insideApp={insideApp}
                     />
                 </TabPanel>
             </div>

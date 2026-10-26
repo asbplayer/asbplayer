@@ -84,6 +84,8 @@ pnpm --filter @project/extension dev:firefox-android
 ./scripts/push-firefox-android
 ```
 
+The website downloads the selected FFmpeg runtime from its GitHub release when a feature first needs it; the development server and builds do not download or build FFmpeg. Ordinary app and extension development does not need Docker or an FFmpeg build. See [ffmpeg/README.md](ffmpeg/README.md) for FFmpeg build, verification, and release instructions.
+
 If you have problems building try deleting `node_modules` and re-running `pnpm i`.
 
 ## Localization
