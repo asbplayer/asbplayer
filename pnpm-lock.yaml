@@ -361,6 +361,9 @@ importers:
       '@project/ffmpeg':
         specifier: workspace:^
         version: link:../ffmpeg
+      '@project/external-api':
+        specifier: workspace:^
+        version: link:../external-api
       '@qgustavor/srt-parser':
         specifier: ^2.0.0
         version: 2.0.0
@@ -668,6 +671,7 @@ importers:
       typescript:
         specifier: ^5.8.3
         version: 5.8.3
+  external-api: {}
 
   scripts/loc:
     dependencies:

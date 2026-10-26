@@ -8,9 +8,6 @@ JSON-RPC 2.0 API, which is spoken by
 - the external **extension** API - `browser.runtime` ports named `asbplayer-external-v1`
   (extension ⇄ external extension).
 
-asbplayer's _internal_ messaging (Chrome extension messaging, `window.postMessage`,
-`BroadcastChannel`) is deliberately **not** part of this document.
-
 ## Regeneration and licensing
 
 `openrpc.json` is **generated** - do not edit it by hand. It is produced from the zod schemas and
@@ -22,8 +19,7 @@ pnpm run generate:external-api   # regenerate
 pnpm run check:external-api      # verify the committed document matches the schemas (runs in CI)
 ```
 
-The generator also writes `common/external-commands/openrpc-document.json`, which `rpc.discover`
-loads lazily. It is the same Unlicense document; the generator code remains AGPL.
+The package and document are Unlicense; the generator code remains AGPL.
 
 > SPDX-License-Identifier: Unlicense
 
@@ -42,7 +38,7 @@ Standard JSON-RPC 2.0 codes plus server-defined codes in the `-32000..-32099` ra
 
 | Code     | Name             | Meaning                                                                                          | HTTP status (Go server bridge)      |
 | -------- | ---------------- | ------------------------------------------------------------------------------------------------ | ----------------------------------- |
-| `-32700` | Parse error      | Frame was not valid JSON (WebSocket servers and asbplayer's WebSocket client)                     | n/a (bridge builds requests itself) |
+| `-32700` | Parse error      | Frame was not valid JSON (WebSocket servers and asbplayer's WebSocket client)                    | n/a (bridge builds requests itself) |
 | `-32600` | Invalid request  | A `jsonrpc: "2.0"` frame violated the envelope rules (e.g. a non-string `id`)                    | n/a                                 |
 | `-32601` | Method not found | Unknown method **request**, or an `external-extension-only` method invoked on a WebSocket server | n/a                                 |
 | `-32602` | Invalid params   | Params failed schema validation                                                                  | n/a                                 |
@@ -51,67 +47,5 @@ Standard JSON-RPC 2.0 codes plus server-defined codes in the `-32000..-32099` ra
 | `-32001` | No clients       | The server has no connected asbplayers to forward to                                             | 503                                 |
 | `-32002` | Not approved     | External extension sent a command before being approved                                          | n/a (external extension API only)   |
 
-The HTTP bridge (`/asbplayer/*` endpoints and the AnkiConnect `addNote` interception in the Go
-server) never speaks JSON-RPC to HTTP callers: it maps the JSON-RPC error to a status code as in
-the table above.
-
 Error responses use `"id": null` when the id cannot be determined, as JSON-RPC 2.0 requires for
 parse errors and for requests whose id is unusable (asbplayer only supports string ids).
-
-## Semantics the OpenRPC document cannot express
-
-- **Keepalive.** WebSocket servers use application-level `PING`/`PONG` _text frames_, which are
-  not JSON-RPC and are not listed as methods. Browser WebSocket clients cannot send protocol
-  control frames, so this stays app-level.
-- **Notifications.** A request sent without an `id` is a notification: it must **never** be
-  answered, not even with an error. The fire-and-forget `mine-subtitle` publish
-  (`postMineAction == 2` path) is a notification.
-- **Unknown methods.** An unknown method sent as a _request_ gets `-32601`; sent as a
-  _notification_ it is silently ignored. Responses with late or unrecognized `id`s are dropped
-  silently.
-- **Envelope version.** Every new-format frame must carry `jsonrpc: "2.0"`. Frames missing it are
-  treated as legacy `{command, messageId, body}` frames during the migration. A frame that declares
-  `2.0` but violates the envelope gets `-32600`; a text frame that is not JSON gets `-32700` once the
-  connection is known to use JSON-RPC. Error responses use `null` for unusable ids.
-- **`mine-subtitle` ack semantics.** The response `{published: true}` means the mining flow was
-  _accepted_ (dispatched), not that a card was completed - the user may still be interacting with
-  the Anki dialog long after the response.
-- **Broadcast, first-response-wins.** The WebSocket servers publish commands to _all_ connected
-  asbplayers and settle on the **first** response that arrives; later duplicate responses for the
-  same `id` are dropped. There is no one-to-one targeting.
-- **Ids.** Correlation ids are uuid **strings**. Clients must only match responses to ids they
-  sent themselves.
-- **Approval flow (`initialize`/`approval-state`, external extension only).** `initialize` returns the
-  current state immediately (including `denied` during a denial cooldown). When not yet approved, the
-  client polls `approval-state` (roughly every second) until it reads `approved`. Denial returns
-  `denied` once and then the connection is closed; approval revocation is a transport-level close
-  with no message. These two methods do not exist on the WebSocket servers; invoking them there
-  answers `-32601`.
-- **`postMineAction`.** Valid values are `0`–`4`, matching asbplayer's `PostMineAction` enum
-  (`none`, `showAnkiDialog`, `updateLastCard`, `exportCard`, `showUpdateCardDialog`). Invalid
-  values are rejected with `-32602`.
-
-## Transports
-
-| Transport                   | Frame                                                   | Notes                                      |
-| --------------------------- | ------------------------------------------------------- | ------------------------------------------ |
-| Go WebSocket server (`/ws`) | One JSON-RPC message per text frame                     | `PING`/`PONG` keepalive as raw text frames |
-| Anki addon WebSocket server | One JSON-RPC message per text frame                     | Same; single asbplayer client at a time    |
-| External extension API      | One JSON-RPC message per `browser.runtime` port message | Port name `asbplayer-external-v1`          |
-
-During the migration the WebSocket servers also accept the legacy framing
-(`{command, messageId, body}` requests and `{command: 'response', messageId, body}` responses).
-Frames are routed by the `jsonrpc` field.
-
-The Go server and Anki add-on send `client-info` to each new connection and switch it to JSON-RPC
-when the client reports `{"protocols": ["jsonrpc-2.0"]}`; a client that ignores the probe keeps
-receiving legacy frames. The external extension API is JSON-RPC-only.
-
-## Discovery
-
-`rpc.discover` returns this document. Asbplayer serves it on the WebSocket command endpoint and
-the external extension port. The WebSocket servers do not answer it themselves (a client sending
-it to them gets `-32601`).
-
-The document is generated from the same zod registry used for validation and reflects the
-running build. `external-extension-only` tags mark methods that exist only on the extension port.
