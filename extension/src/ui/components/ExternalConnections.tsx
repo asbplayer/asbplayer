@@ -4,6 +4,7 @@ import Typography from '@mui/material/Typography';
 import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useExternalConnections } from '@/ui/hooks/use-external-connections';
+import { asbError } from '@project/common/util/log';
 import Paper from '@mui/material/Paper';
 import Box from '@mui/material/Box';
 import Alert from '@mui/material/Alert';
@@ -20,19 +21,31 @@ const ExternalConnections: React.FC = () => {
 
     const handleApprove = useCallback(
         async (extensionId: string) => {
-            await approveExternalConnection(extensionId);
+            try {
+                await approveExternalConnection(extensionId);
+            } catch (error) {
+                asbError('external-connection', `Failed to approve external connection ${extensionId}:`, error);
+            }
         },
         [approveExternalConnection]
     );
     const handleDeny = useCallback(
         async (extensionId: string) => {
-            await denyExternalConnection(extensionId);
+            try {
+                await denyExternalConnection(extensionId);
+            } catch (error) {
+                asbError('external-connection', `Failed to deny external connection ${extensionId}:`, error);
+            }
         },
         [denyExternalConnection]
     );
     const handleRemove = useCallback(
         async (extensionId: string) => {
-            await removeExternalConnection(extensionId);
+            try {
+                await removeExternalConnection(extensionId);
+            } catch (error) {
+                asbError('external-connection', `Failed to remove external connection ${extensionId}:`, error);
+            }
         },
         [removeExternalConnection]
     );

@@ -2,11 +2,13 @@
 sidebar_position: 9.5
 ---
 
+import project, { ankiConnectUrl } from '@site/src/project';
+
 # External extensions {#external-extensions}
 
 As of v1.23, asbplayer exposes a way for other browser extensions to communicate with it. Any extension that connects to asbplayer via [browser.runtime.connect](https://developer.chrome.com/docs/extensions/reference/api/runtime#method-connect), and receives user approval, can issue [commands](../reference/external-api) through the connection.
 
-A sample implementation of an extension that integrates with asbplayer in this way is provided [here](https://github.com/asbplayer/asbplayer/tree/main/samples/external-extension).
+A template implementation of an extension that integrates with asbplayer in this way is provided <a href={`${project.urls.externalExtensionTemplateRepo}`}>here</a>.
 
 ## Connecting and obtaining user approval
 

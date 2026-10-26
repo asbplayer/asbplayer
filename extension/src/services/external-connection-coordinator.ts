@@ -120,7 +120,11 @@ export class ExternalConnectionCoordinator {
 
     private async _onMessage(senderId: string, port: Browser.runtime.Port, message: unknown) {
         if (typeof message === 'object' && message !== null && (message as { type?: unknown }).type === helloType) {
-            await this._hello(senderId, message as ExternalHelloMessage);
+            try {
+                await this._hello(senderId, message as ExternalHelloMessage);
+            } catch (error) {
+                asbError('external-connection', 'Failed to process external hello:', error);
+            }
             await this._postApproval(port);
             return;
         }
@@ -210,7 +214,11 @@ export class ExternalConnectionCoordinator {
 
         // Prune expired/capped pending requests left behind by other writers of global state.
         if (this._pendingRequestsNeedPrune(externalConnections.pending, Date.now())) {
-            await this._prunePendingRequests();
+            try {
+                await this._prunePendingRequests();
+            } catch (error) {
+                asbError('external-connection', 'Failed to prune pending external connection requests:', error);
+            }
         }
 
         await this.updateBadge();

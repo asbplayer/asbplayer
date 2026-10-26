@@ -4,10 +4,12 @@ import type { StorageArea } from '@project/extension/src/services/extension-sett
 
 export class ExtensionGlobalStateProvider implements GlobalStateProvider {
     private readonly _storage;
+    private readonly _locks: LockManager;
     private readonly _listeners: ((state: Partial<GlobalState>) => void)[] = [];
 
-    constructor(storage?: StorageArea) {
+    constructor(storage?: StorageArea, locks?: LockManager) {
         this._storage = storage ?? browser.storage.local;
+        this._locks = locks ?? navigator.locks;
     }
 
     async getAll() {
@@ -45,6 +47,30 @@ export class ExtensionGlobalStateProvider implements GlobalStateProvider {
                 this._storage.onChanged.removeListener(this._publishChanges);
             }
         };
+    }
+
+    /**
+     * Exclusive read-modify-write of a global state key. Throws when the lock is already held
+     * (including re-entrant requests from the same context, which fail rather than deadlock).
+     *
+     * The lock only excludes writers that also go through this method; writes made directly
+     * via set() bypass it.
+     */
+    async updateWithLocking<K extends keyof GlobalState>(
+        key: K,
+        mutate: (state: GlobalState[K]) => boolean
+    ): Promise<void> {
+        await this._locks.request(`asbplayer-global-state:${key}`, { ifAvailable: true }, async (lock) => {
+            if (lock === null) {
+                throw new Error(`Concurrent update when writing key ${key}`);
+            }
+            // Clone before mutating: get() may return the module-level initial state object
+            // by reference, which must never be modified in place.
+            const state = JSON.parse(JSON.stringify((await this.get([key]))[key]));
+            if (mutate(state)) {
+                await this.set({ [key]: state });
+            }
+        });
     }
 
     private readonly _publishChanges = (changes: { [key: string]: Browser.storage.StorageChange }) => {

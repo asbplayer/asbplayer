@@ -55,6 +55,18 @@ export class AppExtensionGlobalStateProvider implements GlobalStateProvider {
         }
     }
 
+    /**
+     * Lock-protected updates are not supported by this provider: the state is read through one
+     * message round-trip and written through another, and the backing storage lives in the
+     * extension, whose lock scope differs from the app's — so a lock cannot be honored even in
+     * principle. Throws unconditionally.
+     */
+    async updateWithLocking<K extends keyof GlobalState>(key: K): Promise<void> {
+        throw new Error(
+            `Lock-protected update of global state key ${key} is not supported: state is persisted via the extension, which does not share the app's lock scope`
+        );
+    }
+
     onUpdated(callback: (state: Partial<GlobalState>) => void): () => void {
         if (this._extension.supportsGlobalState) {
             if (this._globalStateUpdatedCallbacks.length === 0) {

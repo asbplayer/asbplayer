@@ -8,7 +8,8 @@
         "app": "https://app.asbplayer.dev",
         "docs": "https://docs.asbplayer.dev",
         "repo": "https://github.com/asbplayer/asbplayer",
-        "discord": "https://discord.gg/ad7VAQru7m"
+        "discord": "https://discord.gg/ad7VAQru7m",
+        "externalExtensionTemplateRepo": "https://github.com/asbplayer/asbplayer-external-extension-template"
     },
     "releases": {
         "extension": {
