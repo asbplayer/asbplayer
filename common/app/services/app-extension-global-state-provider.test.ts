@@ -1,7 +1,8 @@
 import { describe, expect, it } from '@jest/globals';
-import type { GlobalStateUpdatedMessage } from '@project/common';
+import type { GlobalState, GlobalStateUpdatedMessage } from '@project/common';
 import type ChromeExtension from '@project/common/app/services/chrome-extension';
 import { AppExtensionGlobalStateProvider } from '@project/common/app/services/app-extension-global-state-provider';
+import { mutateExternalConnections } from '@project/common/global-state';
 
 const stubExtension = (installed: boolean) => {
     const messageCallbacks: ((message: any) => void)[] = [];
@@ -35,6 +36,35 @@ const globalStateUpdated = (state: any): GlobalStateUpdatedMessage => ({
     command: 'global-state-updated',
     state,
 });
+
+const stubExtensionWithGlobalStateStore = () => {
+    const state: { [key: string]: any } = {};
+    let setCalls = 0;
+    const extension = {
+        get supportsGlobalState() {
+            return true;
+        },
+        getSomeGlobalState: async (keys: (keyof GlobalState)[]) => {
+            const partial: any = {};
+
+            for (const key of keys) {
+                partial[key] = state[key] ?? initialGlobalState[key];
+            }
+
+            return partial;
+        },
+        setGlobalState: async (partial: Partial<GlobalState>) => {
+            ++setCalls;
+            Object.assign(state, partial);
+        },
+        subscribe: () => () => {},
+    } as unknown as ChromeExtension;
+
+    return {
+        extension,
+        setCalls: () => setCalls,
+    };
+};
 
 describe('AppExtensionGlobalStateProvider.onUpdated', () => {
     it('notifies listeners when the extension pushes global state updates', () => {
@@ -94,5 +124,20 @@ describe('AppExtensionGlobalStateProvider.onUpdated', () => {
         window.dispatchEvent(event);
 
         expect(updates).toEqual([{ ftueHasSeenAnkiDialogQuickSelectV2: true }]);
+    });
+});
+
+describe('AppExtensionGlobalStateProvider.updateWithLocking', () => {
+    it('refuses all lock-protected updates', async () => {
+        const { extension } = stubExtensionWithGlobalStateStore();
+        const provider = new AppExtensionGlobalStateProvider(extension);
+
+        await expect(
+            mutateExternalConnections(provider, () => {
+                throw new Error('mutate must never be invoked');
+            })
+        ).rejects.toThrow(
+            "Lock-protected update of global state key externalConnections is not supported: state is persisted via the extension, which does not share the app's lock scope"
+        );
     });
 });

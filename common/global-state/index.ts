@@ -79,24 +79,22 @@ export interface GlobalStateProvider {
     get: <K extends keyof GlobalState>(keys: K[]) => Promise<Pick<GlobalState, K>>;
     set: (state: Partial<GlobalState>) => Promise<void>;
     onUpdated: (callback: (state: Partial<GlobalState>) => void) => () => void;
+    updateWithLocking: <K extends keyof GlobalState>(
+        key: K,
+        mutate: (state: GlobalState[K]) => boolean
+    ) => Promise<void>;
 }
 
 /**
- * Read-modify-write of the `externalConnections` global state key. Skips the write when the
- * mutator reports no change.
+ * Locked read-modify-write of the `externalConnections` global state key. Skips the write
+ * when the mutator reports no change. Throws when the lock is already held, or when the
+ * provider does not support locked updates.
  */
 export const mutateExternalConnections = async (
     provider: GlobalStateProvider,
     mutate: (externalConnections: ExternalConnectionsState) => boolean
 ): Promise<void> => {
-    const state = await provider.get(['externalConnections']);
-    const externalConnections: ExternalConnectionsState = JSON.parse(JSON.stringify(state.externalConnections));
-
-    if (!mutate(externalConnections)) {
-        return;
-    }
-
-    await provider.set({ externalConnections });
+    await provider.updateWithLocking('externalConnections', mutate);
 };
 
 export const approveExternalConnection = async (

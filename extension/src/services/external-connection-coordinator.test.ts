@@ -7,6 +7,7 @@ import { ExternalConnectionCoordinator } from '@project/extension/src/services/e
 import { ExtensionBadgeController } from '@project/extension/src/services/extension-badge-controller';
 import { ExtensionGlobalStateProvider } from '@project/extension/src/services/extension-global-state-provider';
 import { MockStorageArea } from '@project/extension/src/services/mock-storage-area';
+import { MockLockManager } from '@project/extension/src/services/mock-lock-manager';
 
 const flush = async () => {
     for (let i = 0; i < 20; i++) {
@@ -72,7 +73,8 @@ class FakePort {
 
 class Harness {
     readonly storage = new MockStorageArea();
-    readonly globalStateProvider = new ExtensionGlobalStateProvider(this.storage);
+    readonly locks = new MockLockManager();
+    readonly globalStateProvider = new ExtensionGlobalStateProvider(this.storage, this.locks);
     readonly badgeAction = { setBadgeText: jest.fn() };
     readonly badgeController = new ExtensionBadgeController(this.badgeAction);
     readonly dispatcher: any = {
@@ -170,9 +172,10 @@ class Harness {
 
 describe('external connection coordinator', () => {
     let harness: Harness;
+    let consoleErrorSpy: ReturnType<typeof jest.spyOn>;
 
     beforeEach(() => {
-        jest.spyOn(console, 'error').mockImplementation(() => undefined);
+        consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
         harness = new Harness();
     });
 
@@ -234,6 +237,23 @@ describe('external connection coordinator', () => {
         expect(approvalFrames(port)).toEqual([
             { type: 'asbplayer-external-approval', approved: true },
             { type: 'asbplayer-external-approval', approved: true },
+        ]);
+        expect(Object.keys(await harness.pendingEntries())).toEqual([]);
+    });
+
+    it('logs hello failures and still answers with the current approval state', async () => {
+        const port = harness.connect('sibling');
+        await flush();
+        const failure = new Error('Concurrent update when writing key externalConnections');
+        (harness.globalStateProvider as any).updateWithLocking = () => Promise.reject(failure);
+
+        await port.receive({ type: 'asbplayer-external-hello', name: 'Sibling' });
+
+        expect(consoleErrorSpy.mock.calls.some((args: unknown[]) => args.includes(failure))).toBe(true);
+        // The port is still answered, so the external extension does not hang awaiting approval.
+        expect(approvalFrames(port)).toEqual([
+            { type: 'asbplayer-external-approval', approved: false },
+            { type: 'asbplayer-external-approval', approved: false },
         ]);
         expect(Object.keys(await harness.pendingEntries())).toEqual([]);
     });
