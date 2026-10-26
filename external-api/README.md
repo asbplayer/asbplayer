@@ -90,7 +90,8 @@ the table above.
 | Anki addon WebSocket server | One JSON-RPC message per text frame                     | Same; single asbplayer client at a time    |
 | External extension API      | One JSON-RPC message per `browser.runtime` port message | Port name `asbplayer-external-v1`          |
 
-During the migration these transports also accept the legacy framing
+During the migration the WebSocket servers also accept the legacy framing
 (`{command, messageId, body}` requests and `{command: 'response', messageId, body}` responses);
-frames are routed by sniffing for the `jsonrpc` field. Once legacy support is removed, this table
-describes the only remaining framing.
+frames are routed by sniffing for the `jsonrpc` field. The external extension API has not shipped
+yet, so it speaks JSON-RPC only. Once legacy support is removed, this table describes the only
+remaining framing.

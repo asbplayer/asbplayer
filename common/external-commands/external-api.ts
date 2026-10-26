@@ -76,6 +76,32 @@ export const jsonRpcErrorResponseSchema = z.object({
 
 export const jsonRpcResponseSchema = z.union([jsonRpcResultResponseSchema, jsonRpcErrorResponseSchema]);
 
+export type JsonRpcRequest = z.infer<typeof jsonRpcRequestSchema>;
+export type JsonRpcNotification = z.infer<typeof jsonRpcNotificationSchema>;
+export type JsonRpcIncomingMessage = z.infer<typeof jsonRpcIncomingMessageSchema>;
+export type JsonRpcSuccessResponse = z.infer<typeof jsonRpcResultResponseSchema>;
+export type JsonRpcErrorResponse = z.infer<typeof jsonRpcErrorResponseSchema>;
+export type JsonRpcResponse = z.infer<typeof jsonRpcResponseSchema>;
+
+// Sniffs an incoming frame into a request or notification, returning undefined for anything that
+// violates the envelope rules (not an object, missing jsonrpc version or method, non-string id).
+export function parseJsonRpcIncomingMessage(message: unknown): JsonRpcIncomingMessage | undefined {
+    if (typeof message !== 'object' || message === null) {
+        return undefined;
+    }
+
+    const { jsonrpc, method, id, params } = message as Record<string, unknown>;
+
+    if (jsonrpc !== '2.0' || typeof method !== 'string') {
+        return undefined;
+    }
+
+    const shape = id === undefined ? { jsonrpc, method, params } : { jsonrpc, method, id, params };
+    const parsed = jsonRpcIncomingMessageSchema.safeParse(shape);
+
+    return parsed.success ? parsed.data : undefined;
+}
+
 // ---------------------------------------------------------------------------
 // Data types
 // ---------------------------------------------------------------------------

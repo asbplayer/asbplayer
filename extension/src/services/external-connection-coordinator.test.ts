@@ -12,6 +12,7 @@ import { ExtensionBadgeController } from '@project/extension/src/services/extens
 import { ExtensionGlobalStateProvider } from '@project/extension/src/services/extension-global-state-provider';
 import { MockStorageArea } from '@project/extension/src/services/mock-storage-area';
 import { MockLockManager } from '@project/extension/src/services/mock-lock-manager';
+import { generateOpenRpcDocument } from '@project/common/external-commands/external-api';
 
 const flush = async () => {
     for (let i = 0; i < 20; i++) {
@@ -19,12 +20,20 @@ const flush = async () => {
     }
 };
 
+interface RpcResponse {
+    jsonrpc: '2.0';
+    id: string;
+    result?: unknown;
+    error?: { code: number; message: string; data?: unknown };
+}
+
 class FakePort {
     readonly sender = { id: undefined as string | undefined };
     disconnected = false;
     readonly posted: unknown[] = [];
     private readonly _messageListeners: ((message: unknown) => void)[] = [];
     private readonly _disconnectListeners: (() => void)[] = [];
+    private _nextRequestId = 0;
 
     readonly postMessage = jest.fn((message: unknown) => {
         if (this.disconnected) {
@@ -66,12 +75,28 @@ class FakePort {
         }
     }
 
-    approvalFrames() {
-        return this.posted.filter((message) => (message as any).type === 'asbplayer-external-approval');
+    rpcResponses(): RpcResponse[] {
+        return this.posted.filter((message): message is RpcResponse => {
+            return (
+                typeof message === 'object' && message !== null && (message as { jsonrpc?: unknown }).jsonrpc === '2.0'
+            );
+        });
     }
 
-    responses() {
-        return this.posted.filter((message) => (message as any).command === 'response');
+    responseFor(id: string): RpcResponse | undefined {
+        return this.rpcResponses().find((response) => response.id === id);
+    }
+
+    /** Sends a JSON-RPC request and returns its id. */
+    async request(method: string, params?: object): Promise<string> {
+        const id = `id-${this._nextRequestId++}`;
+        await this.receive({ jsonrpc: '2.0', method, params, id });
+        return id;
+    }
+
+    /** Sends a JSON-RPC notification. */
+    async notify(method: string, params?: object) {
+        await this.receive({ jsonrpc: '2.0', method, params });
     }
 }
 
@@ -92,14 +117,13 @@ class Harness {
     ];
     coordinator: ExternalConnectionCoordinator;
 
-    private readonly _connectListeners: ((port: Browser.runtime.Port) => void)[] = [];
+    private readonly _connectListeners: ((port: unknown) => void)[] = [];
 
     constructor() {
         (globalThis as any).browser = {
             runtime: {
                 onConnectExternal: {
-                    addListener: (listener: (port: Browser.runtime.Port) => void) =>
-                        this._connectListeners.push(listener),
+                    addListener: (listener: (port: unknown) => void) => this._connectListeners.push(listener),
                 },
             },
             storage: {
@@ -120,7 +144,7 @@ class Harness {
         const port = new FakePort(id);
 
         for (const listener of [...this._connectListeners]) {
-            listener(port as unknown as Browser.runtime.Port);
+            listener(port);
         }
 
         return port;
@@ -152,13 +176,6 @@ class Harness {
 
     emptyState(): ExternalConnectionsState {
         return { approved: {}, pending: {} };
-    }
-
-    pendingState(): ExternalConnectionsState {
-        return {
-            approved: {},
-            pending: { sibling: { name: 'Sibling', requestedAt: Date.now() } },
-        };
     }
 
     approvedState(id: string, name?: string): ExternalConnectionsState {
@@ -193,30 +210,34 @@ describe('external connection coordinator', () => {
         harness?.teardown();
     });
 
-    it('greets an unapproved connection with an unapproved approval frame and drops its commands', async () => {
+    it('does not send anything to an unapproved connection until it identifies itself', async () => {
         const port = harness.connect('sibling');
         await flush();
 
-        expect(approvalFrames(port)).toEqual([{ type: 'asbplayer-external-approval', approved: false }]);
+        expect(port.rpcResponses()).toEqual([]);
 
-        await port.receive({ command: 'get-bound-media', messageId: 'm1', body: {} });
+        await port.request('get-bound-media');
 
         expect(harness.dispatcher.dispatchCommand).not.toHaveBeenCalled();
-        expect(port.responses()).toEqual([]);
         // Not even a pending request, because the external extension never identified itself.
         expect(Object.keys(await harness.pendingEntries())).toEqual([]);
     });
 
-    it('records a pending entry on hello and alerts via badges', async () => {
+    it('does not report pending for a connection with no outstanding approval request', async () => {
         const port = harness.connect('sibling');
-        await flush();
 
-        await port.receive({ type: 'asbplayer-external-hello', name: 'Sibling' });
+        const id = await port.request('approval-state');
 
-        expect(approvalFrames(port)).toEqual([
-            { type: 'asbplayer-external-approval', approved: false },
-            { type: 'asbplayer-external-approval', approved: false },
-        ]);
+        expect(port.responseFor(id)).toEqual({ jsonrpc: '2.0', id, result: { state: 'denied' } });
+        expect(port.disconnected).toBe(true);
+    });
+
+    it('answers hello from an unapproved connection with pending and alerts via badges', async () => {
+        const port = harness.connect('sibling');
+
+        const id = await port.request('hello', { name: 'Sibling' });
+
+        expect(port.responseFor(id)).toEqual({ jsonrpc: '2.0', id, result: { state: 'pending' } });
         expect((await harness.pendingEntries())['sibling']).toEqual({
             name: 'Sibling',
             requestedAt: expect.any(Number),
@@ -229,50 +250,43 @@ describe('external connection coordinator', () => {
     it('does not badge video tabs when there are no active video elements', async () => {
         harness.videoElements = [];
         const port = harness.connect('sibling');
-        await flush();
 
-        await port.receive({ type: 'asbplayer-external-hello', name: 'Sibling' });
+        await port.request('hello', { name: 'Sibling' });
 
         expect(harness.lastGlobalBadgeText()).toEqual('!');
         expect(harness.badgeAction.setBadgeText).not.toHaveBeenCalledWith({ tabId: 1, text: '!' });
     });
 
-    it('answers hello from an approved extension without recording a pending entry', async () => {
+    it('answers hello from an approved extension with approved without recording a pending entry', async () => {
         await harness.approve('sibling', 'Sibling');
         const port = harness.connect('sibling');
-        await flush();
 
-        await port.receive({ type: 'asbplayer-external-hello', name: 'Sibling' });
+        const id = await port.request('hello', { name: 'Sibling' });
 
-        expect(approvalFrames(port)).toEqual([
-            { type: 'asbplayer-external-approval', approved: true },
-            { type: 'asbplayer-external-approval', approved: true },
-        ]);
+        expect(port.responseFor(id)).toEqual({ jsonrpc: '2.0', id, result: { state: 'approved' } });
         expect(Object.keys(await harness.pendingEntries())).toEqual([]);
     });
 
-    it('logs hello failures and still answers with the current approval state', async () => {
+    it('answers hello failures with an internal error instead of pretending the request is pending', async () => {
         const port = harness.connect('sibling');
-        await flush();
         const failure = new Error('Concurrent update when writing key externalConnections');
         (harness.globalStateProvider as any).updateWithLocking = () => Promise.reject(failure);
 
-        await port.receive({ type: 'asbplayer-external-hello', name: 'Sibling' });
+        const id = await port.request('hello', { name: 'Sibling' });
 
         expect(consoleErrorSpy.mock.calls.some((args: unknown[]) => args.includes(failure))).toBe(true);
-        // The port is still answered, so the external extension does not hang awaiting approval.
-        expect(approvalFrames(port)).toEqual([
-            { type: 'asbplayer-external-approval', approved: false },
-            { type: 'asbplayer-external-approval', approved: false },
-        ]);
+        expect(port.responseFor(id)).toEqual({
+            jsonrpc: '2.0',
+            id,
+            error: { code: -32603, message: 'Internal error', data: failure.message },
+        });
         expect(Object.keys(await harness.pendingEntries())).toEqual([]);
     });
 
     it('does not record a pending request while a denial cooldown is active', async () => {
         const port = harness.connect('sibling');
-        await flush();
 
-        await port.receive({ type: 'asbplayer-external-hello', name: 'Sibling' });
+        await port.request('hello', { name: 'Sibling' });
         expect(Object.keys(await harness.pendingEntries())).toEqual(['sibling']);
 
         // The user denies the request.
@@ -281,12 +295,24 @@ describe('external connection coordinator', () => {
         expect(Object.keys(await harness.deniedRequestCooldowns())).toEqual(['sibling']);
 
         // The extension requests again within the cooldown window.
-        await port.receive({ type: 'asbplayer-external-hello', name: 'Sibling' });
+        const id = await port.request('hello', { name: 'Sibling' });
 
         expect(Object.keys(await harness.pendingEntries())).toEqual([]);
-        // The badge is not raised again; the port still gets the standard unapproved response.
+        // The badge is not raised again; the connection is still told it is pending.
         expect(harness.lastGlobalBadgeText()).toEqual('');
-        expect(approvalFrames(port)).toContainEqual({ type: 'asbplayer-external-approval', approved: false });
+        expect(port.responseFor(id)).toEqual({ jsonrpc: '2.0', id, result: { state: 'pending' } });
+    });
+
+    it('once denied, the next approval-state poll returns denied and closes the port', async () => {
+        const port = harness.connect('sibling');
+        await port.request('hello', { name: 'Sibling' });
+        await harness.externalConnectionsChanged(harness.emptyState());
+        await flush();
+
+        const id = await port.request('approval-state');
+
+        expect(port.responseFor(id)).toEqual({ jsonrpc: '2.0', id, result: { state: 'denied' } });
+        expect(port.disconnected).toBe(true);
     });
 
     it('allows a denied extension to request again after the cooldown expires', async () => {
@@ -294,21 +320,19 @@ describe('external connection coordinator', () => {
             [deniedRequestCooldownsKey]: { sibling: Date.now() - deniedRequestCooldownMs - 1 },
         });
         const port = harness.connect('sibling');
-        await flush();
 
-        await port.receive({ type: 'asbplayer-external-hello', name: 'Sibling' });
+        await port.request('hello', { name: 'Newcomer' });
 
         expect((await harness.pendingEntries())['sibling']).toEqual({
-            name: 'Sibling',
+            name: 'Newcomer',
             requestedAt: expect.any(Number),
         });
     });
 
     it('does not set a denial cooldown when a pending request is approved', async () => {
         const port = harness.connect('sibling');
-        await flush();
 
-        await port.receive({ type: 'asbplayer-external-hello', name: 'Sibling' });
+        await port.request('hello', { name: 'Sibling' });
         await harness.approve('sibling');
         await flush();
 
@@ -318,9 +342,8 @@ describe('external connection coordinator', () => {
     it('stores a hello name from an approved extension on its approval entry', async () => {
         await harness.approve('sibling', 'Sibling');
         const port = harness.connect('sibling');
-        await flush();
 
-        await port.receive({ type: 'asbplayer-external-hello', name: 'Renamed Sibling' });
+        await port.request('hello', { name: 'Renamed Sibling' });
 
         expect((await harness.approvedEntries())['sibling']).toEqual({
             name: 'Renamed Sibling',
@@ -329,131 +352,190 @@ describe('external connection coordinator', () => {
         expect(Object.keys(await harness.pendingEntries())).toEqual([]);
     });
 
-    it('dispatches commands from approved extensions and posts the response', async () => {
+    it('dispatches commands from approved extensions and answers with a result', async () => {
         await harness.approve('sibling');
         const port = harness.connect('sibling');
-        await flush();
 
         harness.dispatcher.dispatchCommand.mockResolvedValueOnce({
             command: 'response',
-            messageId: 'm1',
+            messageId: 'request-id',
             body: { media: [] },
         });
-        await port.receive({ command: 'get-bound-media', messageId: 'm1', body: {} });
+        const id = await port.request('get-bound-media', {});
 
         expect(harness.dispatcher.dispatchCommand).toHaveBeenCalledWith({
             command: 'get-bound-media',
-            messageId: 'm1',
+            messageId: id,
             body: {},
         });
-        expect(port.responses()).toEqual([{ command: 'response', messageId: 'm1', body: { media: [] } }]);
+        expect(port.responseFor(id)).toEqual({ jsonrpc: '2.0', id, result: { media: [] } });
     });
 
-    it('answers dispatch failures with an error body', async () => {
+    it('answers commands sent before approval with not approved', async () => {
+        const port = harness.connect('sibling');
+
+        const id = await port.request('get-bound-media', {});
+
+        expect(harness.dispatcher.dispatchCommand).not.toHaveBeenCalled();
+        expect(port.responseFor(id)).toEqual({
+            jsonrpc: '2.0',
+            id,
+            error: { code: -32002, message: 'Not approved' },
+        });
+    });
+
+    it('answers dispatch failures with an internal error', async () => {
         await harness.approve('sibling');
         const port = harness.connect('sibling');
-        await flush();
 
         harness.dispatcher.dispatchCommand.mockRejectedValueOnce(new Error('handler failed'));
-        await port.receive({ command: 'seek-timestamp', messageId: 'm2', body: {} });
+        const id = await port.request('seek-timestamp', { timestamp: 30 });
 
-        expect(port.responses()).toEqual([{ command: 'response', messageId: 'm2', body: { error: 'handler failed' } }]);
+        expect(port.responseFor(id)).toEqual({
+            jsonrpc: '2.0',
+            id,
+            error: { code: -32603, message: 'Internal error', data: 'handler failed' },
+        });
     });
 
-    it('does not respond when the dispatcher does not handle the command', async () => {
+    it('answers unknown methods with method not found', async () => {
         await harness.approve('sibling');
         const port = harness.connect('sibling');
-        await flush();
+
+        const id = await port.request('unknown-command', {});
+
+        expect(port.responseFor(id)).toEqual({
+            jsonrpc: '2.0',
+            id,
+            error: { code: -32601, message: 'Method not found' },
+        });
+    });
+
+    it('answers unhandled commands with method not found', async () => {
+        await harness.approve('sibling');
+        const port = harness.connect('sibling');
 
         harness.dispatcher.dispatchCommand.mockResolvedValueOnce(undefined);
-        await port.receive({ command: 'unknown-command', messageId: 'm3', body: {} });
+        const id = await port.request('get-bound-media', {});
 
-        expect(port.responses()).toEqual([]);
+        expect(port.responseFor(id)).toEqual({
+            jsonrpc: '2.0',
+            id,
+            error: { code: -32601, message: 'Method not found' },
+        });
     });
 
-    it('ignores malformed frames', async () => {
+    it('answers invalid params with invalid params', async () => {
         await harness.approve('sibling');
         const port = harness.connect('sibling');
-        await flush();
+
+        const id = await port.request('mine-subtitle', { fields: {}, postMineAction: 99 });
+
+        expect(harness.dispatcher.dispatchCommand).not.toHaveBeenCalled();
+        expect(port.responseFor(id)).toMatchObject({
+            jsonrpc: '2.0',
+            id,
+            error: { code: -32602, message: 'Invalid params' },
+        });
+    });
+
+    it('answers rpc.discover with the OpenRPC document', async () => {
+        const port = harness.connect('sibling');
+
+        const id = await port.request('rpc.discover');
+
+        expect(port.responseFor(id)).toEqual({ jsonrpc: '2.0', id, result: generateOpenRpcDocument() });
+    });
+
+    it('ignores malformed frames and legacy frames', async () => {
+        await harness.approve('sibling');
+        const port = harness.connect('sibling');
 
         await port.receive({});
         await port.receive({ command: 'get-bound-media', body: {} });
+        await port.receive({ jsonrpc: '1.0', method: 'get-bound-media', id: 'bad' });
         await port.receive('not an object');
 
         expect(harness.dispatcher.dispatchCommand).not.toHaveBeenCalled();
-        expect(port.responses()).toEqual([]);
+        expect(port.rpcResponses()).toEqual([]);
     });
 
-    it('approves an external extension with an open port by reacting to the storage change', async () => {
+    it('dispatches notifications without answering, even on failure', async () => {
+        await harness.approve('sibling');
         const port = harness.connect('sibling');
-        await flush();
-        await port.receive({ type: 'asbplayer-external-hello', name: 'Sibling' });
-        await flush();
+
+        harness.dispatcher.dispatchCommand.mockRejectedValueOnce(new Error('handler failed'));
+        await port.notify('mine-subtitle', { fields: { Front: 'ねこ' }, postMineAction: 2 });
+
+        expect(harness.dispatcher.dispatchCommand).toHaveBeenCalled();
+        expect(port.rpcResponses()).toEqual([]);
+    });
+
+    it('approves an external extension with an open port without notifying it', async () => {
+        const port = harness.connect('sibling');
+        await port.request('hello', { name: 'Sibling' });
 
         await harness.externalConnectionsChanged(harness.approvedState('sibling', 'Sibling'));
 
-        expect(approvalFrames(port)).toEqual([
-            { type: 'asbplayer-external-approval', approved: false },
-            { type: 'asbplayer-external-approval', approved: false },
-            { type: 'asbplayer-external-approval', approved: true },
-        ]);
+        expect(port.rpcResponses()).toHaveLength(1); // Only the hello response; no push on approval.
 
-        harness.dispatcher.dispatchCommand.mockResolvedValueOnce({ command: 'response', messageId: 'm4', body: {} });
-        await port.receive({ command: 'get-bound-media', messageId: 'm4', body: {} });
-        expect(port.responses()).toEqual([{ command: 'response', messageId: 'm4', body: {} }]);
+        harness.dispatcher.dispatchCommand.mockResolvedValueOnce({
+            command: 'response',
+            messageId: 'request-id',
+            body: {},
+        });
+        await port.request('get-bound-media', {});
+        expect(port.rpcResponses()).toHaveLength(2);
     });
 
-    it('revokes an external extension with an open port and stops dispatching its commands', async () => {
+    it('revokes an external extension with an open port by closing it and stops dispatching its commands', async () => {
         await harness.approve('sibling');
         const port = harness.connect('sibling');
-        await flush();
 
         await harness.externalConnectionsChanged(harness.emptyState());
 
-        expect(approvalFrames(port)).toEqual([
-            { type: 'asbplayer-external-approval', approved: true },
-            { type: 'asbplayer-external-approval', approved: false },
-        ]);
+        expect(port.disconnected).toEqual(true);
 
-        harness.dispatcher.dispatchCommand.mockResolvedValueOnce({ command: 'response', messageId: 'm5', body: {} });
-        await port.receive({ command: 'get-bound-media', messageId: 'm5', body: {} });
-        expect(port.responses()).toEqual([]);
+        harness.dispatcher.dispatchCommand.mockResolvedValueOnce({
+            command: 'response',
+            messageId: 'request-id',
+            body: {},
+        });
+        await port.request('get-bound-media', {});
+        expect(harness.dispatcher.dispatchCommand).not.toHaveBeenCalled();
+        expect(port.rpcResponses()).toEqual([]);
     });
 
-    it('notifies every open port of an external extension', async () => {
+    it('disconnects every open port of an external extension when revoked', async () => {
         const port1 = harness.connect('sibling');
         const port2 = harness.connect('sibling');
-        await flush();
-        const port1Frames = approvalFrames(port1);
-        const port2Frames = approvalFrames(port2);
+        await harness.approve('sibling');
 
-        await harness.externalConnectionsChanged(harness.approvedState('sibling'));
+        await harness.externalConnectionsChanged(harness.emptyState());
 
-        expect(approvalFrames(port1)).toEqual([
-            ...port1Frames,
-            { type: 'asbplayer-external-approval', approved: true },
-        ]);
-        expect(approvalFrames(port2)).toEqual([
-            ...port2Frames,
-            { type: 'asbplayer-external-approval', approved: true },
-        ]);
+        expect(port1.disconnected).toEqual(true);
+        expect(port2.disconnected).toEqual(true);
     });
 
-    it('does not fail when posting to a port that disconnects concurrently', async () => {
+    it('does not fail when posting a response to a port that disconnects concurrently', async () => {
+        await harness.approve('sibling');
         const port = harness.connect('sibling');
-        await flush();
         const postedBeforeDisconnect = port.posted.length;
         port.disconnect();
 
-        await harness.externalConnectionsChanged(harness.approvedState('sibling'));
+        harness.dispatcher.dispatchCommand.mockResolvedValueOnce({
+            command: 'response',
+            messageId: 'request-id',
+            body: {},
+        });
+        await port.request('get-bound-media', {});
 
         expect(port.posted).toHaveLength(postedBeforeDisconnect);
     });
 
     it('clears external connection badges once no pending requests remain', async () => {
         const port = harness.connect('sibling');
-        await flush();
-        await port.receive({ type: 'asbplayer-external-hello', name: 'Sibling' });
+        await port.request('hello', { name: 'Sibling' });
         await flush();
         expect(harness.lastGlobalBadgeText()).toEqual('!');
 
@@ -476,9 +558,8 @@ describe('external connection coordinator', () => {
         pending['expired'] = { name: 'Expired', requestedAt: now - 25 * 60 * 60 * 1000 };
         await harness.seedPending(pending);
         const port = harness.connect('newcomer');
-        await flush();
 
-        await port.receive({ type: 'asbplayer-external-hello', name: 'Newcomer' });
+        await port.request('hello', { name: 'Newcomer' });
 
         const pendingEntries = await harness.pendingEntries();
         expect(Object.keys(pendingEntries)).toHaveLength(10);
@@ -495,10 +576,5 @@ describe('external connection coordinator', () => {
 
         expect(port.disconnected).toEqual(true);
         expect(port.posted).toEqual([]);
-        expect(port.approvalFrames()).toEqual([]);
     });
 });
-
-function approvalFrames(port: FakePort) {
-    return port.approvalFrames();
-}

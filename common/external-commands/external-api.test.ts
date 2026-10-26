@@ -7,6 +7,7 @@ import {
     jsonRpcRequestSchema,
     jsonRpcResultResponseSchema,
     mineSubtitleParamsSchema,
+    parseJsonRpcIncomingMessage,
     serializeOpenRpcDocument,
     toJsonSchema,
 } from '@project/common/external-commands/external-api';
@@ -68,6 +69,25 @@ describe('external API schemas', () => {
                     error: { code: 'oops', message: 'Method not found' },
                 }).success
             ).toBe(false);
+        });
+
+        it('sniffs requests and notifications from incoming frames', () => {
+            expect(parseJsonRpcIncomingMessage(validRequest)).toEqual(validRequest);
+            expect(parseJsonRpcIncomingMessage({ jsonrpc: '2.0', method: 'get-bound-media' })).toEqual({
+                jsonrpc: '2.0',
+                method: 'get-bound-media',
+            });
+        });
+
+        it('rejects frames that violate the envelope rules', () => {
+            const { id, ...notification } = validRequest;
+
+            void id;
+            expect(parseJsonRpcIncomingMessage({ ...validRequest, id: 1 })).toBeUndefined();
+            expect(parseJsonRpcIncomingMessage({ ...notification, jsonrpc: '1.0' })).toBeUndefined();
+            expect(parseJsonRpcIncomingMessage({ ...notification, method: 1 })).toBeUndefined();
+            expect(parseJsonRpcIncomingMessage(null)).toBeUndefined();
+            expect(parseJsonRpcIncomingMessage('not an object')).toBeUndefined();
         });
     });
 

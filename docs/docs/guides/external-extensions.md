@@ -18,23 +18,52 @@ Any extension wishing to communicate with asbplayer must first connect using cod
 const port = browser.runtime.connect(<asbplayer extension ID>);
 ```
 
-Approval can then be obtained by issuing the `hello` command.
+The port speaks [JSON-RPC 2.0](https://www.jsonrpc.org/specification). Approval can then be requested by issuing the `hello` method. It answers immediately with the current approval state, so no request ever waits for the user.
 
 ```typescript
 port.postMessage({
-    type: 'asbplayer-external-hello',
-    name: 'external-extension-name', // Self-reported name
-    version: '1.2.3', // Self-reported version
+    jsonrpc: '2.0',
+    id: crypto.randomUUID(),
+    method: 'hello',
+    params: {
+        name: 'external-extension-name', // Self-reported name
+        version: '1.2.3', // Self-reported version
+    },
 });
 ```
 
-If the extension hasn't been approved yet, then asbplayer will prompt the user to approve the extension. Once the user approves, asbplayer will send a message like below through the port.
+If the extension hasn't been approved yet, asbplayer registers the connection as pending, prompts the user to approve it, and responds:
 
 ```json
 {
-    "type": "asbplayer-external-approval",
-    "approved": true
+    "jsonrpc": "2.0",
+    "id": "<the id from the hello request>",
+    "result": { "state": "pending" }
 }
 ```
 
-If the user has already approved the extension, then the message is sent immediately. Following approval, asbplayer will respond to any [commands](../reference/external-api) sent through the port.
+While pending, poll `approval-state` (roughly once per second). It is a pure read and never triggers another prompt:
+
+```json
+{
+    "jsonrpc": "2.0",
+    "id": "<request id>",
+    "method": "approval-state",
+    "params": {}
+}
+```
+
+Once the user approves, the next poll returns `{ "state": "approved" }` and the same connection can issue [commands](../reference/external-api). If the user denies the request, `approval-state` returns `{ "state": "denied" }` once and asbplayer closes the port. Revoking an approved extension also closes the port.
+
+After approval, send commands as JSON-RPC requests using the same method names and payloads documented in the [external API reference](../reference/external-api), for example:
+
+```typescript
+port.postMessage({
+    jsonrpc: '2.0',
+    id: crypto.randomUUID(),
+    method: 'get-bound-media',
+    params: {},
+});
+```
+
+asbplayer answers with `{ jsonrpc, id, result }` on success or `{ jsonrpc, id, error }` on failure. Unknown methods fail with `-32601`, invalid params with `-32602`, and commands sent before approval with `-32002`. See the [external API reference](../reference/external-api) for the full command set.
