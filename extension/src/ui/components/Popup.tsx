@@ -37,6 +37,7 @@ import { createStatisticsPopup } from '@/services/statistics-util';
 import Tooltip from '@project/common/components/Tooltip';
 import { useCurrentTabId } from '@project/extension/src/ui/hooks/use-current-tab-id';
 import ExternalConnections from '@/ui/components/ExternalConnections';
+import { activePendingEntries } from '@project/common/global-state';
 
 const globalStateProvider = new ExtensionGlobalStateProvider();
 
@@ -180,7 +181,8 @@ const Popup = ({
     }
 
     const hasPendingExternalConnection =
-        externalConnections !== undefined && Object.values(externalConnections.pending).length > 0;
+        externalConnections !== undefined &&
+        Object.values(activePendingEntries(externalConnections.pending, Date.now())).length > 0;
 
     return (
         <>

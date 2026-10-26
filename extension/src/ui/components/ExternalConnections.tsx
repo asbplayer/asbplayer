@@ -4,6 +4,7 @@ import Typography from '@mui/material/Typography';
 import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useExternalConnections } from '@/ui/hooks/use-external-connections';
+import { activePendingEntries } from '@project/common/global-state';
 import { asbError } from '@project/common/util/log';
 import Paper from '@mui/material/Paper';
 import Box from '@mui/material/Box';
@@ -49,7 +50,9 @@ const ExternalConnections: React.FC = () => {
         },
         [removeExternalConnection]
     );
-    const pending = Object.entries(externalConnections?.pending ?? {});
+    // Do not render expired, pending connection requests; they will be pruned from the
+    // underlying state on the next state update.
+    const pending = Object.entries(activePendingEntries(externalConnections?.pending ?? {}, Date.now()));
     const approved = Object.entries(externalConnections?.approved ?? {});
 
     return (

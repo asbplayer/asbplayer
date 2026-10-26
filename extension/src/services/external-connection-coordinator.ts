@@ -1,6 +1,6 @@
 import { asbError } from '@project/common/util/log';
 import type { ExternalConnectionsState, GlobalStateProvider } from '@project/common/global-state';
-import { mutateExternalConnections } from '@project/common/global-state';
+import { activePendingEntries, mutateExternalConnections } from '@project/common/global-state';
 import type { ExternalApprovalMessage, ExternalCommand, ExternalHelloMessage } from '@project/common/external-commands';
 import { ExternalCommandDispatcher } from '@project/common/external-commands/dispatcher';
 import { externalCommandHandlers } from '@project/extension/src/services/external-command-handlers';
@@ -10,8 +10,12 @@ import type { ExtensionBadgeController } from '@project/extension/src/services/e
 
 // Pending requests expire after this long, and at most this many are retained, so that
 // unapproved requests cannot accumulate indefinitely.
-const pendingRequestExpirationMs = 24 * 60 * 60 * 1000;
 const maxPendingRequests = 10;
+
+// A denied extension may not re-request approval for this long. Session storage is used so
+// that cooldowns survive service worker restarts but reset with each browser session.
+export const deniedRequestCooldownMs = 24 * 60 * 60 * 1000;
+export const deniedRequestCooldownsKey = 'externalConnectionDeniedCooldowns';
 
 const helloType: ExternalHelloMessage['type'] = 'asbplayer-external-hello';
 
@@ -39,8 +43,9 @@ export class ExternalConnectionCoordinator {
     private readonly _dispatcher: ExternalCommandDispatcher;
     private readonly _ports = new Map<string, Set<Browser.runtime.Port>>();
     // onUpdated carries no oldValue, so track approved IDs across updates to detect
-    // additions/revocations.
+    // additions/revocations, and pending IDs to detect denials.
     private _lastApprovedIds?: Set<string>;
+    private _lastPendingIds?: Set<string>;
 
     constructor({
         globalStateProvider,
@@ -160,6 +165,12 @@ export class ExternalConnectionCoordinator {
     private async _hello(senderId: string, message: ExternalHelloMessage) {
         const name = typeof message.name === 'string' && message.name.length > 0 ? message.name : undefined;
 
+        if (await this._onDeniedRequestCooldown(senderId)) {
+            // Silently decline: no pending entry is recorded, so no badge is raised; the
+            // caller still posts the standard unapproved response.
+            return;
+        }
+
         await mutateExternalConnections(this._globalStateProvider, (externalConnections) => {
             const approved = externalConnections.approved[senderId];
 
@@ -190,10 +201,20 @@ export class ExternalConnectionCoordinator {
 
     private async _onExternalConnectionsUpdated(externalConnections: ExternalConnectionsState) {
         const newApproved = new Set(Object.keys(externalConnections.approved ?? {}));
+        const newPending = new Set(Object.keys(externalConnections.pending ?? {}));
 
         if (this._lastApprovedIds === undefined) {
             // The baseline fetch has not resolved yet.
             this._lastApprovedIds = new Set();
+        }
+
+        if (this._lastPendingIds !== undefined) {
+            // Pending requests that vanished without becoming approved were denied.
+            for (const extensionId of this._lastPendingIds) {
+                if (!newPending.has(extensionId) && !newApproved.has(extensionId)) {
+                    await this._recordDeniedRequest(extensionId);
+                }
+            }
         }
 
         const oldApproved = this._lastApprovedIds;
@@ -211,6 +232,7 @@ export class ExternalConnectionCoordinator {
         }
 
         this._lastApprovedIds = newApproved;
+        this._lastPendingIds = newPending;
 
         // Prune expired/capped pending requests left behind by other writers of global state.
         if (this._pendingRequestsNeedPrune(externalConnections.pending, Date.now())) {
@@ -248,18 +270,43 @@ export class ExternalConnectionCoordinator {
         }
 
         this._lastApprovedIds = new Set(Object.keys(externalConnections.approved ?? {}));
+        this._lastPendingIds = new Set(Object.keys(externalConnections.pending ?? {}));
     }
 
     private _prunePending(
         pending: ExternalConnectionsState['pending'],
         now: number
     ): ExternalConnectionsState['pending'] {
+        const active = activePendingEntries(pending, now);
+
         return Object.fromEntries(
-            Object.entries(pending)
-                .filter(([, request]) => now - (request?.requestedAt ?? 0) <= pendingRequestExpirationMs)
+            Object.entries(active)
                 .sort(([, a], [, b]) => (b?.requestedAt ?? 0) - (a?.requestedAt ?? 0))
                 .slice(0, maxPendingRequests)
         );
+    }
+
+    private async _onDeniedRequestCooldown(extensionId: string): Promise<boolean> {
+        const deniedAt = (await this._deniedRequestCooldowns())[extensionId];
+        return deniedAt !== undefined && Date.now() - deniedAt < deniedRequestCooldownMs;
+    }
+
+    private async _recordDeniedRequest(extensionId: string): Promise<void> {
+        const cooldowns = await this._deniedRequestCooldowns();
+
+        if (cooldowns[extensionId] !== undefined) {
+            // Already denied recently; do not reset the cooldown.
+            return;
+        }
+
+        await browser.storage.session.set({
+            [deniedRequestCooldownsKey]: { ...cooldowns, [extensionId]: Date.now() },
+        });
+    }
+
+    private async _deniedRequestCooldowns(): Promise<{ [extensionId: string]: number }> {
+        const result = await browser.storage.session.get(deniedRequestCooldownsKey);
+        return (result?.[deniedRequestCooldownsKey] ?? {}) as { [extensionId: string]: number };
     }
 
     private async _approvedIds(): Promise<Set<string>> {
