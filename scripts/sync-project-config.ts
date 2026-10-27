@@ -1,6 +1,6 @@
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { fileURLToPath } from 'node:url';
 import type projectConfig from '../project.json';
 
 type Project = typeof projectConfig;
@@ -199,7 +199,8 @@ export function syncProjectConfig(root: string, check = false): string[] {
     return stale;
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+// Node resolves the entry module's symlinks but leaves argv[1] as given, so compare canonical paths.
+if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
     const check = process.argv.includes('--check');
     const stale = syncProjectConfig(fileURLToPath(new URL('../', import.meta.url)), check);
     if (check && stale.length > 0) {

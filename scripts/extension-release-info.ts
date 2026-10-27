@@ -1,5 +1,5 @@
-import { readFileSync } from 'node:fs';
-import { pathToFileURL } from 'node:url';
+import { readFileSync, realpathSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import type projectConfig from '../project.json';
 
 type ExtensionReleaseProject = {
@@ -31,7 +31,8 @@ export function extensionReleaseInfo({ version, releases, extension }: Extension
     };
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+// Node resolves the entry module's symlinks but leaves argv[1] as given, so compare canonical paths.
+if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
     const project: typeof projectConfig = JSON.parse(readFileSync(new URL('../project.json', import.meta.url), 'utf8'));
     const [field, version = project.version] = process.argv.slice(2);
     const info = extensionReleaseInfo({ ...project, version });
