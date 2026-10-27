@@ -28,7 +28,7 @@ concurrency:
     cancel-in-progress: false
 
 model: gpt-6-luna
-max-ai-credits: -1 # Bypass built-in pricing table
+max-ai-credits: 10000 # AWF's per-run hard cap; -1 fails AWF config validation
 engine:
     id: codex
     env:
