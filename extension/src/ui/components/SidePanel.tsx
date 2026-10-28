@@ -449,8 +449,8 @@ export default function SidePanel({
     );
 
     const copyHistoryRepository = useMemo(
-        () => new ExtensionCopyHistoryRepository(settings.miningHistoryStorageLimit, uiTabRegistry),
-        [settings.miningHistoryStorageLimit]
+        () => new ExtensionCopyHistoryRepository(settingsProvider, uiTabRegistry),
+        [settingsProvider]
     );
     const { copyHistoryItems, refreshCopyHistory, deleteCopyHistoryItem, deleteAllCopyHistoryItems } = useCopyHistory(
         settings.miningHistoryStorageLimit,

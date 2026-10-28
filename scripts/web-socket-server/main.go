@@ -686,6 +686,29 @@ func (forwarder forwarder) handleAsbplayerBoundMediaRequest(c echo.Context) erro
 	return c.JSONBlob(http.StatusOK, response.Body)
 }
 
+func (forwarder forwarder) handleAsbplayerMiningHistoryRequest(c echo.Context) error {
+	body := map[string]interface{}{}
+	limitStr := c.QueryParam("limit")
+	limit, err := strconv.ParseInt(limitStr, 10, 32)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid limit: %v", err.Error()))
+	}
+
+	body["limit"] = limit
+
+	if cardIds := c.QueryParam("cardIds"); cardIds != "" {
+		body["filter"] = map[string]any{"cardIds": strings.Split(cardIds, ",")}
+	}
+
+	command := clientCommand{Command: "get-mining-history", MessageId: uuid.NewString(), Body: body}
+	response, rpcError := forwarder.publishMessageAndAwaitResponse(command)
+	if rpcError != nil {
+		return echo.NewHTTPError(httpStatusForRpcError(rpcError), rpcError.Message)
+	}
+
+	return c.JSONBlob(http.StatusOK, response.Body)
+}
+
 func (forwarder forwarder) handleAsbplayerSubtitlesRequest(c echo.Context) error {
 	body := map[string]interface{}{}
 	if mediaId := c.QueryParam("mediaId"); mediaId != "" {
@@ -720,6 +743,7 @@ func (forwarder forwarder) registerRoutes(e *echo.Echo) {
 	e.POST("/asbplayer/mine-subtitle", forwarder.handleAsbplayerMineSubtitleRequest)
 	e.POST("/asbplayer/seek", forwarder.handleAsbplayerSeekRequest)
 	e.GET("/asbplayer/bound-media", forwarder.handleAsbplayerBoundMediaRequest)
+	e.GET("/asbplayer/mining-history", forwarder.handleAsbplayerMiningHistoryRequest)
 	e.GET("/asbplayer/subtitles", forwarder.handleAsbplayerSubtitlesRequest)
 	e.OPTIONS("/", forwarder.handleOptionsRequest)
 }

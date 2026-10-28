@@ -432,7 +432,8 @@ export default class PlayerChannel {
             postMineAction: PostMineAction,
             subtitle?: SubtitleModel,
             surroundingSubtitles?: SubtitleModel[],
-            cardTextFieldValues?: CardTextFieldValues
+            cardTextFieldValues?: CardTextFieldValues,
+            cardId?: string
         ) => void
     ) {
         this.copyCallbacks.push(callback);

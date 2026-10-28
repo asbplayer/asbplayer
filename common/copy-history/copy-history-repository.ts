@@ -1,5 +1,6 @@
 import type { CopyHistoryItem, FileModel, SubtitleModel } from '@project/common';
 import Dexie, { liveQuery } from 'dexie';
+import type { SettingsProvider } from '@project/common/settings';
 
 class CopyHistoryDatabase extends Dexie {
     copyHistoryItems!: Dexie.Table<CopyHistoryRecord, number>;
@@ -62,31 +63,42 @@ interface CopyHistoryRecord extends CopyHistoryItem {
 
 export interface CopyHistoryRepository {
     clear: () => Promise<void>;
-    fetch: (count: number) => Promise<CopyHistoryItem[]>;
+    fetch: (count: number, cardIds?: string[]) => Promise<CopyHistoryItem[]>;
     liveFetch: (count: number, callback: (items: CopyHistoryItem[]) => void) => () => void;
     save: (item: CopyHistoryItem) => Promise<void>;
     delete: (id: string) => Promise<void>;
 }
 
+const stripSubtitle = (s: SubtitleModel) => {
+    const clone = { ...s };
+    delete clone['tokenization'];
+    return clone;
+};
+
 export class IndexedDBCopyHistoryRepository implements CopyHistoryRepository {
     private readonly _db = new CopyHistoryDatabase();
-    private _limit: number;
+    private _settings: SettingsProvider;
 
-    constructor(limit: number) {
-        this._limit = limit;
-    }
-
-    set limit(limit: number) {
-        this._limit = limit;
+    constructor(settings: SettingsProvider) {
+        this._settings = settings;
     }
 
     async clear() {
         await this._db.copyHistoryItems.clear();
     }
 
-    async fetch(count: number): Promise<CopyHistoryItem[]> {
+    async fetch(count: number, cardIds?: string[]): Promise<CopyHistoryItem[]> {
         if (count <= 0) {
             return [];
+        }
+
+        if (cardIds !== undefined) {
+            if (cardIds.length === 0) {
+                return [];
+            }
+            return (await this._db.copyHistoryItems.where('id').anyOf(cardIds).toArray())
+                .sort((a, b) => (a.index ?? 0) - (b.index ?? 0))
+                .slice(-count);
         }
 
         const result = await this._db.copyHistoryItems.reverse().limit(count).toArray();
@@ -103,15 +115,16 @@ export class IndexedDBCopyHistoryRepository implements CopyHistoryRepository {
     }
 
     async save(item: CopyHistoryItem) {
-        if (this._limit <= 0) {
+        const limit = await this._settings.getSingle('miningHistoryStorageLimit');
+        if (limit <= 0) {
             return;
         }
 
         const record: CopyHistoryRecord = {
             id: item.id,
             timestamp: item.timestamp,
-            subtitle: item.subtitle,
-            surroundingSubtitles: item.surroundingSubtitles,
+            subtitle: stripSubtitle(item.subtitle),
+            surroundingSubtitles: item.surroundingSubtitles.map(stripSubtitle),
             subtitleFileName: item.subtitleFileName,
             url: item.url,
             image: item.image,
@@ -131,11 +144,12 @@ export class IndexedDBCopyHistoryRepository implements CopyHistoryRepository {
 
     private async _prune(lastIndex: number) {
         const size = await this._db.copyHistoryItems.count();
+        const limit = await this._settings.getSingle('miningHistoryStorageLimit');
 
-        if (size > this._limit) {
+        if (size > limit) {
             const keys = await this._db.copyHistoryItems
                 .where('index')
-                .belowOrEqual(lastIndex - this._limit)
+                .belowOrEqual(lastIndex - limit)
                 .primaryKeys();
 
             if (keys.length > 0) {

@@ -1,16 +1,11 @@
 import type { Command, Message, SaveCopyHistoryMessage } from '@project/common';
 import { asbError } from '@project/common/util/log';
-import { ExtensionCopyHistoryRepository } from '@project/extension/src/services/copy-history-repository';
-import type { SettingsProvider } from '@project/common/settings';
-import type TabRegistry from '@project/extension/src/services/tab-registry';
+import type { CopyHistoryRepository } from '@project/common/copy-history';
 
 export default class SaveCopyHistoryHandler {
-    private readonly _settings: SettingsProvider;
-    constructor(
-        settings: SettingsProvider,
-        private readonly _tabRegistry: TabRegistry
-    ) {
-        this._settings = settings;
+    private readonly _copyHistoryRepository: CopyHistoryRepository;
+    constructor(copyHistoryRepository: CopyHistoryRepository) {
+        this._copyHistoryRepository = copyHistoryRepository;
     }
 
     get sender() {
@@ -24,14 +19,9 @@ export default class SaveCopyHistoryHandler {
     handle(command: Command<Message>, sender: Browser.runtime.MessageSender, sendResponse: (r?: any) => void) {
         const message = command.message as SaveCopyHistoryMessage;
 
-        void this._settings
-            .getSingle('miningHistoryStorageLimit')
-            .then((limit) => new ExtensionCopyHistoryRepository(limit, this._tabRegistry))
-            .then((copyHistoryRepository) =>
-                Promise.all(
-                    message.copyHistoryItems.map((copyHistoryItem) => copyHistoryRepository.save(copyHistoryItem))
-                )
-            )
+        Promise.all(
+            message.copyHistoryItems.map((copyHistoryItem) => this._copyHistoryRepository.save(copyHistoryItem))
+        )
             .then(() => sendResponse({}))
             .catch((error) => asbError('copy-history', 'Failed to save copy history items:', error));
 
