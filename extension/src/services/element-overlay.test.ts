@@ -1,4 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it } from '@jest/globals';
+import {
+    ASB_SUBTITLE_CONTAINER_BOTTOM_CLASS,
+    ASB_TOKEN_CONTAINER_CLASS,
+    selectTokenInRoot,
+} from '@project/common/annotations/dom-annotations';
 import { CachingElementOverlay, OffsetAnchor } from '@project/extension/src/services/element-overlay';
 
 describe('CachingElementOverlay fullscreen transitions', () => {
@@ -14,8 +19,56 @@ describe('CachingElementOverlay fullscreen transitions', () => {
 
     afterEach(() => {
         document.body.replaceChildren();
+        document.body.className = '';
+        document.body.removeAttribute('tabindex');
         delete (document as unknown as { fullscreenElement?: Element | null }).fullscreenElement;
         delete (document as unknown as { elementFromPoint?: typeof document.elementFromPoint }).elementFromPoint;
+    });
+
+    it('keeps host body attributes unchanged and scopes token focus to the overlay', () => {
+        document.body.className = 'host-page';
+        document.body.setAttribute('tabindex', '0');
+        const targetElement = document.createElement('video');
+        const overlay = new CachingElementOverlay({
+            targetElement,
+            nonFullscreenContainerClassName: `non-fullscreen-container ${ASB_SUBTITLE_CONTAINER_BOTTOM_CLASS}`,
+            nonFullscreenContentClassName: 'non-fullscreen-content',
+            fullscreenContainerClassName: `fullscreen-container ${ASB_SUBTITLE_CONTAINER_BOTTOM_CLASS}`,
+            fullscreenContentClassName: 'fullscreen-content',
+            offsetAnchor: OffsetAnchor.bottom,
+            onMouseOver: () => {},
+            onMouseOut: () => {},
+        });
+
+        try {
+            expect(document.body.className).toBe('host-page');
+            expect(document.body.getAttribute('tabindex')).toBe('0');
+
+            overlay.setHtml([
+                {
+                    key: 'subtitle',
+                    html: () =>
+                        '<span data-asb-subtitle-index="0"><span class="asb-token" data-asb-token-start="0">subtitle</span></span>',
+                },
+            ]);
+            const container = document.querySelector<HTMLElement>('.non-fullscreen-container');
+            expect(container?.classList.contains(ASB_TOKEN_CONTAINER_CLASS)).toBe(false);
+            expect(container?.hasAttribute('tabindex')).toBe(false);
+            expect(selectTokenInRoot(document.body, { subtitleIndex: 0, tokenStart: 0 })).toBe(true);
+            expect(container?.classList.contains(ASB_TOKEN_CONTAINER_CLASS)).toBe(true);
+            expect(container?.getAttribute('tabindex')).toBe('-1');
+            expect(document.activeElement).toBe(container);
+
+            fullscreenElement = document.documentElement;
+            document.dispatchEvent(new Event('fullscreenchange'));
+            const fullscreenContainer = document.querySelector<HTMLElement>('.fullscreen-container');
+            expect(selectTokenInRoot(document.body, { subtitleIndex: 0, tokenStart: 0 })).toBe(true);
+            expect(fullscreenContainer?.classList.contains(ASB_TOKEN_CONTAINER_CLASS)).toBe(true);
+            expect(fullscreenContainer?.getAttribute('tabindex')).toBe('-1');
+            expect(document.activeElement).toBe(fullscreenContainer);
+        } finally {
+            overlay.dispose();
+        }
     });
 
     it('updates the class of every subtitle when moving into and out of fullscreen', () => {
