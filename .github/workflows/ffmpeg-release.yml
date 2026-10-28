@@ -2,6 +2,15 @@ name: Release FFmpeg
 
 on:
     workflow_dispatch:
+        inputs:
+            bump:
+                description: 'Increment the selected FFmpeg runtime version'
+                required: true
+                type: choice
+                default: patch
+                options:
+                    - patch
+                    - minor
 
 permissions:
     contents: read
@@ -23,9 +32,15 @@ jobs:
             - run: pnpm install --frozen-lockfile
             - name: Read FFmpeg release metadata
               id: release-info
-              run: node ffmpeg/scripts/release-info.mjs >> "$GITHUB_OUTPUT"
-            - run: pnpm --filter @project/ffmpeg run build:candidate
-            - run: pnpm --filter @project/ffmpeg run verify:release
+              env:
+                  FFMPEG_VERSION_BUMP: ${{ inputs.bump }}
+              run: node ffmpeg/scripts/release-info.mjs --bump "$FFMPEG_VERSION_BUMP" >> "$GITHUB_OUTPUT"
+            - name: Build and verify FFmpeg release
+              env:
+                  ASB_FFMPEG_RUNTIME_VERSION: ${{ steps.release-info.outputs.version }}
+              run: |
+                  pnpm --filter @project/ffmpeg run build:candidate
+                  pnpm --filter @project/ffmpeg run verify:release
             - uses: actions/upload-artifact@v7
               with:
                   name: ffmpeg-release-materials

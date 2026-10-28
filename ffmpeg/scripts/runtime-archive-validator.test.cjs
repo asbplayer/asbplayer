@@ -1,9 +1,10 @@
 /* eslint-disable @typescript-eslint/no-require-imports, no-undef */
 const { execFile } = require('node:child_process');
-const { mkdir, mkdtemp, rm, symlink, writeFile } = require('node:fs/promises');
+const { mkdir, mkdtemp, readFile, rm, symlink, writeFile } = require('node:fs/promises');
 const { tmpdir } = require('node:os');
 const { join } = require('node:path');
 const { promisify } = require('node:util');
+const { gunzipSync, gzipSync } = require('node:zlib');
 const { verifyRuntimeArchive, verifySourcesArchive } = require('./runtime-archive-validator.cjs');
 
 const exec = promisify(execFile);
@@ -41,7 +42,16 @@ it('rejects multiple roots', async () => {
 });
 
 it('rejects unsafe archive paths before extraction', async () => {
-    await exec('tar', ['-czf', archive, '--transform=s|^0.1.0|../0.1.0|', '-C', temporary, '0.1.0']);
+    await exec('tar', ['--format=ustar', '-czf', archive, '-C', temporary, '0.1.0']);
+    // Rewrite the first ustar entry and its checksum without GNU tar's --transform.
+    const contents = gunzipSync(await readFile(archive));
+    const header = contents.subarray(0, 512);
+    header.fill(0, 0, 100);
+    header.write('../0.1.0/');
+    header.fill(0x20, 148, 156);
+    const checksum = header.reduce((sum, byte) => sum + byte, 0);
+    header.write(`${checksum.toString(8).padStart(6, '0')}\0 `, 148, 8, 'ascii');
+    await writeFile(archive, gzipSync(contents));
     await expect(verifyRuntimeArchive(archive, '0.1.0')).rejects.toThrow('unsafe path');
 });
 

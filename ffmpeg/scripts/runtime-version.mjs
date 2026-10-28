@@ -1,5 +1,5 @@
 /**
- * Parse the canonical development/release version without reading project files or Git history.
+ * Parse a canonical runtime version without reading project files or Git history.
  * @param {unknown} version
  * @returns {[bigint, bigint]}
  */

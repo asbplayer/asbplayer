@@ -22,9 +22,9 @@ docker buildx build \
 node "$package_root/scripts/verify-system-notices.mjs" "$docker_output/ffmpeg-core.map" "$docker_output/notices"
 
 cp "$docker_output/ffmpeg-core.js" "$docker_output/ffmpeg-core.wasm" "$output/"
-pnpm --filter @project/ffmpeg exec esbuild "$package_root/src/worker.ts" \
-    --bundle --format=esm --platform=browser --target=es2022 \
-    --outfile="$output/ffmpeg-worker.js"
+pnpm --filter @project/ffmpeg exec rolldown "$package_root/src/worker.ts" \
+    --format=esm --platform=browser --transform.target=es2022 \
+    --file="$output/ffmpeg-worker.js"
 
 node "$package_root/scripts/copy-notices.mjs"
 

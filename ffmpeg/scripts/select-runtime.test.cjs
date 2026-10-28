@@ -8,8 +8,8 @@ const { promisify } = require('node:util');
 
 const exec = promisify(execFile);
 const version = '0.1.0';
+const initialLock = JSON.stringify({ runtimeVersion: '0.0.0' });
 const releaseConfig = {
-    version,
     releaseTitle: 'Example runtime {{version}}',
     releaseTag: 'example-runtime-v{{version}}',
     artifact: 'example-ffmpeg-{{version}}-runtime',
@@ -74,7 +74,7 @@ beforeEach(async () => {
     }
     const inventory = JSON.parse(await readFile(resolve(__dirname, '../runtime-assets.json'), 'utf8'));
     await writeFile(resolve(root, 'package.json'), JSON.stringify({ version: '9.9.9', type: 'module' }));
-    await writeFile(resolve(root, 'artifact-lock.json'), '{}');
+    await writeFile(resolve(root, 'artifact-lock.json'), initialLock);
     const bodies = {
         'ffmpeg-worker.js': 'export {};',
         'ffmpeg-core.js': 'export const _asb_runtime_info_json = () => 0;',
@@ -163,40 +163,15 @@ afterEach(async () => {
     await rm(repositoryRoot, { recursive: true, force: true });
 });
 
-const run = (script, args = [], env = process.env) =>
-    exec(process.execPath, ['--import', resolve(root, 'http.mjs'), resolve(root, 'scripts', script), ...args], { env });
+const run = (script, args = [], env = {}) =>
+    exec(process.execPath, ['--import', resolve(root, 'http.mjs'), resolve(root, 'scripts', script), ...args], {
+        env: { ...process.env, ASB_FFMPEG_RUNTIME_VERSION: undefined, ...env },
+    });
+const select = (args = [], env = {}) => run('select-runtime.mjs', ['--version', version, ...args], env);
 const readLock = async () => readFile(resolve(root, 'artifact-lock.json'), 'utf8');
 
-it('uses the project runtime version and naming independently of the package version', async () => {
-    const { stdout } = await run('release-info.mjs');
-    expect(stdout).toBe(
-        `version=${version}\ntag=${tag}\ntitle=Example runtime ${version}\nruntimeArchive=${runtimeName}\nsourcesArchive=${sourcesName}\nsourcesRoot=${sourcesRoot}\n`
-    );
-    expect((await run('release-info.mjs', ['runtimeArchive'])).stdout).toBe(`${runtimeName}\n`);
-});
-
-it('expands independent release templates using the configured runtime version', async () => {
-    await writeFile(
-        resolve(repositoryRoot, 'project.json'),
-        JSON.stringify({
-            releases: {
-                ffmpeg: {
-                    version: '0.2.0-rc.1',
-                    releaseTitle: 'Runtime {{version}} ({{version}})',
-                    releaseTag: 'custom-{{version}}',
-                    artifact: 'binary-{{version}}',
-                    sources: 'upstream-{{version}}',
-                },
-            },
-        })
-    );
-    expect((await run('release-info.mjs')).stdout).toBe(
-        'version=0.2.0-rc.1\ntag=custom-0.2.0-rc.1\ntitle=Runtime 0.2.0-rc.1 (0.2.0-rc.1)\nruntimeArchive=binary-0.2.0-rc.1.tar.gz\nsourcesArchive=upstream-0.2.0-rc.1.tar.gz\nsourcesRoot=upstream-0.2.0-rc.1\n'
-    );
-});
-
 it('selects a fork release, records the runtime archive, and accepts identical reselection', async () => {
-    await run('select-runtime.mjs', ['--repo', 'example/fork']);
+    await select(['--repo', 'example/fork']);
     const lock = JSON.parse(await readLock());
     const archive = await readFile(resolve(release, runtimeName));
     expect(lock).toEqual({
@@ -212,42 +187,30 @@ it('selects a fork release, records the runtime archive, and accepts identical r
         'https://api.github.com/repos/example/fork/releases/assets/1',
         'https://api.github.com/repos/example/fork/releases/assets/2',
     ]);
-    await run('select-runtime.mjs', ['--repo', 'example/fork']);
-    await expect(run('select-runtime.mjs', ['--repo', 'different/fork'])).rejects.toThrow('immutable');
+    await select(['--repo', 'example/fork']);
+    await expect(select(['--repo', 'different/fork'])).rejects.toThrow('immutable');
 });
 
-it('rejects noncanonical runtime versions before contacting GitHub or changing the lock', async () => {
-    for (const version of [
-        undefined,
-        null,
-        0,
-        ['0.1.0'],
-        '',
-        '1.0.0',
-        '0.3',
-        '0.3.4.5',
-        '00.3.4',
-        '0.03.4',
-        '0.3.04',
-        '0.-1.0',
-        '0.3.-1',
-        'v0.3.4',
-        '0.3.4-rc.1',
-        '0.3.4+build.1',
-        ' 0.3.4',
-        '0.3.4 ',
-        '0.3.4\n',
-    ]) {
-        await writeFile(
-            resolve(repositoryRoot, 'project.json'),
-            JSON.stringify({ releases: { ffmpeg: { ...releaseConfig, version } } })
-        );
-        await expect(run('select-runtime.mjs', ['--repo', 'example/fork'])).rejects.toThrow(
-            `FFmpeg runtime version must be 0.X.Y with no leading zeros or suffixes; received ${JSON.stringify(version)}`
-        );
-        expect(await readLock()).toBe('{}');
-    }
+it('requires an explicit selection version without contacting GitHub or changing the lock', async () => {
+    await expect(run('select-runtime.mjs', ['--repo', 'example/fork'])).rejects.toThrow('Pass a runtime version');
+    expect(await readLock()).toBe(initialLock);
     await expect(readFile(resolve(root, 'requests'))).rejects.toMatchObject({ code: 'ENOENT' });
+});
+
+it.each(['0.01.0', '1.0.0', '0.1.0-rc.1'])(
+    'rejects noncanonical selection version %s before contacting GitHub or changing the lock',
+    async (invalid) => {
+        await expect(run('select-runtime.mjs', ['--repo', 'example/fork', '--version', invalid])).rejects.toThrow(
+            'FFmpeg runtime version must be 0.X.Y'
+        );
+        expect(await readLock()).toBe(initialLock);
+        await expect(readFile(resolve(root, 'requests'))).rejects.toMatchObject({ code: 'ENOENT' });
+    }
+);
+
+it('selects the explicit version independently of the build override', async () => {
+    await select(['--repo', 'example/fork'], { ASB_FFMPEG_RUNTIME_VERSION: '0.9.0' });
+    expect(JSON.parse(await readLock()).runtimeVersion).toBe(version);
 });
 
 it.each(['GH_TOKEN', 'GITHUB_TOKEN'])(
@@ -255,14 +218,14 @@ it.each(['GH_TOKEN', 'GITHUB_TOKEN'])(
     async (tokenVariable) => {
         await configureGithub({ draft: true, pagesBeforeMatch: 1 });
         const env = { ...process.env, GH_TOKEN: '', GITHUB_TOKEN: '', [tokenVariable]: 'test-token' };
-        const { stdout } = await run('select-runtime.mjs', ['--repo', 'example/fork'], env);
+        const { stdout } = await select(['--repo', 'example/fork'], env);
         const lock = await readLock();
         expect(JSON.parse(lock).runtimeArchive.sha256).toBe(digest(await readFile(resolve(release, runtimeName))));
         expect(stdout).toContain('Publish the selected draft');
 
         // Publishing does not change the canonical URLs or the selected bytes.
         await configureGithub({});
-        await run('select-runtime.mjs', ['--repo', 'example/fork'], env);
+        await select(['--repo', 'example/fork'], env);
         expect(await readLock()).toBe(lock);
     }
 );
@@ -273,7 +236,7 @@ it('uses the existing GitHub CLI login when no token environment variable is set
     await mkdir(bin);
     await writeFile(resolve(bin, 'gh'), '#!/bin/sh\nprintf test-token');
     await chmod(resolve(bin, 'gh'), 0o755);
-    await run('select-runtime.mjs', ['--repo', 'example/fork'], {
+    await select(['--repo', 'example/fork'], {
         ...process.env,
         GH_TOKEN: '',
         GITHUB_TOKEN: '',
@@ -288,28 +251,28 @@ it('selects a public release without GitHub credentials or the GitHub CLI', asyn
     await writeFile(resolve(bin, 'gh'), '#!/bin/sh\nexit 127');
     await chmod(resolve(bin, 'gh'), 0o755);
     const env = { ...process.env, GH_TOKEN: '', GITHUB_TOKEN: '', PATH: `${bin}:${process.env.PATH}` };
-    await run('select-runtime.mjs', ['--repo', 'example/fork'], env);
+    await select(['--repo', 'example/fork'], env);
     expect(JSON.parse(await readLock()).runtimeVersion).toBe(version);
 });
 
 it('reports a missing or inaccessible release without changing the lock', async () => {
     await configureGithub({ missingRelease: true });
-    await expect(run('select-runtime.mjs', ['--repo', 'example/fork'])).rejects.toThrow('For drafts, set GH_TOKEN');
-    expect(await readLock()).toBe('{}');
+    await expect(select(['--repo', 'example/fork'])).rejects.toThrow('For drafts, set GH_TOKEN');
+    expect(await readLock()).toBe(initialLock);
 });
 
 it.each([401, 403, 500])('reports GitHub API HTTP %s without changing the lock', async (status) => {
     await configureGithub({ status });
-    await expect(run('select-runtime.mjs', ['--repo', 'example/fork'])).rejects.toThrow(`HTTP ${status}`);
-    expect(await readLock()).toBe('{}');
+    await expect(select(['--repo', 'example/fork'])).rejects.toThrow(`HTTP ${status}`);
+    expect(await readLock()).toBe(initialLock);
 });
 
 it.each([runtimeName, sourcesName])('rejects %s when its GitHub digest or size differs', async (filename) => {
-    await run('select-runtime.mjs', ['--repo', 'example/fork']);
+    await select(['--repo', 'example/fork']);
     const lock = await readLock();
     for (const override of [{ digest: `sha256:${'0'.repeat(64)}` }, { size: 1 }]) {
         await configureGithub({ assets: { [filename]: override } });
-        await expect(run('select-runtime.mjs', ['--repo', 'example/fork'])).rejects.toThrow(
+        await expect(select(['--repo', 'example/fork'])).rejects.toThrow(
             `GitHub SHA-256 or size mismatch for ${filename}`
         );
         expect(await readLock()).toBe(lock);
@@ -320,32 +283,29 @@ it.each([null, '', 'sha256:invalid', `sha512:${'a'.repeat(64)}`])(
     'rejects an unavailable or invalid GitHub digest (%s) without changing the lock',
     async (digest) => {
         await configureGithub({ assets: { [runtimeName]: { digest } } });
-        await expect(run('select-runtime.mjs', ['--repo', 'example/fork'])).rejects.toThrow('no valid SHA-256');
-        expect(await readLock()).toBe('{}');
+        await expect(select(['--repo', 'example/fork'])).rejects.toThrow('no valid SHA-256');
+        expect(await readLock()).toBe(initialLock);
     }
 );
 
 it('uses the workflow repository when no CLI repository is supplied', async () => {
-    await run('select-runtime.mjs', [], { ...process.env, GH_REPO: '', GITHUB_REPOSITORY: 'workflow/repo' });
+    await select([], { ...process.env, GH_REPO: '', GITHUB_REPOSITORY: 'workflow/repo' });
     expect(JSON.parse(await readLock()).releaseUrl).toContain('workflow/repo');
 });
 
-it('keeps the selected runtime pinned when the project development version advances', async () => {
-    await run('select-runtime.mjs', ['--repo', 'example/fork']);
+it('keeps the selected runtime pinned during a build for a new release version', async () => {
+    await select(['--repo', 'example/fork']);
     const lock = await readLock();
-    await writeFile(
-        resolve(repositoryRoot, 'project.json'),
-        JSON.stringify({ releases: { ffmpeg: { ...releaseConfig, version: '0.2.0' } } })
-    );
     await prepareRuntime();
-    await run('verify-artifacts.mjs');
+    const env = { ASB_FFMPEG_RUNTIME_VERSION: '0.2.0' };
+    await run('verify-artifacts.mjs', [], env);
     expect(await readLock()).toBe(lock);
     await copyFile(resolve(__dirname, '../build-config.json'), resolve(root, 'build-config.json'));
-    await expect(run('verify-artifacts.mjs', ['--candidate'])).rejects.toThrow('FFmpeg 0.2.0 is not prepared');
+    await expect(run('verify-artifacts.mjs', ['--candidate'], env)).rejects.toThrow('FFmpeg 0.2.0 is not prepared');
 });
 
 it('keeps the frozen archive pinned when the project release naming changes', async () => {
-    await run('select-runtime.mjs', ['--repo', 'example/fork']);
+    await select(['--repo', 'example/fork']);
     await prepareRuntime();
     const lock = await readLock();
     await writeFile(
@@ -373,10 +333,8 @@ it.each(sources)(
     'rejects a release whose $name source differs from the runtime manifest without changing the lock',
     async (source) => {
         await writeSourcesArchive({ ...publishedSources(), [tarballName(source)]: 'different source' });
-        await expect(run('select-runtime.mjs', ['--repo', 'example/fork'])).rejects.toThrow(
-            `Published ${source.name} source differs`
-        );
-        expect(await readLock()).toBe('{}');
+        await expect(select(['--repo', 'example/fork'])).rejects.toThrow(`Published ${source.name} source differs`);
+        expect(await readLock()).toBe(initialLock);
     }
 );
 
@@ -385,30 +343,30 @@ it.each([
     ['unexpected', (tarballs) => ({ ...tarballs, 'extra.tar.gz': 'extra' })],
 ])('rejects a sources archive with %s tarballs', async (_kind, change) => {
     await writeSourcesArchive(change(publishedSources()));
-    await expect(run('select-runtime.mjs', ['--repo', 'example/fork'])).rejects.toThrow(
+    await expect(select(['--repo', 'example/fork'])).rejects.toThrow(
         'does not contain exactly the upstream source tarballs'
     );
-    expect(await readLock()).toBe('{}');
+    expect(await readLock()).toBe(initialLock);
 });
 
 it('rejects a release that does not publish the sources archive', async () => {
     await rm(resolve(release, sourcesName));
-    await expect(run('select-runtime.mjs', ['--repo', 'example/fork'])).rejects.toThrow(`missing ${sourcesName}`);
-    expect(await readLock()).toBe('{}');
+    await expect(select(['--repo', 'example/fork'])).rejects.toThrow(`missing ${sourcesName}`);
+    expect(await readLock()).toBe(initialLock);
 });
 
 it('rejects a runtime archive whose files differ from its manifest', async () => {
     await writeFile(resolve(runtime, 'ffmpeg-core.wasm'), 'different bytes');
     await writeRuntimeArchive();
-    await expect(run('select-runtime.mjs', ['--repo', 'example/fork'])).rejects.toThrow('hash or size mismatch');
-    expect(await readLock()).toBe('{}');
+    await expect(select(['--repo', 'example/fork'])).rejects.toThrow('hash or size mismatch');
+    expect(await readLock()).toBe(initialLock);
 });
 
 it('verifies a minimal configuration without requiring redundant disable flags', async () => {
     manifest.ffmpeg.configuration = '--disable-all';
     await writeFile(resolve(runtime, 'manifest.json'), JSON.stringify(manifest));
     await writeRuntimeArchive();
-    await run('select-runtime.mjs', ['--repo', 'example/fork']);
+    await select(['--repo', 'example/fork']);
     await prepareRuntime();
     expect((await run('verify-artifacts.mjs')).stdout).toContain(`Verified FFmpeg ${version}`);
 });
@@ -426,7 +384,7 @@ it.each([
     manifest.ffmpeg.configuration += ` ${argument}`;
     await writeFile(resolve(runtime, 'manifest.json'), JSON.stringify(manifest));
     await writeRuntimeArchive();
-    await run('select-runtime.mjs', ['--repo', 'example/fork']);
+    await select(['--repo', 'example/fork']);
     await prepareRuntime();
     await expect(run('verify-artifacts.mjs')).rejects.toThrow(`FFmpeg configuration unexpectedly contains ${argument}`);
 });

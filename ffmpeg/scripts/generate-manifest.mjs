@@ -1,6 +1,6 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { version as esbuildVersion } from 'esbuild';
+import { VERSION as rolldownVersion } from 'rolldown';
 import { inspectRuntime } from './inspect-runtime.mjs';
 import { fileInfo, packageRoot, readJson, runtimeFiles, upstreamSources } from './lib.mjs';
 import { runtimeVersion as version } from './release-names.mjs';
@@ -51,7 +51,7 @@ const manifest = {
         license,
     },
     sources: upstreamSources(config),
-    toolchain: { ...config.toolchain, bundler: { name: 'esbuild', version: esbuildVersion }, compiler },
+    toolchain: { ...config.toolchain, bundler: { name: 'rolldown', version: rolldownVersion }, compiler },
     license: {
         notices: inventory.notices.map((filename) => `notices/${filename}`),
     },
