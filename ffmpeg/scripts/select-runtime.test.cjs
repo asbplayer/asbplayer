@@ -92,8 +92,8 @@ beforeEach(async () => {
         runtimeVersion: version,
         ffmpeg: {
             version: '9.0.2',
-            license: 'LGPL version 2.1 or later',
-            configuration: '--disable-all --disable-autodetect --disable-pthreads',
+            license: 'LGPL version 3 or later',
+            configuration: '--disable-all --disable-autodetect --disable-pthreads --enable-version3',
         },
         license: { notices: inventory.notices.map((filename) => `notices/${filename}`) },
         sources: sources.map(({ name, url, body }) => ({ name, url, sha256: digest(body) })),
@@ -363,7 +363,7 @@ it('rejects a runtime archive whose files differ from its manifest', async () =>
 });
 
 it('verifies a minimal configuration without requiring redundant disable flags', async () => {
-    manifest.ffmpeg.configuration = '--disable-all';
+    manifest.ffmpeg.configuration = '--disable-all --enable-version3';
     await writeFile(resolve(runtime, 'manifest.json'), JSON.stringify(manifest));
     await writeRuntimeArchive();
     await select(['--repo', 'example/fork']);
@@ -378,7 +378,6 @@ it.each([
     '--enable-os2threads',
     '--enable-gpl',
     '--enable-nonfree',
-    '--enable-version3',
     '--enable-network=yes',
 ])('rejects a prepared runtime configured with %s', async (argument) => {
     manifest.ffmpeg.configuration += ` ${argument}`;

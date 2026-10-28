@@ -86,15 +86,25 @@ if (
     throw new Error('FFmpeg manifest contains invalid license notice paths');
 }
 
-const forbiddenFeatures = new Set(['network', 'pthreads', 'w32threads', 'os2threads', 'gpl', 'nonfree', 'version3']);
+const forbiddenFeatures = new Set(['network', 'pthreads', 'w32threads', 'os2threads', 'gpl', 'nonfree']);
 for (const argument of manifest.ffmpeg.configuration.split(/\s+/)) {
     const feature = argument.match(/^--enable-([^=]+)(?:=.*)?$/)?.[1];
     if (forbiddenFeatures.has(feature)) {
         throw new Error('FFmpeg configuration unexpectedly contains ' + argument);
     }
 }
-if (!/^LGPL version 2\.1 or later/.test(manifest.ffmpeg.license)) {
+if (manifest.ffmpeg.license !== 'LGPL version 3 or later') {
     throw new Error('Unexpected combined FFmpeg license: ' + manifest.ffmpeg.license);
+}
+if (!manifest.ffmpeg.configuration.split(/\s+/).includes('--enable-version3')) {
+    throw new Error('FFmpeg runtime must enable --enable-version3');
+}
+if (
+    ['notices/FFmpeg-LGPL-3.0.txt', 'notices/FFmpeg-GPL-3.0.txt'].some(
+        (filename) => !manifest.license.notices.includes(filename)
+    )
+) {
+    throw new Error('FFmpeg runtime must include the LGPL 3 and GPL 3 license texts');
 }
 if (!Number.isSafeInteger(manifest.limits?.maximumWasmBytes) || manifest.limits.maximumWasmBytes <= 0) {
     throw new Error('Manifest has an invalid WASM size limit');

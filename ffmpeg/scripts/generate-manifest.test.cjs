@@ -9,8 +9,8 @@ const { promisify } = require('node:util');
 const exec = promisify(execFile);
 const version = '0.1.0';
 const stem = `example-ffmpeg-${version}`;
-const configuration = '--disable-all --disable-autodetect --disable-pthreads';
-const license = 'LGPL version 2.1 or later';
+const configuration = '--disable-all --disable-autodetect --disable-pthreads --enable-version3';
+const license = 'LGPL version 3 or later';
 const digest = (body) => createHash('sha256').update(body).digest('hex');
 let repositoryRoot;
 let root;
@@ -164,9 +164,29 @@ it('packages and verifies a release version override while leaving the selected 
     expect(await readFile(lockPath, 'utf8')).toBe(lock);
 });
 
-it('verifies a frozen runtime built with an older bundler without requiring an installed bundler', async () => {
+it('verifies the selected LGPLv3 runtime without requiring an installed bundler', async () => {
+    const body = await readFile(archive);
+    await writeFile(
+        resolve(root, 'artifact-lock.json'),
+        JSON.stringify({
+            schemaVersion: 1,
+            runtimeVersion: version,
+            ffmpegVersion: (await readManifest()).ffmpeg.version,
+            runtimeArchive: { filename: `${stem}-runtime.tar.gz`, bytes: body.byteLength, sha256: digest(body) },
+        })
+    );
+    await rm(resolve(root, 'node_modules'), { recursive: true, force: true });
+    expect((await run('verify-artifacts.mjs')).stdout).toContain('frozen runtime');
+});
+
+it.each([
+    ['license', 'LGPL version 2.1 or later', 'Unexpected combined FFmpeg license'],
+    ['configuration', '--disable-all', 'must enable --enable-version3'],
+    ['notices', [], 'LGPL 3 and GPL 3 license texts'],
+])('rejects selected releases with an unexpected %s', async (field, value, message) => {
     const manifest = await readManifest();
-    manifest.toolchain.bundler = { name: 'esbuild', version: '0.25.9' };
+    if (field === 'notices') manifest.license.notices = value;
+    else manifest.ffmpeg[field] = value;
     await writeManifest(manifest);
     await packageRuntime();
     const body = await readFile(archive);
@@ -179,6 +199,23 @@ it('verifies a frozen runtime built with an older bundler without requiring an i
             runtimeArchive: { filename: `${stem}-runtime.tar.gz`, bytes: body.byteLength, sha256: digest(body) },
         })
     );
-    await rm(resolve(root, 'node_modules'), { recursive: true, force: true });
-    expect((await run('verify-artifacts.mjs')).stdout).toContain('frozen runtime');
+    await expect(run('verify-artifacts.mjs')).rejects.toThrow(message);
+});
+
+it.each([
+    ['license', 'LGPL version 2.1 or later', 'Unexpected combined FFmpeg license'],
+    ['configuration', '--disable-all', 'must enable --enable-version3'],
+    ['configuration', `${configuration} --enable-gpl`, 'unexpectedly contains --enable-gpl'],
+])('rejects candidates with an unexpected %s', async (field, value, message) => {
+    const manifest = await readManifest();
+    manifest.ffmpeg[field] = value;
+    await writeManifest(manifest);
+    await expect(run('verify-artifacts.mjs', ['--candidate'])).rejects.toThrow(message);
+});
+
+it('rejects a version 3 candidate that omits the accompanying GPL 3 license text', async () => {
+    const manifest = await readManifest();
+    manifest.license.notices = manifest.license.notices.filter((filename) => filename !== 'notices/FFmpeg-GPL-3.0.txt');
+    await writeManifest(manifest);
+    await expect(run('verify-artifacts.mjs', ['--candidate'])).rejects.toThrow('LGPL 3 and GPL 3 license texts');
 });

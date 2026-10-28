@@ -6,14 +6,14 @@ import { viteStaticCopy } from 'vite-plugin-static-copy';
 import project from '../project.json' with { type: 'json' };
 import { createFfmpegBuildConfig } from '@project/client/ffmpeg-build';
 
-export default defineConfig(({ mode }) => {
+export default defineConfig(async ({ mode, isPreview }) => {
     const env = loadEnv(mode, process.cwd());
     const appUrl = new URL(project.urls.app);
     if (env.VITE_APP_DOMAIN) appUrl.host = env.VITE_APP_DOMAIN;
     const domain = appUrl.host;
     const base = env.VITE_APP_BASE_PATH || '/';
     const candidate = ['1', 'true'].includes(env.VITE_FFMPEG_CANDIDATE?.toLowerCase());
-    const ffmpeg = createFfmpegBuildConfig({ candidate, base });
+    const ffmpeg = await createFfmpegBuildConfig({ candidate, base, prepare: !isPreview });
     return {
         base,
         define: ffmpeg.define,

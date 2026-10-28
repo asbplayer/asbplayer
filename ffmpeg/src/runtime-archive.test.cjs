@@ -13,7 +13,7 @@ beforeEach(() => {
     writeFileSync(join(root, '0.1.0/ffmpeg-worker.js'), 'worker');
     writeFileSync(join(root, '0.1.0/ffmpeg-core.js'), 'core');
     writeFileSync(join(root, '0.1.0/ffmpeg-core.wasm'), Buffer.from([0, 97, 115, 109]));
-    writeFileSync(join(root, '0.1.0/notices/FFmpeg-LGPL-2.1.txt'), 'License');
+    writeFileSync(join(root, '0.1.0/notices/FFmpeg-LGPL-3.0.txt'), 'License');
 });
 afterEach(() => {
     rmSync(root, { recursive: true, force: true });
@@ -39,7 +39,7 @@ it('reads files across multiple blocks and nested directories', () => {
     writeFileSync(join(root, '0.1.0/ffmpeg-core.js'), large);
     const files = readTarFiles(tarBytes(pack()));
     expect(new TextDecoder().decode(files.get('0.1.0/ffmpeg-core.js'))).toBe(large);
-    expect(new TextDecoder().decode(files.get('0.1.0/notices/FFmpeg-LGPL-2.1.txt'))).toBe('License');
+    expect(new TextDecoder().decode(files.get('0.1.0/notices/FFmpeg-LGPL-3.0.txt'))).toBe('License');
 });
 
 it('reads paths stored with the ustar prefix field', () => {

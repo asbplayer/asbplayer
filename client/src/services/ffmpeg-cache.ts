@@ -48,18 +48,19 @@ const download = async (archive: FfmpegRuntimeArchive, fetcher: typeof fetch, si
             signal.throwIfAborted();
             if (done) break;
             if (received + value.byteLength > bytes.byteLength) {
-                throw new Error('FFmpeg runtime archive size check failed');
+                throw new Error('FFmpeg runtime archive size check failed. Update or reload asbplayer and retry.');
             }
             bytes.set(value, received);
             received += value.byteLength;
         }
-        if (received !== bytes.byteLength) throw new Error('FFmpeg runtime archive size check failed');
+        if (received !== bytes.byteLength)
+            throw new Error('FFmpeg runtime archive size check failed. Update or reload asbplayer and retry.');
     } finally {
         signal.removeEventListener('abort', cancelRead);
         await reader.cancel().catch(() => {});
     }
     if ((await sha256Hex(bytes)) !== archive.sha256) {
-        throw new Error('FFmpeg integrity check failed. Please retry.');
+        throw new Error('FFmpeg integrity check failed. Update or reload asbplayer and retry.');
     }
     return bytes;
 };

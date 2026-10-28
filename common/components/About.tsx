@@ -861,7 +861,7 @@ const dependencies: Dependency[] = [
     {
         name: `FFmpeg`,
         projectLink: 'https://ffmpeg.org',
-        license: 'LGPL 2.1+',
+        license: 'LGPLv3',
         licenseLink: ffmpegReleaseUrl,
         purpose: 'Media processing',
         app: true,
