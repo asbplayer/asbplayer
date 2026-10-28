@@ -1,5 +1,4 @@
 import { OffscreenDomCache } from '@project/common';
-import { ASB_TOKEN_CONTAINER_CLASS } from '@project/common/annotations/dom-annotations';
 import type { SubtitlesWidthUnit } from '@project/common/settings';
 
 export enum OffsetAnchor {
@@ -112,10 +111,6 @@ export class CachingElementOverlay implements ElementOverlay {
         this.onMouseOut = onMouseOut;
         this.applyContainerStylesOverride = applyContainerStylesOverride;
         this.onContainerStyles = onContainerStyles;
-
-        // Necessary for token highlighting on hover
-        document.body.classList.add(ASB_TOKEN_CONTAINER_CLASS);
-        document.body.tabIndex = -1;
     }
 
     *displayingElements() {
