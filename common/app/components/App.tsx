@@ -603,7 +603,7 @@ function App({
     const settingsRef = useRef(settings);
     settingsRef.current = settings;
     const handleCopy = useCallback(
-        async (card: CardModel, postMineAction?: PostMineAction, id?: string) => {
+        async (card: CardModel, postMineAction?: PostMineAction) => {
             if (card.subtitle && settingsRef.current.copyToClipboardOnMine) {
                 void navigator.clipboard.writeText(card.subtitle.text);
             }
@@ -612,7 +612,7 @@ function App({
                 ...card,
                 subtitleFileName: card.subtitleFileName || card.file?.name || '',
                 timestamp: Date.now(),
-                id: id || uuidv4(),
+                id: card.id || uuidv4(),
             };
 
             if (extension.supportsSidePanel) {

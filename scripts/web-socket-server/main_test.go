@@ -301,6 +301,23 @@ func await(t *testing.T, result chan asyncResponse) asyncResponse {
 	}
 }
 
+func (c clientCommand) bodyAsMap(t *testing.T) map[string]any {
+	t.Helper()
+	if m, ok := c.Body.(map[string]any); ok {
+		return m
+	}
+	buf, err := json.Marshal(c.Body)
+	if err != nil {
+		t.Fatalf("failed to convert command body to buf: %v", err)
+	}
+	m := make(map[string]any)
+	err = json.Unmarshal(buf, &m)
+	if err != nil {
+		t.Fatalf("failed to convert command body to map: %v", err)
+	}
+	return m
+}
+
 func TestConcurrentRequestsAnsweredOutOfOrderEachGetTheirOwnResponse(t *testing.T) {
 	h := newHarness(t, 2*time.Second, 0)
 	client := h.connect(t)
@@ -320,7 +337,7 @@ func TestConcurrentRequestsAnsweredOutOfOrderEachGetTheirOwnResponse(t *testing.
 	}
 
 	for i := requestCount - 1; i >= 0; i-- {
-		mediaId := commands[i].Body["mediaId"].(string)
+		mediaId := commands[i].bodyAsMap(t)["mediaId"].(string)
 		client.respond(t, commands[i].MessageId, `{"subtitles":[{"text":"`+mediaId+`","start":0,"end":1,"track":0}]}`)
 	}
 
@@ -501,47 +518,47 @@ func TestCommandShapesAndResponses(t *testing.T) {
 
 	command, response := exchange(http.MethodPost, "/asbplayer/load-subtitles",
 		`{"files":[{"name":"a.srt","base64":"AAA"}]}`, `{}`)
-	file := command.Body["files"].([]interface{})[0].(map[string]interface{})
+	file := command.bodyAsMap(t)["files"].([]interface{})[0].(map[string]interface{})
 
 	if command.Command != "load-subtitles" || file["name"] != "a.srt" || file["base64"] != "AAA" {
 		t.Fatalf("unexpected load-subtitles command: %v", command.Body)
 	}
 
-	if response.status != http.StatusOK || response.body != "" {
-		t.Fatalf("expected an empty 200, got %d %q", response.status, response.body)
+	if response.status != http.StatusOK || response.body != "{}" {
+		t.Fatalf("expected an empty object, got %d %q", response.status, response.body)
 	}
 
-	if _, hasMediaId := command.Body["mediaId"]; hasMediaId {
+	if _, hasMediaId := command.bodyAsMap(t)["mediaId"]; hasMediaId {
 		t.Fatalf("expected no mediaId when none was given: %v", command.Body)
 	}
 
 	command, _ = exchange(http.MethodPost, "/asbplayer/load-subtitles",
 		`{"files":[{"name":"a.srt","base64":"AAA"}],"mediaId":"abc"}`, `{}`)
 
-	if command.Command != "load-subtitles" || command.Body["mediaId"] != "abc" {
+	if command.Command != "load-subtitles" || command.bodyAsMap(t)["mediaId"] != "abc" {
 		t.Fatalf("unexpected targeted load-subtitles command: %v", command.Body)
 	}
 
 	command, response = exchange(http.MethodPost, "/asbplayer/seek", `{"timestamp":12.5,"mediaId":"abc"}`, `{}`)
 
-	if command.Command != "seek-timestamp" || command.Body["timestamp"] != 12.5 || command.Body["mediaId"] != "abc" {
+	if command.Command != "seek-timestamp" || command.bodyAsMap(t)["timestamp"] != 12.5 || command.bodyAsMap(t)["mediaId"] != "abc" {
 		t.Fatalf("unexpected seek-timestamp command: %v", command.Body)
 	}
 
-	if response.status != http.StatusOK || response.body != "" {
-		t.Fatalf("expected an empty 200, got %d %q", response.status, response.body)
+	if response.status != http.StatusOK || response.body != "{}" {
+		t.Fatalf("expected an empty object, got %d %q", response.status, response.body)
 	}
 
 	command, _ = exchange(http.MethodPost, "/asbplayer/seek", `{"timestamp":1}`, `{}`)
 
-	if _, present := command.Body["mediaId"]; present {
+	if _, present := command.bodyAsMap(t)["mediaId"]; present {
 		t.Fatalf("expected no mediaId in the body, got %v", command.Body)
 	}
 
 	boundMedia := `{"media":[{"id":"abc","type":"streaming","loadedSubtitles":[],"active":true}]}`
 	command, response = exchange(http.MethodGet, "/asbplayer/bound-media", "", boundMedia)
 
-	if command.Command != "get-bound-media" || len(command.Body) != 0 {
+	if command.Command != "get-bound-media" || len(command.bodyAsMap(t)) != 0 {
 		t.Fatalf("unexpected get-bound-media command: %v", command.Body)
 	}
 
@@ -551,9 +568,9 @@ func TestCommandShapesAndResponses(t *testing.T) {
 
 	subtitles := `{"subtitles":[{"text":"ねこ","start":0,"end":1000,"track":1}]}`
 	command, response = exchange(http.MethodGet, "/asbplayer/subtitles?mediaId=abc&trackNumbers=1,%202", "", subtitles)
-	trackNumbers := command.Body["trackNumbers"].([]interface{})
+	trackNumbers := command.bodyAsMap(t)["trackNumbers"].([]interface{})
 
-	if command.Command != "get-subtitles" || command.Body["mediaId"] != "abc" {
+	if command.Command != "get-subtitles" || command.bodyAsMap(t)["mediaId"] != "abc" {
 		t.Fatalf("unexpected get-subtitles command: %v", command.Body)
 	}
 
@@ -567,7 +584,7 @@ func TestCommandShapesAndResponses(t *testing.T) {
 
 	command, _ = exchange(http.MethodGet, "/asbplayer/subtitles", "", `{"subtitles":[]}`)
 
-	if len(command.Body) != 0 {
+	if len(command.bodyAsMap(t)) != 0 {
 		t.Fatalf("expected an empty body, got %v", command.Body)
 	}
 }
@@ -831,9 +848,9 @@ func TestMineSubtitleReportsPublished(t *testing.T) {
 
 	result := h.requestAsync(t, http.MethodPost, "/", `{"action":"addNote","params":{"note":{"fields":{"Word":"ねこ"}}}}`)
 	command := client.nextCommand(t)
-	fields := command.Body["fields"].(map[string]interface{})
+	fields := command.bodyAsMap(t)["fields"].(map[string]interface{})
 
-	if command.Command != "mine-subtitle" || fields["Word"] != "ねこ" || command.Body["postMineAction"] != float64(1) {
+	if command.Command != "mine-subtitle" || fields["Word"] != "ねこ" || command.bodyAsMap(t)["postMineAction"] != float64(1) {
 		t.Fatalf("unexpected mine-subtitle command: %v", command.Body)
 	}
 

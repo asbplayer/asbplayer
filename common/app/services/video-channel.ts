@@ -845,7 +845,8 @@ export default class VideoChannel {
         postMineAction: PostMineAction,
         subtitle?: SubtitleModel,
         surroundingSubtitles?: SubtitleModel[],
-        cardTextFieldValues?: CardTextFieldValues
+        cardTextFieldValues?: CardTextFieldValues,
+        cardId?: string
     ) {
         const message: CopyToVideoMessage = {
             command: 'copy',
@@ -853,6 +854,7 @@ export default class VideoChannel {
             subtitle,
             surroundingSubtitles,
             ...(cardTextFieldValues ?? {}),
+            id: cardId,
         };
         this.protocol.postMessage(message);
     }

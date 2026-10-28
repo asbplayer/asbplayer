@@ -29,6 +29,8 @@ When `postMineAction` is `2`, `noteId` selects the Anki note to update. If omitt
 
 > `mediaId` and `noteId` require extension v1.20.0 or later.
 
+> `asbplayerCardId` requires extension v1.23.0 or later.
+
 ### Request {#mine-subtitle-request}
 
     ```javascript
@@ -47,7 +49,10 @@ When `postMineAction` is `2`, `noteId` selects the Anki note to update. If omitt
             // Optional media id from `get-bound-media`
             "mediaId": "a1b2c3d4e5f6",
             // Optional Anki note id to update when postMineAction is 2 (streaming media only)
-            "noteId": 1752856898044
+            "noteId": 1752856898044,
+            // Optional card UUID for card that is saved into asbplayer's mining history.
+            // If the specified card ID already exists in mining history, then the saved card is replaced.
+            "asbplayerCardId": "9cc59267-1a4d-4070-a020-3a4d0d4e508a"
         }
     }
     ```

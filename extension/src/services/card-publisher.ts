@@ -26,7 +26,7 @@ export class CardPublisher {
     }
 
     async publish(card: CardModel, postMineAction?: PostMineAction, tabId?: number, src?: string, noteId?: number) {
-        const id = uuidv4();
+        const id = card.id || uuidv4();
         const savePromise = this._saveCardToRepository(id, card);
 
         if (tabId === undefined || src === undefined) {
@@ -52,7 +52,7 @@ export class CardPublisher {
     }
 
     async publishBulk(card: CardModel, tabId?: number, src?: string) {
-        const id = uuidv4();
+        const id = card.id || uuidv4();
         // (agloo) n.b. this could lead to out-of-order card saves if Anki is taking a while,
         // which matters to users if they plan on reviewing cards in save order. If we get reports of this,
         // consider putting a promise from here into a save queue.
@@ -217,7 +217,7 @@ export class CardPublisher {
             const storageLimit = await this._settingsProvider.getSingle('miningHistoryStorageLimit');
             await new IndexedDBCopyHistoryRepository(storageLimit).save({
                 ...card,
-                id: card.id ?? id,
+                id,
                 timestamp: Date.now(),
             });
             return true;

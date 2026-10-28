@@ -10,6 +10,8 @@ import { externalExtensionOnlyTag } from '@project/common/external-commands/exte
 
 export interface MineSubtitleParams extends CardTextFieldValues {
     postMineAction: PostMineAction;
+    // Optional, declared card ID that the card should be persisted with in mining history
+    cardId?: string;
 }
 
 // Extensions older than the forwarding release already handle the other commands for this app.
