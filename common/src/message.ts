@@ -163,6 +163,7 @@ export interface RecordMediaAndForwardSubtitleMessage extends Message, CardTextF
     readonly mediaTimestamp: number;
     readonly isBulkExport?: boolean;
     readonly noteId?: number;
+    readonly id?: string;
     // Set when an animated-WebP tab-capture stream was already armed (getUserMedia negotiated) in the
     // offscreen document before the mining seek, so the recording can skip opening one.
     readonly animatedWebpArmed?: boolean;
@@ -177,6 +178,7 @@ export interface StartRecordingMediaMessage extends Message, ImageCaptureParams 
     readonly imageDelay: number;
     readonly url?: string;
     readonly subtitleFileName: string;
+    readonly id?: string;
 }
 
 export interface StopRecordingMediaMessage extends Message, ImageCaptureParams {
@@ -191,6 +193,7 @@ export interface StopRecordingMediaMessage extends Message, ImageCaptureParams {
     readonly subtitleFileName: string;
     readonly subtitle?: SubtitleModel;
     readonly surroundingSubtitles?: SubtitleModel[];
+    readonly id?: string;
 }
 
 export interface CopyMessage extends Message, CardModel {
@@ -207,6 +210,7 @@ export interface CopyToVideoMessage extends Message, CardTextFieldValues {
     readonly postMineAction: PostMineAction;
     readonly subtitle?: SubtitleModel;
     readonly surroundingSubtitles?: SubtitleModel[];
+    readonly id?: string;
 }
 
 export interface CopySubtitleMessage extends Message, CardTextFieldValues {
@@ -216,6 +220,8 @@ export interface CopySubtitleMessage extends Message, CardTextFieldValues {
     readonly surroundingSubtitles?: SubtitleModel[];
     readonly isBulkExport?: boolean;
     readonly noteId?: number;
+    // Optional, declared card ID that the card should be persisted with in mining history
+    readonly id?: string;
 }
 
 export interface CopySubtitleWithAdditionalFieldsMessage extends Message, CardTextFieldValues {

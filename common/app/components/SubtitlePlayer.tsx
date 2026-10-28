@@ -670,7 +670,8 @@ interface SubtitlePlayerProps {
         surroundingSubtitles: SubtitleModel[],
         postMineAction: PostMineAction,
         forceUseGivenSubtitle?: boolean,
-        cardTextFieldValues?: CardTextFieldValues
+        cardTextFieldValues?: CardTextFieldValues,
+        cardId?: string
     ) => void;
     onOffsetChange: (offset: number) => void;
     onToggleSubtitleTrack: (track: number) => void;
@@ -1196,7 +1197,7 @@ export default function SubtitlePlayer({
     ]);
 
     const copyFromExternalCommandClient = useCallback(
-        ({ postMineAction, text, word, definition, customFieldValues }: MineSubtitleParams) => {
+        ({ postMineAction, text, word, definition, customFieldValues, cardId }: MineSubtitleParams) => {
             if (!subtitles || subtitles.length === 0) {
                 return false;
             }
@@ -1229,7 +1230,7 @@ export default function SubtitlePlayer({
                     definition,
                     customFieldValues,
                 };
-                onCopy(subtitle, surroundingSubtitles, postMineAction, true, cardTextFieldValues);
+                onCopy(subtitle, surroundingSubtitles, postMineAction, true, cardTextFieldValues, cardId);
                 return true;
             }
 
@@ -1247,7 +1248,7 @@ export default function SubtitlePlayer({
 
     useEffect(() => {
         const onMineSubtitle = async ({
-            body: { fields: receivedFields, postMineAction: receivedPostMineAction, mediaId },
+            body: { fields: receivedFields, postMineAction: receivedPostMineAction, mediaId, asbplayerCardId },
         }: MineSubtitleCommand) => {
             if (mediaId !== undefined && mediaId !== localMediaId(extension.id)) {
                 return false;
@@ -1271,7 +1272,14 @@ export default function SubtitlePlayer({
                     .filter((entry) => entry !== undefined)
             );
             const postMineAction = receivedPostMineAction ?? PostMineAction.showAnkiDialog;
-            return copyFromExternalCommandClient({ postMineAction, text, word, definition, customFieldValues });
+            return copyFromExternalCommandClient({
+                postMineAction,
+                text,
+                word,
+                definition,
+                customFieldValues,
+                cardId: asbplayerCardId,
+            });
         };
 
         return externalCommands?.setHandlers({ onMineSubtitle });
