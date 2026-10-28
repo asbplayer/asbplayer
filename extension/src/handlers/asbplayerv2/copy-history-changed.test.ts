@@ -14,6 +14,7 @@ import type TabRegistry from '@project/extension/src/services/tab-registry';
 import DeleteCopyHistoryHandler from '@project/extension/src/handlers/asbplayerv2/delete-copy-history-handler';
 import ClearCopyHistoryHandler from '@project/extension/src/handlers/asbplayerv2/clear-copy-history-handler';
 import SaveCopyHistoryHandler from '@project/extension/src/handlers/asbplayerv2/save-copy-history-handler';
+import { ExtensionCopyHistoryRepository } from '@project/extension/src/services/copy-history-repository';
 
 afterEach(() => {
     jest.restoreAllMocks();
@@ -49,12 +50,13 @@ it.each(['save', 'delete', 'clear'] as const)('notifies apps only after %s is co
         if (command) notifications.push(command.message);
     };
     const registry = { publishCommandToAsbplayers } as TabRegistry;
+    const copyHistoryRepository = new ExtensionCopyHistoryRepository(settings, registry);
     const handler =
         operation === 'save'
-            ? new SaveCopyHistoryHandler(settings, registry)
+            ? new SaveCopyHistoryHandler(copyHistoryRepository)
             : operation === 'delete'
-              ? new DeleteCopyHistoryHandler(settings, registry)
-              : new ClearCopyHistoryHandler(settings, registry);
+              ? new DeleteCopyHistoryHandler(copyHistoryRepository)
+              : new ClearCopyHistoryHandler(copyHistoryRepository);
     const message: SaveCopyHistoryMessage | DeleteCopyHistoryMessage | ClearCopyHistoryMessage =
         operation === 'save'
             ? { command: 'save-copy-history', messageId: 'request', copyHistoryItems: [card] }
@@ -79,12 +81,13 @@ it.each(['save', 'delete', 'clear'] as const)('does not notify apps if %s fails'
     const publishCommandToAsbplayers = jest.fn(async () => {});
     const settings = { getSingle: async () => 25 } as unknown as SettingsProvider;
     const registry = { publishCommandToAsbplayers } as unknown as TabRegistry;
+    const copyHistoryRepository = new ExtensionCopyHistoryRepository(settings, registry);
     const handler =
         operation === 'save'
-            ? new SaveCopyHistoryHandler(settings, registry)
+            ? new SaveCopyHistoryHandler(copyHistoryRepository)
             : operation === 'delete'
-              ? new DeleteCopyHistoryHandler(settings, registry)
-              : new ClearCopyHistoryHandler(settings, registry);
+              ? new DeleteCopyHistoryHandler(copyHistoryRepository)
+              : new ClearCopyHistoryHandler(copyHistoryRepository);
     handler.handle(
         {
             sender: 'asbplayerv2',
