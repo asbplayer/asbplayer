@@ -109,6 +109,7 @@ export default class StopRecordingMediaHandler {
                     url: stopRecordingCommand.message.url,
                     subtitleFileName: stopRecordingCommand.message.subtitleFileName,
                     mediaTimestamp: stopRecordingCommand.message.startTimestamp,
+                    id: stopRecordingCommand.message.id,
                 },
                 stopRecordingCommand.message.postMineAction,
                 tabId,

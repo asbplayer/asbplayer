@@ -10,6 +10,7 @@ export interface MineSubtitleCommand {
         postMineAction: number;
         mediaId?: string;
         noteId?: number;
+        asbplayerCardId?: string;
     };
 }
 
