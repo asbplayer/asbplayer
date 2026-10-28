@@ -71,6 +71,18 @@ describe('CachingElementOverlay fullscreen transitions', () => {
         }
     });
 
+    it('does not make the document body focusable for tokens outside a subtitle container', () => {
+        document.body.className = 'host-page';
+        document.body.setAttribute('tabindex', '0');
+        document.body.innerHTML =
+            '<span data-asb-subtitle-index="0"><span class="asb-token" data-asb-token-start="0">subtitle</span></span>';
+
+        expect(selectTokenInRoot(document.body, { subtitleIndex: 0, tokenStart: 0 })).toBe(true);
+        expect(document.body.className).toBe('host-page');
+        expect(document.body.getAttribute('tabindex')).toBe('0');
+        expect(document.body.classList.contains(ASB_TOKEN_CONTAINER_CLASS)).toBe(false);
+    });
+
     it('updates the class of every subtitle when moving into and out of fullscreen', () => {
         const targetElement = document.createElement('video');
         const overlay = new CachingElementOverlay({

@@ -264,15 +264,16 @@ export const selectTokenInRoot = (
             tokenElement.closest<HTMLElement>(`.${ASB_TOKEN_CONTAINER_CLASS}`) ??
             tokenElement.closest<HTMLElement>(
                 `.${ASB_SUBTITLE_CONTAINER_BOTTOM_CLASS}, .${ASB_SUBTITLE_CONTAINER_TOP_CLASS}`
-            ) ??
-            document.body;
+            );
 
-        if (!focusableContainer.classList.contains(ASB_TOKEN_CONTAINER_CLASS)) {
-            focusableContainer.classList.add(ASB_TOKEN_CONTAINER_CLASS);
-            focusableContainer.tabIndex = -1;
+        if (focusableContainer) {
+            if (!focusableContainer.classList.contains(ASB_TOKEN_CONTAINER_CLASS)) {
+                focusableContainer.classList.add(ASB_TOKEN_CONTAINER_CLASS);
+                focusableContainer.tabIndex = -1;
+            }
+
+            focusableContainer.focus({ preventScroll: true });
         }
-
-        focusableContainer.focus({ preventScroll: true });
     }
 
     if (selectText) {
