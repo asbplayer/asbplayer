@@ -7,7 +7,8 @@ import { MockStorageArea } from '@project/extension/src/services/mock-storage-ar
 import type TabRegistry from '@project/extension/src/services/tab-registry';
 import { externalCommandHandlers } from '@project/extension/src/services/external-command-handlers';
 import { localMediaId, streamingMediaId } from '@project/common/external-commands/media';
-import { filterByTracks, toSubtitleCues } from '@project/common/external-commands/subtitles';
+import { filterByTracks, toSubtitleCues } from '@project/common/external-commands/util';
+import { IndexedDBCopyHistoryRepository } from '@project/common/copy-history';
 
 const subtitle = (text: string, track: number, start: number): SubtitleModel => ({
     text,
@@ -133,7 +134,7 @@ const harness = ({
     } as unknown as TabRegistry;
 
     const settings = new SettingsProvider(new ExtensionSettingsStorage(new MockStorageArea()));
-    const handlers = externalCommandHandlers(settings, tabRegistry);
+    const handlers = externalCommandHandlers(settings, tabRegistry, new IndexedDBCopyHistoryRepository(settings));
     return { handlers, settings, videoElementCommands, asbplayerCommands, videoElementTabCommands };
 };
 

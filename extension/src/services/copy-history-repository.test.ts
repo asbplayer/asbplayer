@@ -3,14 +3,18 @@ import '@project/common/copy-history/test-database';
 import type { CopyHistoryItem } from '@project/common';
 import { IndexedDBCopyHistoryRepository } from '@project/common/copy-history';
 import { ExtensionCopyHistoryRepository } from '@project/extension/src/services/copy-history-repository';
+import { SettingsProvider } from '@project/common/settings';
+import { MockSettingsStorage } from '@project/common/settings/mock-settings-storage';
 
 beforeEach(async () => {
-    await new IndexedDBCopyHistoryRepository(2).clear();
+    await new IndexedDBCopyHistoryRepository(new SettingsProvider(new MockSettingsStorage())).clear();
 });
 
 it('announces committed additions, updates, automatic pruning, deletions and clear to website instances', async () => {
     const snapshots: CopyHistoryItem[][] = [];
-    const repository = new ExtensionCopyHistoryRepository(2, {
+    const settings = new SettingsProvider(new MockSettingsStorage());
+    await settings.set({ miningHistoryStorageLimit: 2 });
+    const repository = new ExtensionCopyHistoryRepository(settings, {
         publishCommandToAsbplayers: async ({ commandFactory }) => {
             const command = commandFactory({ id: 'app', timestamp: 0, videoPlayer: false });
             if (command?.message.command === 'copy-history-changed') snapshots.push(await repository.fetch(2));

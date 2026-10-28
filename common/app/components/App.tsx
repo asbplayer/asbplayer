@@ -414,8 +414,8 @@ function App({
             return new ExtensionBridgedCopyHistoryRepository(extension);
         }
 
-        return new IndexedDBCopyHistoryRepository(settings.miningHistoryStorageLimit);
-    }, [extension, settings.miningHistoryStorageLimit]);
+        return new IndexedDBCopyHistoryRepository(settingsProvider);
+    }, [extension, settingsProvider]);
     const {
         copyHistoryItems,
         pendingCopyHistoryItems,
@@ -1301,14 +1301,17 @@ function App({
     useEffect(
         () =>
             externalCommands.setHandlers(
-                appExternalCommandHandlers({
-                    appId: extension.id,
-                    subtitles,
-                    subtitleFileNames: sources.subtitleFiles.map((f) => f.file.name),
-                    isActive: () => document.visibilityState === 'visible',
-                })
+                appExternalCommandHandlers(
+                    {
+                        appId: extension.id,
+                        subtitles,
+                        subtitleFileNames: sources.subtitleFiles.map((f) => f.file.name),
+                        isActive: () => document.visibilityState === 'visible',
+                    },
+                    copyHistoryRepository
+                )
             ),
-        [externalCommands, extension, subtitles, sources.subtitleFiles]
+        [externalCommands, extension, subtitles, sources.subtitleFiles, copyHistoryRepository]
     );
 
     useEffect(() => {

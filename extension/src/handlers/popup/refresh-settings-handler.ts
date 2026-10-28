@@ -10,13 +10,21 @@ import type TabRegistry from '@project/extension/src/services/tab-registry';
 import type { SettingsProvider } from '@project/common/settings';
 import { primeLocalization } from '@project/extension/src/services/localization-fetcher';
 import { bindWebSocketClient, unbindWebSocketClient } from '@project/extension/src/services/web-socket-client-binding';
+import type { CopyHistoryRepository } from '@project/common/copy-history';
 
 export default class RefreshSettingsHandler {
     private readonly _tabRegistry: TabRegistry;
     private readonly _settingsProvider: SettingsProvider;
-    constructor(tabRegistry: TabRegistry, settingsProvider: SettingsProvider) {
+    private readonly _copyHistoryRepository: CopyHistoryRepository;
+
+    constructor(
+        tabRegistry: TabRegistry,
+        settingsProvider: SettingsProvider,
+        copyHistoryRepository: CopyHistoryRepository
+    ) {
         this._tabRegistry = tabRegistry;
         this._settingsProvider = settingsProvider;
+        this._copyHistoryRepository = copyHistoryRepository;
     }
 
     get sender() {
@@ -42,9 +50,11 @@ export default class RefreshSettingsHandler {
                 );
 
                 if (webSocketClientEnabled) {
-                    void bindWebSocketClient(this._settingsProvider, this._tabRegistry).catch((error) =>
-                        asbError('web-socket', 'Failed to update the WebSocket client:', error)
-                    );
+                    void bindWebSocketClient(
+                        this._settingsProvider,
+                        this._tabRegistry,
+                        this._copyHistoryRepository
+                    ).catch((error) => asbError('web-socket', 'Failed to update the WebSocket client:', error));
                 } else {
                     unbindWebSocketClient();
                 }
