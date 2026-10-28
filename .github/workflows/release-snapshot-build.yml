@@ -41,7 +41,7 @@ jobs:
             - name: Setup Node.js and pnpm
               uses: ./.github/actions/setup-node-pnpm
 
-            - run: pnpm install --frozen-lockfile
+            - run: pnpm install --frozen-lockfile --filter @project/extension --filter @project/common --filter @project/client
 
             - name: Build Chrome snapshot
               run: pnpm --filter @project/extension run zip

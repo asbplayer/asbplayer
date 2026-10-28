@@ -87,6 +87,17 @@ it('keeps a single cached archive when the selected runtime changes', async () =
     await expect(prepare(first, storage, offline)).rejects.toThrow('Offline');
 });
 
+it('replaces a rebuilt candidate at the same URL and version when its bytes change', async () => {
+    const storage = memoryCaches();
+    const original = archive('0.1.0');
+    const body = `${original.body} rebuilt`;
+    const rebuilt = { ...original, body, bytes: Buffer.byteLength(body), sha256: hash(body) };
+    await prepare(original, storage, serving(original));
+    await prepare(rebuilt, storage, serving(rebuilt));
+    expect(await (await prepare(rebuilt, storage, offline)).text()).toBe(body);
+    await expect(prepare(original, storage, offline)).rejects.toThrow('Offline');
+});
+
 it('does not hash or download the archive again on later loads', async () => {
     const storage = memoryCaches();
     const selected = archive('0.1.0');

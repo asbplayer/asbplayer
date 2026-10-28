@@ -20,7 +20,7 @@
         "test:native-wasm": "bash scripts/test-native-wasm.sh",
         "select:runtime": "node scripts/select-runtime.mjs",
         "verify:reproducible": "bash scripts/verify-reproducible.sh",
-        "verify:code": "pnpm --workspace-root run check:ffmpeg-version && pnpm run test && pnpm run compile && pnpm --workspace-root exec eslint ffmpeg/src ffmpeg/scripts && pnpm --workspace-root exec prettier --check './ffmpeg/**/*.(js|mjs|cjs|ts|tsx|css)'",
+        "verify:code": "pnpm run test && pnpm run compile && pnpm --workspace-root exec eslint ffmpeg/src ffmpeg/scripts && pnpm --workspace-root exec prettier --check './ffmpeg/**/*.(js|mjs|cjs|ts|tsx|css)'",
         "verify:release": "bash scripts/release-check.sh",
         "compile": "tsc --noEmit",
         "test": "jest --config jest.config.cjs"
@@ -30,8 +30,8 @@
     },
     "devDependencies": {
         "@types/jest": "^30.0.0",
-        "esbuild": "0.25.9",
         "jest": "^30.0.5",
+        "rolldown": "1.2.6",
         "ts-jest": "^29.4.0",
         "typescript": "^5.8.3"
     }

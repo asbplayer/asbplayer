@@ -37,12 +37,6 @@ jobs:
             - name: Check Anki lockfile
               run: uv lock --project plugins/anki --check
 
-            - name: Check FFmpeg runtime version transition
-              env:
-                  VERSION_BASE_REF: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}
-                  VERSION_HEAD_REF: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha }}
-              run: pnpm run check:ffmpeg-version --base "$VERSION_BASE_REF" --head "$VERSION_HEAD_REF"
-
             - run: pnpm install --frozen-lockfile
             - run: pnpm --filter @project/extension run zip
             - run: pnpm --filter @project/client run build

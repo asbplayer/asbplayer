@@ -38,7 +38,7 @@ const equalSet = (actual, expected) =>
 verifyRuntimeManifest(manifest, version);
 
 if (candidate) {
-    const { version: esbuildVersion } = await import('esbuild');
+    const { VERSION: rolldownVersion } = await import('rolldown');
     if (
         manifest.ffmpeg.version !== config.ffmpeg.version ||
         manifest.ffmpeg.revision !== config.ffmpeg.revision ||
@@ -53,8 +53,8 @@ if (candidate) {
     ) {
         throw new Error('Manifest toolchain does not match build-config.json');
     }
-    if (manifest.toolchain.bundler?.name !== 'esbuild' || manifest.toolchain.bundler.version !== esbuildVersion) {
-        throw new Error('Manifest bundler does not match the installed esbuild version');
+    if (manifest.toolchain.bundler?.name !== 'rolldown' || manifest.toolchain.bundler.version !== rolldownVersion) {
+        throw new Error('Manifest bundler does not match the installed rolldown version');
     }
     if (!equalSet(manifest.linkedLibraries, config.nativeLibraries)) {
         throw new Error('Linked libraries do not match build-config.json');

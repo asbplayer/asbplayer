@@ -3,12 +3,12 @@ import { mkdir, mkdtemp, rename, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { execFile } from 'node:child_process';
-import { isDeepStrictEqual, promisify } from 'node:util';
+import { isDeepStrictEqual, parseArgs, promisify } from 'node:util';
 import { pipeline } from 'node:stream/promises';
 import { fileInfo, packageRoot, readJson } from './lib.mjs';
 import { verifyRuntimeArchive as verifyRuntimeArchiveContents } from './runtime-archive-validator.cjs';
 import { extractSourcesArchive } from './sources-archive.mjs';
-import { releaseNames, runtimeVersion as version } from './release-names.mjs';
+import { releaseNames } from './release-names.mjs';
 import { verifyRuntimeDirectory, verifyRuntimeManifest } from './runtime-manifest.mjs';
 import { parseRuntimeVersion } from './runtime-version.mjs';
 
@@ -91,11 +91,12 @@ const verifyPublishedRuntimeArchive = async (archivePath, extractionRoot, versio
 };
 
 const selectRuntime = async () => {
+    const { values } = parseArgs({ options: { repo: { type: 'string' }, version: { type: 'string' } } });
+    const version = values.version;
+    if (version === undefined) throw new Error('Pass a runtime version with --version 0.X.Y.');
     parseRuntimeVersion(version);
 
-    const repoOption = process.argv.indexOf('--repo');
-    let repository =
-        repoOption === -1 ? process.env.GH_REPO || process.env.GITHUB_REPOSITORY : process.argv[repoOption + 1];
+    let repository = values.repo ?? (process.env.GH_REPO || process.env.GITHUB_REPOSITORY);
     if (!repository) {
         const { stdout } = await execFileAsync('git', ['remote', 'get-url', 'origin'], { cwd: packageRoot });
         repository = stdout.trim().match(/github\.com[:/]([^/]+\/[^/]+?)(?:\.git)?$/)?.[1];

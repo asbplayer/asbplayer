@@ -29,10 +29,7 @@ const verifyResponse = (response: Response) => {
 };
 
 const sha256Hex = async (bytes: Uint8Array<ArrayBuffer>) => {
-    const subtle = globalThis.crypto?.subtle;
-    const digest = subtle
-        ? new Uint8Array(await subtle.digest('SHA-256', bytes))
-        : (await import('@noble/hashes/sha256')).sha256(bytes);
+    const digest = new Uint8Array(await globalThis.crypto.subtle.digest('SHA-256', bytes));
     return Array.from(digest, (byte) => byte.toString(16).padStart(2, '0')).join('');
 };
 

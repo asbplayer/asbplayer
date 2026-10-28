@@ -1,9 +1,12 @@
 import project from '../../project.json' with { type: 'json' };
+import artifactLock from '../artifact-lock.json' with { type: 'json' };
+import { parseRuntimeVersion } from './runtime-version.mjs';
 
 const { releaseTitle, releaseTag, artifact, sources } = project.releases.ffmpeg;
 
-/** Development version; published app builds use artifact-lock.json instead. */
-export const runtimeVersion = project.releases.ffmpeg.version;
+/** Candidates use the selected version; release builds temporarily override it without changing the lock. */
+export const runtimeVersion = process.env.ASB_FFMPEG_RUNTIME_VERSION ?? artifactLock.runtimeVersion;
+parseRuntimeVersion(runtimeVersion);
 
 /** Public release names shared by packaging, selection, CI, and the client build. */
 export const releaseNames = (version) => {

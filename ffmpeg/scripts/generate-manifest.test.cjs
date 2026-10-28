@@ -5,7 +5,6 @@ const { copyFile, mkdir, mkdtemp, readFile, rm, symlink, writeFile } = require('
 const { tmpdir } = require('node:os');
 const { resolve } = require('node:path');
 const { promisify } = require('node:util');
-const { version: esbuildVersion } = require('esbuild');
 
 const exec = promisify(execFile);
 const version = '0.1.0';
@@ -18,7 +17,10 @@ let root;
 let runtime;
 let archive;
 
-const run = (script, args = []) => exec(process.execPath, [resolve(root, 'scripts', script), ...args]);
+const run = (script, args = [], env = {}) =>
+    exec(process.execPath, [resolve(root, 'scripts', script), ...args], {
+        env: { ...process.env, ASB_FFMPEG_RUNTIME_VERSION: undefined, ...env },
+    });
 const readManifest = async () => JSON.parse(await readFile(resolve(runtime, 'manifest.json'), 'utf8'));
 const writeManifest = (manifest) => writeFile(resolve(runtime, 'manifest.json'), JSON.stringify(manifest));
 const packageRuntime = () => exec('tar', ['--format=ustar', '-czf', archive, '-C', resolve(root, 'dist'), version]);
@@ -44,14 +46,14 @@ beforeEach(async () => {
     ]) {
         await copyFile(resolve(__dirname, script), resolve(root, 'scripts', script));
     }
-    await symlink(resolve(__dirname, '../node_modules/esbuild'), resolve(root, 'node_modules/esbuild'), 'dir');
+    await symlink(resolve(__dirname, '../node_modules/rolldown'), resolve(root, 'node_modules/rolldown'), 'dir');
     await writeFile(resolve(root, 'package.json'), JSON.stringify({ type: 'module' }));
+    await writeFile(resolve(root, 'artifact-lock.json'), JSON.stringify({ runtimeVersion: version }));
     await writeFile(
         resolve(repositoryRoot, 'project.json'),
         JSON.stringify({
             releases: {
                 ffmpeg: {
-                    version,
                     releaseTitle: 'example-ffmpeg-v{{version}}',
                     releaseTag: 'runtime-v{{version}}',
                     artifact: 'example-ffmpeg-{{version}}-runtime',
@@ -126,13 +128,18 @@ afterEach(async () => {
 
 it('records the installed bundler and rejects candidates built with a different version', async () => {
     const manifest = await readManifest();
-    expect(manifest.toolchain.bundler).toEqual({ name: 'esbuild', version: esbuildVersion });
+    const { stdout } = await exec(
+        process.execPath,
+        ['--input-type=module', '-e', "import { VERSION } from 'rolldown'; console.log(VERSION);"],
+        { cwd: root }
+    );
+    expect(manifest.toolchain.bundler).toEqual({ name: 'rolldown', version: stdout.trim() });
     expect((await run('verify-artifacts.mjs', ['--candidate'])).stdout).toContain('candidate');
 
     manifest.toolchain.bundler.version = '0.0.0';
     await writeManifest(manifest);
     await expect(run('verify-artifacts.mjs', ['--candidate'])).rejects.toThrow(
-        'Manifest bundler does not match the installed esbuild version'
+        'Manifest bundler does not match the installed rolldown version'
     );
 });
 
@@ -145,9 +152,21 @@ it('accepts equivalent build inputs with reordered object properties', async () 
     expect((await run('verify-artifacts.mjs', ['--candidate'])).stdout).toContain('candidate');
 });
 
+it('packages and verifies a release version override while leaving the selected runtime unchanged', async () => {
+    const lockPath = resolve(root, 'artifact-lock.json');
+    const lock = JSON.stringify({ runtimeVersion: '0.0.0' });
+    await writeFile(lockPath, lock);
+    const env = { ASB_FFMPEG_RUNTIME_VERSION: version };
+    await run('generate-manifest.mjs', [], env);
+    await packageRuntime();
+    expect((await readManifest()).runtimeVersion).toBe(version);
+    expect((await run('verify-artifacts.mjs', ['--candidate'], env)).stdout).toContain('candidate');
+    expect(await readFile(lockPath, 'utf8')).toBe(lock);
+});
+
 it('verifies a frozen runtime built with an older bundler without requiring an installed bundler', async () => {
     const manifest = await readManifest();
-    manifest.toolchain.bundler.version = '0.0.0';
+    manifest.toolchain.bundler = { name: 'esbuild', version: '0.25.9' };
     await writeManifest(manifest);
     await packageRuntime();
     const body = await readFile(archive);
