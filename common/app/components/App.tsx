@@ -75,6 +75,7 @@ import {
     showFilePicker,
     requestPermissions,
     resolveFiles,
+    restoreSessionFiles,
 } from '@project/common/file-system-access';
 import { isMobile } from 'react-device-detect';
 import type { GlobalState } from '@project/common/global-state';
@@ -1082,10 +1083,10 @@ function App({
                     });
                     setLoadingSources(loadingSources);
 
-                    void retainSourcesInFileSession([
-                        ...sources.subtitleFiles.map((f) => f.id),
-                        ...(sources.videoFile === undefined ? [] : [sources.videoFile.id]),
-                    ]);
+                    void retainSourcesInFileSession({
+                        subtitleIds: sources.subtitleFiles.map((f) => f.id),
+                        videoId: sources.videoFile?.id,
+                    });
 
                     return sources;
                 });
@@ -1169,7 +1170,7 @@ function App({
                 return;
             }
 
-            const files = [...resolvedFiles, ...(record.cachedSubtitleFiles ?? [])];
+            const files = restoreSessionFiles(record, resolvedFiles);
             if (!handleFiles({ files })) {
                 await clearFileSession();
             }
