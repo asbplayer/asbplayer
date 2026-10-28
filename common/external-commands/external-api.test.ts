@@ -167,6 +167,7 @@ describe('external API schemas', () => {
                 ['postMineAction', true],
                 ['mediaId', false],
                 ['noteId', false],
+                ['asbplayerCardId', false],
             ]);
             expect(mineSubtitle.params[1].schema.anyOf.map((literal: any) => literal.const)).toEqual([0, 1, 2, 3, 4]);
         });

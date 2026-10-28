@@ -222,6 +222,7 @@ export default class Binding {
 
     private _recordingState: RecordingState = RecordingState.notRecording;
     recordingPostMineAction?: PostMineAction;
+    recordingCardId?: string;
     wasPlayingBeforeRecordingMedia?: boolean;
     postMinePlayback: PostMinePlayback = PostMinePlayback.remember;
     seekableTracks: SeekableTracks = calculateSeekableTracksValue([0]);
@@ -849,7 +850,7 @@ export default class Binding {
         // the playback engine's timing driver is unbound.
         this.recordingPauseListener = () => {
             if (!this.recordingMedia || this.recordingPostMineAction === undefined) return;
-            void this._toggleRecordingMedia(this.recordingPostMineAction);
+            void this._toggleRecordingMedia(this.recordingPostMineAction, this.recordingCardId);
         };
         this.video.addEventListener('pause', this.recordingPauseListener);
 
@@ -1146,7 +1147,10 @@ export default class Binding {
                                     });
                                 }
                             } else {
-                                void this._toggleRecordingMedia(copySubtitleMessage.postMineAction);
+                                void this._toggleRecordingMedia(
+                                    copySubtitleMessage.postMineAction,
+                                    copySubtitleMessage.id
+                                );
                             }
 
                             void this.mobileVideoOverlayController.updateModel();
@@ -1686,6 +1690,7 @@ export default class Binding {
         customFieldValues,
         isBulkExport,
         noteId,
+        id: cardId,
     }: CopySubtitleMessage) {
         if (!subtitle || !surroundingSubtitles) {
             return;
@@ -1715,6 +1720,7 @@ export default class Binding {
         if (this.recordMedia) {
             this.recordingState = RecordingState.requested;
             this.recordingPostMineAction = postMineAction;
+            this.recordingCardId = cardId;
             this.wasPlayingBeforeRecordingMedia = !this.video.paused;
             this.recordingMediaStartedTimestamp = this.currentTimeMs;
             this.recordingMediaWithScreenshot = this.takeScreenshot;
@@ -1759,6 +1765,7 @@ export default class Binding {
                 isBulkExport,
                 noteId,
                 animatedWebpArmed,
+                id: cardId,
                 ...this._imageCaptureParams,
             },
             src: this._registeredVideoSrc,
@@ -1772,7 +1779,7 @@ export default class Binding {
         await this._copySubtitle(message);
     }
 
-    async _toggleRecordingMedia(postMineAction: PostMineAction) {
+    async _toggleRecordingMedia(postMineAction: PostMineAction, cardId?: string) {
         if (this.recordingState === RecordingState.requested) {
             return;
         }
@@ -1791,6 +1798,7 @@ export default class Binding {
                     videoDuration: this.video.duration * 1000,
                     url: this.url(this.recordingMediaStartedTimestamp!, currentTimestamp),
                     subtitleFileName: this.subtitleFileName(),
+                    id: cardId,
                     ...this._imageCaptureParams,
                     ...this._surroundingSubtitlesAroundInterval(this.recordingMediaStartedTimestamp!, currentTimestamp),
                 },
@@ -1813,6 +1821,7 @@ export default class Binding {
                 this.recordingMediaStartedTimestamp = timestamp;
                 this.recordingMediaWithScreenshot = this.takeScreenshot;
                 this.recordingPostMineAction = postMineAction;
+                this.recordingCardId = cardId;
 
                 if (this.video.paused) {
                     await this.play();
@@ -1830,6 +1839,7 @@ export default class Binding {
                     url: this.url(timestamp),
                     subtitleFileName: this.subtitleFileName(),
                     imageDelay: this.imageDelay,
+                    id: cardId,
                     ...this._imageCaptureParams,
                 },
                 src: this._registeredVideoSrc,

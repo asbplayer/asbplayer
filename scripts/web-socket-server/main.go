@@ -26,9 +26,11 @@ const (
 	jsonRpcParseError     = -32700
 	jsonRpcInvalidRequest = -32600
 	jsonRpcMethodNotFound = -32601
+	jsonRpcInvalidParams  = -32602
 	jsonRpcInternalError  = -32603
 	jsonRpcRequestTimeout = -32000
 	jsonRpcNoClients      = -32001
+	jsonRpcNotApproved    = -32002
 )
 
 // gorilla/websocket allows only one concurrent writer per connection, so each client
@@ -62,17 +64,24 @@ type (
 		Base64 string `json:"base64"`
 	}
 	asbplayerLoadSubtitlesRequest struct {
-		Files   []subtitleFile `json:"files"`
-		MediaId string         `json:"mediaId"`
+		Files   []subtitleFile `json:"files,omitempty"`
+		MediaId string         `json:"mediaId,omitempty"`
+	}
+	asbplayerMineSubtitleRequest struct {
+		Fields          map[string]string `json:"fields"`
+		PostMineAction  int               `json:"postMineAction"`
+		MediaId         *string           `json:"mediaId,omitempty"`
+		NoteId          *int64            `json:"noteId,omitempty"`
+		AsbplayerCardId *string           `json:"asbplayerCardId,omitempty"`
 	}
 	asbplayerSeekRequest struct {
 		Timestamp float64 `json:"timestamp"`
-		MediaId   string  `json:"mediaId"`
+		MediaId   string  `json:"mediaId,omitempty"`
 	}
 	clientCommand struct {
-		Command   string                 `json:"command"`
-		MessageId string                 `json:"messageId"`
-		Body      map[string]interface{} `json:"body"`
+		Command   string `json:"command"`
+		MessageId string `json:"messageId"`
+		Body      any    `json:"body"`
 	}
 	clientResponse struct {
 		Command   string          `json:"command"`
@@ -86,10 +95,10 @@ type (
 		Data    interface{} `json:"data,omitempty"`
 	}
 	jsonRpcOutgoing struct {
-		Jsonrpc string                 `json:"jsonrpc"`
-		Method  string                 `json:"method"`
-		Params  map[string]interface{} `json:"params"`
-		Id      string                 `json:"id,omitempty"`
+		Jsonrpc string `json:"jsonrpc"`
+		Method  string `json:"method"`
+		Params  any    `json:"params"`
+		Id      string `json:"id,omitempty"`
 	}
 	jsonRpcIncoming struct {
 		Jsonrpc string          `json:"jsonrpc"`
@@ -439,6 +448,12 @@ func httpStatusForRpcError(rpcError *rpcError) int {
 	switch rpcError.Code {
 	case jsonRpcNoClients, jsonRpcRequestTimeout:
 		return http.StatusServiceUnavailable
+	case jsonRpcInvalidRequest, jsonRpcParseError, jsonRpcInvalidParams:
+		return http.StatusBadRequest
+	case jsonRpcMethodNotFound:
+		return http.StatusNotImplemented
+	case jsonRpcNotApproved:
+		return http.StatusForbidden
 	default:
 		return http.StatusInternalServerError
 	}
@@ -518,17 +533,18 @@ func (forwarder forwarder) handlePostRequest(c echo.Context) error {
 		return err
 	}
 
-	command := clientCommand{Command: "mine-subtitle", MessageId: uuid.NewString(), Body: map[string]interface{}{
+	body := map[string]interface{}{
 		"fields":         request.Params["note"].(map[string]interface{})["fields"],
 		"postMineAction": forwarder.PostMineAction,
-	}}
+	}
+	command := clientCommand{Command: "mine-subtitle", MessageId: uuid.NewString(), Body: body}
 
 	if forwarder.PostMineAction == 2 {
 		ankiConnectResponse, responseErr := forwarder.forwardToAnkiConnect(buf, c, "POST")
 
 		if responseErr == nil {
 			if noteId, ok := extractNoteIdFromAnkiConnectResponse(ankiConnectResponse); ok {
-				command.Body["noteId"] = noteId
+				body["noteId"] = noteId
 			}
 		}
 
@@ -602,21 +618,33 @@ func (forwarder forwarder) handleAsbplayerLoadSubtitlesRequest(c echo.Context) e
 		return echo.NewHTTPError(http.StatusBadRequest, err)
 	}
 
-	body := map[string]interface{}{
-		"files": request.Files,
-	}
-
-	if request.MediaId != "" {
-		body["mediaId"] = request.MediaId
-	}
-
-	command := clientCommand{Command: "load-subtitles", MessageId: uuid.NewString(), Body: body}
-	_, rpcError := forwarder.publishMessageAndAwaitResponse(command)
+	command := clientCommand{Command: "load-subtitles", MessageId: uuid.NewString(), Body: request}
+	response, rpcError := forwarder.publishMessageAndAwaitResponse(command)
 	if rpcError != nil {
-		return echo.NewHTTPError(httpStatusForRpcError(rpcError), nil)
+		return echo.NewHTTPError(httpStatusForRpcError(rpcError), rpcError.Message)
 	}
 
-	c.String(http.StatusOK, "")
+	c.JSONBlob(http.StatusOK, response.Body)
+	return nil
+}
+
+func (forwarder forwarder) handleAsbplayerMineSubtitleRequest(c echo.Context) error {
+	buf := new(bytes.Buffer)
+	buf.ReadFrom(c.Request().Body)
+	request := asbplayerMineSubtitleRequest{}
+	err := json.Unmarshal(buf.Bytes(), &request)
+
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err)
+	}
+
+	command := clientCommand{Command: "mine-subtitle", MessageId: uuid.NewString(), Body: request}
+	response, rpcError := forwarder.publishMessageAndAwaitResponse(command)
+	if rpcError != nil {
+		return echo.NewHTTPError(httpStatusForRpcError(rpcError), rpcError.Message)
+	}
+
+	c.JSONBlob(http.StatusOK, response.Body)
 	return nil
 }
 
@@ -639,12 +667,12 @@ func (forwarder forwarder) handleAsbplayerSeekRequest(c echo.Context) error {
 	}
 
 	command := clientCommand{Command: "seek-timestamp", MessageId: uuid.NewString(), Body: body}
-	_, rpcError := forwarder.publishMessageAndAwaitResponse(command)
+	response, rpcError := forwarder.publishMessageAndAwaitResponse(command)
 	if rpcError != nil {
-		return echo.NewHTTPError(httpStatusForRpcError(rpcError), nil)
+		return echo.NewHTTPError(httpStatusForRpcError(rpcError), rpcError.Message)
 	}
 
-	c.String(http.StatusOK, "")
+	c.JSONBlob(http.StatusOK, response.Body)
 	return nil
 }
 
@@ -652,7 +680,7 @@ func (forwarder forwarder) handleAsbplayerBoundMediaRequest(c echo.Context) erro
 	command := clientCommand{Command: "get-bound-media", MessageId: uuid.NewString(), Body: map[string]interface{}{}}
 	response, rpcError := forwarder.publishMessageAndAwaitResponse(command)
 	if rpcError != nil {
-		return echo.NewHTTPError(httpStatusForRpcError(rpcError), nil)
+		return echo.NewHTTPError(httpStatusForRpcError(rpcError), rpcError.Message)
 	}
 
 	return c.JSONBlob(http.StatusOK, response.Body)
@@ -677,7 +705,7 @@ func (forwarder forwarder) handleAsbplayerSubtitlesRequest(c echo.Context) error
 	command := clientCommand{Command: "get-subtitles", MessageId: uuid.NewString(), Body: body}
 	response, rpcError := forwarder.publishMessageAndAwaitResponse(command)
 	if rpcError != nil {
-		return echo.NewHTTPError(httpStatusForRpcError(rpcError), nil)
+		return echo.NewHTTPError(httpStatusForRpcError(rpcError), rpcError.Message)
 	}
 
 	return c.JSONBlob(http.StatusOK, response.Body)
@@ -689,6 +717,7 @@ func (forwarder forwarder) registerRoutes(e *echo.Echo) {
 	e.GET("/", forwarder.handleGetRequest)
 	e.POST("/", forwarder.handlePostRequest)
 	e.POST("/asbplayer/load-subtitles", forwarder.handleAsbplayerLoadSubtitlesRequest)
+	e.POST("/asbplayer/mine-subtitle", forwarder.handleAsbplayerMineSubtitleRequest)
 	e.POST("/asbplayer/seek", forwarder.handleAsbplayerSeekRequest)
 	e.GET("/asbplayer/bound-media", forwarder.handleAsbplayerBoundMediaRequest)
 	e.GET("/asbplayer/subtitles", forwarder.handleAsbplayerSubtitlesRequest)

@@ -205,6 +205,7 @@ export const mineSubtitleParamsSchema = z.object({
     postMineAction: postMineActionSchema,
     mediaId: z.string().optional(),
     noteId: z.number().optional(),
+    asbplayerCardId: z.uuidv4().optional(),
 });
 
 export const mineSubtitleResultSchema = z.object({
@@ -302,6 +303,7 @@ export const externalApiMethods = {
                 '3 = export card, 4 = show update card dialog.',
             mediaId: 'Optional media id from `get-bound-media`. Defaults to the active tab.',
             noteId: 'Optional Anki note id to update when `postMineAction` is 2 (streaming media only).',
+            asbplayerCardId: "Optional UUID for card that is saved into asbplayer's mining history.",
         },
         resultSchema: mineSubtitleResultSchema,
         resultDescription: 'Whether the command was successfully published to an asbplayer client.',
