@@ -285,6 +285,7 @@ export default defineContentScript({
                                 response: await browser.runtime.sendMessage(command),
                                 messageId: requestCopyHistoryRequest.messageId,
                                 count: requestCopyHistoryRequest.count,
+                                cardIds: requestCopyHistoryRequest.cardIds,
                             });
                             break;
                         }

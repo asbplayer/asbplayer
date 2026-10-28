@@ -15,14 +15,16 @@ import type { AnkiSettings, SettingsProvider } from '@project/common/settings';
 import { ankiSettingsKeys } from '@project/common/settings';
 import { v4 as uuidv4 } from 'uuid';
 import { exportCard, DuplicateNoteError } from '@project/common/anki';
-import { IndexedDBCopyHistoryRepository } from '@project/common/copy-history';
+import type { CopyHistoryRepository } from '@project/common/copy-history';
 
 export class CardPublisher {
     private readonly _settingsProvider: SettingsProvider;
+    private readonly _copyHistoryRepository: CopyHistoryRepository;
     bulkExportCancelled = false;
 
-    constructor(settingsProvider: SettingsProvider) {
+    constructor(settingsProvider: SettingsProvider, copyHistoryRepository: CopyHistoryRepository) {
         this._settingsProvider = settingsProvider;
+        this._copyHistoryRepository = copyHistoryRepository;
     }
 
     async publish(card: CardModel, postMineAction?: PostMineAction, tabId?: number, src?: string, noteId?: number) {
@@ -214,8 +216,7 @@ export class CardPublisher {
 
     private async _saveCardToRepository(id: string, card: CardModel) {
         try {
-            const storageLimit = await this._settingsProvider.getSingle('miningHistoryStorageLimit');
-            await new IndexedDBCopyHistoryRepository(storageLimit).save({
+            await this._copyHistoryRepository.save({
                 ...card,
                 id,
                 timestamp: Date.now(),

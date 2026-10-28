@@ -9,8 +9,8 @@ export class ExtensionBridgedCopyHistoryRepository implements CopyHistoryReposit
         this._extension = extension;
     }
 
-    async fetch(count: number): Promise<CopyHistoryItem[]> {
-        return (await this._extension.requestCopyHistory(count)).copyHistoryItems;
+    async fetch(count: number, cardIds?: string[]): Promise<CopyHistoryItem[]> {
+        return (await this._extension.requestCopyHistory(count, cardIds)).copyHistoryItems;
     }
 
     async clear(): Promise<void> {

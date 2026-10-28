@@ -2,7 +2,6 @@ import { describe, expect, it } from '@jest/globals';
 import { z } from 'zod';
 import {
     externalApiMethods,
-    externalExtensionPortName,
     isInvalidJsonRpcRequest,
     jsonRpcErrorResponseSchema,
     jsonRpcNotificationSchema,
@@ -142,7 +141,7 @@ describe('external API schemas', () => {
     });
 
     describe('OpenRPC document', () => {
-        const document = generateOpenRpcDocument({ methods: externalApiMethods, externalExtensionPortName }) as any;
+        const document = generateOpenRpcDocument({ methods: externalApiMethods }) as any;
 
         it('matches the runtime copy', () => {
             expect(document).toEqual(openRpcDocument);
@@ -213,6 +212,7 @@ describe('external API schemas', () => {
                 type: 'object',
                 propertyNames: { type: 'string' },
                 additionalProperties: { type: 'string' },
+                description: 'Key-value pairs corresponding to an Anki note type.',
             });
         });
 

@@ -1,12 +1,11 @@
 import type { Command, Message, SaveCopyHistoryMessage } from '@project/common';
 import { asbError } from '@project/common/util/log';
-import { IndexedDBCopyHistoryRepository } from '@project/common/copy-history';
-import type { SettingsProvider } from '@project/common/settings';
+import type { CopyHistoryRepository } from '@project/common/copy-history';
 
 export default class SaveCopyHistoryHandler {
-    private readonly _settings: SettingsProvider;
-    constructor(settings: SettingsProvider) {
-        this._settings = settings;
+    private readonly _copyHistoryRepository: CopyHistoryRepository;
+    constructor(copyHistoryRepository: CopyHistoryRepository) {
+        this._copyHistoryRepository = copyHistoryRepository;
     }
 
     get sender() {
@@ -20,14 +19,9 @@ export default class SaveCopyHistoryHandler {
     handle(command: Command<Message>, sender: Browser.runtime.MessageSender, sendResponse: (r?: any) => void) {
         const message = command.message as SaveCopyHistoryMessage;
 
-        void this._settings
-            .getSingle('miningHistoryStorageLimit')
-            .then((limit) => new IndexedDBCopyHistoryRepository(limit))
-            .then((copyHistoryRepository) =>
-                Promise.all(
-                    message.copyHistoryItems.map((copyHistoryItem) => copyHistoryRepository.save(copyHistoryItem))
-                )
-            )
+        Promise.all(
+            message.copyHistoryItems.map((copyHistoryItem) => this._copyHistoryRepository.save(copyHistoryItem))
+        )
             .then(() => sendResponse({}))
             .catch((error) => asbError('copy-history', 'Failed to save copy history items:', error));
 

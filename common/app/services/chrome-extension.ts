@@ -582,13 +582,14 @@ export default class ChromeExtension {
         return this._createResponsePromise(messageId);
     }
 
-    requestCopyHistory(count: number) {
+    requestCopyHistory(count: number, cardIds?: string[]) {
         const messageId = uuidv4();
         const command: AsbPlayerCommand<RequestCopyHistoryMessage> = {
             sender: 'asbplayerv2',
             message: {
                 command: 'request-copy-history',
                 count,
+                cardIds,
                 messageId,
             },
         };

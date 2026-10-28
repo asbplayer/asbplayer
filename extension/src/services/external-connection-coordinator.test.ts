@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, jest } from '@jest/globals';
 import type { VideoTabModel } from '@project/common';
 import type { ExternalConnectionsState } from '@project/common/global-state';
-import type { SettingsProvider } from '@project/common/settings';
+import { SettingsProvider } from '@project/common/settings';
 import type TabRegistry from '@project/extension/src/services/tab-registry';
 import {
     deniedRequestCooldownMs,
@@ -15,6 +15,8 @@ import { MockLockManager } from '@project/extension/src/services/mock-lock-manag
 import { ExternalCommandDispatcher } from '@project/common/external-commands/dispatcher';
 import { externalExtensionPortName } from '@project/common/external-commands/external-api';
 import openRpcDocument from '@project/common/external-commands/openrpc-document';
+import { IndexedDBCopyHistoryRepository } from '@project/common/copy-history';
+import { ExtensionSettingsStorage } from '@project/extension/src/services/extension-settings-storage';
 
 const flush = async () => {
     for (let i = 0; i < 20; i++) {
@@ -140,6 +142,9 @@ class Harness {
         this.coordinator = new ExternalConnectionCoordinator({
             globalStateProvider: this.globalStateProvider,
             tabRegistry: { activeVideoElements: async () => this.videoElements } as unknown as TabRegistry,
+            copyHistoryRepository: new IndexedDBCopyHistoryRepository(
+                new SettingsProvider(new ExtensionSettingsStorage(this.storage))
+            ),
             settings: {} as unknown as SettingsProvider,
             badgeController: this.badgeController,
             dispatcher: this.dispatcher,
