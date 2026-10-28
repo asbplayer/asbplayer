@@ -3,7 +3,7 @@
     "info": {
         "title": "asbplayer External API",
         "version": "1.0.0",
-        "description": "JSON-RPC 2.0 API for external clients of asbplayer: the WebSocket servers (Go server, Anki addon server) and the external extension API (browser.runtime port `asbplayer-external-v1`). See external-api/README.md for transport framings, error codes, and licensing.",
+        "description": "JSON-RPC 2.0 API for external clients of asbplayer.",
         "license": {
             "name": "Unlicense"
         }
@@ -26,7 +26,8 @@
                         },
                         "additionalProperties": {
                             "type": "string"
-                        }
+                        },
+                        "description": "Key-value pairs corresponding to an Anki note type."
                     },
                     "description": "Key-value pairs corresponding to an Anki note type."
                 },
@@ -55,7 +56,8 @@
                                 "type": "number",
                                 "const": 4
                             }
-                        ]
+                        ],
+                        "description": "What asbplayer should do after mining: 0 = none, 1 = show Anki dialog, 2 = update last card, 3 = export card, 4 = show update card dialog."
                     },
                     "description": "What asbplayer should do after mining: 0 = none, 1 = show Anki dialog, 2 = update last card, 3 = export card, 4 = show update card dialog."
                 },
@@ -63,6 +65,7 @@
                     "name": "mediaId",
                     "required": false,
                     "schema": {
+                        "description": "Optional media id from `get-bound-media`. Defaults to the active tab.",
                         "type": "string"
                     },
                     "description": "Optional media id from `get-bound-media`. Defaults to the active tab."
@@ -71,14 +74,16 @@
                     "name": "noteId",
                     "required": false,
                     "schema": {
+                        "description": "Optional Anki note id to update when `postMineAction` is 2",
                         "type": "number"
                     },
-                    "description": "Optional Anki note id to update when `postMineAction` is 2 (streaming media only)."
+                    "description": "Optional Anki note id to update when `postMineAction` is 2"
                 },
                 {
                     "name": "asbplayerCardId",
                     "required": false,
                     "schema": {
+                        "description": "Optional UUID for card that is saved into asbplayer's mining history.",
                         "type": "string",
                         "format": "uuid",
                         "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$"
@@ -115,6 +120,7 @@
                     "name": "files",
                     "required": false,
                     "schema": {
+                        "description": "Files to load. Each file has a name (including its extension) and base64-encoded contents.",
                         "type": "array",
                         "items": {
                             "type": "object",
@@ -140,6 +146,7 @@
                     "name": "mediaId",
                     "required": false,
                     "schema": {
+                        "description": "Optional media id from `get-bound-media`. Omit to target the active tab.",
                         "type": "string"
                     },
                     "description": "Optional media id from `get-bound-media`. Omit to target the active tab."
@@ -166,7 +173,8 @@
                     "name": "timestamp",
                     "required": true,
                     "schema": {
-                        "type": "number"
+                        "type": "number",
+                        "description": "The timestamp to seek to, in seconds."
                     },
                     "description": "The timestamp to seek to, in seconds."
                 },
@@ -174,6 +182,7 @@
                     "name": "mediaId",
                     "required": false,
                     "schema": {
+                        "description": "Optional media id from `get-bound-media`. Omit to target the active tab.",
                         "type": "string"
                     },
                     "description": "Optional media id from `get-bound-media`. Omit to target the active tab."
@@ -283,6 +292,7 @@
                     "name": "mediaId",
                     "required": false,
                     "schema": {
+                        "description": "Optional media id from `get-bound-media`. Defaults to the active tab when omitted.",
                         "type": "string"
                     },
                     "description": "Optional media id from `get-bound-media`. Defaults to the active tab when omitted."
@@ -291,6 +301,7 @@
                     "name": "trackNumbers",
                     "required": false,
                     "schema": {
+                        "description": "Optional track numbers from `get-bound-media`. Returns all loaded tracks when omitted.",
                         "type": "array",
                         "items": {
                             "type": "number"
@@ -346,6 +357,229 @@
             }
         },
         {
+            "name": "get-mining-history",
+            "summary": "List cards stored in asbplayer's mining history",
+            "description": "Returns cards stored in asbplayer's mining history, subject to optional filtering.\n\nRequires extension v1.23.0+",
+            "tags": [],
+            "paramStructure": "by-name",
+            "params": [
+                {
+                    "name": "filter",
+                    "required": false,
+                    "schema": {
+                        "description": "Filter to apply to mining history query.",
+                        "type": "object",
+                        "properties": {
+                            "cardIds": {
+                                "description": "Optional target card IDs to fetch.",
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "description": "Filter to apply to mining history query."
+                },
+                {
+                    "name": "limit",
+                    "required": true,
+                    "schema": {
+                        "type": "integer",
+                        "exclusiveMinimum": 0,
+                        "maximum": 9007199254740991,
+                        "description": "Required positive limit on card count to fetch."
+                    },
+                    "description": "Required positive limit on card count to fetch."
+                }
+            ],
+            "result": {
+                "name": "result",
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "cards": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "id": {
+                                        "type": "string",
+                                        "description": "ID of card in asbplayer's mining history."
+                                    },
+                                    "subtitle": {
+                                        "type": "object",
+                                        "properties": {
+                                            "text": {
+                                                "type": "string",
+                                                "description": "Subtitle text."
+                                            },
+                                            "start": {
+                                                "type": "number",
+                                                "description": "Start time in milliseconds."
+                                            },
+                                            "end": {
+                                                "type": "number",
+                                                "description": "End time in milliseconds."
+                                            },
+                                            "track": {
+                                                "type": "number",
+                                                "description": "Loaded track number."
+                                            }
+                                        },
+                                        "required": [
+                                            "text",
+                                            "start",
+                                            "end",
+                                            "track"
+                                        ],
+                                        "additionalProperties": false
+                                    },
+                                    "text": {
+                                        "description": "Card text",
+                                        "type": "string"
+                                    },
+                                    "word": {
+                                        "description": "Card word",
+                                        "type": "string"
+                                    },
+                                    "definition": {
+                                        "description": "Card definition",
+                                        "type": "string"
+                                    },
+                                    "customFieldValues": {
+                                        "description": "Map of custom field names to values",
+                                        "type": "object",
+                                        "propertyNames": {
+                                            "type": "string"
+                                        },
+                                        "additionalProperties": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "url": {
+                                        "description": "Card URL - generally autofilled with the URL of the site where the card was mined",
+                                        "type": "string"
+                                    },
+                                    "audio": {
+                                        "type": "object",
+                                        "properties": {
+                                            "base64": {
+                                                "type": "string",
+                                                "description": "Base64-encoded audio"
+                                            },
+                                            "extension": {
+                                                "type": "string",
+                                                "enum": [
+                                                    "webm",
+                                                    "mp3"
+                                                ],
+                                                "description": "Audio file extension"
+                                            },
+                                            "paddingStart": {
+                                                "type": "number",
+                                                "description": "Audio padding start"
+                                            },
+                                            "paddingEnd": {
+                                                "type": "number",
+                                                "description": "Audio padding end"
+                                            },
+                                            "start": {
+                                                "description": "Start timestamp",
+                                                "type": "number"
+                                            },
+                                            "end": {
+                                                "description": "End timestamp",
+                                                "type": "number"
+                                            },
+                                            "playbackRate": {
+                                                "description": "Audio playback rate",
+                                                "type": "number"
+                                            },
+                                            "error": {
+                                                "description": "Capture error code, if present. 1 = drmProtected, 2 = fileLinkLost, 3 = captureFailed",
+                                                "anyOf": [
+                                                    {
+                                                        "type": "number",
+                                                        "const": 1
+                                                    },
+                                                    {
+                                                        "type": "number",
+                                                        "const": 2
+                                                    },
+                                                    {
+                                                        "type": "number",
+                                                        "const": 3
+                                                    }
+                                                ]
+                                            }
+                                        },
+                                        "required": [
+                                            "base64",
+                                            "extension",
+                                            "paddingStart",
+                                            "paddingEnd"
+                                        ],
+                                        "additionalProperties": false
+                                    },
+                                    "image": {
+                                        "type": "object",
+                                        "properties": {
+                                            "base64": {
+                                                "type": "string",
+                                                "description": "Base64-encoded image"
+                                            },
+                                            "extension": {
+                                                "type": "string",
+                                                "enum": [
+                                                    "jpeg",
+                                                    "webm",
+                                                    "webp"
+                                                ]
+                                            },
+                                            "error": {
+                                                "description": "Capture error code, if present. 1 = captureFailed, 2 = fileLinkLost",
+                                                "anyOf": [
+                                                    {
+                                                        "type": "number",
+                                                        "const": 1
+                                                    },
+                                                    {
+                                                        "type": "number",
+                                                        "const": 2
+                                                    }
+                                                ]
+                                            },
+                                            "animated": {
+                                                "description": "Whether the image is animated.",
+                                                "type": "boolean"
+                                            }
+                                        },
+                                        "required": [
+                                            "base64",
+                                            "extension"
+                                        ],
+                                        "additionalProperties": false
+                                    }
+                                },
+                                "required": [
+                                    "id",
+                                    "subtitle"
+                                ],
+                                "additionalProperties": false
+                            },
+                            "description": "Fetched cards"
+                        }
+                    },
+                    "required": [
+                        "cards"
+                    ],
+                    "additionalProperties": false
+                },
+                "description": "The fetched cards"
+            }
+        },
+        {
             "name": "initialize",
             "summary": "Register and request approval (external extension API).",
             "description": "Handshake sent by an external extension right after connecting. Returns the current approval state immediately: `{state: 'approved'}` when the extension is already approved, otherwise the connection is registered as pending, the approval prompt is shown (at most once per pending state), and the response is `{state: 'pending'}`. Returns `{state: 'denied'}` while a denial cooldown is active, after which the connection is closed. Idempotent.",
@@ -360,6 +594,7 @@
                     "name": "name",
                     "required": false,
                     "schema": {
+                        "description": "Self-reported display name.",
                         "type": "string"
                     },
                     "description": "Self-reported display name."
@@ -368,6 +603,7 @@
                     "name": "version",
                     "required": false,
                     "schema": {
+                        "description": "Self-reported version string.",
                         "type": "string"
                     },
                     "description": "Self-reported version string."
@@ -384,7 +620,8 @@
                                 "approved",
                                 "pending",
                                 "denied"
-                            ]
+                            ],
+                            "description": "External extension's user approval state."
                         }
                     },
                     "required": [
@@ -417,7 +654,8 @@
                                 "approved",
                                 "pending",
                                 "denied"
-                            ]
+                            ],
+                            "description": "External extension's user approval state."
                         }
                     },
                     "required": [

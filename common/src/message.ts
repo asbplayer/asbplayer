@@ -1003,6 +1003,7 @@ export interface PlaybackModeSelectorClosedMessage extends Message {
 export interface RequestCopyHistoryMessage extends MessageWithId {
     readonly command: 'request-copy-history';
     readonly count: number;
+    readonly cardIds?: string[];
 }
 
 export interface RequestCopyHistoryResponse {
