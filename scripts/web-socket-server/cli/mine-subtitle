@@ -1,0 +1,15 @@
+#!/bin/bash
+set -euo pipefail
+
+source "$(dirname -- "${BASH_SOURCE[0]}")/config"
+
+if [ -z "${1:-}" ]; then
+    echo "usage: $0 '{ fields, postMineAction, mediaId, noteId, asbplayerCardId }'"
+    exit 1
+fi
+
+PARAMS="$1"
+
+curl -H "content-type: application/json" \
+    -X POST "$ASBPLAYER_SERVER_URL/asbplayer/mine-subtitle" \
+    -d "$PARAMS"

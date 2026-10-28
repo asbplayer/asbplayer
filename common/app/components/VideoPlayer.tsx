@@ -1647,7 +1647,8 @@ export default function VideoPlayer({
             subtitle: SubtitleModel,
             surroundingSubtitles: SubtitleModel[],
             cardTextFieldValues: CardTextFieldValues,
-            timestamp: number
+            timestamp: number,
+            cardId?: string
         ) => {
             try {
                 const miningAudio = convertedAudioRef.current;
@@ -1672,7 +1673,8 @@ export default function VideoPlayer({
                     cardTextFieldValues,
                     videoFileName ?? '',
                     timestamp,
-                    showAnkiDialog ? PostMineAction.none : postMineAction
+                    showAnkiDialog ? PostMineAction.none : postMineAction,
+                    cardId
                 );
                 if (showAnkiDialog) {
                     onAnkiDialogRequest(
@@ -1711,7 +1713,8 @@ export default function VideoPlayer({
             postMineAction: PostMineAction,
             subtitle?: SubtitleModel,
             surroundingSubtitles?: SubtitleModel[],
-            cardTextFieldValues?: CardTextFieldValues
+            cardTextFieldValues?: CardTextFieldValues,
+            cardId?: string
         ) => {
             const video = videoRef.current;
 
@@ -1747,7 +1750,8 @@ export default function VideoPlayer({
                 subtitle,
                 surroundingSubtitles,
                 cardTextFieldValues ?? {},
-                mediaTimestamp
+                mediaTimestamp,
+                cardId
             );
         },
         [
@@ -1763,7 +1767,7 @@ export default function VideoPlayer({
     );
 
     const toggleSelectMiningInterval = useCallback(
-        (postMineAction: PostMineAction, cardTextFieldValues?: CardTextFieldValues) => {
+        (postMineAction: PostMineAction, cardTextFieldValues?: CardTextFieldValues, cardId?: string) => {
             if (mineIntervalStartTimestamp === undefined) {
                 setMineIntervalStartTimestamp(clock.time({ maxMs: lengthMs }));
 
@@ -1831,7 +1835,8 @@ export default function VideoPlayer({
                         currentSubtitle,
                         surroundingSubtitles,
                         cardTextFieldValues ?? {},
-                        mineIntervalStartTimestamp
+                        mineIntervalStartTimestamp,
+                        cardId
                     );
                 }
 
@@ -1858,10 +1863,11 @@ export default function VideoPlayer({
             postMineAction: PostMineAction,
             subtitle?: SubtitleModel,
             surroundingSubtitles?: SubtitleModel[],
-            cardTextFieldValues?: CardTextFieldValues
+            cardTextFieldValues?: CardTextFieldValues,
+            cardId?: string
         ) => {
             if (!subtitle && !surroundingSubtitles && subtitles.length === 0) {
-                toggleSelectMiningInterval(postMineAction, cardTextFieldValues);
+                toggleSelectMiningInterval(postMineAction, cardTextFieldValues, cardId);
             } else {
                 if (mineIntervalStartTimestamp !== undefined) {
                     // Edge case: user started manually recording but are now using an "automatic" mining shortcut
@@ -1871,7 +1877,7 @@ export default function VideoPlayer({
                     setMineIntervalStartTimestamp(undefined);
                 }
 
-                mineCurrentSubtitle(postMineAction, subtitle, surroundingSubtitles, cardTextFieldValues);
+                mineCurrentSubtitle(postMineAction, subtitle, surroundingSubtitles, cardTextFieldValues, cardId);
             }
         },
         [mineCurrentSubtitle, toggleSelectMiningInterval, mineIntervalStartTimestamp, subtitles]

@@ -74,6 +74,16 @@
                         "type": "number"
                     },
                     "description": "Optional Anki note id to update when `postMineAction` is 2 (streaming media only)."
+                },
+                {
+                    "name": "asbplayerCardId",
+                    "required": false,
+                    "schema": {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$"
+                    },
+                    "description": "Optional UUID for card that is saved into asbplayer's mining history."
                 }
             ],
             "result": {
