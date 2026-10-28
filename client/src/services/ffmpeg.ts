@@ -2,7 +2,6 @@ import project from '@project/common/project';
 import { createFfmpegObjectUrls, createFfmpegSession, ffmpegMetadata, unpackFfmpegRuntime } from '@project/ffmpeg';
 import { prepareFfmpegRuntimeArchive } from '@project/client/src/services/ffmpeg-cache';
 import { asbError, asbTrace } from '@project/common/util/log';
-import { createGithubReleaseFetcher } from '@project/client/src/services/ffmpeg-release';
 
 export const createWebFfmpegSession = ({ signal }: { signal?: AbortSignal } = {}) => {
     const runtimeArchive = {
@@ -34,12 +33,7 @@ export const createWebFfmpegSession = ({ signal }: { signal?: AbortSignal } = {}
             const archive = await prepareFfmpegRuntimeArchive(
                 runtimeArchive,
                 typeof caches === 'undefined' ? undefined : caches,
-                signal,
-                {
-                    fetcher: ffmpegMetadata.releaseApiUrl
-                        ? createGithubReleaseFetcher(ffmpegMetadata.releaseApiUrl)
-                        : fetch,
-                }
+                signal
             );
             const start = performance.now();
             const executables = await unpackFfmpegRuntime(archive, ffmpegMetadata.runtimeVersion);

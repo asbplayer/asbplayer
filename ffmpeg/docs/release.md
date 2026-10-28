@@ -14,7 +14,7 @@ The commands below run from the repository root unless stated otherwise.
 
 Published versions are immutable. Any change to published runtime bytes or capabilities needs a new version. Selection verifies published assets rather than relying on local candidate files. The workflow rejects existing release tags; select and commit the preceding release before calculating another bump from it.
 
-Production app output contains no FFmpeg payload, notices, or source: these are distributed by the release. The browser [downloads and caches](caching.md) only the runtime archive on demand. [Candidate mode](build.md#develop-a-local-candidate) explicitly includes a local runtime archive under `ffmpeg/` for testing.
+Production app builds download the selected runtime archive, verify its locked SHA-256 and size, and copy it, including its license notices, to `ffmpeg/runtime.tgz`. The source archives remain on the exact GitHub release linked from About. The browser [downloads and caches](caching.md) only the app-hosted runtime on demand. [Candidate mode](build.md#develop-a-local-candidate) uses the same path with verified local bytes.
 
 ## Selection and verification
 
@@ -37,4 +37,10 @@ Each release offers the corresponding source of every bundled library from the s
 
 The upstream tarballs remain unmodified so anyone can check them against upstream hashes and signatures. See [rebuilding from released sources](build.md#rebuild-from-released-sources) for extraction and build commands and the byte-for-byte reproduction check.
 
-The runtime combines asbplayer's AGPL-3.0-or-later native bridge and worker with LGPL-2.1-or-later FFmpeg. The runtime archive includes the asbplayer, FFmpeg, and related notices. The app's About page lists FFmpeg and links to the release page of the version selected in `artifact-lock.json`. Verification rejects GPL, nonfree, version-3, network, or threaded builds but may be allowed if a specific need arises.
+The runtime is built with `--enable-version3` and combines asbplayer's AGPL-3.0-or-later bridge and worker with LGPLv3 FFmpeg. The runtime archive includes the asbplayer notice, both LGPL 3 and GPL 3 texts, and related notices. Both candidate and selected-release verification require LGPLv3, `--enable-version3`, and both license texts.
+
+`--enable-version3` is required by this project's distribution policy because the app hosts the runtime while GitHub hosts its corresponding source. LGPL 2.1 offers online source distribution, but describes access from the same place; version 3 explicitly permits another server through GPL 3 §6(d). The flag makes that license choice explicit in the compiled FFmpeg runtime.
+
+The app's About page lists FFmpeg and links to the exact release selected in `artifact-lock.json`, offering the corresponding tagged repository source and upstream tarballs.
+
+Verification rejects GPL, network, or threaded builds but may be allowed if a specific need arises.

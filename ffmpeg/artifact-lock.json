@@ -6,7 +6,7 @@
     "releaseBaseDownloadUrl": "https://github.com/asbplayer/asbplayer/releases/download/ffmpeg-v0.0.0",
     "runtimeArchive": {
         "filename": "asbplayer-ffmpeg-0.0.0-runtime.tar.gz",
-        "sha256": "69b46aa8cffd6bc13e24a49e6cdda3db8194d7a19c2bd96938f37d54bc09ad03",
-        "bytes": 43970
+        "sha256": "0c053440f559ffe9a9f946b0622f1deffe3f97584a949108d506b3d05471c0e5",
+        "bytes": 49003
     }
 }

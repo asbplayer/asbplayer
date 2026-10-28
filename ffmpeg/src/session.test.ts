@@ -12,11 +12,9 @@ const runtimeInfo = (overrides: Partial<FfmpegRuntimeInfo> = {}): FfmpegRuntimeI
     runtimeVersion: ffmpegMetadata.runtimeVersion,
     ffmpegVersion: ffmpegMetadata.ffmpegVersion,
     ffmpegConfiguration: '--disable-all',
-    ffmpegLicense: 'LGPL version 2.1 or later',
+    ffmpegLicense: 'LGPL version 3 or later',
     linkedLibraries: ['libavutil'],
-    libraries: [
-        { name: 'libavutil', version: 1, configuration: '--disable-all', license: 'LGPL version 2.1 or later' },
-    ],
+    libraries: [{ name: 'libavutil', version: 1, configuration: '--disable-all', license: 'LGPL version 3 or later' }],
     operations: ['inspect'],
     ...overrides,
 });

@@ -2,6 +2,8 @@
 
 This workspace builds the native FFmpeg bridge and its browser worker as an independently versioned runtime. The current build links only `libavutil` and exposes runtime inspection. Ordinary app and extension development can use the selected release without building FFmpeg; see the [README](../README.md).
 
+Ordinary client startup and builds acquire the pinned GitHub release with Node and copy only its runtime archive into the app. This is also the Cloudflare path: it needs no Docker or native toolchain. Downloads and cached build inputs are verified against the lock's hash and size.
+
 The commands below run from the repository root unless stated otherwise. Use the repository's Node and pnpm versions, and have Docker with buildx available for native builds.
 
 ## Develop a local candidate
@@ -22,10 +24,10 @@ To create a client build for testing the candidate, including its PWA behavior:
 
 ```sh
 VITE_FFMPEG_CANDIDATE=1 pnpm --filter @project/client run buildFast
-VITE_FFMPEG_CANDIDATE=1 pnpm --filter @project/client run preview
+pnpm --filter @project/client run preview
 ```
 
-Candidate client startup/builds verify the local candidate and serve its archive from the app's `ffmpeg/` path, using the same [download and caching](caching.md) and [runtime loading](runtime.md) paths as a published release. The archive uses a `.tgz` name because Vite's static server marks `*.gz` files as `Content-Encoding: gzip`, which would make the browser decode it before verification. Use normal client commands to return to the selected release, or see [release instructions](release.md) to publish the candidate.
+Candidate client startup/builds verify the local candidate and serve its archive at the app's stable `ffmpeg/runtime.tgz` path, using the same [download and caching](caching.md) and [runtime loading](runtime.md) paths as a published release. The archive uses a `.tgz` name because Vite's static server marks `*.gz` files as `Content-Encoding: gzip`, which would make the browser decode it before verification. Use normal client commands to return to the selected release, or see [release instructions](release.md) to publish the candidate.
 
 ## Verification
 
@@ -50,7 +52,7 @@ Pull-request CI checks the host code and runs native tests when native build inp
 
 The worker's Rolldown dependency is pinned in the FFmpeg [package.json](../package.json) and resolved by the repository's [pnpm-lock.yaml](../../pnpm-lock.yaml). The generated runtime manifest records the installed Rolldown version, and candidate verification checks it against that installation. Verification of a selected release uses its recorded metadata, independently of the current bundler installation.
 
-[`runtime-assets.json`](../runtime-assets.json) declares the executable filenames/MIME types the app extracts from the runtime archive, and the notice filenames packaged into it. The manifest measures linked libraries, operations, identity, and initial/shared memory by loading the compiled bridge. `limits` in [`build-config.json`](../build-config.json) records declared build inputs; configure starts with `--disable-all` (which retains `libavutil`) and disables external-library autodetection and pthreads. The remaining options configure the WASM toolchain and output size; new media features explicitly enable only their required components. The real-WASM smoke test separately verifies the runtime against the intended library/API contract.
+[`runtime-assets.json`](../runtime-assets.json) declares the executable filenames/MIME types the app extracts from the runtime archive, and the notice filenames packaged into it. The manifest measures linked libraries, operations, identity, and initial/shared memory by loading the compiled bridge. `limits` in [`build-config.json`](../build-config.json) records declared build inputs; configure starts with `--disable-all` (which retains `libavutil`) and disables external-library autodetection and pthreads. `--enable-version3` enables the LGPLv3 distribution used by this project; GPL and nonfree components remain disabled. The remaining options configure the WASM toolchain and output size; new media features explicitly enable only their required components. The real-WASM smoke test separately verifies the runtime against the intended library/API contract.
 
 Release and archive names are shared with the client and selection scripts; see [release metadata](release.md#release-metadata).
 

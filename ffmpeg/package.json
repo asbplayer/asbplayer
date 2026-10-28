@@ -10,7 +10,8 @@
         "./build-config.json": "./build-config.json",
         "./runtime-assets.json": "./runtime-assets.json",
         "./project": "./src/project/index.ts",
-        "./release-names": "./scripts/release-names.mjs"
+        "./release-names": "./scripts/release-names.mjs",
+        "./prepare-runtime": "./scripts/prepare-runtime.mjs"
     },
     "scripts": {
         "build:runtime": "bash scripts/build.sh",

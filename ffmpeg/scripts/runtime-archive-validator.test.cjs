@@ -16,7 +16,7 @@ beforeEach(async () => {
     archive = join(temporary, 'runtime.tar.gz');
     await mkdir(join(temporary, '0.1.0/notices'), { recursive: true });
     await writeFile(join(temporary, '0.1.0/ffmpeg-core.wasm'), 'WASM');
-    await writeFile(join(temporary, '0.1.0/notices/FFmpeg-LGPL-2.1.txt'), 'License');
+    await writeFile(join(temporary, '0.1.0/notices/FFmpeg-LGPL-3.0.txt'), 'License');
 });
 afterEach(async () => {
     await rm(temporary, { recursive: true, force: true });

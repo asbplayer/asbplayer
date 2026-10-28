@@ -1,6 +1,6 @@
 # asbplayer FFmpeg runtime
 
-This workspace builds an optional, independently versioned FFmpeg dependency for the webapp.
+This workspace builds an independently versioned FFmpeg dependency for the webapp.
 
 ## Ordinary app development
 
@@ -11,7 +11,7 @@ pnpm install --frozen-lockfile
 pnpm --filter @project/client run start
 ```
 
-Client startup and production builds use the published runtime selected by [`artifact-lock.json`](artifact-lock.json). They do not download, build, or bundle FFmpeg assets; the browser downloads the runtime on first use. Ordinary app and extension development does not need Docker or an FFmpeg build.
+Client startup and production builds download the prebuilt runtime selected by [`artifact-lock.json`](artifact-lock.json), verify its SHA-256 and size, and copy it to `ffmpeg/runtime.tgz` in the app's assets. The browser loads it from the app's origin on first use. No FFmpeg compilation, source downloads, Emscripten, or Docker is needed, including for Cloudflare builds. A verified build cache avoids repeated release downloads.
 
 ## Documentation
 

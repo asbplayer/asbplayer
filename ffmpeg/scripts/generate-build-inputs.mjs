@@ -16,6 +16,7 @@ const ffmpegConfigureArguments = [
     '--target-os=none',
     '--arch=wasm32',
     '--enable-cross-compile',
+    '--enable-version3',
     '--disable-debug',
     '--disable-pthreads',
     '--enable-small',
