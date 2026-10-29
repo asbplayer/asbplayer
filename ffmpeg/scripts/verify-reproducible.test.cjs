@@ -22,7 +22,14 @@ beforeEach(async () => {
     await mkdir(join(reference, 'dist'), { recursive: true });
     await mkdir(join(reference, 'release'), { recursive: true });
     await mkdir(bin);
-    for (const script of ['verify-reproducible.sh', 'release-info.mjs', 'release-names.mjs', 'runtime-version.mjs']) {
+    for (const script of [
+        'lib.mjs',
+        'github-release.mjs',
+        'verify-reproducible.sh',
+        'release-info.mjs',
+        'release-names.mjs',
+        'runtime-version.mjs',
+    ]) {
         await copyFile(join(__dirname, script), join(root, 'ffmpeg/scripts', script));
     }
     await writeFile(

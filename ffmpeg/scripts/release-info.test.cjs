@@ -26,7 +26,13 @@ beforeEach(async () => {
     root = resolve(repositoryRoot, 'ffmpeg');
     lockPath = resolve(root, 'artifact-lock.json');
     await mkdir(resolve(root, 'scripts'), { recursive: true });
-    for (const script of ['runtime-version.mjs', 'release-names.mjs', 'release-info.mjs']) {
+    for (const script of [
+        'lib.mjs',
+        'github-release.mjs',
+        'runtime-version.mjs',
+        'release-names.mjs',
+        'release-info.mjs',
+    ]) {
         await copyFile(resolve(__dirname, script), resolve(root, 'scripts', script));
     }
     await writeFile(resolve(repositoryRoot, 'project.json'), JSON.stringify({ releases: { ffmpeg: releaseConfig } }));
@@ -68,7 +74,7 @@ it('uses a build override for release metadata while always calculating bumps fr
 });
 
 it.each(['major', 'none', ''])('rejects unsupported release bump %j', async (bump) => {
-    await expect(run(['--bump', bump])).rejects.toThrow('must be patch or minor');
+    await expect(run(['--bump', bump])).rejects.toThrow('must be patch, minor, or current');
 });
 
 it('rejects missing and noncanonical locked versions before producing metadata', async () => {

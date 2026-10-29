@@ -2,7 +2,7 @@
 
 This workspace builds the native FFmpeg bridge and its browser worker as an independently versioned runtime. The current build links only `libavutil` and exposes runtime inspection. Ordinary app and extension development can use the selected release without building FFmpeg; see the [README](../README.md).
 
-Ordinary client startup and builds acquire the pinned GitHub release with Node and copy only its runtime archive into the app. This is also the Cloudflare path: it needs no Docker or native toolchain. Downloads and cached build inputs are verified against the lock's hash and size.
+Ordinary client startup and builds acquire the pinned GitHub release with Node and copy only its runtime archive into the app. [Uploaded drafts can be tested locally](release.md#test-an-uploaded-draft-locally) using an existing `gh` login, without compiling a candidate. This is also the Cloudflare path: it needs no Docker or native toolchain. Downloads and cached build inputs are verified against the lock's hash and size.
 
 The commands below run from the repository root unless stated otherwise. Use the repository's Node and pnpm versions, and have Docker with buildx available for native builds.
 

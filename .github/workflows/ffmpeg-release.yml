@@ -4,25 +4,52 @@ on:
     workflow_dispatch:
         inputs:
             bump:
-                description: 'Increment the selected FFmpeg runtime version'
+                description: 'Choose patch, minor, or current (draft only) to rebuild the existing FFmpeg draft'
                 required: true
                 type: choice
                 default: patch
                 options:
                     - patch
                     - minor
+                    - current
 
 permissions:
     contents: read
 
+concurrency:
+    group: ffmpeg-release
+    cancel-in-progress: false
+
 jobs:
+    version:
+        runs-on: ubuntu-24.04
+        environment: ffmpeg-release
+        permissions:
+            contents: write # GitHub requires push access to find drafts for current.
+        outputs:
+            version: ${{ steps.release-info.outputs.version }}
+            release-tag: ${{ steps.release-info.outputs.tag }}
+            release-title: ${{ steps.release-info.outputs.title }}
+            release-id: ${{ steps.release-info.outputs.releaseId }}
+        steps:
+            - uses: actions/checkout@v7
+              with:
+                  persist-credentials: false
+            - uses: actions/setup-node@v7
+              with:
+                  node-version-file: '.nvmrc'
+            - name: Resolve release version
+              id: release-info
+              env:
+                  GH_TOKEN: ${{ github.token }}
+                  FFMPEG_VERSION_BUMP: ${{ inputs.bump }}
+              run: node ffmpeg/scripts/release-info.mjs --bump "$FFMPEG_VERSION_BUMP" >> "$GITHUB_OUTPUT"
+
     build:
+        needs: version
         runs-on: ubuntu-24.04
         permissions:
             contents: read
-        outputs:
-            release-tag: ${{ steps.release-info.outputs.tag }}
-            release-title: ${{ steps.release-info.outputs.title }}
         steps:
             - uses: actions/checkout@v7
               with:
@@ -30,14 +57,9 @@ jobs:
             - name: Setup Node.js and pnpm
               uses: ./.github/actions/setup-node-pnpm
             - run: pnpm install --frozen-lockfile --filter @project/ffmpeg
-            - name: Read FFmpeg release metadata
-              id: release-info
-              env:
-                  FFMPEG_VERSION_BUMP: ${{ inputs.bump }}
-              run: node ffmpeg/scripts/release-info.mjs --bump "$FFMPEG_VERSION_BUMP" >> "$GITHUB_OUTPUT"
             - name: Build and verify FFmpeg release
               env:
-                  ASB_FFMPEG_RUNTIME_VERSION: ${{ steps.release-info.outputs.version }}
+                  ASB_FFMPEG_RUNTIME_VERSION: ${{ needs.version.outputs.version }}
               run: |
                   pnpm --filter @project/ffmpeg run build:candidate
                   pnpm --filter @project/ffmpeg run verify:release
@@ -48,41 +70,29 @@ jobs:
                   if-no-files-found: error
 
     publish:
-        needs: build
+        needs: [version, build]
         runs-on: ubuntu-24.04
         environment: ffmpeg-release
         env:
             GH_REPO: ${{ github.repository }}
-            RELEASE_TAG: ${{ needs.build.outputs.release-tag }}
-            RELEASE_TITLE: ${{ needs.build.outputs.release-title }}
+            RELEASE_TAG: ${{ needs.version.outputs.release-tag }}
+            RELEASE_TITLE: ${{ needs.version.outputs.release-title }}
+            RELEASE_ID: ${{ needs.version.outputs.release-id }}
+            FFMPEG_VERSION_BUMP: ${{ inputs.bump }}
         permissions:
             contents: write
         steps:
+            - uses: actions/checkout@v7
+              with:
+                  persist-credentials: false
+            - uses: actions/setup-node@v7
+              with:
+                  node-version-file: '.nvmrc'
             - uses: actions/download-artifact@v8
               with:
                   name: ffmpeg-release-materials
                   path: ffmpeg/release
-            - name: Confirm version has not already been released
+            - name: Create or update draft runtime release
               env:
                   GH_TOKEN: ${{ github.token }}
-              run: |
-                  if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
-                      echo "FFmpeg release $RELEASE_TAG already exists" >&2
-                      exit 1
-                  fi
-
-                  if gh api --silent "repos/$GITHUB_REPOSITORY/git/ref/tags/$RELEASE_TAG" >/dev/null 2>&1; then
-                      echo "FFmpeg tag $RELEASE_TAG already exists" >&2
-                      exit 1
-                  fi
-            - name: Create draft independent runtime release
-              run: >-
-                  gh release create "$RELEASE_TAG"
-                  ffmpeg/release/*
-                  --draft
-                  --target "$GITHUB_SHA"
-                  --title "$RELEASE_TITLE"
-                  --notes "Minimal single-threaded LGPL FFmpeg runtime. The runtime archive includes license notices. The sources archive holds the unmodified upstream source tarballs; the asbplayer bridge and build scripts are in the source code archives for this tag."
-                  --latest=false
-              env:
-                  GH_TOKEN: ${{ github.token }}
+              run: node ffmpeg/scripts/publish-release.mjs
