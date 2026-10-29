@@ -53,7 +53,7 @@ jobs:
             - uses: actions/checkout@v7
             - name: Setup Node.js and pnpm
               uses: ./.github/actions/setup-node-pnpm
-            - run: pnpm install --frozen-lockfile
+            - run: pnpm install --frozen-lockfile --filter @project/ffmpeg
             - run: pnpm --filter @project/ffmpeg run test:native-wasm
 
     native-gate:

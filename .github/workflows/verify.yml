@@ -37,7 +37,7 @@ jobs:
             - name: Check Anki lockfile
               run: uv lock --project plugins/anki --check
 
-            - run: pnpm install --frozen-lockfile
+            - run: pnpm install --frozen-lockfile --filter @project/extension --filter @project/common --filter @project/client --filter @project/ffmpeg
             - run: pnpm --filter @project/extension run zip
             - run: pnpm --filter @project/client run build
             - run: pnpm --filter @project/ffmpeg run verify:code
