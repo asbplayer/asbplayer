@@ -14,9 +14,16 @@ test -f "$package_root/release/$sources_name"
 
 # Rebuild from what the release offers as source: the repository files at the release commit
 # (GitHub's source archive; uncommitted files when run locally) plus the published upstream tarballs.
-(cd "$repository_root" && git ls-files -z --cached --others --exclude-standard) |
-    (cd "$repository_root" && tar --null --ignore-failed-read -T - -cf -) |
-    tar -xf - -C "$rebuilt"
+if [[ -e "$repository_root/.git" ]]; then
+    (cd "$repository_root" && git ls-files -z --cached --others --exclude-standard) |
+        (cd "$repository_root" && tar --null --ignore-failed-read -T - -cf -) |
+        tar -xf - -C "$rebuilt"
+else
+    # Source archives have no Git metadata. Exclude dependencies and generated build inputs.
+    tar --exclude=node_modules --exclude=./ffmpeg/.cache --exclude=./ffmpeg/dist --exclude=./ffmpeg/release \
+        -cf - -C "$repository_root" . |
+        tar -xf - -C "$rebuilt"
+fi
 mkdir -p "$rebuilt/ffmpeg/.cache/archives"
 tar -xzf "$package_root/release/$sources_name" --strip-components=1 -C "$rebuilt/ffmpeg/.cache/archives"
 
