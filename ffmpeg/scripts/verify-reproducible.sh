@@ -15,8 +15,17 @@ test -f "$package_root/release/$sources_name"
 # Rebuild from what the release offers as source: the repository files at the release commit
 # (GitHub's source archive; uncommitted files when run locally) plus the published upstream tarballs.
 if [[ -e "$repository_root/.git" ]]; then
-    (cd "$repository_root" && git ls-files -z --cached --others --exclude-standard) |
-        (cd "$repository_root" && tar --null --ignore-failed-read -T - -cf -) |
+    (
+        cd "$repository_root"
+        git ls-files -z --cached --others --exclude-standard |
+            while IFS= read -r -d '' source_path; do
+                # Skip locally deleted files; retain dangling symlinks as source entries.
+                if [[ -e "$source_path" || -L "$source_path" ]]; then
+                    printf '%s\0' "$source_path"
+                fi
+            done |
+            tar --null -T - -cf -
+    ) |
         tar -xf - -C "$rebuilt"
 else
     # Source archives have no Git metadata. Exclude dependencies and generated build inputs.
