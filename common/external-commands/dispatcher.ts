@@ -8,7 +8,13 @@ import {
     jsonRpcSuccess,
     parseJsonRpcIncomingMessage,
 } from '@project/common/external-commands/external-api';
-import type { JsonRpcIncomingMessage, JsonRpcResponse } from '@project/common/external-commands/external-api';
+import type {
+    ExternalApiMethod,
+    JsonRpcErrorResponse,
+    JsonRpcIncomingMessage,
+    JsonRpcResponse,
+} from '@project/common/external-commands/external-api';
+import type { ZodSafeParseSuccess } from 'zod';
 
 export class ExternalCommandDispatcher {
     private _handlers: Partial<ExternalCommandHandlers> = {};
@@ -49,7 +55,11 @@ export class ExternalCommandDispatcher {
         const request = parseJsonRpcIncomingMessage(frame);
 
         if (request !== undefined) {
-            return this.dispatchJsonRpc(request, commands);
+            const { dispatched, response } = await this._tryDispatchConnLevelJsonRpc(request);
+            if (dispatched) {
+                return response;
+            }
+            return this.dispatchAppLevelJsonRpc(request, commands);
         }
 
         if (typeof frame !== 'object' || frame === null || Array.isArray(frame)) {
@@ -63,25 +73,40 @@ export class ExternalCommandDispatcher {
         return this.dispatchCommand(frame as ExternalCommand, commands);
     }
 
-    async dispatchJsonRpc(
-        request: JsonRpcIncomingMessage,
-        commands?: readonly ExternalCommand['command'][]
-    ): Promise<JsonRpcResponse | undefined> {
+    /**
+     * Attempts to handle conn-level requests that are handled the same way by every asbplayer.
+     */
+    async _tryDispatchConnLevelJsonRpc(
+        request: JsonRpcIncomingMessage
+    ): Promise<
+        { dispatched: true; response: JsonRpcResponse | undefined } | { dispatched: false; response: undefined }
+    > {
         const id = request.id;
 
         if (request.method === 'client-info') {
-            return id === undefined ? undefined : jsonRpcSuccess(id, { protocols: [jsonRpcProtocol] });
+            return {
+                dispatched: true,
+                response: id === undefined ? undefined : jsonRpcSuccess(id, { protocols: [jsonRpcProtocol] }),
+            };
         }
 
         if (request.method === 'rpc.discover') {
             if (id === undefined) {
-                return undefined;
+                return { dispatched: true, response: undefined };
             }
 
             const { default: openRpcDocument } = await import('@project/common/external-commands/openrpc-document');
-            return jsonRpcSuccess(id, openRpcDocument);
+            return { dispatched: true, response: jsonRpcSuccess(id, openRpcDocument) };
         }
 
+        return { dispatched: false, response: undefined };
+    }
+
+    private _determineJsonRpcMethodAndParams(
+        request: JsonRpcIncomingMessage,
+        commands?: readonly ExternalCommand['command'][]
+    ): { method: ExternalApiMethod; params: ZodSafeParseSuccess<unknown> } | JsonRpcErrorResponse | undefined {
+        const id = request.id;
         const method = externalApiMethod(request.method);
 
         if (method === undefined || this._tagsDenyList.some((t) => method.tags.includes(t))) {
@@ -103,16 +128,35 @@ export class ExternalCommandDispatcher {
                 : jsonRpcError(id, jsonRpcErrorCodes.invalidParams, 'Invalid params', params.error.issues);
         }
 
+        return { method, params };
+    }
+
+    async dispatchAppLevelJsonRpc(
+        request: JsonRpcIncomingMessage,
+        commands?: readonly ExternalCommand['command'][]
+    ): Promise<JsonRpcResponse | undefined> {
+        const id = request.id;
+        const methodAndParams = this._determineJsonRpcMethodAndParams(request, commands);
+
+        if (methodAndParams === undefined) {
+            return;
+        }
+
+        if ('error' in methodAndParams) {
+            return methodAndParams;
+        }
+
+        const { method, params } = methodAndParams;
+
         const command = {
             command: request.method as ExternalCommand['command'],
             messageId: id ?? '',
             body: params.data as object,
         } as ExternalCommand;
 
-        let body: object | undefined;
-
         try {
-            body = await this._body(command);
+            const responseBody = await this._handleCommand(command);
+            return this._jsonRpcResponse(id, method, responseBody);
         } catch (thrown) {
             if (id === undefined) {
                 return undefined;
@@ -125,22 +169,6 @@ export class ExternalCommandDispatcher {
                 thrown instanceof Error ? thrown.message : String(thrown)
             );
         }
-
-        if (id === undefined) {
-            return undefined;
-        }
-
-        if (body === undefined) {
-            return jsonRpcError(id, jsonRpcErrorCodes.methodNotFound, 'Method not found');
-        }
-
-        const result = method.resultSchema.safeParse(body);
-
-        if (!result.success) {
-            return jsonRpcError(id, jsonRpcErrorCodes.internalError, 'Internal error', result.error.issues);
-        }
-
-        return jsonRpcSuccess(id, body);
     }
 
     async dispatchCommand(
@@ -151,7 +179,7 @@ export class ExternalCommandDispatcher {
             return undefined;
         }
 
-        const body = await this._body(command);
+        const body = await this._handleCommand(command);
 
         if (body === undefined) {
             return undefined;
@@ -160,7 +188,7 @@ export class ExternalCommandDispatcher {
         return { command: 'response', messageId: command.messageId, body };
     }
 
-    private async _body(command: ExternalCommand): Promise<object | undefined> {
+    private async _handleCommand(command: ExternalCommand): Promise<object | undefined> {
         const { onMineSubtitle, onLoadSubtitles, onSeekTimestamp, onGetBoundMedia, onGetSubtitles } = this._handlers;
 
         // Unhandled commands stay silent so that another connected client which handles them can answer.
@@ -195,5 +223,23 @@ export class ExternalCommandDispatcher {
                 return undefined;
             }
         }
+    }
+
+    private _jsonRpcResponse(id: string | undefined, method: ExternalApiMethod, responseBody: object | undefined) {
+        if (id === undefined) {
+            return undefined;
+        }
+
+        if (responseBody === undefined) {
+            return jsonRpcError(id, jsonRpcErrorCodes.methodNotFound, 'Method not found');
+        }
+
+        const result = method.resultSchema.safeParse(responseBody);
+
+        if (!result.success) {
+            return jsonRpcError(id, jsonRpcErrorCodes.internalError, 'Internal error', result.error.issues);
+        }
+
+        return jsonRpcSuccess(id, responseBody);
     }
 }
