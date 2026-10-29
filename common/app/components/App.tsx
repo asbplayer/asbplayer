@@ -1019,6 +1019,19 @@ function App({
         setTab(tab);
     }, []);
 
+    const {
+        subtitleTrackSelectorOpen,
+        openSubtitleTrackSelector,
+        openSubtitleTrackSelectorWithFiles,
+        closeSubtitleTrackSelector,
+        subtitleTrackSelectorSelectedTrackIds,
+        setSubtitleTrackSelectorSelectedTrackIds,
+        subtitleTrackSelectorTracks,
+        setSubtitleTrackSelectorTracks,
+        subtitleTrackSelectorDisabled,
+        setSubtitleTrackSelectorDisabled,
+    } = useVideoDataSyncDialogState(sources.subtitleFiles);
+
     const validateFiles = useCallback(
         (files: FileWithId[]) => {
             try {
@@ -1103,6 +1116,16 @@ function App({
             }
         },
         [handleError, retainSourcesInFileSession]
+    );
+
+    const handleManualFiles = useCallback(
+        (files: FileWithId[]) => {
+            if (!handleFiles({ files })) return false;
+            const { subtitleFiles } = extractSources(files);
+            if (subtitleFiles.length > 1) openSubtitleTrackSelectorWithFiles(subtitleFiles);
+            return true;
+        },
+        [handleFiles, openSubtitleTrackSelectorWithFiles]
     );
 
     const persistFileSessionHandles = useCallback(
@@ -1215,12 +1238,12 @@ function App({
                     files.push({ file: await f, id: uuidv4() });
                 }
 
-                handleFiles({ files });
+                handleManualFiles(files);
             } catch (e) {
                 handleError(e);
             }
         },
-        [handleError, handleFiles, t]
+        [handleError, handleManualFiles, t]
     );
 
     useEffect(
@@ -1447,7 +1470,7 @@ function App({
                 // Copy files synchronously; DataTransfer may be cleared after this handler returns.
                 const files = [...dataTransfer.files].map((file) => ({ file, id: uuidv4() }));
 
-                if (!handleFiles({ files })) {
+                if (!handleManualFiles(files)) {
                     return;
                 }
 
@@ -1471,7 +1494,7 @@ function App({
                 }
             }
         },
-        [inVideoPlayer, handleError, handleFiles, handleDirectory, ankiDialogOpen, t, persistFileSessionHandles]
+        [inVideoPlayer, handleError, handleManualFiles, handleDirectory, ankiDialogOpen, t, persistFileSessionHandles]
     );
 
     const handleFileSelector = useCallback(
@@ -1502,7 +1525,7 @@ function App({
                     return files;
                 }
 
-                if (!params?.buffered && handleFiles({ files })) {
+                if (!params?.buffered && handleManualFiles(files)) {
                     persistFileSessionHandles(handles);
                     return files;
                 }
@@ -1511,7 +1534,7 @@ function App({
                 handleError(e);
             }
         },
-        [handleFiles, validateFiles, handleError, persistFileSessionHandles, persistBufferedFileSessionHandles]
+        [handleManualFiles, validateFiles, handleError, persistFileSessionHandles, persistBufferedFileSessionHandles]
     );
 
     const fileSelector = useMemo(
@@ -1523,10 +1546,10 @@ function App({
         const files = fileInputRef.current?.files;
 
         if (files && files.length > 0) {
-            handleFiles({ files: [...files].map((file) => ({ file, id: uuidv4() })) });
+            handleManualFiles([...files].map((file) => ({ file, id: uuidv4() })));
             fileInputRef.current!.value = '';
         }
-    }, [handleFiles]);
+    }, [handleManualFiles]);
 
     const handleBufferedFileInputChange = useCallback(() => {
         const files = bufferedFileInputRef.current?.files;
@@ -1748,18 +1771,6 @@ function App({
         setSettingsDialogOpen(true);
     }, []);
 
-    const {
-        subtitleTrackSelectorOpen,
-        openSubtitleTrackSelector,
-        closeSubtitleTrackSelector,
-        subtitleTrackSelectorSelectedTrackIds,
-        setSubtitleTrackSelectorSelectedTrackIds,
-        subtitleTrackSelectorTracks,
-        setSubtitleTrackSelectorTracks,
-        subtitleTrackSelectorDisabled,
-        setSubtitleTrackSelectorDisabled,
-    } = useVideoDataSyncDialogState(sources.subtitleFiles);
-
     const handleConfirmSubtitleTrackSelection = useCallback(
         (tracks: ConfirmedVideoDataSubtitleTrack[]) => {
             void (async () => {
@@ -1819,9 +1830,9 @@ function App({
 
     const handleOpenSubtitleTrackSelection = useCallback(
         (files: FileWithId[]) => {
-            if (handleFiles({ files })) {
+            if (handleManualFiles(files)) {
                 void promoteBufferedHandlesInFileSession(files.map((f) => f.id));
-                closeSubtitleTrackSelector();
+                if (extractSources(files).subtitleFiles.length <= 1) closeSubtitleTrackSelector();
             } else {
                 void clearBufferedHandlesInFileSession();
             }
@@ -1830,7 +1841,7 @@ function App({
             promoteBufferedHandlesInFileSession,
             clearBufferedHandlesInFileSession,
             closeSubtitleTrackSelector,
-            handleFiles,
+            handleManualFiles,
         ]
     );
 

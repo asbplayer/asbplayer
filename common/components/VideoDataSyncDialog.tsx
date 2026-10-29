@@ -126,32 +126,42 @@ export const useVideoDataSyncDialogState = (files?: FileWithId[]) => {
     }, [t, subtitleTrackSelectorTracks]);
     const [subtitleTrackSelectorSelectedTrackIds, setSubtitleTrackSelectorSelectedTrackIds] =
         useState<string[]>(initialTrackIds);
-    const openSubtitleTrackSelector = useCallback(() => {
-        if (files !== undefined) {
-            const loadedTracks = new Map<string, VideoDataSubtitleTrack>();
-            for (const { file, id } of files) {
-                if (id === '-') continue;
-                loadedTracks.set(id, {
-                    id,
-                    label: file.name,
-                    file,
-                    extension: file.name.substring(file.name.lastIndexOf('.') + 1),
-                });
+    const openSubtitleTrackSelectorWithFiles = useCallback(
+        (candidates?: FileWithId[]) => {
+            if (candidates !== undefined) {
+                const loadedTracks = new Map<string, VideoDataSubtitleTrack>();
+                for (const { file, id } of candidates) {
+                    if (id === '-') continue;
+                    loadedTracks.set(id, {
+                        id,
+                        label: file.name,
+                        file,
+                        extension: file.name.substring(file.name.lastIndexOf('.') + 1),
+                    });
+                }
+                // A zero-byte SRT preserves empty slots without making confirmation fetch the "-" URL.
+                setSubtitleTrackSelectorTracks([
+                    { ...emptySubtitleTrack(t), file: new File([''], '.srt') },
+                    ...loadedTracks.values(),
+                ]);
+                setSubtitleTrackSelectorSelectedTrackIds(
+                    initialTrackIds.map((_, index) => candidates[index]?.id ?? '-')
+                );
             }
-            // A zero-byte SRT preserves empty slots without making confirmation fetch the "-" URL.
-            setSubtitleTrackSelectorTracks([
-                { ...emptySubtitleTrack(t), file: new File([''], '.srt') },
-                ...loadedTracks.values(),
-            ]);
-            setSubtitleTrackSelectorSelectedTrackIds(initialTrackIds.map((_, index) => files[index]?.id ?? '-'));
-        }
-        setSubtitleTrackSelectorOpen(true);
-    }, [files, t]);
+            setSubtitleTrackSelectorOpen(true);
+        },
+        [t]
+    );
+    const openSubtitleTrackSelector = useCallback(
+        () => openSubtitleTrackSelectorWithFiles(files),
+        [files, openSubtitleTrackSelectorWithFiles]
+    );
     const closeSubtitleTrackSelector = useCallback(() => setSubtitleTrackSelectorOpen(false), []);
 
     return {
         subtitleTrackSelectorOpen,
         openSubtitleTrackSelector,
+        openSubtitleTrackSelectorWithFiles,
         closeSubtitleTrackSelector,
         subtitleTrackSelectorSelectedTrackIds,
         setSubtitleTrackSelectorSelectedTrackIds,

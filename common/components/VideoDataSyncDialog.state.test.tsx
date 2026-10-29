@@ -42,7 +42,7 @@ describe('local subtitle track selection', () => {
 
     function Harness({ files }: { files?: FileWithId[] }) {
         state = useVideoDataSyncDialogState(files);
-        return null;
+        return <button onClick={state.openSubtitleTrackSelector}>Load subtitles</button>;
     }
 
     const render = (files?: FileWithId[]) => {
@@ -61,6 +61,18 @@ describe('local subtitle track selection', () => {
         container.remove();
     });
 
+    it.each([0, 1, 2])('opens from a button click with %i loaded files', (count) => {
+        const files = Array.from({ length: count }, (_, index) => subtitleFile(String(index)));
+        render(files);
+
+        act(() => container.querySelector('button')!.click());
+
+        expect(state.subtitleTrackSelectorOpen).toBe(true);
+        expect(state.subtitleTrackSelectorSelectedTrackIds).toEqual(
+            Array.from({ length: 3 }, (_, index) => files[index]?.id ?? '-')
+        );
+    });
+
     it('shows dropped files as the selected tracks in their loaded order', () => {
         const files = [subtitleFile('ja', 'Japanese.ass'), subtitleFile('en', 'English.srt')];
         render(files);
@@ -73,6 +85,18 @@ describe('local subtitle track selection', () => {
         expect(track.file).toBe(files[0].file);
         expect(track.label).toBe('Japanese.ass');
         expect(track.extension).toBe('ass');
+    });
+
+    it('opens incoming candidates without replacing the active files', () => {
+        const loaded = [subtitleFile('loaded')];
+        const incoming = ['a', 'b', 'c', 'd'].map((id) => subtitleFile(id));
+        render(loaded);
+        act(() => state.openSubtitleTrackSelectorWithFiles(incoming));
+        expect(state.subtitleTrackSelectorSelectedTrackIds).toEqual(['a', 'b', 'c']);
+        expect(state.subtitleTrackSelectorTracks.map(({ id }) => id)).toEqual(['-', 'a', 'b', 'c', 'd']);
+        act(() => state.closeSubtitleTrackSelector());
+        open();
+        expect(state.subtitleTrackSelectorSelectedTrackIds).toEqual(['loaded', '-', '-']);
     });
 
     it('preserves an empty slot before a loaded track', () => {
