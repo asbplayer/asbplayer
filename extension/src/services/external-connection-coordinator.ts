@@ -111,6 +111,13 @@ export class ExternalConnectionCoordinator {
         );
     }
 
+    /**
+     * Allows tests to inspect tracked ports.
+     */
+    portsForExtensionId(extensionId: string): Browser.runtime.Port[] {
+        return [...(this._ports.get(extensionId) ?? [])];
+    }
+
     private _onConnectExternal(port: Browser.runtime.Port) {
         if (port.name !== externalExtensionPortName) {
             port.disconnect();
@@ -188,7 +195,7 @@ export class ExternalConnectionCoordinator {
         }
 
         if ((result as { state?: string } | undefined)?.state === 'denied') {
-            port.disconnect();
+            this._disconnectPort(senderId, port);
         }
     }
 
@@ -360,10 +367,21 @@ export class ExternalConnectionCoordinator {
 
     private _disconnectPorts(extensionId: string) {
         for (const port of [...(this._ports.get(extensionId) ?? [])]) {
-            try {
-                port.disconnect();
-            } catch {
-                // Expected if the port disconnects concurrently.
+            this._disconnectPort(extensionId, port);
+        }
+    }
+
+    private _disconnectPort(extensionId: string, port: Browser.runtime.Port) {
+        try {
+            port.disconnect();
+        } catch {
+            // Expected if the port disconnects concurrently.
+        }
+        const ports = this._ports.get(extensionId);
+        if (ports != null) {
+            ports.delete(port);
+            if (ports.size === 0) {
+                this._ports.delete(extensionId);
             }
         }
     }
