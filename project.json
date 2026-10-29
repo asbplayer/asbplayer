@@ -55,6 +55,8 @@
         }
     },
     "development": {
+        "node": "24.22.1",
+        "pnpm": "11.27.0",
         "host": "localhost",
         "port": 3000
     },

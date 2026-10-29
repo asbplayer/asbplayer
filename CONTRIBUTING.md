@@ -55,15 +55,17 @@ Use these values for current project defaults, links, and UI metadata. Keep user
 
 After editing `project.json`, run `pnpm sync:project` and include the generated changes in your commit. `pnpm check:project` (also part of `pnpm verify`) detects stale generated files. The Anki add-on and Go server packaging scripts also synchronize configuration before building, so their distributions do not need the repository at runtime.
 
+If tool version checks block syncing, run `node scripts/sync-project-config.ts` directly.
+
 ### Commands
 
-Use the Node version specified in `.nvmrc`, either via a node version manager (e.g. `nvm use`) or via nix, which has it locked down in `flake.lock`.
+Use the Node.js and pnpm versions in [`project.json`](./project.json). Sync updates `.nvmrc` and `package.json`; with nvm, run `nvm install && nvm use`.
 
 Below are useful commands for development.
 
 ```bash
-# Install pnpm (if not using nix). Other ways to install: https://pnpm.io/installation
-curl -fsSL https://get.pnpm.io/install.sh | env PNPM_VERSION=11.27.0 sh -
+# Install pnpm from project.json (if not using nix).
+curl -fsSL https://get.pnpm.io/install.sh | env PNPM_VERSION="$(node -p "require('./project.json').development.pnpm")" sh -
 
 # Install dependencies
 pnpm i
