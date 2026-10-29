@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -364,33 +365,38 @@ func (forwarder forwarder) encodeCommand(client *wsClient, command clientCommand
 	return json.Marshal(frame)
 }
 
-func (forwarder forwarder) publishCommand(command clientCommand, notification bool) error {
-	var firstErr error
+func (forwarder forwarder) publishCommand(command clientCommand, notification bool) (bool, error) {
+	var errs []error
+	var sentAtLeastOnce bool
 
 	for _, client := range forwarder.clients() {
 		bytes, err := forwarder.encodeCommand(client, command, notification)
 
 		if err != nil {
-			if firstErr == nil {
-				firstErr = err
-			}
-
+			errs = append(errs, err)
 			continue
 		}
 
-		if err := client.send(websocket.TextMessage, bytes); err != nil && firstErr == nil {
-			firstErr = err
+		err = client.send(websocket.TextMessage, bytes)
+		if err == nil {
+			sentAtLeastOnce = true
+		} else {
+			errs = append(errs, err)
 		}
 	}
 
-	return firstErr
+	if len(errs) == 0 {
+		return sentAtLeastOnce, nil
+	}
+
+	return sentAtLeastOnce, errors.Join(errs...)
 }
 
-func (forwarder forwarder) publishMessage(command clientCommand) error {
+func (forwarder forwarder) publishMessage(command clientCommand) (bool, error) {
 	return forwarder.publishCommand(command, false)
 }
 
-func (forwarder forwarder) publishNotification(command clientCommand) error {
+func (forwarder forwarder) publishNotification(command clientCommand) (bool, error) {
 	return forwarder.publishCommand(command, true)
 }
 
@@ -401,9 +407,12 @@ func (forwarder forwarder) publishMessageAndAwaitResponse(command clientCommand)
 
 	request := forwarder.Broker.register(command.MessageId)
 
-	if err := forwarder.publishMessage(command); err != nil {
+	if sent, err := forwarder.publishMessage(command); !sent {
 		forwarder.Broker.cancel(command.MessageId, request)
-		return clientResponse{}, &rpcError{Code: jsonRpcInternalError, Message: "Internal error", Data: err.Error()}
+		if err != nil {
+			return clientResponse{}, &rpcError{Code: jsonRpcInternalError, Message: "Internal error", Data: err.Error()}
+		}
+		return clientResponse{}, &rpcError{Code: jsonRpcNoClients, Message: "No clients", Data: err.Error()}
 	}
 
 	select {
@@ -523,10 +532,14 @@ func (forwarder forwarder) handlePostRequest(c echo.Context) error {
 			}
 		}
 
-		err := forwarder.publishNotification(command)
+		sent, err := forwarder.publishNotification(command)
 
 		if err != nil {
-			fmt.Printf("Failed to publish command to asbplayer: %v", err)
+			if sent {
+				c.Logger().Warn("Command was published to asbplayer but errors were encountered", err)
+			} else {
+				c.Logger().Error("Failed to publish command to asbplayer", err)
+			}
 		}
 
 		return responseErr
