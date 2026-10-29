@@ -58,12 +58,14 @@ Release and archive names are shared with the client and selection scripts; see 
 
 ## Rebuild from released sources
 
-Each release offers the repository source and upstream source tarballs described in [corresponding source and licensing](release.md#corresponding-source-and-licensing). Keeping the upstream tarballs unmodified lets anyone check them against the upstream hashes and signatures. To rebuild from those, extract the source code archive, extract the sources archive's tarballs into `ffmpeg/.cache/archives/` (`tar -xzf asbplayer-ffmpeg-<version>-sources.tar.gz --strip-components=1 -C ffmpeg/.cache/archives`), and run with Docker/buildx available. Replace `0.1.0` below with the release's runtime version:
+Each release offers the repository source and upstream source tarballs described in [corresponding source and licensing](release.md#corresponding-source-and-licensing). Keeping the upstream tarballs unmodified lets anyone check them against the upstream hashes and signatures. Extract the source code archive and place the sources archive in its root, then run there with Docker/buildx available. Replace `0.1.0` below with the release's runtime version:
 
 ```sh
+mkdir -p ffmpeg/.cache/archives
+tar -xzf asbplayer-ffmpeg-0.1.0-sources.tar.gz --strip-components=1 -C ffmpeg/.cache/archives
 corepack enable
 pnpm install --frozen-lockfile --filter @project/ffmpeg
 ASB_FFMPEG_RUNTIME_VERSION=0.1.0 pnpm --filter @project/ffmpeg run build:candidate
 ```
 
-The override stamps the release version into the build without changing the lock, which may still select an earlier runtime in the tagged source. The release workflow supplies it automatically for builds and checks. Use the same override when running `verify:release` or [`verify:reproducible`](../scripts/verify-reproducible.sh), which rebuilds from the repository files and packaged sources archive and compares the result byte for byte.
+The override stamps the release version into the build without changing the lock, which may still select an earlier runtime in the tagged source. The release workflow supplies it automatically for builds and checks. Use the same override when running `verify:release` or [`verify:reproducible`](../scripts/verify-reproducible.sh), which rebuilds from the repository files and packaged sources archive and compares the result byte for byte. Reproduction works from both a Git checkout and an extracted source archive; installed dependencies and generated FFmpeg outputs are excluded from the clean rebuild.
