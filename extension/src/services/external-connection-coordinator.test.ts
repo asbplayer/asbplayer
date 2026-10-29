@@ -219,7 +219,7 @@ describe('external connection coordinator', () => {
     it('does not send anything to an unapproved connection until it identifies itself', async () => {
         const port = harness.connect('sibling');
         await flush();
-        const dispatch = jest.spyOn(harness.dispatcher, 'dispatchJsonRpc');
+        const dispatch = jest.spyOn(harness.dispatcher, 'dispatchAppLevelJsonRpc');
 
         expect(port.rpcResponses()).toEqual([]);
 
@@ -374,7 +374,7 @@ describe('external connection coordinator', () => {
     it('dispatches commands from approved extensions and answers with a result', async () => {
         await harness.approve('sibling');
         const port = harness.connect('sibling');
-        const dispatch = jest.spyOn(harness.dispatcher, 'dispatchJsonRpc');
+        const dispatch = jest.spyOn(harness.dispatcher, 'dispatchAppLevelJsonRpc');
         harness.dispatcher.setHandlers({ onGetBoundMedia: async () => [] });
 
         const id = await port.request('get-bound-media', {});
@@ -390,7 +390,7 @@ describe('external connection coordinator', () => {
 
     it('answers commands sent before approval with not approved', async () => {
         const port = harness.connect('sibling');
-        const dispatch = jest.spyOn(harness.dispatcher, 'dispatchJsonRpc');
+        const dispatch = jest.spyOn(harness.dispatcher, 'dispatchAppLevelJsonRpc');
 
         const id = await port.request('get-bound-media', {});
 
@@ -522,7 +522,7 @@ describe('external connection coordinator', () => {
     it('ignores malformed frames and legacy frames', async () => {
         await harness.approve('sibling');
         const port = harness.connect('sibling');
-        const dispatch = jest.spyOn(harness.dispatcher, 'dispatchJsonRpc');
+        const dispatch = jest.spyOn(harness.dispatcher, 'dispatchAppLevelJsonRpc');
 
         await port.receive({});
         await port.receive({ command: 'get-bound-media', body: {} });
@@ -536,7 +536,7 @@ describe('external connection coordinator', () => {
     it('dispatches notifications without answering, even on failure', async () => {
         await harness.approve('sibling');
         const port = harness.connect('sibling');
-        const dispatch = jest.spyOn(harness.dispatcher, 'dispatchJsonRpc');
+        const dispatch = jest.spyOn(harness.dispatcher, 'dispatchAppLevelJsonRpc');
         harness.dispatcher.setHandlers({
             onMineSubtitle: async () => {
                 throw new Error('handler failed');
@@ -571,7 +571,7 @@ describe('external connection coordinator', () => {
         expect(port.disconnected).toEqual(true);
         expect(harness.coordinator.portsForExtensionId('sibling')).not.toContain(port);
 
-        const dispatch = jest.spyOn(harness.dispatcher, 'dispatchJsonRpc');
+        const dispatch = jest.spyOn(harness.dispatcher, 'dispatchAppLevelJsonRpc');
         await port.request('get-bound-media', {});
         expect(dispatch).not.toHaveBeenCalled();
         expect(port.rpcResponses()).toEqual([]);

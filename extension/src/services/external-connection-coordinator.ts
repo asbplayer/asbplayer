@@ -248,7 +248,7 @@ export class ExternalConnectionCoordinator {
                         ? { jsonrpc: '2.0', method: dispatchedMethod, params }
                         : { jsonrpc: '2.0', method: dispatchedMethod, params, id };
 
-                const response = await this._dispatcher.dispatchJsonRpc(request);
+                const response = await this._dispatcher.dispatchAppLevelJsonRpc(request);
 
                 if (response === undefined) {
                     if (id === undefined) {
