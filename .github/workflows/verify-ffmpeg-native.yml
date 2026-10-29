@@ -54,6 +54,11 @@ jobs:
             - name: Setup Node.js and pnpm
               uses: ./.github/actions/setup-node-pnpm
             - run: pnpm install --frozen-lockfile --filter @project/ffmpeg
+            - name: Cache FFmpeg sources
+              uses: actions/cache@v6
+              with:
+                  path: ffmpeg/.cache/archives
+                  key: ffmpeg-sources-${{ hashFiles('ffmpeg/build-config.json') }}
             - run: pnpm --filter @project/ffmpeg run test:native-wasm
 
     native-gate:

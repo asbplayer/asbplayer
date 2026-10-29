@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { createReadStream, createWriteStream } from 'node:fs';
 import { mkdir, mkdtemp, readFile, readdir, rename, rm, stat } from 'node:fs/promises';
 import { basename, dirname, relative, resolve } from 'node:path';
+import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { fileURLToPath } from 'node:url';
 
@@ -42,20 +43,41 @@ export const download = async (url, destination, expectedHash) => {
         // Missing and invalid cache entries are replaced atomically below.
     }
 
-    const temporaryRoot = await mkdtemp(`${destination}.part-`);
-    const temporary = resolve(temporaryRoot, 'download');
-    try {
-        const response = await fetch(url, { redirect: 'follow' });
-        if (!response.ok || response.body === null) {
-            const error = new Error(`Could not download ${url}: HTTP ${response.status}`);
-            error.status = response.status;
-            throw error;
+    const attempts = 4;
+    for (let attempt = 1; attempt <= attempts; attempt++) {
+        const temporaryRoot = await mkdtemp(`${destination}.part-`);
+        const temporary = resolve(temporaryRoot, 'download');
+        const delay = 1000 * 2 ** (attempt - 1);
+        try {
+            const signal = AbortSignal.timeout(120_000);
+            const response = await fetch(url, { redirect: 'follow', signal });
+            if (!response.ok || response.body === null) {
+                const error = new Error(`Could not download ${url}: HTTP ${response.status}`);
+                error.status = response.status;
+                await response.body?.cancel();
+                throw error;
+            }
+            await pipeline(Readable.fromWeb(response.body), createWriteStream(temporary, { flags: 'wx' }), { signal });
+            await verifyFile(temporary, expectedHash);
+            await rename(temporary, destination);
+            return;
+        } catch (error) {
+            // Node fetch reports connection and body-stream failures as TypeError.
+            const retryable =
+                error instanceof TypeError ||
+                error.name === 'AbortError' ||
+                error.name === 'TimeoutError' ||
+                ['ECONNRESET', 'ECONNREFUSED', 'ETIMEDOUT', 'ENOTFOUND', 'EAI_AGAIN', 'EPIPE'].includes(error.code) ||
+                error.status === 429 ||
+                (error.status >= 500 && error.status <= 599);
+            if (!retryable || attempt === attempts) throw error;
+            process.stderr.write(
+                `Download attempt ${attempt}/${attempts} failed for ${url}: ${error.message}. Retrying in ${delay}ms.\n`
+            );
+        } finally {
+            await rm(temporaryRoot, { recursive: true, force: true });
         }
-        await pipeline(response.body, createWriteStream(temporary, { flags: 'wx' }));
-        await verifyFile(temporary, expectedHash);
-        await rename(temporary, destination);
-    } finally {
-        await rm(temporaryRoot, { recursive: true, force: true });
+        await new Promise((resolve) => setTimeout(resolve, delay));
     }
 };
 
