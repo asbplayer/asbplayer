@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 
 # Prepare the inputs and Docker arguments shared by runtime builds and native/WASM tests.
 prepare_build() {

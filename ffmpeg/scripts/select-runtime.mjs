@@ -1,82 +1,17 @@
-import { createWriteStream } from 'node:fs';
 import { mkdir, mkdtemp, rename, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { execFile } from 'node:child_process';
 import { isDeepStrictEqual, parseArgs, promisify } from 'node:util';
-import { pipeline } from 'node:stream/promises';
-import { fileInfo, packageRoot, readJson } from './lib.mjs';
+import { packageRoot, readJson } from './lib.mjs';
 import { verifyRuntimeArchive as verifyRuntimeArchiveContents } from './runtime-archive-validator.cjs';
 import { extractSourcesArchive } from './sources-archive.mjs';
 import { releaseNames } from './release-names.mjs';
 import { verifyRuntimeDirectory, verifyRuntimeManifest } from './runtime-manifest.mjs';
 import { parseRuntimeVersion } from './runtime-version.mjs';
+import { githubHeaders, findRelease, fetchAsset } from './github-release.mjs';
 
 const execFileAsync = promisify(execFile);
-
-const githubHeaders = async () => {
-    let token = process.env.GH_TOKEN || process.env.GITHUB_TOKEN;
-    if (!token) {
-        try {
-            const { stdout } = await execFileAsync('gh', ['auth', 'token', '--hostname', 'github.com']);
-            token = stdout.trim();
-        } catch {
-            // Public releases can be selected without credentials or the GitHub CLI.
-        }
-    }
-    return {
-        Accept: 'application/vnd.github+json',
-        'X-GitHub-Api-Version': '2022-11-28',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    };
-};
-
-const findRelease = async (apiBaseUrl, tag, headers) => {
-    const url = `${apiBaseUrl}/tags/${encodeURIComponent(tag)}`;
-    const response = await fetch(url, { headers });
-    if (response.ok) return response.json();
-    if (response.status !== 404) throw new Error(`Could not read ${url}: HTTP ${response.status}`);
-
-    // The tag endpoint only returns published releases; authenticated listings also include drafts.
-    for (let page = 1; ; page++) {
-        const listUrl = `${apiBaseUrl}?per_page=100&page=${page}`;
-        const listResponse = await fetch(listUrl, { headers });
-        if (!listResponse.ok) throw new Error(`Could not read ${listUrl}: HTTP ${listResponse.status}`);
-        const releases = await listResponse.json();
-        const release = releases.find((release) => release.tag_name === tag);
-        if (release) return release;
-        if (releases.length < 100) break;
-    }
-    throw new Error(
-        `GitHub release ${tag} was not found. For drafts, set GH_TOKEN or GITHUB_TOKEN, or run gh auth login with access to the repository.`
-    );
-};
-
-const fetchAsset = async (apiBaseUrl, assets, filename, destination, headers) => {
-    const asset = assets.find((asset) => asset.name === filename);
-    if (!asset) throw new Error(`GitHub release is missing ${filename}`);
-    if (
-        !Number.isSafeInteger(asset.id) ||
-        asset.id <= 0 ||
-        !Number.isSafeInteger(asset.size) ||
-        asset.size < 0 ||
-        !/^sha256:[a-f0-9]{64}$/.test(asset.digest ?? '')
-    ) {
-        throw new Error(`GitHub asset ${filename} has no valid SHA-256 digest, size, or identity`);
-    }
-    const url = `${apiBaseUrl}/assets/${asset.id}`;
-    const response = await fetch(url, {
-        redirect: 'follow',
-        headers: { ...headers, Accept: 'application/octet-stream' },
-    });
-    if (!response.ok || response.body === null) throw new Error(`Could not download ${url}: HTTP ${response.status}`);
-    await pipeline(response.body, createWriteStream(destination, { flags: 'wx' }));
-    const info = await fileInfo(destination);
-    if (`sha256:${info.sha256}` !== asset.digest || info.bytes !== asset.size) {
-        throw new Error(`GitHub SHA-256 or size mismatch for ${filename}`);
-    }
-    return info;
-};
 
 const verifyPublishedRuntimeArchive = async (archivePath, extractionRoot, version) => {
     await verifyRuntimeArchiveContents(archivePath, version);
@@ -147,7 +82,7 @@ const selectRuntime = async () => {
 
         const lockPath = resolve(packageRoot, 'artifact-lock.json');
         const previous = await readJson(lockPath);
-        if (previous.runtimeVersion === version && !isDeepStrictEqual(previous, lock)) {
+        if (previous.runtimeVersion === version && !isDeepStrictEqual(previous, lock) && release.draft !== true) {
             throw new Error(
                 'Published FFmpeg ' + version + ' bytes are immutable; bump the runtime version before recording'
             );
@@ -164,7 +99,9 @@ const selectRuntime = async () => {
             'Selected FFmpeg runtime ' + version + '; inspect and commit artifact-lock.json explicitly.\n'
         );
         if (release.draft) {
-            process.stdout.write('Publish the selected draft before the app can download this runtime.\n');
+            process.stdout.write(
+                'Draft selected for local testing. Keep the lock change uncommitted until the release is published.\n'
+            );
         }
     } finally {
         await rm(temporaryRoot, { recursive: true, force: true });

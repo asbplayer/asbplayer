@@ -66,6 +66,7 @@ beforeEach(async () => {
         'release-names.mjs',
         'release-info.mjs',
         'select-runtime.mjs',
+        'github-release.mjs',
         'verify-artifacts.mjs',
         'runtime-archive-validator.cjs',
         'sources-archive.mjs',
@@ -221,7 +222,7 @@ it.each(['GH_TOKEN', 'GITHUB_TOKEN'])(
         const { stdout } = await select(['--repo', 'example/fork'], env);
         const lock = await readLock();
         expect(JSON.parse(lock).runtimeArchive.sha256).toBe(digest(await readFile(resolve(release, runtimeName))));
-        expect(stdout).toContain('Publish the selected draft');
+        expect(stdout).toContain('Draft selected');
 
         // Publishing does not change the canonical URLs or the selected bytes.
         await configureGithub({});
@@ -229,6 +230,29 @@ it.each(['GH_TOKEN', 'GITHUB_TOKEN'])(
         expect(await readLock()).toBe(lock);
     }
 );
+
+it('permits repeated draft selection until publication', async () => {
+    await configureGithub({ draft: true });
+    const env = { GH_TOKEN: 'test-token' };
+    await select(['--repo', 'example/fork'], env);
+    const firstLock = await readLock();
+
+    // A valid new archive with the same manifest/runtime identity represents a rebuilt draft.
+    await exec('tar', ['--format=pax', '-czf', resolve(release, runtimeName), '-C', resolve(root, 'runtime'), version]);
+    await select(['--repo', 'example/fork'], env);
+    const finalLock = await readLock();
+    expect(finalLock).not.toBe(firstLock);
+    expect(JSON.parse(finalLock).runtimeArchive.sha256).toBe(digest(await readFile(resolve(release, runtimeName))));
+
+    // Publishing the selected bytes does not require another lock edit.
+    await configureGithub({});
+    await select(['--repo', 'example/fork'], env);
+    expect(await readLock()).toBe(finalLock);
+
+    await writeRuntimeArchive();
+    await expect(select(['--repo', 'example/fork'], env)).rejects.toThrow('immutable');
+    expect(await readLock()).toBe(finalLock);
+});
 
 it('uses the existing GitHub CLI login when no token environment variable is set', async () => {
     await configureGithub({ draft: true });

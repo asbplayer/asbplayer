@@ -47,7 +47,9 @@ export const download = async (url, destination, expectedHash) => {
     try {
         const response = await fetch(url, { redirect: 'follow' });
         if (!response.ok || response.body === null) {
-            throw new Error(`Could not download ${url}: HTTP ${response.status}`);
+            const error = new Error(`Could not download ${url}: HTTP ${response.status}`);
+            error.status = response.status;
+            throw error;
         }
         await pipeline(response.body, createWriteStream(temporary, { flags: 'wx' }));
         await verifyFile(temporary, expectedHash);
