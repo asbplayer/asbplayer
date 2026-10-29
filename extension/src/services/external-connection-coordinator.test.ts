@@ -71,12 +71,18 @@ class FakePort {
         await flush();
     }
 
+    simulateDisconnectFromClientSide() {
+        this.disconnected = true;
+        for (const listener of this._disconnectListeners) {
+            listener();
+        }
+    }
+
     disconnect() {
         this.disconnected = true;
 
-        for (const listener of [...this._disconnectListeners]) {
-            listener();
-        }
+        // As per https://developer.chrome.com/docs/extensions/reference/api/runtime#type-Port
+        // disconnect() does not call the onDisconnect listeners, so they are intentionally not called here
     }
 
     rpcResponses(): RpcResponse[] {
@@ -325,6 +331,7 @@ describe('external connection coordinator', () => {
         await port.notify('approval-state');
 
         expect(port.disconnected).toBe(true);
+        expect(harness.coordinator.portsForExtensionId('sibling')).not.toContain(port);
     });
 
     it('allows a denied extension to request again after the cooldown expires', async () => {
@@ -562,6 +569,7 @@ describe('external connection coordinator', () => {
         await harness.externalConnectionsChanged(harness.emptyState());
 
         expect(port.disconnected).toEqual(true);
+        expect(harness.coordinator.portsForExtensionId('sibling')).not.toContain(port);
 
         const dispatch = jest.spyOn(harness.dispatcher, 'dispatchJsonRpc');
         await port.request('get-bound-media', {});
@@ -578,6 +586,8 @@ describe('external connection coordinator', () => {
 
         expect(port1.disconnected).toEqual(true);
         expect(port2.disconnected).toEqual(true);
+        expect(harness.coordinator.portsForExtensionId('sibling')).not.toContain(port1);
+        expect(harness.coordinator.portsForExtensionId('sibling')).not.toContain(port2);
     });
 
     it('does not fail when posting a response to a port that disconnects concurrently', async () => {
@@ -643,5 +653,14 @@ describe('external connection coordinator', () => {
 
         expect(port.disconnected).toEqual(true);
         expect(port.posted).toEqual([]);
+    });
+
+    it('cleans up ports when a client disconnects', async () => {
+        const port = harness.connect('sibling');
+
+        expect(harness.coordinator.portsForExtensionId('sibling')).toContain(port);
+        port.simulateDisconnectFromClientSide();
+        expect(port.disconnected).toEqual(true);
+        expect(harness.coordinator.portsForExtensionId('sibling')).not.toContain(port);
     });
 });
