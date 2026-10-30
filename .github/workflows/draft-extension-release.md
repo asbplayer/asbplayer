@@ -64,6 +64,14 @@ pre-agent-steps:
           cat milestone-items.md
           echo "--- release-meta.json ---"
           cat release-meta.json
+    - name: Collect webapp-only items
+      env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          INPUT_VERSION: ${{ inputs.version }}
+      run: |
+          bash scripts/release-notes/collect-app-only-items.sh "$INPUT_VERSION" webapp-only-items.md
+          echo "--- webapp-only-items.md ---"
+          cat webapp-only-items.md
 
 safe-outputs:
     threat-detection: false
@@ -230,12 +238,17 @@ publishes it. Your job is only the categorized change lists.
 - `milestone-items.md` in the workspace root: every issue and pull request attached
   to the milestone `Extension v<version>`. Each block lists the number, kind, state,
   merge status, author, labels, changed files (for pull requests) and a truncated body.
+- `webapp-only-items.md` in the workspace root: merged pull requests since the
+  previous extension release that affect the web app but are attached to no
+  extension milestone. Same block format as `milestone-items.md`. Its first line is
+  the exact title to use for the webapp-only section.
 - `release-meta.json`: the resolved `version`, `milestone`, `milestone_number` and a
   best-effort `compare_url`.
 
-The milestone is the **only** source of items. Do not derive items from the git
-history, from GitHub's auto-generated release notes, or from anything that is not in
-`milestone-items.md`.
+The milestone is the **only** source of extension release items, and
+`milestone-items.md` plus `webapp-only-items.md` are the **only** sources of
+webapp-only items. Do not derive items from the git history, from GitHub's
+auto-generated release notes, or from anything that is not in these files.
 
 ## Choosing items
 
@@ -254,7 +267,8 @@ history, from GitHub's auto-generated release notes, or from anything that is no
 
 ## Categorization
 
-Group every included item under exactly one of these sections:
+Group every extension-affecting milestone item under exactly one of these sections
+(webapp-only milestone items belong to the webapp-only section instead — see below):
 
 - `### Enhancements` — new user-facing features or capabilities.
 - `### Bug fixes` — corrections to incorrect behavior.
@@ -272,6 +286,34 @@ instead.
 You may add `####` sub-groupings under a section when several bullets clearly belong
 together (for example, per-site subtitle detection). Omit a section entirely when it
 has no entries.
+
+## Webapp-only changes
+
+The web app deploys continuously, so changes ship to it without waiting for
+extension releases. The release notes carry a section for webapp-only changes so
+extension users can see what the web app gained since the previous extension
+release. The section's items come from two sources, and each appears **only** there,
+never in the main sections:
+
+1. Every pull request listed in `webapp-only-items.md`.
+2. Milestone pull requests that affect only the web app, classified below.
+
+Classify every milestone pull request as webapp-only or extension-affecting:
+
+1. Labels are authoritative: a pull request with the `application` label but not
+   the `extension` label is webapp-only, regardless of its changed files.
+2. Otherwise decide from the title, body, changed file paths and the codebase: the
+   web app is built from `common/` and `client/`, the extension from `extension/`
+   and `common/`. Changes under `client/` only affect the web app. For `common/`
+   changes, determine whether the extension uses the changed code — read the pull
+   request diff with the read-only GitHub tools, or use the read-only bash commands
+   to grep the repository for imports of the changed modules from `extension/`.
+3. When the surface cannot be determined, treat the pull request as
+   extension-affecting so it stays in the main sections.
+
+Bullets in the webapp-only section use the same format as the main sections. You may
+collapse several closely related items (for example localization updates) into one
+bullet that links them all.
 
 ## Formatting
 
@@ -322,9 +364,16 @@ Ignore bots. Omit the whole section when you can determine no new contributors.
 ### QoL
 - ...
 
+### Webapp-only changes since v1.22.0
+- ...
+
 ## New Contributors
 * ...
 ```
+
+Title the webapp-only section with the first line of `webapp-only-items.md` (for
+example `### Webapp-only changes since v1.22.0`) and place it after the QoL section.
+Omit it entirely when it has no items.
 
 Then call the `create_draft_release` tool exactly once with:
 
@@ -333,4 +382,5 @@ Then call the `create_draft_release` tool exactly once with:
 
 Call the tool exactly once even when the workflow is a dry run; the release job
 handles the dry-run preview. If `milestone-items.md` contains no eligible merged
-items, still call the tool with a body that says the milestone had no merged changes.
+items, still call the tool with a body that says the milestone had no merged changes
+(the webapp-only section still appears when it has items).

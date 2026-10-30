@@ -1,7 +1,7 @@
 ---
 name: "Agent: Create app deploy branch"
 description: |
-  Prepares a deploy pull request from main to cf-pages with LLM-generated release notes and a follow-up commit linking the app version to the deploy PR.
+  Prepares a deploy pull request from main to cf-pages with LLM-generated release notes, a date-based app version tag, and a follow-up commit linking the app version to the tag.
 
 on:
   workflow_dispatch:
@@ -123,9 +123,10 @@ safe-outputs:
   jobs:
     finalize-deploy:
       description: >-
-        Create the cf-pages deploy pull request with the generated release notes and
-        push a follow-up commit linking the app version to the deploy PR. Call this tool exactly
-        once, after composing the release notes.
+        Create the cf-pages deploy pull request with the generated release notes,
+        reserve a date-based app version tag, and push a follow-up commit linking the
+        app version to the tag. Call this tool exactly once, after composing the
+        release notes.
       runs-on: ubuntu-latest
       permissions:
         contents: write
@@ -197,14 +198,57 @@ safe-outputs:
               git push origin --delete "$stale_branch"
             done
 
-            echo "VITE_APP_VERSION_REPO_PATH=pull/$pr_number" > client/.env.production
+            # Reserve a date-based app version tag for the app's About dialog.
+            # No GitHub release is created. A same-day redeploy bumps the
+            # suffix to avoid a collision.
+            version=$(date -u +%Y.%m.%d)
+            tag="app-v$version"
+            suffix=1
+            while git ls-remote --exit-code origin "refs/tags/$tag" >/dev/null 2>&1; do
+              suffix=$((suffix + 1))
+              tag="app-v$version.$suffix"
+            done
+            echo "Reserved app version tag: $tag"
+
+            echo "VITE_APP_VERSION_REPO_PATH=releases/tag/$tag" > client/.env.production
             git add client/.env.production
             if git diff --cached --quiet; then
               echo "Env file unchanged; skipping commit."
             else
-              git commit -m "chore: link app version to deploy PR #$pr_number"
+              git commit -m "chore: link app version to $tag (deploy PR #$pr_number)"
               git push origin "$DEPLOY_BRANCH"
             fi
+
+            # Create the tag after the commit so it points at the final tip
+            git tag -a "$tag" -m "App deploy $version - release notes in PR #$pr_number"
+            git push origin "refs/tags/$tag"
+
+            # Delete app-v* tags from superseded or abandoned deploy cycles. A
+            # tag's message names its deploy PR; keep a tag only when that PR
+            # merged into cf-pages.
+            git fetch --no-tags origin '+refs/tags/app-v*:refs/tags/app-v*'
+            for stale_tag in $(git tag --list 'app-v*'); do
+              if [ "$stale_tag" = "$tag" ]; then
+                continue
+              fi
+              tagged_pr=$(git tag -l --format='%(contents:subject)' "$stale_tag" \
+                | grep -oE '#[0-9]+' | head -n1 | tr -d '#')
+              if [ -z "$tagged_pr" ]; then
+                echo "Keeping $stale_tag: no deploy PR reference in its tag message"
+                continue
+              fi
+              merge_state=$(gh pr view "$tagged_pr" --json mergedAt,baseRefName \
+                --jq 'if .baseRefName == "cf-pages" and .mergedAt != null then "merged" else "unmerged" end' \
+                2>/dev/null || echo "missing")
+              if [ "$merge_state" = "merged" ]; then
+                continue
+              fi
+              if git push origin --delete "refs/tags/$stale_tag" 2>/dev/null; then
+                echo "Deleted stale app version tag $stale_tag (deploy PR #$tagged_pr is $merge_state)"
+              else
+                echo "::warning::Failed to delete stale app version tag $stale_tag"
+              fi
+            done
 
 ---
 
