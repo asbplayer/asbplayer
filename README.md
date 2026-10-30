@@ -206,8 +206,7 @@ Submit bugs or feature requests from the [issues page](https://github.com/asbpla
 
 ### Environment
 
-- node 24.22.1
-- pnpm 11.27.0
+Use the Node.js and pnpm versions specified by `development.node` and `development.pnpm` in [`project.json`](./project.json).
 
 ### Building
 

@@ -19,6 +19,11 @@
             "name": "pnpm",
             "version": "11.27.0",
             "onFail": "error"
+        },
+        "runtime": {
+            "name": "node",
+            "version": "^24.22.1",
+            "onFail": "error"
         }
     },
     "scripts": {
@@ -26,8 +31,9 @@
         "check:project": "node --experimental-strip-types scripts/sync-project-config.ts --check",
         "check:contributors": "node --experimental-strip-types scripts/check-contributors.ts",
         "test:scripts": "node --test --experimental-strip-types scripts/*.test.ts",
-        "verify": "pnpm run check:project && scripts/loc/loc-keys-match && scripts/page-file-references-are-correct && pnpm --filter @project/common run typecheck && pnpm --filter @project/common run test && pnpm --filter @project/client run test && pnpm --filter @project/extension run test && pnpm eslint common extension/src client/src && pnpm run test:scripts && pnpm run pretty:check",
-        "pretty": "pnpm prettier --write './(client|common|extension)/**/*.(js|ts|tsx|css)' './scripts/*.ts'",
-        "pretty:check": "pnpm prettier --check './(client|common|extension)/**/*.(js|ts|tsx|css)' './scripts/*.ts'"
+        "verify": "pnpm run verify:app && pnpm run test:scripts && pnpm --filter @project/ffmpeg run verify:code",
+        "verify:app": "pnpm run check:project && scripts/loc/loc-keys-match && scripts/page-file-references-are-correct && pnpm --filter @project/common run typecheck && pnpm --filter @project/common run test && pnpm --filter @project/client run test && pnpm --filter @project/extension run test && pnpm eslint common extension/src client/src && pnpm run pretty:check",
+        "pretty": "pnpm prettier --write './(client|common|extension|ffmpeg)/**/*.(js|mjs|cjs|ts|tsx|css)' './scripts/*.ts'",
+        "pretty:check": "pnpm prettier --check './(client|common|extension|ffmpeg)/**/*.(js|mjs|cjs|ts|tsx|css)' './scripts/*.ts'"
     }
 }

@@ -38,9 +38,35 @@ function withPythonProjectMetadata(contents: string, addon: Project['releases'][
     return updated;
 }
 
+function withDevelopmentEngines(contents: string, development: Project['development']): string {
+    const manifest = JSON.parse(contents);
+    manifest.devEngines = {
+        ...manifest.devEngines,
+        runtime: {
+            ...manifest.devEngines?.runtime,
+            name: 'node',
+            version: `^${development.node}`,
+            onFail: 'error',
+        },
+        packageManager: {
+            ...manifest.devEngines?.packageManager,
+            name: 'pnpm',
+            version: development.pnpm,
+            onFail: 'error',
+        },
+    };
+    return json(manifest);
+}
+
 export function generatedProjectFiles(project: Project): Record<string, string> {
+    for (const tool of ['node', 'pnpm'] as const) {
+        if (!/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(project.development[tool])) {
+            throw new Error(`development.${tool} must use an exact major.minor.patch version`);
+        }
+    }
     const { webSocket, ankiConnect } = project.services;
     return {
+        '.nvmrc': `${project.development.node}\n`,
         'common/extension.json': json({
             latest: {
                 version: project.releases.extension.publishedVersion,
@@ -175,6 +201,10 @@ function missingLanguageFiles(root: string, languages: Project['languages']): Re
 export function syncProjectConfig(root: string, check = false): string[] {
     const project: Project = JSON.parse(readFileSync(join(root, 'project.json'), 'utf8'));
     const generated = { ...generatedProjectFiles(project), ...missingLanguageFiles(root, project.languages) };
+    generated['package.json'] = withDevelopmentEngines(
+        readFileSync(join(root, 'package.json'), 'utf8'),
+        project.development
+    );
     const pythonProject = 'plugins/anki/pyproject.toml';
     generated[pythonProject] = withPythonProjectMetadata(
         readFileSync(join(root, pythonProject), 'utf8'),

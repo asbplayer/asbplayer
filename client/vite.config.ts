@@ -4,15 +4,19 @@ import { createHtmlPlugin } from 'vite-plugin-html';
 import { VitePWA } from 'vite-plugin-pwa';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
 import project from '../project.json' with { type: 'json' };
+import { createFfmpegBuildConfig } from '@project/client/ffmpeg-build';
 
-export default defineConfig(({ mode }) => {
+export default defineConfig(async ({ mode, isPreview }) => {
     const env = loadEnv(mode, process.cwd());
     const appUrl = new URL(project.urls.app);
     if (env.VITE_APP_DOMAIN) appUrl.host = env.VITE_APP_DOMAIN;
     const domain = appUrl.host;
     const base = env.VITE_APP_BASE_PATH || '/';
+    const candidate = ['1', 'true'].includes(env.VITE_FFMPEG_CANDIDATE?.toLowerCase());
+    const ffmpeg = await createFfmpegBuildConfig({ candidate, base, prepare: !isPreview });
     return {
         base,
+        define: ffmpeg.define,
         resolve: {
             tsconfigPaths: true,
         },
@@ -48,9 +52,11 @@ export default defineConfig(({ mode }) => {
                         src: '../common/extension.json',
                         dest: '',
                     },
+                    ...ffmpeg.copyTargets,
                 ],
             }),
             VitePWA({
+                strategies: 'generateSW',
                 registerType: 'prompt',
                 includeAssets: ['locales/*.json', 'background-colored.png'],
                 manifest: {
@@ -82,6 +88,15 @@ export default defineConfig(({ mode }) => {
                 },
                 devOptions: {
                     enabled: false,
+                },
+                workbox: {
+                    clientsClaim: true,
+                    cleanupOutdatedCaches: true,
+                    navigateFallback: 'index.html',
+                    navigateFallbackDenylist: [/\/ffmpeg\//],
+                    globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,txt}'],
+                    globIgnores: ['**/ffmpeg/**'],
+                    sourcemap: true,
                 },
             }),
         ],

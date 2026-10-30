@@ -17,6 +17,13 @@
             "releaseTag": "v{{version}}",
             "sources": "asbplayer-{{version}}-sources"
         },
+        "ffmpeg": {
+            "package": "asbplayer-ffmpeg",
+            "releaseTitle": "asbplayer-ffmpeg-v{{version}}",
+            "releaseTag": "ffmpeg-v{{version}}",
+            "artifact": "asbplayer-ffmpeg-{{version}}-runtime",
+            "sources": "asbplayer-ffmpeg-{{version}}-sources"
+        },
         "ankiAddon": {
             "version": "1.0.0",
             "minPointVersion": "25.02",
@@ -48,6 +55,8 @@
         }
     },
     "development": {
+        "node": "24.22.1",
+        "pnpm": "11.27.0",
         "host": "localhost",
         "port": 3000
     },
