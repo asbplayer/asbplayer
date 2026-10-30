@@ -882,8 +882,6 @@ export class DictionaryDB {
         profiles: string[]
     ): Promise<DictionaryImportRecordLocalResult> {
         if (!items.length) return { importedTokens: [] };
-        const defaultProfile = this._getProfile(undefined);
-        if (!profiles.includes(defaultProfile)) profiles.unshift(defaultProfile);
         const fullyKnownStatus = getFullyKnownTokenStatus();
 
         return this.db.transaction('rw', this.db.tokens, async () => {
