@@ -3,6 +3,7 @@ minimumReleaseAge: 720
 packages:
     - 'client'
     - 'common'
+    - 'external-api'
     - 'extension'
     - 'docs'
     - 'scripts/loc'

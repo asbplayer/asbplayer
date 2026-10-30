@@ -1,7 +1,18 @@
 import { asbError } from '@project/common/util/log';
 import type { ExternalConnectionsState, GlobalStateProvider } from '@project/common/global-state';
 import { activePendingEntries, mutateExternalConnections } from '@project/common/global-state';
-import type { ExternalApprovalMessage, ExternalCommand, ExternalHelloMessage } from '@project/common/external-commands';
+import type { ExternalCommand } from '@project/common/external-commands';
+import {
+    externalApiMethod,
+    externalExtensionPortName,
+    isInvalidJsonRpcRequest,
+    jsonRpcError,
+    jsonRpcErrorCodes,
+    jsonRpcProtocol,
+    jsonRpcSuccess,
+    parseJsonRpcIncomingMessage,
+} from '@project/common/external-commands/external-api';
+import type { ExternalApiMethodName, JsonRpcIncomingMessage } from '@project/common/external-commands/external-api';
 import { ExternalCommandDispatcher } from '@project/common/external-commands/dispatcher';
 import { externalCommandHandlers } from '@project/extension/src/services/external-command-handlers';
 import type { SettingsProvider } from '@project/common/settings';
@@ -17,24 +28,23 @@ const maxPendingRequests = 10;
 export const deniedRequestCooldownMs = 24 * 60 * 60 * 1000;
 export const deniedRequestCooldownsKey = 'externalConnectionDeniedCooldowns';
 
-const helloType: ExternalHelloMessage['type'] = 'asbplayer-external-hello';
-
 const badgeReason = 'externalConnections';
+
+class ExternalRpcError extends Error {
+    constructor(
+        readonly code: number,
+        message: string,
+        readonly data?: unknown
+    ) {
+        super(message);
+    }
+}
 
 /**
  * Manages external browser extensions connecting over `browser.runtime.onConnectExternal`.
  *
- * Approval is keyed on the connecting extension's runtime ID and persisted in the
- * `externalConnections` global state key. Surfaces (popup, options page, or the asbplayer app)
- * manage approvals by writing global state; this coordinator only reacts to those writes.
- *
- * The port protocol is the external command wire format shared with the WebSocket server
- * integration, plus:
- * - `{type: 'asbplayer-external-hello', name?, version?}` sent by the external extension on connect
- * - `{type: 'asbplayer-external-approval', approved}` sent whenever the approval state changes
- *
- * Frames from unapproved extensions are dropped, not queued. Pending requests are recorded on
- * hello so the user can be alerted via badges.
+ * Approvals are keyed by extension ID and persisted in `externalConnections`; surfaces write that
+ * state and this coordinator reacts to it. The port uses JSON-RPC 2.0.
  */
 export class ExternalConnectionCoordinator {
     private readonly _globalStateProvider: GlobalStateProvider;
@@ -95,7 +105,19 @@ export class ExternalConnectionCoordinator {
         );
     }
 
+    /**
+     * Allows tests to inspect tracked ports.
+     */
+    portsForExtensionId(extensionId: string): Browser.runtime.Port[] {
+        return [...(this._ports.get(extensionId) ?? [])];
+    }
+
     private _onConnectExternal(port: Browser.runtime.Port) {
+        if (port.name !== externalExtensionPortName) {
+            port.disconnect();
+            return;
+        }
+
         const senderId = port.sender?.id;
 
         if (senderId === undefined) {
@@ -119,56 +141,153 @@ export class ExternalConnectionCoordinator {
             }
         });
 
-        void this._postApproval(port);
         port.onMessage.addListener((message) => void this._onMessage(senderId, port, message));
     }
 
     private async _onMessage(senderId: string, port: Browser.runtime.Port, message: unknown) {
-        if (typeof message === 'object' && message !== null && (message as { type?: unknown }).type === helloType) {
-            try {
-                await this._hello(senderId, message as ExternalHelloMessage);
-            } catch (error) {
-                asbError('external-connection', 'Failed to process external hello:', error);
+        const incoming = parseJsonRpcIncomingMessage(message);
+
+        if (incoming === undefined) {
+            if (isInvalidJsonRpcRequest(message)) {
+                // The id is unusable, so answer with null as JSON-RPC requires.
+                this._post(port, jsonRpcError(null, jsonRpcErrorCodes.invalidRequest, 'Invalid request'));
             }
-            await this._postApproval(port);
+
             return;
         }
 
-        const command = message as ExternalCommand | undefined;
-
-        if (typeof command?.command !== 'string' || typeof command?.messageId !== 'string') {
-            return;
-        }
-
-        if (!(await this._approvedIds()).has(senderId)) {
-            return;
-        }
-
-        let response;
+        let result: unknown;
+        let error: ExternalRpcError | undefined;
 
         try {
-            response = await this._dispatcher.dispatchCommand(command);
-        } catch (error) {
-            asbError('external-connection', 'Failed to dispatch external command:', error);
-            response = {
-                command: 'response' as const,
-                messageId: command.messageId,
-                body: { error: error instanceof Error ? error.message : String(error) },
-            };
+            result = await this._rpc(senderId, incoming.method, incoming.params, incoming.id);
+        } catch (thrown) {
+            error =
+                thrown instanceof ExternalRpcError
+                    ? thrown
+                    : new ExternalRpcError(
+                          jsonRpcErrorCodes.internalError,
+                          'Internal error',
+                          thrown instanceof Error ? thrown.message : String(thrown)
+                      );
+
+            if (error.code === jsonRpcErrorCodes.internalError) {
+                asbError('external-connection', 'Failed to process external request:', thrown);
+            }
         }
 
-        if (response !== undefined) {
-            this._post(port, response);
+        if (error !== undefined) {
+            if (incoming.id !== undefined) {
+                this._post(port, jsonRpcError(incoming.id, error.code, error.message, error.data));
+            }
+
+            return;
+        }
+
+        if (incoming.id !== undefined) {
+            this._post(port, jsonRpcSuccess(incoming.id, result));
+        }
+
+        if ((result as { state?: string } | undefined)?.state === 'denied') {
+            this._disconnectPort(senderId, port);
         }
     }
 
-    private async _hello(senderId: string, message: ExternalHelloMessage) {
-        const name = typeof message.name === 'string' && message.name.length > 0 ? message.name : undefined;
+    private async _rpc(senderId: string, method: string, params: unknown, id: string | undefined) {
+        const methodDef = externalApiMethod(method);
+
+        if (methodDef === undefined) {
+            throw new ExternalRpcError(jsonRpcErrorCodes.methodNotFound, 'Method not found');
+        }
+
+        const knownMethod = method as ExternalApiMethodName;
+        const paramsSchema = methodDef.paramsSchema;
+
+        switch (knownMethod) {
+            case 'rpc.discover': {
+                const { default: openRpcDocument } = await import('@project/common/external-commands/openrpc-document');
+                return openRpcDocument;
+            }
+            case 'client-info': {
+                const parsed = paramsSchema.safeParse(params ?? {});
+
+                if (!parsed.success) {
+                    throw new ExternalRpcError(jsonRpcErrorCodes.invalidParams, 'Invalid params', parsed.error.issues);
+                }
+
+                return { protocols: [jsonRpcProtocol] };
+            }
+            case 'initialize': {
+                const parsed = paramsSchema.safeParse(params ?? {});
+
+                if (!parsed.success) {
+                    throw new ExternalRpcError(jsonRpcErrorCodes.invalidParams, 'Invalid params', parsed.error.issues);
+                }
+
+                return { state: await this._initialize(senderId, parsed.data as { name?: string }) };
+            }
+            case 'approval-state': {
+                const parsed = paramsSchema.safeParse(params ?? {});
+
+                if (!parsed.success) {
+                    throw new ExternalRpcError(jsonRpcErrorCodes.invalidParams, 'Invalid params', parsed.error.issues);
+                }
+
+                return { state: await this._approvalState(senderId) };
+            }
+            default: {
+                // Only dispatched commands reach here; a special method without a case fails the typecheck.
+                const dispatchedMethod: ExternalCommand['command'] = knownMethod;
+
+                if (!(await this._approvedIds()).has(senderId)) {
+                    throw new ExternalRpcError(jsonRpcErrorCodes.notApproved, 'Not approved');
+                }
+
+                const request: JsonRpcIncomingMessage =
+                    id === undefined
+                        ? { jsonrpc: '2.0', method: dispatchedMethod, params }
+                        : { jsonrpc: '2.0', method: dispatchedMethod, params, id };
+
+                const response = await this._dispatcher.dispatchAppLevelJsonRpc(request);
+
+                if (response === undefined) {
+                    if (id === undefined) {
+                        return undefined;
+                    }
+
+                    // A request must always be answered.
+                    throw new ExternalRpcError(jsonRpcErrorCodes.methodNotFound, 'Method not found');
+                }
+
+                if ('error' in response) {
+                    throw new ExternalRpcError(response.error.code, response.error.message, response.error.data);
+                }
+
+                return response.result;
+            }
+        }
+    }
+
+    private async _approvalState(senderId: string): Promise<'approved' | 'pending' | 'denied'> {
+        if ((await this._approvedIds()).has(senderId)) {
+            return 'approved';
+        }
 
         if (await this._onDeniedRequestCooldown(senderId)) {
-            // Silently decline: no pending entry is recorded, so no badge is raised; the
-            // caller still posts the standard unapproved response.
-            return;
+            return 'denied';
+        }
+
+        const { externalConnections } = await this._globalStateProvider.get(['externalConnections']);
+        const pending = activePendingEntries(externalConnections?.pending ?? {}, Date.now())[senderId];
+
+        return pending !== undefined ? 'pending' : 'denied';
+    }
+
+    private async _initialize(senderId: string, params: { name?: string }): Promise<'approved' | 'pending' | 'denied'> {
+        const name = params.name !== undefined && params.name.length > 0 ? params.name : undefined;
+
+        if (await this._onDeniedRequestCooldown(senderId)) {
+            return 'denied';
         }
 
         await mutateExternalConnections(this._globalStateProvider, (externalConnections) => {
@@ -194,9 +313,13 @@ export class ExternalConnectionCoordinator {
             return true;
         });
 
-        if (!(await this._approvedIds()).has(senderId)) {
+        const approved = (await this._approvedIds()).has(senderId);
+
+        if (!approved) {
             void this.updateBadge();
         }
+
+        return approved ? 'approved' : 'pending';
     }
 
     private async _onExternalConnectionsUpdated(externalConnections: ExternalConnectionsState) {
@@ -219,15 +342,9 @@ export class ExternalConnectionCoordinator {
 
         const oldApproved = this._lastApprovedIds;
 
-        for (const extensionId of newApproved) {
-            if (!oldApproved.has(extensionId)) {
-                this._postApprovalToPorts(extensionId, true);
-            }
-        }
-
         for (const extensionId of oldApproved) {
             if (!newApproved.has(extensionId)) {
-                this._postApprovalToPorts(extensionId, false);
+                this._disconnectPorts(extensionId);
             }
         }
 
@@ -244,6 +361,27 @@ export class ExternalConnectionCoordinator {
         }
 
         await this.updateBadge();
+    }
+
+    private _disconnectPorts(extensionId: string) {
+        for (const port of [...(this._ports.get(extensionId) ?? [])]) {
+            this._disconnectPort(extensionId, port);
+        }
+    }
+
+    private _disconnectPort(extensionId: string, port: Browser.runtime.Port) {
+        try {
+            port.disconnect();
+        } catch {
+            // Expected if the port disconnects concurrently.
+        }
+        const ports = this._ports.get(extensionId);
+        if (ports != null) {
+            ports.delete(port);
+            if (ports.size === 0) {
+                this._ports.delete(extensionId);
+            }
+        }
     }
 
     private _pendingRequestsNeedPrune(pending: ExternalConnectionsState['pending'], now: number): boolean {
@@ -312,21 +450,6 @@ export class ExternalConnectionCoordinator {
     private async _approvedIds(): Promise<Set<string>> {
         const { externalConnections } = await this._globalStateProvider.get(['externalConnections']);
         return new Set(Object.keys(externalConnections?.approved ?? {}));
-    }
-
-    private async _postApproval(port: Browser.runtime.Port) {
-        const senderId = port.sender?.id;
-        const approved = senderId !== undefined && (await this._approvedIds()).has(senderId);
-        const message: ExternalApprovalMessage = { type: 'asbplayer-external-approval', approved };
-        this._post(port, message);
-    }
-
-    private _postApprovalToPorts(extensionId: string, approved: boolean) {
-        const message: ExternalApprovalMessage = { type: 'asbplayer-external-approval', approved };
-
-        for (const port of this._ports.get(extensionId) ?? []) {
-            this._post(port, message);
-        }
     }
 
     private _post(port: Browser.runtime.Port, message: unknown) {

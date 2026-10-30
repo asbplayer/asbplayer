@@ -6,6 +6,7 @@ import { WebSocketClient, ExternalCommandDispatcher } from '@project/common/exte
 import type ChromeExtension from '@project/common/app/services/chrome-extension';
 import type { ExtensionMessage } from '@project/common/app/services/chrome-extension';
 import { useEffect, useState } from 'react';
+import { externalExtensionOnlyTag } from '@project/common/external-commands/external-api';
 
 export interface MineSubtitleParams extends CardTextFieldValues {
     postMineAction: PostMineAction;
@@ -23,7 +24,7 @@ export const useAppExternalCommands = ({
     extension: ChromeExtension;
     inVideoPlayer: boolean;
 }) => {
-    const [dispatcher] = useState(() => new ExternalCommandDispatcher());
+    const [dispatcher] = useState(() => new ExternalCommandDispatcher({ tagsDenyList: [externalExtensionOnlyTag] }));
     const forwardedByExtension = extension.supportsWebSocketClientOwnership;
     const legacyExtension = extension.supportsWebSocketClient && !forwardedByExtension;
 

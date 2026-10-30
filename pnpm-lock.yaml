@@ -355,6 +355,9 @@ importers:
       '@project/common':
         specifier: workspace:^
         version: 'link:'
+      '@project/external-api':
+        specifier: workspace:^
+        version: link:../external-api
       '@qgustavor/srt-parser':
         specifier: ^2.0.0
         version: 2.0.0
@@ -433,6 +436,9 @@ importers:
       videojs-vtt.js:
         specifier: 0.15.5
         version: 0.15.5
+      zod:
+        specifier: ^4.6.7
+        version: 4.6.7
     devDependencies:
       '@jest/globals':
         specifier: ^29.7.0
@@ -631,6 +637,8 @@ importers:
       wxt:
         specifier: ^0.21.4
         version: 0.21.4(eslint@9.39.4(jiti@2.6.1)(supports-color@8.1.1))(rollup@4.63.3)(typescript@5.8.3)(vite@8.2.2(@types/node@24.13.3)(esbuild@0.27.3)(jiti@2.6.1)(terser@5.51.2))(web-ext@10.6.0(jiti@2.6.1)(supports-color@8.1.1))
+
+  external-api: {}
 
   scripts/loc:
     dependencies:
@@ -10000,6 +10008,9 @@ packages:
 
   zip-dir@2.0.0:
     resolution: {integrity: sha512-uhlsJZWz26FLYXOD6WVuq+fIcZ3aBPGo/cFdiLlv3KNwpa52IF3ISV8fLhQLiqVu5No3VhlqlgthN6gehil1Dg==}
+
+  zod@4.6.7:
+    resolution: {integrity: sha512-g8W2D2kU6a8untc053fX1uVBKzM7yqAxW/3zwk83+6RyF2+SKOuV+c0wBDhUwzV1PaGapmZH+rmcUzPf+3CGwg==}
 
   zwitch@2.0.4:
     resolution: {integrity: sha512-bXE4cR/kVZhKZX/RjPEflHaKVhUVl85noU3v6b8apfQEc1x4A+zBxjZ4lN8LqGd6WZ3dl98pY4o717VFmoPp+A==}
@@ -22038,5 +22049,7 @@ snapshots:
     dependencies:
       async: 3.2.6
       jszip: 3.10.1
+
+  zod@4.6.7: {}
 
   zwitch@2.0.4: {}

@@ -15,7 +15,11 @@ This page is intended to be an technical reference on asbplayer's external inter
 
 ## Commands {#commands}
 
-asbplayer responds to the following commands.
+asbplayer responds to the following commands, represented as JSON-RPC messages. The OpenRPC schema can be found [here](https://github.com/asbplayer/asbplayer/blob/main/external-api/openrpc.json).
+
+:::info
+asbplayer extensions v1.22 and below support the schema `{ command, messageId, body }` instead of `{ method, id, params }`.
+:::
 
 ## `mine-subtitle` {#mine-subtitle}
 
@@ -29,11 +33,11 @@ When `postMineAction` is `2`, `noteId` selects the Anki note to update. If omitt
 
     ```javascript
     {
-        "command": "mine-subtitle",
-        // Message ID to correlate with asbplayer's response
-        "messageId": "10281760-d787-4356-8572-f698d8ff3884",
-        "body": {
-            // 0 = "None", 1 = "Show anki dialog", 2 = "Update last card", 3 = "Export card"
+        "jsonrpc": "2.0",
+        "id": "10281760-d787-4356-8572-f698d8ff3884",
+        "method": "mine-subtitle",
+        "params": {
+            // 0 = "None", 1 = "Show Anki dialog", 2 = "Update last card", 3 = "Export card", 4 = "Show update card dialog"
             "postMineAction": 1,
             // Key-value pairs corresponding to an Anki note type
             "fields": {
@@ -52,10 +56,10 @@ When `postMineAction` is `2`, `noteId` selects the Anki note to update. If omitt
 
     ```javascript
     {
-        "command": "response",
-        // Same message ID received in request
-        "messageId": "10281760-d787-4356-8572-f698d8ff3884",
-        "body": {
+        "jsonrpc": "2.0",
+        // Same id received in request
+        "id": "10281760-d787-4356-8572-f698d8ff3884",
+        "result": {
             // Whether the command was successfully published to an asbplayer client
             "published": true
         }
@@ -72,10 +76,10 @@ Loads the files into the active tab's media by default, showing the video select
 
 ```javascript
 {
-    "command": "load-subtitles",
-    // Message ID to correlate with asbplayer's response
-    "messageId": "3565510c-342f-4cec-ad2e-dee81af88d75",
-    "body": {
+    "jsonrpc": "2.0",
+    "id": "3565510c-342f-4cec-ad2e-dee81af88d75",
+    "method": "load-subtitles",
+    "params": {
         "files": [{
             // Name of the file, including its extension
             "name": "some-file.srt",
@@ -92,10 +96,10 @@ Loads the files into the active tab's media by default, showing the video select
 
 ```javascript
 {
-    "command": "response",
-    // Same message ID received in request
-    "messageId": "3565510c-342f-4cec-ad2e-dee81af88d75",
-    "body": {}
+    "jsonrpc": "2.0",
+    // Same id received in request
+    "id": "3565510c-342f-4cec-ad2e-dee81af88d75",
+    "result": {}
 }
 ```
 
@@ -109,10 +113,10 @@ Seeks the active tab's media by default. Set `mediaId` to an ID returned by [`ge
 
 ```javascript
 {
-    "command": "seek-timestamp",
-    // Message ID to correlate with asbplayer's response
-    "messageId": "6e4b2d8f-3a1c-4d9e-8f7b-2c0a9d5e1f3b",
-    "body": {
+    "jsonrpc": "2.0",
+    "id": "6e4b2d8f-3a1c-4d9e-8f7b-2c0a9d5e1f3b",
+    "method": "seek-timestamp",
+    "params": {
         //The timestamp to seek in seconds
         "timestamp": 30.5,
         // Optional media id from `get-bound-media`
@@ -125,10 +129,10 @@ Seeks the active tab's media by default. Set `mediaId` to an ID returned by [`ge
 
 ```javascript
 {
-    "command": "response",
-    // Same message ID received in request
-    "messageId": "6e4b2d8f-3a1c-4d9e-8f7b-2c0a9d5e1f3b",
-    "body": {}
+    "jsonrpc": "2.0",
+    // Same id received in request
+    "id": "6e4b2d8f-3a1c-4d9e-8f7b-2c0a9d5e1f3b",
+    "result": {}
 }
 ```
 
@@ -142,10 +146,10 @@ Returns the media asbplayer is currently tracking, including both `streaming` an
 
 ```javascript
 {
-    "command": "get-bound-media",
-    // Message ID to correlate with asbplayer's response
-    "messageId": "9f1c2b3a-4d5e-6f70-8190-a1b2c3d4e5f6",
-    "body": {}
+    "jsonrpc": "2.0",
+    "id": "9f1c2b3a-4d5e-6f70-8190-a1b2c3d4e5f6",
+    "method": "get-bound-media",
+    "params": {}
 }
 ```
 
@@ -153,10 +157,10 @@ Returns the media asbplayer is currently tracking, including both `streaming` an
 
 ```javascript
 {
-    "command": "response",
-    // Same message ID received in request
-    "messageId": "9f1c2b3a-4d5e-6f70-8190-a1b2c3d4e5f6",
-    "body": {
+    "jsonrpc": "2.0",
+    // Same id received in request
+    "id": "9f1c2b3a-4d5e-6f70-8190-a1b2c3d4e5f6",
+    "result": {
         "media": [{
             // Identifier for the media
             "id": "a1b2c3d4e5f6",
@@ -191,10 +195,10 @@ Returns an empty list when no matching media is found or no subtitles are loaded
 
 ```javascript
 {
-    "command": "get-subtitles",
-    // Message ID to correlate with asbplayer's response
-    "messageId": "2d7e8a1b-9c4f-4e3a-8b6d-1f0c5a2e9d7b",
-    "body": {
+    "jsonrpc": "2.0",
+    "id": "2d7e8a1b-9c4f-4e3a-8b6d-1f0c5a2e9d7b",
+    "method": "get-subtitles",
+    "params": {
         // Optional media id from `get-bound-media`. Defaults to the active tab when omitted.
         "mediaId": "a1b2c3d4e5f6",
         // Optional track numbers from `get-bound-media`. Returns all loaded tracks when omitted.
@@ -207,13 +211,95 @@ Returns an empty list when no matching media is found or no subtitles are loaded
 
 ```javascript
 {
-    "command": "response",
-    // Same message ID received in request
-    "messageId": "2d7e8a1b-9c4f-4e3a-8b6d-1f0c5a2e9d7b",
-    "body": {
+    "jsonrpc": "2.0",
+    // Same id received in request
+    "id": "2d7e8a1b-9c4f-4e3a-8b6d-1f0c5a2e9d7b",
+    "result": {
         // Loaded subtitles. `start`/`end` are in milliseconds; `track` is the loaded track number.
         "subtitles": [
             { "text": "Hello", "start": 1000, "end": 2000, "track": 0 }
         ]
     }
 }
+```
+
+## `client-info` {#client-info}
+
+Returns asbplayer client info, such as supported protocols. The latest versions of asbplayer support JSON-RPC.
+
+### Request {#client-info-request}
+
+```javascript
+{
+    "jsonrpc": "2.0",
+    // Request id used to correlate the probe response
+    "id": "e3b0c442-98fc-4c14-9b2c-1c5a2e9d7b6f",
+    "method": "client-info",
+    "params": {}
+}
+```
+
+### Response {#client-info-response}
+
+```javascript
+{
+    "jsonrpc": "2.0",
+    // Same id received in request
+    "id": "e3b0c442-98fc-4c14-9b2c-1c5a2e9d7b6f",
+    "result": {
+        "protocols": ["jsonrpc-2.0"]
+    }
+}
+```
+
+## `rpc.discover` {#rpc-discover}
+
+Returns the OpenRPC document for the running build. Use it to discover the current method names, params, results, and transport tags instead of hard-coding them.
+
+### Request {#rpc-discover-request}
+
+```javascript
+{
+    "jsonrpc": "2.0",
+    "id": "5f2b9c4d-7e1a-4b8f-9d3c-6a0e2f7b1c84",
+    "method": "rpc.discover",
+    "params": {}
+}
+```
+
+### Response {#rpc-discover-response}
+
+Returns the OpenRPC document describing the supported JSON-RPC methods. See [`external-api/openrpc.json`](https://github.com/asbplayer/asbplayer/blob/main/external-api/openrpc.json) for the full document.
+
+## Error codes {#error-codes}
+
+Errors use the standard JSON-RPC error object:
+
+```javascript
+{
+    "jsonrpc": "2.0",
+    // Same id received in request, or null when the request id is unusable
+    "id": "10281760-d787-4356-8572-f698d8ff3884",
+    "error": {
+        "code": -32602,
+        "message": "Invalid params",
+        // Optional additional details
+        "data": []
+    }
+}
+```
+
+| Code     | Meaning          | Notes                                                           |
+| -------- | ---------------- | --------------------------------------------------------------- |
+| `-32700` | Parse error      | The frame is not valid JSON.                                    |
+| `-32600` | Invalid request  | The frame is not a valid JSON-RPC request.                      |
+| `-32601` | Method not found | Unknown method, or a method unavailable on that transport.      |
+| `-32602` | Invalid params   | The method's params failed schema validation.                   |
+| `-32603` | Internal error   | The handler failed or returned a result that failed validation. |
+| `-32000` | Request timeout  | A server did not receive a response from asbplayer in time.     |
+| `-32001` | No clients       | A server has no connected asbplayer to forward the request to.  |
+| `-32002` | Not approved     | An external extension sent a command before being approved.     |
+
+Notifications are never answered, including when handling fails. A request with an unusable `id` receives an error response with `id: null`.
+
+The Go server's HTTP bridge maps these errors to HTTP statuses; see [`external-api/README.md`](https://github.com/asbplayer/asbplayer/blob/main/external-api/README.md#error-codes).

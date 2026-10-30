@@ -857,6 +857,7 @@
     },
     "externalConnections": {
         "incomingRequest": "An external extension is requesting to connect to asbplayer.",
-        "unknownName": "Unnamed extension"
+        "extensionDetailsHelper": "Extension details can be viewed at <0>{{address}}</0>.",
+        "warning": "Once approved, extension <0>{{id}}</0> will be able to control asbplayer. Only approve if you recognize it."
     }
 }

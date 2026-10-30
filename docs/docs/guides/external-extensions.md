@@ -2,7 +2,7 @@
 sidebar_position: 9.5
 ---
 
-import project, { ankiConnectUrl } from '@site/src/project';
+import project from '@site/src/project';
 
 # External extensions {#external-extensions}
 
@@ -15,26 +15,57 @@ A template implementation of an extension that integrates with asbplayer in this
 Any extension wishing to communicate with asbplayer must first connect using code like below. asbplayer's extension ID can be obtained from the browser's extension manager (on Chrome `chrome://extensions`, on Firefox `about:addons`).
 
 ```typescript
-const port = browser.runtime.connect(<asbplayer extension ID>);
-```
-
-Approval can then be obtained by issuing the `hello` command.
-
-```typescript
-port.postMessage({
-    type: 'asbplayer-external-hello',
-    name: 'external-extension-name', // Self-reported name
-    version: '1.2.3', // Self-reported version
+const port = browser.runtime.connect(<asbplayer extension ID>, {
+    name: 'asbplayer-external-v1', // Must match this string exactly
 });
 ```
 
-If the extension hasn't been approved yet, then asbplayer will prompt the user to approve the extension. Once the user approves, asbplayer will send a message like below through the port.
+Request approval with `initialize`, which answers immediately with the current state.
+
+```typescript
+port.postMessage({
+    jsonrpc: '2.0',
+    id: crypto.randomUUID(),
+    method: 'initialize',
+    params: {
+        name: 'external-extension-name', // Self-reported name
+        version: '1.2.3', // Self-reported version
+    },
+});
+```
+
+If the extension is not approved, asbplayer registers the connection as pending, prompts the user, and responds:
 
 ```json
 {
-    "type": "asbplayer-external-approval",
-    "approved": true
+    "jsonrpc": "2.0",
+    "id": "<the id from the initialize request>",
+    "result": { "state": "pending" }
 }
 ```
 
-If the user has already approved the extension, then the message is sent immediately. Following approval, asbplayer will respond to any [commands](../reference/external-api) sent through the port.
+Poll `approval-state` to see if the user has approved the connection request.
+
+```json
+{
+    "jsonrpc": "2.0",
+    "id": "<request id>",
+    "method": "approval-state",
+    "params": {}
+}
+```
+
+Once approved, `approval-state` will return `{ "state": "approved" }` and the connection can issue commands. If denied, `approval-state` returns `{ "state": "denied" }` once. asbplayer then closes the port. Once denied, the requesting extension cannot request approval for 24 hours, or until the browser is restarted.
+
+Commands can be issued as [documented](../reference/external-api). For example:
+
+```typescript
+port.postMessage({
+    jsonrpc: '2.0',
+    id: crypto.randomUUID(),
+    method: 'get-bound-media',
+    params: {},
+});
+```
+
+asbplayer answers with `{ jsonrpc, id, result }` on success or `{ jsonrpc, id, error }` on failure.

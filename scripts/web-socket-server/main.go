@@ -3,12 +3,14 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
@@ -16,6 +18,17 @@ import (
 	_ "github.com/joho/godotenv/autoload"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+)
+
+const (
+	jsonRpcVersion        = "2.0"
+	jsonRpcProtocol       = "jsonrpc-2.0"
+	jsonRpcParseError     = -32700
+	jsonRpcInvalidRequest = -32600
+	jsonRpcMethodNotFound = -32601
+	jsonRpcInternalError  = -32603
+	jsonRpcRequestTimeout = -32000
+	jsonRpcNoClients      = -32001
 )
 
 // gorilla/websocket allows only one concurrent writer per connection, so each client
@@ -26,8 +39,9 @@ var upgrader = websocket.Upgrader{
 
 type (
 	wsClient struct {
-		conn     *websocket.Conn
-		writeMux sync.Mutex
+		conn           *websocket.Conn
+		writeMux       sync.Mutex
+		jsonRpcCapable atomic.Bool
 	}
 	forwarder struct {
 		WebsocketClients map[*wsClient]bool
@@ -64,11 +78,43 @@ type (
 		Command   string          `json:"command"`
 		MessageId string          `json:"messageId"`
 		Body      json.RawMessage `json:"body"`
+		Error     *rpcError       `json:"-"`
+	}
+	rpcError struct {
+		Code    int         `json:"code"`
+		Message string      `json:"message"`
+		Data    interface{} `json:"data,omitempty"`
+	}
+	jsonRpcOutgoing struct {
+		Jsonrpc string                 `json:"jsonrpc"`
+		Method  string                 `json:"method"`
+		Params  map[string]interface{} `json:"params"`
+		Id      string                 `json:"id,omitempty"`
+	}
+	jsonRpcIncoming struct {
+		Jsonrpc string          `json:"jsonrpc"`
+		Method  string          `json:"method"`
+		Id      json.RawMessage `json:"id"`
+		Params  json.RawMessage `json:"params"`
+		Result  json.RawMessage `json:"result"`
+		Error   *rpcError       `json:"error"`
+	}
+	jsonRpcErrorResponse struct {
+		Jsonrpc string      `json:"jsonrpc"`
+		Id      interface{} `json:"id"`
+		Error   *rpcError   `json:"error"`
+	}
+	clientInfoResult struct {
+		Protocols []string `json:"protocols"`
 	}
 	mineSubtitleResponseBody struct {
 		Published bool `json:"published"`
 	}
 )
+
+func (rpcError *rpcError) Error() string {
+	return fmt.Sprintf("%s (%d)", rpcError.Message, rpcError.Code)
+}
 
 func getenv(key string, fallback string) string {
 	if value, ok := os.LookupEnv(key); ok {
@@ -120,6 +166,7 @@ func (forwarder forwarder) handleWebsocketClient(c echo.Context) error {
 	defer conn.Close()
 	defer forwarder.removeClient(client)
 	forwarder.addClient(client)
+	go forwarder.probeJsonRpcSupport(client)
 
 	for {
 		_, msg, err := conn.ReadMessage()
@@ -131,51 +178,269 @@ func (forwarder forwarder) handleWebsocketClient(c echo.Context) error {
 
 		if string(msg) == "PING" {
 			client.send(websocket.TextMessage, []byte("PONG"))
-		} else {
-			response := clientResponse{}
-			if err := json.Unmarshal(msg, &response); err == nil {
-				forwarder.Broker.deliver(response)
-			}
+			continue
 		}
+
+		forwarder.handleFrame(client, msg)
 	}
 
 	return nil
 }
 
-func (forwarder forwarder) publishMessage(command clientCommand) error {
-	bytes, err := json.Marshal(command)
+// Asks the client for its protocol capabilities. A client that ignores the probe keeps receiving
+// legacy frames.
+func (forwarder forwarder) probeJsonRpcSupport(client *wsClient) {
+	probeId := uuid.NewString()
+	probe, err := json.Marshal(jsonRpcOutgoing{
+		Jsonrpc: jsonRpcVersion,
+		Method:  "client-info",
+		Params:  map[string]interface{}{},
+		Id:      probeId,
+	})
 
 	if err != nil {
-		return err
+		return
 	}
 
-	for _, client := range forwarder.clients() {
-		client.send(websocket.TextMessage, bytes)
-	}
+	request := forwarder.Broker.register(probeId)
 
-	return nil
-}
-
-func (forwarder forwarder) publishMessageAndAwaitResponse(command clientCommand) (clientResponse, bool) {
-	if len(forwarder.clients()) == 0 {
-		return clientResponse{}, false
-	}
-
-	request := forwarder.Broker.register(command.MessageId)
-
-	if err := forwarder.publishMessage(command); err != nil {
-		forwarder.Broker.cancel(command.MessageId, request)
-		return clientResponse{}, false
+	if err := client.send(websocket.TextMessage, probe); err != nil {
+		forwarder.Broker.cancel(probeId, request)
+		return
 	}
 
 	select {
 	case response, ok := <-request.result:
-		return response, ok
+		if !ok || response.Error != nil {
+			return
+		}
+
+		result := clientInfoResult{}
+
+		if json.Unmarshal(response.Body, &result) != nil {
+			return
+		}
+
+		for _, protocol := range result.Protocols {
+			if protocol == jsonRpcProtocol {
+				client.jsonRpcCapable.Store(true)
+				return
+			}
+		}
+	case <-time.After(forwarder.RequestTimeout):
+		forwarder.Broker.cancel(probeId, request)
+	}
+}
+
+// Routes a frame by its envelope: JSON-RPC frames are validated and dispatched, everything else
+// is a legacy response.
+func (forwarder forwarder) handleFrame(client *wsClient, msg []byte) {
+	if !json.Valid(msg) {
+		if client.jsonRpcCapable.Load() {
+			forwarder.sendJsonRpcError(client, nil, &rpcError{Code: jsonRpcParseError, Message: "Parse error"})
+		}
+
+		return
+	}
+
+	var object map[string]json.RawMessage
+
+	if err := json.Unmarshal(msg, &object); err != nil {
+		// Valid JSON but not an object: neither a JSON-RPC frame nor a legacy response.
+		if client.jsonRpcCapable.Load() {
+			forwarder.sendJsonRpcError(client, nil, &rpcError{Code: jsonRpcInvalidRequest, Message: "Invalid request"})
+		}
+
+		return
+	}
+
+	var version string
+
+	if err := json.Unmarshal(object["jsonrpc"], &version); err == nil && version == jsonRpcVersion {
+		forwarder.handleJsonRpcFrame(client, msg)
+		return
+	}
+
+	response := clientResponse{}
+	if err := json.Unmarshal(msg, &response); err == nil {
+		forwarder.Broker.deliver(response)
+	}
+}
+
+func (forwarder forwarder) handleJsonRpcFrame(client *wsClient, msg []byte) {
+	incoming := jsonRpcIncoming{}
+
+	if err := json.Unmarshal(msg, &incoming); err != nil || incoming.Jsonrpc != jsonRpcVersion {
+		forwarder.sendJsonRpcError(client, nil, &rpcError{Code: jsonRpcInvalidRequest, Message: "Invalid request"})
+		return
+	}
+
+	if incoming.Method != "" {
+		id, ok := stringJsonRpcId(incoming.Id)
+
+		if !ok && len(incoming.Id) > 0 {
+			// A non-string id cannot be echoed, so answer -32600 with a null id.
+			forwarder.sendJsonRpcError(client, nil, &rpcError{Code: jsonRpcInvalidRequest, Message: "Invalid request"})
+			return
+		}
+
+		if !ok {
+			// No id: a notification, which must never be answered.
+			return
+		}
+
+		forwarder.sendJsonRpcError(client, id, &rpcError{
+			Code:    jsonRpcMethodNotFound,
+			Message: "Method not found",
+		})
+		return
+	}
+
+	id, ok := stringJsonRpcId(incoming.Id)
+
+	if !ok {
+		return
+	}
+
+	var response clientResponse
+
+	switch {
+	case incoming.Error != nil:
+		response = clientResponse{MessageId: id, Error: incoming.Error}
+	case incoming.Result != nil:
+		response = clientResponse{MessageId: id, Body: incoming.Result}
+	default:
+		forwarder.sendJsonRpcError(client, id, &rpcError{Code: jsonRpcInvalidRequest, Message: "Invalid request"})
+		return
+	}
+
+	forwarder.Broker.deliver(response)
+}
+
+func stringJsonRpcId(raw json.RawMessage) (string, bool) {
+	if len(raw) == 0 {
+		return "", false
+	}
+
+	id := ""
+
+	if err := json.Unmarshal(raw, &id); err != nil {
+		return "", false
+	}
+
+	return id, true
+}
+
+func (forwarder forwarder) sendJsonRpcError(client *wsClient, id interface{}, rpcError *rpcError) {
+	response, err := json.Marshal(jsonRpcErrorResponse{Jsonrpc: jsonRpcVersion, Id: id, Error: rpcError})
+
+	if err != nil {
+		return
+	}
+
+	client.send(websocket.TextMessage, response)
+}
+
+func (forwarder forwarder) encodeCommand(client *wsClient, command clientCommand, notification bool) ([]byte, error) {
+	if !client.jsonRpcCapable.Load() {
+		return json.Marshal(command)
+	}
+
+	params := command.Body
+
+	if params == nil {
+		params = map[string]interface{}{}
+	}
+
+	frame := jsonRpcOutgoing{
+		Jsonrpc: jsonRpcVersion,
+		Method:  command.Command,
+		Params:  params,
+	}
+
+	if !notification {
+		frame.Id = command.MessageId
+	}
+
+	return json.Marshal(frame)
+}
+
+func (forwarder forwarder) publishCommand(command clientCommand, notification bool) (bool, error) {
+	var errs []error
+	var sentAtLeastOnce bool
+
+	for _, client := range forwarder.clients() {
+		bytes, err := forwarder.encodeCommand(client, command, notification)
+
+		if err != nil {
+			errs = append(errs, err)
+			continue
+		}
+
+		err = client.send(websocket.TextMessage, bytes)
+		if err == nil {
+			sentAtLeastOnce = true
+		} else {
+			errs = append(errs, err)
+		}
+	}
+
+	if len(errs) == 0 {
+		return sentAtLeastOnce, nil
+	}
+
+	return sentAtLeastOnce, errors.Join(errs...)
+}
+
+func (forwarder forwarder) publishMessage(command clientCommand) (bool, error) {
+	return forwarder.publishCommand(command, false)
+}
+
+func (forwarder forwarder) publishNotification(command clientCommand) (bool, error) {
+	return forwarder.publishCommand(command, true)
+}
+
+func (forwarder forwarder) publishMessageAndAwaitResponse(command clientCommand) (clientResponse, *rpcError) {
+	if len(forwarder.clients()) == 0 {
+		return clientResponse{}, &rpcError{Code: jsonRpcNoClients, Message: "No connected asbplayers"}
+	}
+
+	request := forwarder.Broker.register(command.MessageId)
+
+	if sent, err := forwarder.publishMessage(command); !sent {
+		forwarder.Broker.cancel(command.MessageId, request)
+		if err != nil {
+			return clientResponse{}, &rpcError{Code: jsonRpcInternalError, Message: "Internal error", Data: err.Error()}
+		}
+		return clientResponse{}, &rpcError{Code: jsonRpcNoClients, Message: "No clients", Data: err.Error()}
+	}
+
+	select {
+	case response, ok := <-request.result:
+		if !ok {
+			return clientResponse{}, &rpcError{Code: jsonRpcRequestTimeout, Message: "Request timeout"}
+		}
+
+		return response, response.Error
 	case <-time.After(forwarder.RequestTimeout):
 		forwarder.Broker.cancel(command.MessageId, request)
 		// A response may have landed just as the timeout fired.
 		response, ok := <-request.result
-		return response, ok
+
+		if !ok {
+			return clientResponse{}, &rpcError{Code: jsonRpcRequestTimeout, Message: "Request timeout"}
+		}
+
+		return response, response.Error
+	}
+}
+
+func httpStatusForRpcError(rpcError *rpcError) int {
+	switch rpcError.Code {
+	case jsonRpcNoClients, jsonRpcRequestTimeout:
+		return http.StatusServiceUnavailable
+	default:
+		return http.StatusInternalServerError
 	}
 }
 
@@ -267,18 +532,23 @@ func (forwarder forwarder) handlePostRequest(c echo.Context) error {
 			}
 		}
 
-		err := forwarder.publishMessage(command)
+		sent, err := forwarder.publishNotification(command)
 
 		if err != nil {
-			fmt.Printf("Failed to publish command to asbplayer: %v", err)
+			if sent {
+				c.Logger().Warn("Command was published to asbplayer but errors were encountered", err)
+			} else {
+				c.Logger().Error("Failed to publish command to asbplayer", err)
+			}
 		}
 
 		return responseErr
 	}
 
-	response, ok := forwarder.publishMessageAndAwaitResponse(command)
-	if !ok {
-		return echo.NewHTTPError(http.StatusInternalServerError, nil)
+	response, rpcError := forwarder.publishMessageAndAwaitResponse(command)
+
+	if rpcError != nil {
+		return echo.NewHTTPError(httpStatusForRpcError(rpcError), nil)
 	}
 
 	mineSubtitleResponseBody := mineSubtitleResponseBody{}
@@ -341,9 +611,9 @@ func (forwarder forwarder) handleAsbplayerLoadSubtitlesRequest(c echo.Context) e
 	}
 
 	command := clientCommand{Command: "load-subtitles", MessageId: uuid.NewString(), Body: body}
-	_, ok := forwarder.publishMessageAndAwaitResponse(command)
-	if !ok {
-		return echo.NewHTTPError(http.StatusInternalServerError, nil)
+	_, rpcError := forwarder.publishMessageAndAwaitResponse(command)
+	if rpcError != nil {
+		return echo.NewHTTPError(httpStatusForRpcError(rpcError), nil)
 	}
 
 	c.String(http.StatusOK, "")
@@ -369,9 +639,9 @@ func (forwarder forwarder) handleAsbplayerSeekRequest(c echo.Context) error {
 	}
 
 	command := clientCommand{Command: "seek-timestamp", MessageId: uuid.NewString(), Body: body}
-	_, ok := forwarder.publishMessageAndAwaitResponse(command)
-	if !ok {
-		return echo.NewHTTPError(http.StatusInternalServerError, nil)
+	_, rpcError := forwarder.publishMessageAndAwaitResponse(command)
+	if rpcError != nil {
+		return echo.NewHTTPError(httpStatusForRpcError(rpcError), nil)
 	}
 
 	c.String(http.StatusOK, "")
@@ -380,9 +650,9 @@ func (forwarder forwarder) handleAsbplayerSeekRequest(c echo.Context) error {
 
 func (forwarder forwarder) handleAsbplayerBoundMediaRequest(c echo.Context) error {
 	command := clientCommand{Command: "get-bound-media", MessageId: uuid.NewString(), Body: map[string]interface{}{}}
-	response, ok := forwarder.publishMessageAndAwaitResponse(command)
-	if !ok {
-		return echo.NewHTTPError(http.StatusInternalServerError, nil)
+	response, rpcError := forwarder.publishMessageAndAwaitResponse(command)
+	if rpcError != nil {
+		return echo.NewHTTPError(httpStatusForRpcError(rpcError), nil)
 	}
 
 	return c.JSONBlob(http.StatusOK, response.Body)
@@ -405,9 +675,9 @@ func (forwarder forwarder) handleAsbplayerSubtitlesRequest(c echo.Context) error
 		}
 	}
 	command := clientCommand{Command: "get-subtitles", MessageId: uuid.NewString(), Body: body}
-	response, ok := forwarder.publishMessageAndAwaitResponse(command)
-	if !ok {
-		return echo.NewHTTPError(http.StatusInternalServerError, nil)
+	response, rpcError := forwarder.publishMessageAndAwaitResponse(command)
+	if rpcError != nil {
+		return echo.NewHTTPError(httpStatusForRpcError(rpcError), nil)
 	}
 
 	return c.JSONBlob(http.StatusOK, response.Body)

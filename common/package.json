@@ -9,6 +9,7 @@
         "@mui/styles": "^6.4.8",
         "@plausible-analytics/tracker": "^0.4.5",
         "@project/common": "workspace:^",
+        "@project/external-api": "workspace:^",
         "@qgustavor/srt-parser": "^2.0.0",
         "@types/semver": "^7.3.9",
         "@uiw/color-convert": "^2.10.3",
@@ -34,7 +35,8 @@
         "sanitize-filename": "^1.6.3",
         "semver": "^7.3.7",
         "uuid": "11.1.1",
-        "videojs-vtt.js": "0.15.5"
+        "videojs-vtt.js": "0.15.5",
+        "zod": "^4.6.7"
     },
     "devDependencies": {
         "@jest/globals": "^29.7.0",

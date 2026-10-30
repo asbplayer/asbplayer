@@ -2,12 +2,14 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -22,6 +24,16 @@ type harness struct {
 
 func newHarness(t *testing.T, requestTimeout time.Duration, postMineAction int) *harness {
 	t.Helper()
+	return newHarnessWithAnkiConnect(t, requestTimeout, postMineAction, "")
+}
+
+func newHarnessWithAnkiConnect(
+	t *testing.T,
+	requestTimeout time.Duration,
+	postMineAction int,
+	ankiConnectURL string,
+) *harness {
+	t.Helper()
 	e := echo.New()
 	e.HideBanner = true
 	e.HidePort = true
@@ -31,6 +43,7 @@ func newHarness(t *testing.T, requestTimeout time.Duration, postMineAction int) 
 		WebsocketClients: make(map[*wsClient]bool),
 		Broker:           newRequestBroker(),
 		RequestTimeout:   requestTimeout,
+		AnkiConnectUrl:   ankiConnectURL,
 		PostMineAction:   postMineAction,
 	}
 	forwarder.registerRoutes(e)
@@ -42,6 +55,7 @@ func newHarness(t *testing.T, requestTimeout time.Duration, postMineAction int) 
 type fakeClient struct {
 	conn     *websocket.Conn
 	commands chan clientCommand
+	jsonRpc  chan json.RawMessage
 	pongs    chan struct{}
 	writeMux sync.Mutex
 }
@@ -54,7 +68,12 @@ func (h *harness) connect(t *testing.T) *fakeClient {
 		t.Fatalf("could not connect a client: %v", err)
 	}
 
-	client := &fakeClient{conn: conn, commands: make(chan clientCommand, 64), pongs: make(chan struct{}, 16)}
+	client := &fakeClient{
+		conn:     conn,
+		commands: make(chan clientCommand, 64),
+		jsonRpc:  make(chan json.RawMessage, 64),
+		pongs:    make(chan struct{}, 16),
+	}
 
 	go func() {
 		for {
@@ -62,11 +81,21 @@ func (h *harness) connect(t *testing.T) *fakeClient {
 
 			if err != nil {
 				close(client.commands)
+				close(client.jsonRpc)
 				return
 			}
 
 			if string(message) == "PONG" {
 				client.pongs <- struct{}{}
+				continue
+			}
+
+			var probe struct {
+				Jsonrpc string `json:"jsonrpc"`
+			}
+
+			if json.Unmarshal(message, &probe) == nil && probe.Jsonrpc == jsonRpcVersion {
+				client.jsonRpc <- append(json.RawMessage(nil), message...)
 				continue
 			}
 
@@ -97,6 +126,47 @@ func (c *fakeClient) nextCommand(t *testing.T) clientCommand {
 	}
 }
 
+func (c *fakeClient) nextJsonRpcRaw(t *testing.T) json.RawMessage {
+	t.Helper()
+
+	select {
+	case message, ok := <-c.jsonRpc:
+		if !ok {
+			t.Fatal("the connection closed before a JSON-RPC frame arrived")
+		}
+		return message
+	case <-time.After(3 * time.Second):
+		t.Fatal("no JSON-RPC frame arrived")
+		return nil
+	}
+}
+
+func (c *fakeClient) nextJsonRpc(t *testing.T) jsonRpcIncoming {
+	t.Helper()
+	incoming := jsonRpcIncoming{}
+
+	if err := json.Unmarshal(c.nextJsonRpcRaw(t), &incoming); err != nil {
+		t.Fatalf("could not parse the JSON-RPC frame: %v", err)
+	}
+
+	return incoming
+}
+
+func (c *fakeClient) nextJsonRpcRequest(t *testing.T) jsonRpcOutgoing {
+	t.Helper()
+	request := jsonRpcOutgoing{}
+
+	if err := json.Unmarshal(c.nextJsonRpcRaw(t), &request); err != nil {
+		t.Fatalf("could not parse the JSON-RPC request: %v", err)
+	}
+
+	if request.Method == "" {
+		t.Fatalf("expected a JSON-RPC request, got %+v", request)
+	}
+
+	return request
+}
+
 func (c *fakeClient) write(t *testing.T, payload string) {
 	t.Helper()
 	c.writeMux.Lock()
@@ -110,6 +180,36 @@ func (c *fakeClient) write(t *testing.T, payload string) {
 func (c *fakeClient) respond(t *testing.T, messageId string, body string) {
 	t.Helper()
 	c.write(t, `{"command":"response","messageId":"`+messageId+`","body":`+body+`}`)
+}
+
+func (c *fakeClient) respondJsonRpc(t *testing.T, id string, result string) {
+	t.Helper()
+	c.write(t, `{"jsonrpc":"2.0","id":"`+id+`","result":`+result+`}`)
+}
+
+func (c *fakeClient) respondJsonRpcError(t *testing.T, id string, code int, message string) {
+	t.Helper()
+	c.write(t, fmt.Sprintf(`{"jsonrpc":"2.0","id":%q,"error":{"code":%d,"message":%q}}`, id, code, message))
+}
+
+// Declines the client-info probe so the connection stays on legacy framing.
+func (c *fakeClient) declineProbe(t *testing.T) {
+	t.Helper()
+	probe := c.nextJsonRpcRequest(t)
+	c.respondJsonRpcError(t, probe.Id, jsonRpcMethodNotFound, "Method not found")
+}
+
+// Answers the capability probe and waits for the server to switch the connection to JSON-RPC.
+func (h *harness) announceJsonRpc(t *testing.T, client *fakeClient) {
+	t.Helper()
+	probe := client.nextJsonRpcRequest(t)
+
+	if probe.Method != "client-info" {
+		t.Fatalf("expected the client-info probe, got %+v", probe)
+	}
+
+	client.respondJsonRpc(t, probe.Id, `{"protocols":["jsonrpc-2.0"]}`)
+	h.waitForJsonRpcCapability(t)
 }
 
 func (c *fakeClient) awaitPong(t *testing.T, message string) {
@@ -135,6 +235,22 @@ func (h *harness) waitForClients(t *testing.T, count int) {
 	}
 
 	t.Fatalf("expected %d connected clients, got %d", count, len(h.forwarder.clients()))
+}
+
+func (h *harness) waitForJsonRpcCapability(t *testing.T) {
+	t.Helper()
+
+	for i := 0; i < 400; i++ {
+		for _, client := range h.forwarder.clients() {
+			if client.jsonRpcCapable.Load() {
+				return
+			}
+		}
+
+		time.Sleep(5 * time.Millisecond)
+	}
+
+	t.Fatal("client did not become JSON-RPC capable")
 }
 
 type asyncResponse struct {
@@ -241,6 +357,7 @@ func TestDuplicateAndLateResponsesAreIgnored(t *testing.T) {
 	h := newHarness(t, 2*time.Second, 0)
 	client := h.connect(t)
 	h.waitForClients(t, 1)
+	client.declineProbe(t)
 
 	result := h.requestAsync(t, http.MethodGet, "/asbplayer/bound-media", "")
 	command := client.nextCommand(t)
@@ -270,6 +387,8 @@ func TestFirstBroadcastResponseWins(t *testing.T) {
 	responding := h.connect(t)
 	late := h.connect(t)
 	h.waitForClients(t, 2)
+	responding.declineProbe(t)
+	late.declineProbe(t)
 
 	result := h.requestAsync(t, http.MethodGet, "/asbplayer/bound-media", "")
 	respondingCommand := responding.nextCommand(t)
@@ -306,9 +425,10 @@ func TestTimeoutCleansUpPendingState(t *testing.T) {
 	h := newHarness(t, 150*time.Millisecond, 0)
 	client := h.connect(t)
 	h.waitForClients(t, 1)
+	client.declineProbe(t)
 
-	if status, _ := h.request(t, http.MethodGet, "/asbplayer/bound-media", ""); status != http.StatusInternalServerError {
-		t.Fatalf("expected 500 on timeout, got %d", status)
+	if status, _ := h.request(t, http.MethodGet, "/asbplayer/bound-media", ""); status != http.StatusServiceUnavailable {
+		t.Fatalf("expected 503 on timeout, got %d", status)
 	}
 
 	client.nextCommand(t)
@@ -330,8 +450,8 @@ func TestRequestFailsWithNoConnectedClients(t *testing.T) {
 	h := newHarness(t, 30*time.Second, 0)
 	response := await(t, h.requestAsync(t, http.MethodGet, "/asbplayer/bound-media", ""))
 
-	if response.status != http.StatusInternalServerError {
-		t.Fatalf("expected 500 with no clients connected, got %d", response.status)
+	if response.status != http.StatusServiceUnavailable {
+		t.Fatalf("expected 503 with no clients connected, got %d", response.status)
 	}
 }
 
@@ -452,6 +572,258 @@ func TestCommandShapesAndResponses(t *testing.T) {
 	}
 }
 
+func TestProbesJsonRpcSupportOnConnect(t *testing.T) {
+	h := newHarness(t, 2*time.Second, 0)
+	client := h.connect(t)
+	h.waitForClients(t, 1)
+
+	probe := client.nextJsonRpcRequest(t)
+
+	if probe.Jsonrpc != jsonRpcVersion || probe.Method != "client-info" || probe.Id == "" {
+		t.Fatalf("unexpected JSON-RPC probe: %+v", probe)
+	}
+}
+
+func TestClientInfoResponseSwitchesToJsonRpc(t *testing.T) {
+	h := newHarness(t, 2*time.Second, 0)
+	client := h.connect(t)
+	h.waitForClients(t, 1)
+
+	probe := client.nextJsonRpcRequest(t)
+	client.respondJsonRpc(t, probe.Id, `{"protocols":["jsonrpc-2.0"]}`)
+	h.waitForJsonRpcCapability(t)
+
+	result := h.requestAsync(t, http.MethodGet, "/asbplayer/bound-media", "")
+	command := client.nextJsonRpcRequest(t)
+	client.respondJsonRpc(t, command.Id, `{"media":[]}`)
+
+	if response := await(t, result); response.status != http.StatusOK || response.body != `{"media":[]}` {
+		t.Fatalf("expected the JSON-RPC response to settle the request, got %d %s", response.status, response.body)
+	}
+}
+
+func TestIgnoresProbeAndKeepsLegacyFraming(t *testing.T) {
+	h := newHarness(t, 2*time.Second, 0)
+	client := h.connect(t)
+	h.waitForClients(t, 1)
+
+	// Leaving the probe unanswered must keep the connection on legacy framing.
+	result := h.requestAsync(t, http.MethodGet, "/asbplayer/bound-media", "")
+	command := client.nextCommand(t)
+	client.respond(t, command.MessageId, `{"media":[]}`)
+
+	if response := await(t, result); response.status != http.StatusOK || response.body != `{"media":[]}` {
+		t.Fatalf("expected the legacy response to settle the request, got %d %s", response.status, response.body)
+	}
+}
+
+func TestClientInfoErrorKeepsLegacyFraming(t *testing.T) {
+	h := newHarness(t, 2*time.Second, 0)
+	client := h.connect(t)
+	h.waitForClients(t, 1)
+	client.declineProbe(t)
+
+	result := h.requestAsync(t, http.MethodGet, "/asbplayer/bound-media", "")
+	command := client.nextCommand(t)
+	client.respond(t, command.MessageId, `{"media":[]}`)
+
+	if response := await(t, result); response.status != http.StatusOK || response.body != `{"media":[]}` {
+		t.Fatalf("expected the legacy response to settle the request, got %d %s", response.status, response.body)
+	}
+}
+
+func TestClientInfoWithoutProtocolKeepsLegacyFraming(t *testing.T) {
+	h := newHarness(t, 2*time.Second, 0)
+	client := h.connect(t)
+	h.waitForClients(t, 1)
+
+	probe := client.nextJsonRpcRequest(t)
+	client.respondJsonRpc(t, probe.Id, `{"protocols":[]}`)
+
+	result := h.requestAsync(t, http.MethodGet, "/asbplayer/bound-media", "")
+	command := client.nextCommand(t)
+	client.respond(t, command.MessageId, `{"media":[]}`)
+
+	if response := await(t, result); response.status != http.StatusOK || response.body != `{"media":[]}` {
+		t.Fatalf("expected the legacy response to settle the request, got %d %s", response.status, response.body)
+	}
+}
+
+func TestJsonRpcMethodFrameDoesNotSwitchFraming(t *testing.T) {
+	h := newHarness(t, 2*time.Second, 0)
+	client := h.connect(t)
+	h.waitForClients(t, 1)
+
+	// Leave the probe unanswered; a JSON-RPC request alone must not negotiate the protocol.
+	client.nextJsonRpcRequest(t)
+	client.write(t, `{"jsonrpc":"2.0","id":"m1","method":"initialize","params":{}}`)
+
+	response := client.nextJsonRpc(t)
+
+	if response.Error == nil || response.Error.Code != jsonRpcMethodNotFound {
+		t.Fatalf("expected initialize to be rejected with method not found, got %+v", response)
+	}
+
+	result := h.requestAsync(t, http.MethodGet, "/asbplayer/bound-media", "")
+	command := client.nextCommand(t)
+	client.respond(t, command.MessageId, `{"media":[]}`)
+
+	if response := await(t, result); response.status != http.StatusOK || response.body != `{"media":[]}` {
+		t.Fatalf("expected legacy framing, got %d %s", response.status, response.body)
+	}
+}
+
+func TestJsonRpcParseError(t *testing.T) {
+	h := newHarness(t, 2*time.Second, 0)
+	client := h.connect(t)
+	h.waitForClients(t, 1)
+	h.announceJsonRpc(t, client)
+
+	client.write(t, `not json`)
+
+	response := client.nextJsonRpc(t)
+
+	if response.Error == nil || response.Error.Code != jsonRpcParseError {
+		t.Fatalf("expected a parse error, got %+v", response)
+	}
+
+	if string(response.Id) != "null" {
+		t.Fatalf("expected a null id, got %s", response.Id)
+	}
+}
+
+func TestJsonRpcInvalidRequest(t *testing.T) {
+	h := newHarness(t, 2*time.Second, 0)
+	client := h.connect(t)
+	h.waitForClients(t, 1)
+	h.announceJsonRpc(t, client)
+
+	client.write(t, `{"jsonrpc":"2.0","id":"malformed"}`)
+
+	response := client.nextJsonRpc(t)
+
+	if response.Error == nil || response.Error.Code != jsonRpcInvalidRequest {
+		t.Fatalf("expected an invalid-request error, got %+v", response)
+	}
+
+	if string(response.Id) != `"malformed"` {
+		t.Fatalf("expected the request id to be echoed, got %s", response.Id)
+	}
+
+	client.write(t, `{"jsonrpc":"2.0","id":1,"method":"initialize"}`)
+
+	response = client.nextJsonRpc(t)
+
+	if response.Error == nil || response.Error.Code != jsonRpcInvalidRequest {
+		t.Fatalf("expected an invalid-request error, got %+v", response)
+	}
+
+	if string(response.Id) != "null" {
+		t.Fatalf("expected a null id, got %s", response.Id)
+	}
+}
+
+func TestJsonRpcRequestsAndResponses(t *testing.T) {
+	h := newHarness(t, 2*time.Second, 0)
+	client := h.connect(t)
+	h.waitForClients(t, 1)
+	h.announceJsonRpc(t, client)
+
+	result := h.requestAsync(t, http.MethodGet, "/asbplayer/bound-media", "")
+	request := client.nextJsonRpcRequest(t)
+
+	if request.Jsonrpc != jsonRpcVersion || request.Method != "get-bound-media" || request.Id == "" {
+		t.Fatalf("unexpected JSON-RPC request: %+v", request)
+	}
+
+	client.respondJsonRpc(t, request.Id, `{"media":[{"id":"abc"}]}`)
+
+	if response := await(t, result); response.status != http.StatusOK || response.body != `{"media":[{"id":"abc"}]}` {
+		t.Fatalf("expected the JSON-RPC result, got %d %s", response.status, response.body)
+	}
+
+	if h.forwarder.Broker.pendingCount() != 0 {
+		t.Fatalf("expected no pending requests, got %d", h.forwarder.Broker.pendingCount())
+	}
+}
+
+func TestJsonRpcErrorRoutesToHttpStatus(t *testing.T) {
+	h := newHarness(t, 2*time.Second, 0)
+	client := h.connect(t)
+	h.waitForClients(t, 1)
+	h.announceJsonRpc(t, client)
+
+	result := h.requestAsync(t, http.MethodGet, "/asbplayer/bound-media", "")
+	request := client.nextJsonRpcRequest(t)
+	client.respondJsonRpcError(t, request.Id, jsonRpcInternalError, "handler failed")
+
+	if response := await(t, result); response.status != http.StatusInternalServerError {
+		t.Fatalf("expected 500 for an internal JSON-RPC error, got %d", response.status)
+	}
+}
+
+func TestMixedLegacyAndJsonRpcClients(t *testing.T) {
+	h := newHarness(t, 2*time.Second, 0)
+	jsonRpcClient := h.connect(t)
+	legacyClient := h.connect(t)
+	h.waitForClients(t, 2)
+	h.announceJsonRpc(t, jsonRpcClient)
+
+	first := h.requestAsync(t, http.MethodGet, "/asbplayer/bound-media", "")
+	jsonRpcRequest := jsonRpcClient.nextJsonRpcRequest(t)
+	legacyCommand := legacyClient.nextCommand(t)
+
+	if jsonRpcRequest.Id != legacyCommand.MessageId {
+		t.Fatalf("expected the same correlation id, got %s and %s", jsonRpcRequest.Id, legacyCommand.MessageId)
+	}
+
+	jsonRpcClient.respondJsonRpc(t, jsonRpcRequest.Id, `{"media":[{"id":"json-rpc"}]}`)
+
+	if response := await(t, first); response.status != http.StatusOK || !strings.Contains(response.body, "json-rpc") {
+		t.Fatalf("expected the JSON-RPC response to settle the request, got %d %s", response.status, response.body)
+	}
+
+	second := h.requestAsync(t, http.MethodGet, "/asbplayer/bound-media", "")
+	legacyCommand = legacyClient.nextCommand(t)
+	jsonRpcClient.nextJsonRpcRequest(t)
+	legacyClient.respond(t, legacyCommand.MessageId, `{"media":[{"id":"legacy"}]}`)
+
+	if response := await(t, second); response.status != http.StatusOK || !strings.Contains(response.body, "legacy") {
+		t.Fatalf("expected the legacy response to settle the request, got %d %s", response.status, response.body)
+	}
+}
+
+func TestJsonRpcNotificationHasNoId(t *testing.T) {
+	ankiConnect := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = io.Copy(io.Discard, r.Body)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"result":42}`))
+	}))
+	t.Cleanup(ankiConnect.Close)
+
+	h := newHarnessWithAnkiConnect(t, 2*time.Second, 2, ankiConnect.URL)
+	client := h.connect(t)
+	h.waitForClients(t, 1)
+	h.announceJsonRpc(t, client)
+
+	status, _ := h.request(t, http.MethodPost, "/",
+		`{"action":"addNote","params":{"note":{"fields":{"Word":"ねこ"}}}}`)
+
+	if status != http.StatusOK {
+		t.Fatalf("expected the intercepted addNote to succeed, got %d", status)
+	}
+
+	notification := client.nextJsonRpc(t)
+
+	if notification.Jsonrpc != jsonRpcVersion || notification.Method != "mine-subtitle" {
+		t.Fatalf("unexpected JSON-RPC notification: %+v", notification)
+	}
+
+	if len(notification.Id) != 0 {
+		t.Fatalf("expected a notification without an id, got %s", notification.Id)
+	}
+}
+
 func TestMineSubtitleReportsPublished(t *testing.T) {
 	h := newHarness(t, 2*time.Second, 1)
 	client := h.connect(t)
@@ -469,6 +841,34 @@ func TestMineSubtitleReportsPublished(t *testing.T) {
 
 	if response := await(t, result); response.status != http.StatusOK || response.body != "-1" {
 		t.Fatalf("expected a 200 with -1, got %d %s", response.status, response.body)
+	}
+}
+
+func TestMineSubtitleJsonRpcErrorIsNotForwardedToAnkiConnect(t *testing.T) {
+	var ankiConnectCalls atomic.Int32
+	ankiConnect := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ankiConnectCalls.Add(1)
+		_, _ = io.Copy(io.Discard, r.Body)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"result":1}`))
+	}))
+	t.Cleanup(ankiConnect.Close)
+
+	h := newHarnessWithAnkiConnect(t, 2*time.Second, 1, ankiConnect.URL)
+	client := h.connect(t)
+	h.waitForClients(t, 1)
+	h.announceJsonRpc(t, client)
+
+	result := h.requestAsync(t, http.MethodPost, "/", `{"action":"addNote","params":{"note":{"fields":{"Word":"ねこ"}}}}`)
+	command := client.nextJsonRpcRequest(t)
+	client.respondJsonRpcError(t, command.Id, jsonRpcInternalError, "handler failed")
+
+	if response := await(t, result); response.status != http.StatusInternalServerError {
+		t.Fatalf("expected 500 for an asbplayer error, got %d", response.status)
+	}
+
+	if calls := ankiConnectCalls.Load(); calls != 0 {
+		t.Fatalf("expected no fallback to AnkiConnect, got %d calls", calls)
 	}
 }
 
