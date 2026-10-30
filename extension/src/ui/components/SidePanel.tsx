@@ -437,8 +437,8 @@ export default function SidePanel({
     );
 
     const copyHistoryRepository = useMemo(
-        () => new IndexedDBCopyHistoryRepository(settings.miningHistoryStorageLimit),
-        [settings.miningHistoryStorageLimit]
+        () => new IndexedDBCopyHistoryRepository(settingsProvider),
+        [settingsProvider]
     );
     const { copyHistoryItems, refreshCopyHistory, deleteCopyHistoryItem, deleteAllCopyHistoryItems } = useCopyHistory(
         settings.miningHistoryStorageLimit,

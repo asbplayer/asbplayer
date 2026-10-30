@@ -52,16 +52,18 @@ To always use asbplayer's subtitle text for the Sentence field, enable [**Always
 
 ## API reference {#api-reference}
 
-See the [technical reference](../reference/external-api#http-based-api) for a description of supported commands that can be sent to asbplayer over the WebSocket connection.
+See the [technical reference](../reference/external-api#external-api) for a description of supported commands that can be sent to asbplayer over the WebSocket connection.
 
 ## HTTP-based API {#http-based-api}
 
-The WebSocket server implements an HTTP-based API which triggers the commands documented above.
+The WebSocket server implements an HTTP-based API which triggers the documented [commands](../reference/external-api#external-api).
 
 - `POST asbplayer/load-subtitles` (optional `mediaId` in the request body) (<a href={`${project.urls.repo}/blob/main/scripts/web-socket-server/cli/load-subtitles`}>script</a>)
+- `POST asbplayer/mine-subtitle` (argument specified as JSON `{ fields, postMineAction, mediaId?, noteId?, asbplayerCardId? }`) (<a href={`${project.urls.repo}/blob/main/scripts/web-socket-server/cli/mine-subtitle`}>script</a>)
 - `POST asbplayer/seek` (optional `mediaId` in the request body) (<a href={`${project.urls.repo}/blob/main/scripts/web-socket-server/cli/seek`}>script</a>)
 - `GET asbplayer/bound-media` (<a href={`${project.urls.repo}/blob/main/scripts/web-socket-server/cli/bound-media`}>script</a>)
 - `GET asbplayer/subtitles` (optional `?mediaId=...&trackNumbers=0,1`) (<a href={`${project.urls.repo}/blob/main/scripts/web-socket-server/cli/subtitles`}>script</a>)
+- `GET asbplayer/mining-history` (<a href={`${project.urls.repo}/blob/main/scripts/web-socket-server/cli/mining-history`}>script</a>)
 
 ## AnkiConnect proxy {#ankiconnect-proxy}
 

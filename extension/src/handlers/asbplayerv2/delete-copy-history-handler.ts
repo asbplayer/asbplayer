@@ -1,12 +1,11 @@
 import type { Command, DeleteCopyHistoryMessage, Message } from '@project/common';
 import { asbError } from '@project/common/util/log';
-import { IndexedDBCopyHistoryRepository } from '@project/common/copy-history';
-import type { SettingsProvider } from '@project/common/settings';
+import type { CopyHistoryRepository } from '@project/common/copy-history';
 
 export default class DeleteCopyHistoryHandler {
-    private readonly _settings: SettingsProvider;
-    constructor(settings: SettingsProvider) {
-        this._settings = settings;
+    private readonly _copyHistoryRepository: CopyHistoryRepository;
+    constructor(copyHistoryRepository: CopyHistoryRepository) {
+        this._copyHistoryRepository = copyHistoryRepository;
     }
 
     get sender() {
@@ -19,10 +18,7 @@ export default class DeleteCopyHistoryHandler {
 
     handle(command: Command<Message>, sender: Browser.runtime.MessageSender, sendResponse: (r?: any) => void) {
         const message = command.message as DeleteCopyHistoryMessage;
-        void this._settings
-            .getSingle('miningHistoryStorageLimit')
-            .then((limit) => new IndexedDBCopyHistoryRepository(limit))
-            .then((copyHistoryRepository) => Promise.all(message.ids.map((id) => copyHistoryRepository.delete(id))))
+        Promise.all(message.ids.map((id) => this._copyHistoryRepository.delete(id)))
             .then(() => sendResponse({}))
             .catch((error) => asbError('copy-history', 'Failed to delete copy history items:', error));
 

@@ -18,6 +18,7 @@ import { externalCommandHandlers } from '@project/extension/src/services/externa
 import type { SettingsProvider } from '@project/common/settings';
 import type TabRegistry from '@project/extension/src/services/tab-registry';
 import type { ExtensionBadgeController } from '@project/extension/src/services/extension-badge-controller';
+import type { CopyHistoryRepository } from '@project/common/copy-history';
 
 // Pending requests expire after this long, and at most this many are retained, so that
 // unapproved requests cannot accumulate indefinitely.
@@ -60,12 +61,14 @@ export class ExternalConnectionCoordinator {
     constructor({
         globalStateProvider,
         tabRegistry,
+        copyHistoryRepository,
         settings,
         badgeController,
         dispatcher,
     }: {
         globalStateProvider: GlobalStateProvider;
         tabRegistry: TabRegistry;
+        copyHistoryRepository: CopyHistoryRepository;
         settings: SettingsProvider;
         badgeController: ExtensionBadgeController;
         /** Defaults to a dispatcher wired with the extension's external command handlers. */
@@ -77,7 +80,7 @@ export class ExternalConnectionCoordinator {
         this._dispatcher = dispatcher ?? new ExternalCommandDispatcher();
 
         if (dispatcher === undefined) {
-            this._dispatcher.setHandlers(externalCommandHandlers(settings, tabRegistry));
+            this._dispatcher.setHandlers(externalCommandHandlers(settings, tabRegistry, copyHistoryRepository));
         }
 
         browser.runtime.onConnectExternal.addListener((port) => this._onConnectExternal(port));

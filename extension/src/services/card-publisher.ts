@@ -15,18 +15,20 @@ import type { AnkiSettings, SettingsProvider } from '@project/common/settings';
 import { ankiSettingsKeys } from '@project/common/settings';
 import { v4 as uuidv4 } from 'uuid';
 import { exportCard, DuplicateNoteError } from '@project/common/anki';
-import { IndexedDBCopyHistoryRepository } from '@project/common/copy-history';
+import type { CopyHistoryRepository } from '@project/common/copy-history';
 
 export class CardPublisher {
     private readonly _settingsProvider: SettingsProvider;
+    private readonly _copyHistoryRepository: CopyHistoryRepository;
     bulkExportCancelled = false;
 
-    constructor(settingsProvider: SettingsProvider) {
+    constructor(settingsProvider: SettingsProvider, copyHistoryRepository: CopyHistoryRepository) {
         this._settingsProvider = settingsProvider;
+        this._copyHistoryRepository = copyHistoryRepository;
     }
 
     async publish(card: CardModel, postMineAction?: PostMineAction, tabId?: number, src?: string, noteId?: number) {
-        const id = uuidv4();
+        const id = card.id || uuidv4();
         const savePromise = this._saveCardToRepository(id, card);
 
         if (tabId === undefined || src === undefined) {
@@ -52,7 +54,7 @@ export class CardPublisher {
     }
 
     async publishBulk(card: CardModel, tabId?: number, src?: string) {
-        const id = uuidv4();
+        const id = card.id || uuidv4();
         // (agloo) n.b. this could lead to out-of-order card saves if Anki is taking a while,
         // which matters to users if they plan on reviewing cards in save order. If we get reports of this,
         // consider putting a promise from here into a save queue.
@@ -214,10 +216,9 @@ export class CardPublisher {
 
     private async _saveCardToRepository(id: string, card: CardModel) {
         try {
-            const storageLimit = await this._settingsProvider.getSingle('miningHistoryStorageLimit');
-            await new IndexedDBCopyHistoryRepository(storageLimit).save({
+            await this._copyHistoryRepository.save({
                 ...card,
-                id: card.id ?? id,
+                id,
                 timestamp: Date.now(),
             });
             return true;

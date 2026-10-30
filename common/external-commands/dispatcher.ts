@@ -189,7 +189,14 @@ export class ExternalCommandDispatcher {
     }
 
     private async _handleCommand(command: ExternalCommand): Promise<object | undefined> {
-        const { onMineSubtitle, onLoadSubtitles, onSeekTimestamp, onGetBoundMedia, onGetSubtitles } = this._handlers;
+        const {
+            onMineSubtitle,
+            onLoadSubtitles,
+            onGetMiningHistory,
+            onSeekTimestamp,
+            onGetBoundMedia,
+            onGetSubtitles,
+        } = this._handlers;
 
         // Unhandled commands stay silent so that another connected client which handles them can answer.
         switch (command.command) {
@@ -202,6 +209,11 @@ export class ExternalCommandDispatcher {
 
                 await onLoadSubtitles(command);
                 return {};
+            case 'get-mining-history':
+                if (onGetMiningHistory === undefined) {
+                    return undefined;
+                }
+                return onGetMiningHistory(command);
             case 'seek-timestamp':
                 if (onSeekTimestamp === undefined) {
                     return undefined;
