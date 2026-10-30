@@ -36,7 +36,10 @@
         "userGuide": "ユーザーガイド",
         "search": "検索",
         "reload": "再読み込み",
-        "findPlaceholder": "テキストまたは /regex/ で検索"
+        "findPlaceholder": "テキストまたは /regex/ で検索",
+        "approve": "Approve",
+        "deny": "Deny",
+        "remove": "Remove"
     },
     "about": {
         "title": "asbplayerについて",
@@ -851,5 +854,9 @@
         "notification": "Recipe: {{name}}",
         "settingLocked": "{{setting}} can't be changed while a Recipe is active",
         "confirmDelete": "Delete \"{{name}}\"?"
+    },
+    "externalConnections": {
+        "incomingRequest": "An external extension is requesting to connect to asbplayer.",
+        "unknownName": "Unnamed extension"
     }
 }

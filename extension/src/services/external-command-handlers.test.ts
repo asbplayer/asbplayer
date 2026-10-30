@@ -5,9 +5,9 @@ import { SettingsProvider } from '@project/common/settings';
 import { ExtensionSettingsStorage } from '@project/extension/src/services/extension-settings-storage';
 import { MockStorageArea } from '@project/extension/src/services/mock-storage-area';
 import type TabRegistry from '@project/extension/src/services/tab-registry';
-import { webSocketCommandHandlers } from '@project/extension/src/services/web-socket-command-handlers';
-import { localMediaId, streamingMediaId } from '@project/common/web-socket-client/web-socket-media';
-import { filterByTracks, toSubtitleCues } from '@project/common/web-socket-client/web-socket-subtitles';
+import { externalCommandHandlers } from '@project/extension/src/services/external-command-handlers';
+import { localMediaId, streamingMediaId } from '@project/common/external-commands/media';
+import { filterByTracks, toSubtitleCues } from '@project/common/external-commands/subtitles';
 
 const subtitle = (text: string, track: number, start: number): SubtitleModel => ({
     text,
@@ -110,8 +110,8 @@ const harness = ({
                 asbplayers.find((a) => a.id === asbplayerId),
                 'forwarded'
             );
-            const { webSocketCommand } = command.message;
-            asbplayerCommands.push({ asbplayerId: command.asbplayerId, webSocketCommand });
+            const { externalCommand } = command.message;
+            asbplayerCommands.push({ asbplayerId: command.asbplayerId, externalCommand });
 
             if (!asbplayerResponds) {
                 return undefined;
@@ -119,21 +119,21 @@ const harness = ({
 
             const subtitles = asbplayerSubtitles[asbplayerId] ?? [];
             const body =
-                webSocketCommand.command === 'get-subtitles'
-                    ? { subtitles: toSubtitleCues(filterByTracks(subtitles, webSocketCommand.body.trackNumbers)) }
-                    : webSocketCommand.command === 'mine-subtitle'
+                externalCommand.command === 'get-subtitles'
+                    ? { subtitles: toSubtitleCues(filterByTracks(subtitles, externalCommand.body.trackNumbers)) }
+                    : externalCommand.command === 'mine-subtitle'
                       ? { published: asbplayerPublishes }
                       : {};
             return {
-                command: 'web-socket-command-response',
+                command: 'external-command-response',
                 messageId: 'forwarded',
-                response: { command: 'response', messageId: webSocketCommand.messageId, body },
+                response: { command: 'response', messageId: externalCommand.messageId, body },
             };
         },
     } as unknown as TabRegistry;
 
     const settings = new SettingsProvider(new ExtensionSettingsStorage(new MockStorageArea()));
-    const handlers = webSocketCommandHandlers(settings, tabRegistry);
+    const handlers = externalCommandHandlers(settings, tabRegistry);
     return { handlers, settings, videoElementCommands, asbplayerCommands, videoElementTabCommands };
 };
 
@@ -198,7 +198,7 @@ describe('seek-timestamp', () => {
         expect(asbplayerCommands).toEqual([
             {
                 asbplayerId: targeted.id,
-                webSocketCommand: seekCommand({ timestamp: 7, mediaId: localMediaId(targeted.id) }),
+                externalCommand: seekCommand({ timestamp: 7, mediaId: localMediaId(targeted.id) }),
             },
         ]);
     });
@@ -213,7 +213,7 @@ describe('seek-timestamp', () => {
         expect(asbplayerCommands).toEqual([
             {
                 asbplayerId: active.id,
-                webSocketCommand: seekCommand({ timestamp: 7, mediaId: localMediaId(active.id) }),
+                externalCommand: seekCommand({ timestamp: 7, mediaId: localMediaId(active.id) }),
             },
         ]);
     });
@@ -274,7 +274,7 @@ describe('mine-subtitle', () => {
 
         expect(published).toBe(true);
         expect(videoElementCommands).toEqual([]);
-        expect(asbplayerCommands).toEqual([{ asbplayerId: asbplayer.id, webSocketCommand: command }]);
+        expect(asbplayerCommands).toEqual([{ asbplayerId: asbplayer.id, externalCommand: command }]);
     });
 
     it("reports the local asbplayer's answer as the published result", async () => {
@@ -533,7 +533,7 @@ describe('load-subtitles', () => {
 
         expect(videoElementTabCommands).toEqual([]);
         expect(asbplayerCommands).toEqual([
-            { asbplayerId: active.id, webSocketCommand: loadCommand({ files, mediaId: localMediaId(active.id) }) },
+            { asbplayerId: active.id, externalCommand: loadCommand({ files, mediaId: localMediaId(active.id) }) },
         ]);
     });
 

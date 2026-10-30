@@ -36,7 +36,10 @@
         "userGuide": "Guida Utente",
         "search": "Cerca",
         "reload": "Ricarica",
-        "findPlaceholder": "Search by text or /regex/"
+        "findPlaceholder": "Search by text or /regex/",
+        "approve": "Approve",
+        "deny": "Deny",
+        "remove": "Remove"
     },
     "about": {
         "title": "A proposito di asbplayer",
@@ -851,5 +854,9 @@
         "notification": "Recipe: {{name}}",
         "settingLocked": "{{setting}} can't be changed while a Recipe is active",
         "confirmDelete": "Delete \"{{name}}\"?"
+    },
+    "externalConnections": {
+        "incomingRequest": "An external extension is requesting to connect to asbplayer.",
+        "unknownName": "Unnamed extension"
     }
 }

@@ -31,6 +31,39 @@ export interface GenericSubtitleParserState {
     };
 }
 
+export interface ApprovedExternalConnection {
+    name?: string;
+    approvedAt: number;
+}
+
+export interface PendingExternalConnection {
+    name?: string;
+    requestedAt: number;
+}
+
+// Pending requests expire after this long so that unapproved requests cannot accumulate
+// indefinitely.
+export const pendingRequestExpirationMs = 24 * 60 * 60 * 1000;
+
+/**
+ * Pending requests that have not yet expired. Callers rendering pending requests (or counting
+ * them, e.g. for badges) should use this so that expired requests are never displayed even
+ * before they have been pruned from the underlying state.
+ */
+export const activePendingEntries = (
+    pending: ExternalConnectionsState['pending'],
+    now: number
+): ExternalConnectionsState['pending'] =>
+    Object.fromEntries(
+        Object.entries(pending).filter(([, request]) => now - (request?.requestedAt ?? 0) <= pendingRequestExpirationMs)
+    );
+
+export interface ExternalConnectionsState {
+    // Keyed by the external extension's runtime ID.
+    approved: { [extensionId: string]: ApprovedExternalConnection };
+    pending: { [extensionId: string]: PendingExternalConnection };
+}
+
 export const initialGlobalState: GlobalState = {
     ftueHasSeenAnkiDialogQuickSelectV2: false,
     ftueHasSeenSubtitleTrackSelector: false,
@@ -43,6 +76,10 @@ export const initialGlobalState: GlobalState = {
         jimakuSearchCategory: 'anime',
         jimakuRecentWorks: [],
     },
+    externalConnections: {
+        approved: {},
+        pending: {},
+    },
 };
 
 export interface GlobalState {
@@ -51,10 +88,63 @@ export interface GlobalState {
     ftueAnnotation: AnnotationTutorialState;
     genericSubtitleParser: GenericSubtitleParserState;
     onlineSubtitleSourceConfig: OnlineSubtitleSourceConfig;
+    externalConnections: ExternalConnectionsState;
 }
 
 export interface GlobalStateProvider {
     getAll: () => Promise<GlobalState>;
     get: <K extends keyof GlobalState>(keys: K[]) => Promise<Pick<GlobalState, K>>;
     set: (state: Partial<GlobalState>) => Promise<void>;
+    onUpdated: (callback: (state: Partial<GlobalState>) => void) => () => void;
+    updateWithLocking: <K extends keyof GlobalState>(
+        key: K,
+        mutate: (state: GlobalState[K]) => boolean
+    ) => Promise<void>;
 }
+
+/**
+ * Locked read-modify-write of the `externalConnections` global state key. Skips the write
+ * when the mutator reports no change. Throws when the lock is already held, or when the
+ * provider does not support locked updates.
+ */
+export const mutateExternalConnections = async (
+    provider: GlobalStateProvider,
+    mutate: (externalConnections: ExternalConnectionsState) => boolean
+): Promise<void> => {
+    await provider.updateWithLocking('externalConnections', mutate);
+};
+
+export const approveExternalConnection = async (
+    provider: GlobalStateProvider,
+    extensionId: string,
+    name?: string
+): Promise<void> => {
+    await mutateExternalConnections(provider, (externalConnections) => {
+        const request = externalConnections.pending[extensionId];
+        delete externalConnections.pending[extensionId];
+        externalConnections.approved[extensionId] = { name: name ?? request?.name, approvedAt: Date.now() };
+        return true;
+    });
+};
+
+export const denyExternalConnection = async (provider: GlobalStateProvider, extensionId: string): Promise<void> => {
+    await mutateExternalConnections(provider, (externalConnections) => {
+        if (!(extensionId in externalConnections.pending)) {
+            return false;
+        }
+
+        delete externalConnections.pending[extensionId];
+        return true;
+    });
+};
+
+export const removeExternalConnection = async (provider: GlobalStateProvider, extensionId: string): Promise<void> => {
+    await mutateExternalConnections(provider, (externalConnections) => {
+        if (!(extensionId in externalConnections.approved)) {
+            return false;
+        }
+
+        delete externalConnections.approved[extensionId];
+        return true;
+    });
+};
