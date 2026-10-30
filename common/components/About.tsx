@@ -1,3 +1,4 @@
+import project from '@project/common/project';
 import React from 'react';
 import Box from '@mui/material/Box';
 import MuiLink from '@mui/material/Link';
@@ -764,6 +765,13 @@ const dependencies: Dependency[] = [
         purpose: 'UI',
     },
     {
+        name: 'react-color',
+        projectLink: 'https://github.com/uiwjs/react-color',
+        license: 'MIT',
+        licenseLink: 'https://github.com/uiwjs/react-color/blob/main/LICENSE',
+        purpose: 'UI',
+    },
+    {
         name: 'Roboto',
         projectLink: 'https://fonts.google.com/specimen/Roboto',
         license: 'Apache 2.0',
@@ -917,15 +925,15 @@ const About = ({ appVersionRepoPath, extensionVersion }: Props) => {
             <Box style={{ width: '100%', textAlign: 'center' }}>
                 <LogoIcon style={{ width: 48, height: 48 }} />
                 <br />
-                <Link variant="h5" href="https://github.com/asbplayer/asbplayer">
-                    asbplayer
+                <Link variant="h5" href={project.urls.repo}>
+                    {project.names.short}
                 </Link>
                 <br />
                 {appVersionRepoPath && (
                     <>
                         <Typography variant="caption">
                             {t('about.appVersion')}{' '}
-                            <Link href={`https://github.com/asbplayer/asbplayer/${appVersionRepoPath}`}>
+                            <Link href={`${project.urls.repo}/${appVersionRepoPath}`}>
                                 {appVersionRepoPath.split('/').at(-1)}
                             </Link>
                         </Typography>
@@ -935,7 +943,9 @@ const About = ({ appVersionRepoPath, extensionVersion }: Props) => {
                 {extensionVersion && (
                     <Typography variant="caption">
                         {t('about.extensionVersion')}{' '}
-                        <Link href={`https://github.com/asbplayer/asbplayer/releases/tag/v${extensionVersion}`}>
+                        <Link
+                            href={`${project.urls.repo}/releases/tag/${encodeURIComponent(project.releases.extension.releaseTag.replaceAll('{{version}}', extensionVersion))}`}
+                        >
                             {extensionVersion}
                         </Link>
                     </Typography>

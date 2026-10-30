@@ -1,7 +1,7 @@
 # Posts project activity to Discord incoming webhooks.
 #
 # Routing:
-#   - Release published / promoted (base repo)         -> #extension-releases
+#   - Stable release published (base repo)             -> #extension-releases
 #   - App deploy PR merged (base cf-pages, head
 #     deploy/cf-pages-*)                               -> #app-releases
 #   - Blog post added under docs/blog (push to main)   -> #announcements
@@ -37,7 +37,10 @@ name: Discord notify
 
 on:
     release:
-        types: [published, released]
+        # Only stable releases. `published` (which also fires for pre-releases)
+        # is intentionally excluded so publishing a pre-release does not notify
+        # and promoting it to a full release notifies only once.
+        types: [released]
     issues:
         types: [opened]
     pull_request_target:
@@ -92,7 +95,9 @@ env:
 jobs:
     extension-release:
         name: Extension release
-        if: github.event_name == 'release'
+        if: >-
+            github.event_name == 'release' &&
+            !github.event.release.prerelease
         runs-on: ubuntu-latest
         steps:
             - name: Notify #extension-releases
@@ -148,12 +153,12 @@ jobs:
         permissions:
             contents: read
         steps:
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@v7
               with:
                   fetch-depth: 0
 
             - name: Setup Node.js
-              uses: actions/setup-node@v6
+              uses: actions/setup-node@v7
               with:
                   node-version-file: '.nvmrc'
 

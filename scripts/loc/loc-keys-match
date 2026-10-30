@@ -1,14 +1,16 @@
 #!/bin/bash
+set -euo pipefail
+
 SCRIPTPATH="$(cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P)"
 
 paths() {
     jq 'paths(scalars) | join(".")' $1 | sort
 }
 
-for file in $(ls $SCRIPTPATH/../../common/locales); do
-    diff <(paths $SCRIPTPATH/../../common/locales/en.json) <(paths $SCRIPTPATH/../../common/locales/$file)
-    if [[ $? -eq 1 ]]; then
+while IFS= read -r language; do
+    file="$language.json"
+    if ! diff <(paths "$SCRIPTPATH/../../common/locales/en.json") <(paths "$SCRIPTPATH/../../common/locales/$file"); then
         echo "^^^^ $file has mismatching loc keys ^^^^"
         exit 1
     fi
-done
+done < <(jq -r '.languages[].code' "$SCRIPTPATH/../../project.json")

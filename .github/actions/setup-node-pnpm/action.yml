@@ -9,6 +9,6 @@ runs:
           with:
               cache: true
         - name: Setup Node.js
-          uses: actions/setup-node@v6
+          uses: actions/setup-node@v7
           with:
               node-version-file: '.nvmrc'

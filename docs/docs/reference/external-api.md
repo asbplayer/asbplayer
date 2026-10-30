@@ -1,16 +1,20 @@
 ---
 sidebar_position: 2
+description: Technical reference for asbplayer’s external interface and the WebSocket server that implements it.
 ---
+
+import project, { ankiConnectUrl } from '@site/src/project';
+import CodeBlock from '@theme/CodeBlock';
 
 # External API {#external-api}
 
-This page is intended to be an technical reference on asbplayer's external interface and the [pre-packaged WebSocket server](https://github.com/asbplayer/asbplayer/tree/main/scripts/web-socket-server) that implements this interface. See the [guide](../guides/web-socket-server) for how to setup the WebSocket server.
+This page is intended to be an technical reference on asbplayer's external interface and the <a href={`${project.urls.repo}/tree/main/scripts/web-socket-server`}>pre-packaged WebSocket server</a> that implements this interface. See the [guide](../guides/web-socket-server) for how to setup the WebSocket server.
 
 ## WebSocket commands {#websocket-commands}
 
 asbplayer, as a WebSocket client, responds to the following commands from a WebSocket server.
 
-### `mine-subtitle` {#mine-subtitle}
+## `mine-subtitle` {#mine-subtitle}
 
 Mines from the active tab by default. Set `mediaId` to an ID returned by [`get-bound-media`](#get-bound-media) to target specific media. If the media is not found or has no subtitles, `published` is `false`.
 
@@ -18,7 +22,7 @@ When `postMineAction` is `2`, `noteId` selects the Anki note to update. If omitt
 
 > `mediaId` and `noteId` require extension v1.20.0 or later.
 
-#### Request {#mine-subtitle-request}
+### Request {#mine-subtitle-request}
 
     ```javascript
     {
@@ -41,7 +45,7 @@ When `postMineAction` is `2`, `noteId` selects the Anki note to update. If omitt
     }
     ```
 
-#### Response {#mine-subtitle-response}
+### Response {#mine-subtitle-response}
 
     ```javascript
     {
@@ -55,9 +59,13 @@ When `postMineAction` is `2`, `noteId` selects the Anki note to update. If omitt
     }
     ```
 
-### `load-subtitles` {#load-subtitles}
+## `load-subtitles` {#load-subtitles}
 
-#### Request {#load-subtitles-request}
+Loads the files into the active tab's media by default, showing the video selector when the tab has more than one video. Set `mediaId` to an ID returned by [`get-bound-media`](#get-bound-media) to load the files directly into that media.
+
+> `mediaId` requires extension v1.23.0 or later. Earlier versions load the files into every tab with a bound video
+
+### Request {#load-subtitles-request}
 
 ```javascript
 {
@@ -70,12 +78,14 @@ When `postMineAction` is `2`, `noteId` selects the Anki note to update. If omitt
             "name": "some-file.srt",
             // Base64-encoded file contents
             "base64": "Zm9vYmFyY..."
-        }]
+        }],
+        // Optional media id from `get-bound-media`
+        "mediaId": "a1b2c3d4e5f6"
     }
 }
 ```
 
-#### Response {#load-subtitles-response}
+### Response {#load-subtitles-response}
 
 ```javascript
 {
@@ -86,13 +96,13 @@ When `postMineAction` is `2`, `noteId` selects the Anki note to update. If omitt
 }
 ```
 
-### `seek-timestamp` {#seek-timestamp}
+## `seek-timestamp` {#seek-timestamp}
 
-Seeks the active tab's video by default. Set `mediaId` to an ID returned by [`get-bound-media`](#get-bound-media) to target streaming media. Local media cannot be targeted by `mediaId`.
+Seeks the active tab's media by default. Set `mediaId` to an ID returned by [`get-bound-media`](#get-bound-media) to target specific media.
 
-> `mediaId` requires extension v1.20.0+
+> `mediaId` requires extension v1.20.0+. Seeking local media requires extension v1.23.0+
 
-#### Request {#seek-timestamp-request}
+### Request {#seek-timestamp-request}
 
 ```javascript
 {
@@ -108,7 +118,7 @@ Seeks the active tab's video by default. Set `mediaId` to an ID returned by [`ge
 }
 ```
 
-#### Response {#seek-timestamp-response}
+### Response {#seek-timestamp-response}
 
 ```javascript
 {
@@ -119,13 +129,13 @@ Seeks the active tab's video by default. Set `mediaId` to an ID returned by [`ge
 }
 ```
 
-### `get-bound-media` {#get-bound-media}
+## `get-bound-media` {#get-bound-media}
 
 > Requires extension v1.20.0+
 
 Returns the media asbplayer is currently tracking, including both `streaming` and `local` media.
 
-#### Request {#get-bound-media-request}
+### Request {#get-bound-media-request}
 
 ```javascript
 {
@@ -136,7 +146,7 @@ Returns the media asbplayer is currently tracking, including both `streaming` an
 }
 ```
 
-#### Response {#get-bound-media-response}
+### Response {#get-bound-media-response}
 
 ```javascript
 {
@@ -167,14 +177,14 @@ Returns the media asbplayer is currently tracking, including both `streaming` an
 }
 ```
 
-### `get-subtitles` {#get-subtitles}
+## `get-subtitles` {#get-subtitles}
 
 > Requires extension v1.20.0+
 
 Returns the subtitles currently loaded for a piece of media. By default it targets the active tab's media; pass a `mediaId` from [`get-bound-media`](#get-bound-media) to target specific media.
 Returns an empty list when no matching media is found or no subtitles are loaded.
 
-#### Request {#get-subtitles-request}
+### Request {#get-subtitles-request}
 
 ```javascript
 {
@@ -190,7 +200,7 @@ Returns an empty list when no matching media is found or no subtitles are loaded
 }
 ```
 
-#### Response {#get-subtitles-response}
+### Response {#get-subtitles-response}
 
 ```javascript
 {
@@ -210,10 +220,10 @@ Returns an empty list when no matching media is found or no subtitles are loaded
 
 The WebSocket server also implements an HTTP-based API which can trigger the commands above.
 
-- `POST asbplayer/load-subtitles` ([script](https://github.com/asbplayer/asbplayer/blob/main/scripts/web-socket-server/cli/load-subtitles))
-- `POST asbplayer/seek` (optional `mediaId` in the request body) ([script](https://github.com/asbplayer/asbplayer/blob/main/scripts/web-socket-server/cli/seek))
-- `GET asbplayer/bound-media` ([script](https://github.com/asbplayer/asbplayer/blob/main/scripts/web-socket-server/cli/bound-media))
-- `GET asbplayer/subtitles` (optional `?mediaId=...&trackNumbers=0,1`) ([script](https://github.com/asbplayer/asbplayer/blob/main/scripts/web-socket-server/cli/subtitles))
+- `POST asbplayer/load-subtitles` (optional `mediaId` in the request body) (<a href={`${project.urls.repo}/blob/main/scripts/web-socket-server/cli/load-subtitles`}>script</a>)
+- `POST asbplayer/seek` (optional `mediaId` in the request body) (<a href={`${project.urls.repo}/blob/main/scripts/web-socket-server/cli/seek`}>script</a>)
+- `GET asbplayer/bound-media` (<a href={`${project.urls.repo}/blob/main/scripts/web-socket-server/cli/bound-media`}>script</a>)
+- `GET asbplayer/subtitles` (optional `?mediaId=...&trackNumbers=0,1`) (<a href={`${project.urls.repo}/blob/main/scripts/web-socket-server/cli/subtitles`}>script</a>)
 
 ## AnkiConnect proxy {#ankiconnect-proxy}
 
@@ -225,17 +235,15 @@ The proxy passes through all AnkiConnect requests as-is except for `addNote`. Th
 
 The server is configured with an `.env` file placed next to it in the same directory. Below is an example file with explanation.
 
-```
-# Port that the proxy will listen on
-PORT=8766
+<CodeBlock language="bash">{`# Port that the proxy will listen on
+PORT=${project.services.webSocket.port}
 
 # AnkiConnect URL
-ANKI_CONNECT_URL=http://127.0.0.1:8765
+ANKI_CONNECT_URL=${ankiConnectUrl}
 
 # Action for asbplayer to take when the proxy receives an addNote request
 # 0 = 'None'
 # 1 = 'Open Anki dialog'
 # 2 = 'Update last card' (updates last card with asbplayer media AFTER passing through original addNote request)
 # 3 = 'Export card'
-POST_MINE_ACTION=2
-```
+POST_MINE_ACTION=${project.services.webSocket.postMineAction}`}</CodeBlock>

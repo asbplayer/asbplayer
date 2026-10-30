@@ -1,3 +1,4 @@
+import project from "../../project.json";
 import fs from "node:fs";
 import path from "node:path";
 import type { LoadContext, Plugin } from "@docusaurus/types";
@@ -140,7 +141,7 @@ export default function llmsTxtPlugin(context: LoadContext): Plugin {
       }
       lines.push("", "## Optional", "");
       lines.push(`- [Blog](${url}${baseUrl}blog)`);
-      lines.push("- [GitHub](https://github.com/asbplayer/asbplayer)");
+      lines.push(`- [GitHub](${project.urls.repo})`);
       lines.push("");
 
       fs.writeFileSync(path.join(outDir, "llms.txt"), lines.join("\n"));

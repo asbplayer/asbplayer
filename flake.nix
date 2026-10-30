@@ -2,7 +2,7 @@
   description = "A Nix-flake-based development environment";
 
   inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs/nixos-26.05";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
   };
 
   outputs =
@@ -15,7 +15,13 @@
         "aarch64-darwin"
       ];
       forEachSupportedSystem =
-        f: nixpkgs.lib.genAttrs supportedSystems (system: f { pkgs = import nixpkgs { inherit system; }; });
+        f:
+        nixpkgs.lib.genAttrs supportedSystems (
+          system:
+          f {
+            pkgs = import nixpkgs { inherit system; };
+          }
+        );
     in
     {
       devShells = forEachSupportedSystem (
@@ -24,9 +30,10 @@
             packages =
               (with pkgs; [
                 nodejs_24
-                pnpm
+                pnpm_11
                 python313
-                go
+                basedpyright
+                go_1_27
               ])
               ++ (with pkgs.python313Packages; [
                 uv

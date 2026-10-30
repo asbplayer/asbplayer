@@ -2,6 +2,8 @@ import { afterEach, beforeEach, describe, expect, it } from '@jest/globals';
 import { PlayMode } from '@project/common';
 import type { Message } from '@project/common';
 import PlayerChannel from '@project/common/app/services/player-channel';
+import { defaultSettings } from '@project/common/settings';
+import type { MiscSettings } from '@project/common/settings';
 
 class TestBroadcastChannel {
     static instance?: TestBroadcastChannel;
@@ -35,6 +37,29 @@ afterEach(() => {
 });
 
 describe('PlayerChannel playback state', () => {
+    it('delivers recipe and playback setting changes until the subscription is removed', () => {
+        const channel = new PlayerChannel('test-channel');
+        const broadcastChannel = TestBroadcastChannel.instance!;
+        const received: MiscSettings[] = [];
+        const unsubscribe = channel.onMiscSettings((settings) => received.push(settings));
+        const settings: MiscSettings = {
+            ...defaultSettings,
+            recipes: [{ name: 'Reading', playbackModes: [PlayMode.autoPause], settings: { playbackRate: 0.8 } }],
+            activeRecipeId: 0,
+            playbackRate: 1.2,
+        };
+        const receive = (value: MiscSettings) =>
+            broadcastChannel.onmessage?.(new MessageEvent('message', { data: { command: 'miscSettings', value } }));
+
+        receive(settings);
+        receive({ ...settings, activeRecipeId: null });
+        unsubscribe();
+        receive({ ...settings, playbackRate: 1.5 });
+
+        expect(received).toEqual([settings, { ...settings, activeRecipeId: null }]);
+        channel.close();
+    });
+
     it('sends the timestamp, showing indexes, and paused state together', () => {
         const channel = new PlayerChannel('test-channel');
         const broadcastChannel = TestBroadcastChannel.instance!;

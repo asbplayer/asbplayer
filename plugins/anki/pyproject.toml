@@ -1,11 +1,12 @@
 [project]
-name = "asbplayer-plugin"
+# name and version are synced from project.json by pnpm sync:project.
+name = "asbplayer-addon"
 version = "1.0.0"
-description = "Anki asbplayer plugin for one-click mining support"
+description = "Anki add-on for one-click mining support"
 requires-python = ">=3.13"
 
 # Anki cannot install deps at runtime: anything listed here would have to be vendored
-# into asbplayer-plugin/ and shipped inside the .ankiaddon. Keep it empty unless that's
+# into asbplayer-addon/ and shipped inside the .ankiaddon. Keep it empty unless that's
 # intended, and pure-Python only.
 dependencies = []
 
@@ -17,7 +18,7 @@ dev = ["aqt[qt]==26.8.1"]
 package = false
 
 [tool.basedpyright]
-include = ["asbplayer-plugin"]
+include = ["asbplayer-addon"]
 exclude = ["**/__pycache__", ".venv"]
 venvPath = "."
 venv = ".venv"

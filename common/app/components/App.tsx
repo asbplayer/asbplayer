@@ -1,3 +1,4 @@
+import project from '@project/common/project';
 import { asbError, asbWarn } from '@project/common/util/log';
 import { humanReadableTime, download, extractText, timeDurationDisplay } from '@project/common/util';
 import type { ComponentProps } from 'react';
@@ -20,6 +21,7 @@ import type {
     CardModel,
     ShowAnkiUiMessage,
     JumpToSubtitleMessage,
+    SubtitleFile,
     DownloadImageMessage,
     DownloadAudioMessage,
     CardTextFieldValues,
@@ -61,8 +63,10 @@ import { useAppKeyBinder } from '@project/common/app/hooks/use-app-key-binder';
 import { useAnki } from '@project/common/app/hooks/use-anki';
 import { usePlaybackPreferences } from '@project/common/app/hooks/use-playback-preferences';
 import { MiningContext } from '@project/common/app/services/mining-context';
-import { useAppWebSocketClient } from '@project/common/app/hooks/use-app-web-socket-client';
+import { useAppWebSocketCommands } from '@project/common/app/hooks/use-app-web-socket-commands';
+import { appWebSocketCommandHandlers } from '@project/common/app/services/app-web-socket-command-handlers';
 import type { LoadSubtitlesCommand } from '@project/common/web-socket-client';
+import { localMediaId } from '@project/common/web-socket-client/web-socket-media';
 import { ExtensionBridgedCopyHistoryRepository } from '@project/common/app/services/extension-bridged-copy-history-repository';
 import { IndexedDBCopyHistoryRepository } from '@project/common/copy-history';
 import type { FileSystemFileHandleWithId } from '@project/common/file-system-access';
@@ -71,6 +75,7 @@ import {
     showFilePicker,
     requestPermissions,
     resolveFiles,
+    restoreSessionFiles,
 } from '@project/common/file-system-access';
 import { isMobile } from 'react-device-detect';
 import type { GlobalState } from '@project/common/global-state';
@@ -90,9 +95,7 @@ import VideoDataSyncDialog, { useVideoDataSyncDialogState } from '@project/commo
 import type { FileWithId } from '@project/common/file-selector';
 import { DefaultFileSelector } from '@project/common/file-selector';
 
-const latestExtensionVersion = '1.16.0';
-const extensionUrl =
-    'https://chromewebstore.google.com/detail/asbplayer-language-learni/hkledmpjpaehamkiehglnbelcpdflcab';
+const extensionUrl = project.extension.chrome.storeUrl;
 
 const useContentStyles = makeStyles<Theme, ContentProps>((theme) => ({
     content: {
@@ -136,6 +139,15 @@ const SUBTITLE_EXT_SET = new Set<string>(subtitleExtensions);
 const getExtension = (fileName: string) => {
     const index = fileName.lastIndexOf('.');
     return index === -1 ? '' : fileName.substring(index).toLowerCase();
+};
+
+const decodeSubtitleFiles = async (subtitleFiles: SubtitleFile[]): Promise<FileWithId[]> => {
+    const files = await Promise.all(
+        subtitleFiles.map(
+            async (f) => new File([await (await fetch('data:text/plain;base64,' + f.base64)).blob()], f.name)
+        )
+    );
+    return files.map((file) => ({ file, id: uuidv4() }));
 };
 
 async function extractDropFileHandles(items: DataTransferItemList): Promise<FileSystemFileHandle[] | undefined> {
@@ -211,6 +223,7 @@ function extractSources(files: FileWithId[]): MediaSources {
 
 interface RenderVideoProps {
     searchParams: URLSearchParams;
+    supportsDictionaryPlayback: boolean;
     settingsProvider: SettingsProvider;
     settings: AsbplayerSettings;
     extension: ChromeExtension;
@@ -372,7 +385,7 @@ function App({
         settings.subtitleHtml,
         settings.convertNetflixRuby,
     ]);
-    const webSocketClient = useAppWebSocketClient({ settings });
+    const supportsDictionaryPlayback = !extension.installed || extension.supportsDictionaryPlayback;
     const supportsDictionaryStatistics = !extension.installed || extension.supportsDictionaryStatistics;
     const [subtitles, setSubtitles] = useState<DisplaySubtitleModel[]>([]);
     const playbackPreferences = usePlaybackPreferences();
@@ -380,6 +393,7 @@ function App({
     const anki = useAnki({ settings, fetcher });
     const searchParams = useMemo(() => new URLSearchParams(location.search), []);
     const inVideoPlayer = useMemo(() => searchParams.get('video') !== null, [searchParams]);
+    const webSocketCommands = useAppWebSocketCommands({ settings, extension, inVideoPlayer });
     const [videoFullscreen, setVideoFullscreen] = useState<boolean>(false);
     const keyBinder = useAppKeyBinder(settings.keyBindSet, extension);
     const videoFrameRef = useRef<HTMLIFrameElement>(null);
@@ -1005,6 +1019,19 @@ function App({
         setTab(tab);
     }, []);
 
+    const {
+        subtitleTrackSelectorOpen,
+        openSubtitleTrackSelector,
+        openSubtitleTrackSelectorWithFiles,
+        closeSubtitleTrackSelector,
+        subtitleTrackSelectorSelectedTrackIds,
+        setSubtitleTrackSelectorSelectedTrackIds,
+        subtitleTrackSelectorTracks,
+        setSubtitleTrackSelectorTracks,
+        subtitleTrackSelectorDisabled,
+        setSubtitleTrackSelectorDisabled,
+    } = useVideoDataSyncDialogState(sources.subtitleFiles);
+
     const validateFiles = useCallback(
         (files: FileWithId[]) => {
             try {
@@ -1069,10 +1096,10 @@ function App({
                     });
                     setLoadingSources(loadingSources);
 
-                    void retainSourcesInFileSession([
-                        ...sources.subtitleFiles.map((f) => f.id),
-                        ...(sources.videoFile === undefined ? [] : [sources.videoFile.id]),
-                    ]);
+                    void retainSourcesInFileSession({
+                        subtitleIds: sources.subtitleFiles.map((f) => f.id),
+                        videoId: sources.videoFile?.id,
+                    });
 
                     return sources;
                 });
@@ -1089,6 +1116,16 @@ function App({
             }
         },
         [handleError, retainSourcesInFileSession]
+    );
+
+    const handleManualFiles = useCallback(
+        (files: FileWithId[]) => {
+            if (!handleFiles({ files })) return false;
+            const { subtitleFiles } = extractSources(files);
+            if (subtitleFiles.length > 1) openSubtitleTrackSelectorWithFiles(subtitleFiles);
+            return true;
+        },
+        [handleFiles, openSubtitleTrackSelectorWithFiles]
     );
 
     const persistFileSessionHandles = useCallback(
@@ -1156,7 +1193,7 @@ function App({
                 return;
             }
 
-            const files = [...resolvedFiles, ...(record.cachedSubtitleFiles ?? [])];
+            const files = restoreSessionFiles(record, resolvedFiles);
             if (!handleFiles({ files })) {
                 await clearFileSession();
             }
@@ -1201,28 +1238,40 @@ function App({
                     files.push({ file: await f, id: uuidv4() });
                 }
 
-                handleFiles({ files });
+                handleManualFiles(files);
             } catch (e) {
                 handleError(e);
             }
         },
-        [handleError, handleFiles, t]
+        [handleError, handleManualFiles, t]
     );
 
-    useEffect(() => {
-        if (!webSocketClient) {
-            return;
-        }
+    useEffect(
+        () =>
+            webSocketCommands.setHandlers({
+                onLoadSubtitles: async ({ body: { files, mediaId } }: LoadSubtitlesCommand) => {
+                    if (mediaId !== undefined && mediaId !== localMediaId(extension.id)) {
+                        return;
+                    }
 
-        webSocketClient.onLoadSubtitles = async (command: LoadSubtitlesCommand) => {
-            const { files } = command.body;
-            const filePromises = (files ?? []).map(
-                async (f) => new File([await (await fetch('data:text/plain;base64,' + f.base64)).blob()], f.name)
-            );
-            const loadedFiles = await Promise.all(filePromises);
-            handleFiles({ files: loadedFiles.map((file) => ({ file, id: uuidv4() })) });
-        };
-    }, [webSocketClient, handleFiles]);
+                    handleFiles({ files: await decodeSubtitleFiles(files ?? []) });
+                },
+            }),
+        [webSocketCommands, extension, handleFiles]
+    );
+
+    useEffect(
+        () =>
+            webSocketCommands.setHandlers(
+                appWebSocketCommandHandlers({
+                    appId: extension.id,
+                    subtitles,
+                    subtitleFileNames: sources.subtitleFiles.map((f) => f.file.name),
+                    isActive: () => document.visibilityState === 'visible',
+                })
+            ),
+        [webSocketCommands, extension, subtitles, sources.subtitleFiles]
+    );
 
     useEffect(() => {
         if (inVideoPlayer) {
@@ -1421,7 +1470,7 @@ function App({
                 // Copy files synchronously; DataTransfer may be cleared after this handler returns.
                 const files = [...dataTransfer.files].map((file) => ({ file, id: uuidv4() }));
 
-                if (!handleFiles({ files })) {
+                if (!handleManualFiles(files)) {
                     return;
                 }
 
@@ -1445,7 +1494,7 @@ function App({
                 }
             }
         },
-        [inVideoPlayer, handleError, handleFiles, handleDirectory, ankiDialogOpen, t, persistFileSessionHandles]
+        [inVideoPlayer, handleError, handleManualFiles, handleDirectory, ankiDialogOpen, t, persistFileSessionHandles]
     );
 
     const handleFileSelector = useCallback(
@@ -1476,7 +1525,7 @@ function App({
                     return files;
                 }
 
-                if (!params?.buffered && handleFiles({ files })) {
+                if (!params?.buffered && handleManualFiles(files)) {
                     persistFileSessionHandles(handles);
                     return files;
                 }
@@ -1485,7 +1534,7 @@ function App({
                 handleError(e);
             }
         },
-        [handleFiles, validateFiles, handleError, persistFileSessionHandles, persistBufferedFileSessionHandles]
+        [handleManualFiles, validateFiles, handleError, persistFileSessionHandles, persistBufferedFileSessionHandles]
     );
 
     const fileSelector = useMemo(
@@ -1497,10 +1546,10 @@ function App({
         const files = fileInputRef.current?.files;
 
         if (files && files.length > 0) {
-            handleFiles({ files: [...files].map((file) => ({ file, id: uuidv4() })) });
+            handleManualFiles([...files].map((file) => ({ file, id: uuidv4() })));
             fileInputRef.current!.value = '';
         }
-    }, [handleFiles]);
+    }, [handleManualFiles]);
 
     const handleBufferedFileInputChange = useCallback(() => {
         const files = bufferedFileInputRef.current?.files;
@@ -1625,7 +1674,7 @@ function App({
         );
     }, []);
 
-    const { hash: settingsHash } = useLocationHash({ view: 'settings' });
+    const { hash: settingsHash, url: settingsUrl } = useLocationHash({ view: 'settings' });
     useEffect(() => {
         if (settingsHash === undefined) {
             return;
@@ -1633,7 +1682,7 @@ function App({
 
         setSettingsDialogScrollToId(settingsHash);
         setSettingsDialogOpen(true);
-    }, [settingsHash]);
+    }, [settingsHash, settingsUrl]);
 
     useEffect(() => {
         if (sources.videoFile && alertOpen && alert && alertSeverity) {
@@ -1722,18 +1771,6 @@ function App({
         setSettingsDialogOpen(true);
     }, []);
 
-    const {
-        subtitleTrackSelectorOpen,
-        openSubtitleTrackSelector,
-        closeSubtitleTrackSelector,
-        subtitleTrackSelectorSelectedTrackIds,
-        setSubtitleTrackSelectorSelectedTrackIds,
-        subtitleTrackSelectorTracks,
-        setSubtitleTrackSelectorTracks,
-        subtitleTrackSelectorDisabled,
-        setSubtitleTrackSelectorDisabled,
-    } = useVideoDataSyncDialogState();
-
     const handleConfirmSubtitleTrackSelection = useCallback(
         (tracks: ConfirmedVideoDataSubtitleTrack[]) => {
             void (async () => {
@@ -1741,9 +1778,14 @@ function App({
                 try {
                     const files: FileWithId[] = [];
                     const cachedSubtitleFiles: FileWithId[] = [];
+                    const previouslyCachedIds = new Set(
+                        (await fetchFileSession())?.cachedSubtitleFiles?.map(({ id }) => id) ?? []
+                    );
                     for (const t of tracks) {
                         if (t.file !== undefined) {
-                            files.push({ file: t.file, id: t.id });
+                            const fileWithId = { file: t.file, id: t.id };
+                            files.push(fileWithId);
+                            if (previouslyCachedIds.has(t.id)) cachedSubtitleFiles.push(fileWithId);
                         } else if (!Array.isArray(t.url)) {
                             const url = t.url as string;
                             const blob = await (await fetch(url)).blob();
@@ -1779,6 +1821,7 @@ function App({
             handleFiles,
             handleError,
             closeSubtitleTrackSelector,
+            fetchFileSession,
             promoteBufferedHandlesInFileSession,
             saveCachedSubtitleFilesToFileSession,
             setSubtitleTrackSelectorDisabled,
@@ -1787,9 +1830,9 @@ function App({
 
     const handleOpenSubtitleTrackSelection = useCallback(
         (files: FileWithId[]) => {
-            if (handleFiles({ files })) {
+            if (handleManualFiles(files)) {
                 void promoteBufferedHandlesInFileSession(files.map((f) => f.id));
-                closeSubtitleTrackSelector();
+                if (extractSources(files).subtitleFiles.length <= 1) closeSubtitleTrackSelector();
             } else {
                 void clearBufferedHandlesInFileSession();
             }
@@ -1798,7 +1841,7 @@ function App({
             promoteBufferedHandlesInFileSession,
             clearBufferedHandlesInFileSession,
             closeSubtitleTrackSelector,
-            handleFiles,
+            handleManualFiles,
         ]
     );
 
@@ -1850,6 +1893,7 @@ function App({
                     {inVideoPlayer ? (
                         <>
                             <RenderVideo
+                                supportsDictionaryPlayback={supportsDictionaryPlayback}
                                 searchParams={searchParams}
                                 settingsProvider={settingsProvider}
                                 settings={settings}
@@ -1929,6 +1973,7 @@ function App({
                                 />
                             )}
                             <SettingsDialog
+                                supportsDictionaryPlayback={supportsDictionaryPlayback}
                                 anki={anki}
                                 extension={extension}
                                 open={settingsDialogOpen}
@@ -1984,7 +2029,7 @@ function App({
                                 onClose={handleCloseNeedRefreshDialog}
                             />
                             <Bar
-                                title={fileName || 'asbplayer'}
+                                title={fileName || project.names.short}
                                 drawerWidth={drawerWidth}
                                 drawerOpen={effectiveDrawerOpen}
                                 hidden={appBarHidden}
@@ -2017,7 +2062,7 @@ function App({
                                 <Paper square style={{ width: '100%', height: '100%', position: 'relative' }}>
                                     {nothingLoaded && (
                                         <LandingPage
-                                            latestExtensionVersion={latestExtensionVersion}
+                                            latestExtensionVersion={project.releases.extension.publishedVersion}
                                             extensionUrl={extensionUrl}
                                             extension={extension}
                                             loading={loading}
@@ -2039,6 +2084,7 @@ function App({
                                     />
                                 </Paper>
                                 <Player
+                                    supportsDictionaryPlayback={supportsDictionaryPlayback}
                                     ref={playerRef}
                                     origin={origin}
                                     subtitleReader={subtitleReader}
@@ -2097,7 +2143,7 @@ function App({
                                     disableKeyEvents={disableKeyEvents}
                                     miningContext={miningContext}
                                     keyBinder={keyBinder}
-                                    webSocketClient={webSocketClient}
+                                    webSocketCommands={webSocketCommands}
                                     playbackTimelineFileName={fileName}
                                     playbackTimelineModeLabels={{
                                         normal: t('controls.normalMode'),

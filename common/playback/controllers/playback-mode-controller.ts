@@ -1,15 +1,6 @@
 import { PlayMode } from '@project/common';
 import { asbTrace } from '@project/common/util/log';
 
-export const minimumPlaybackRate = 0.01;
-
-export const roundPlaybackRate = (playbackRate: number): number => Math.round(playbackRate * 1000) / 1000;
-
-export const normalizePlaybackRate = (playbackRate: number): number | undefined => {
-    if (!Number.isFinite(playbackRate)) return;
-    return Math.max(minimumPlaybackRate, roundPlaybackRate(playbackRate));
-};
-
 export interface PlayModeTransition {
     readonly modes: Set<PlayMode>;
     readonly added: Set<PlayMode>;

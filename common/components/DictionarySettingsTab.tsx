@@ -1,3 +1,4 @@
+import project from '@project/common/project';
 import { asbError } from '@project/common/util/log';
 import {
     computeStyles,
@@ -6,11 +7,15 @@ import {
     humanReadableTime,
     localizeDateTime,
     percentToHex2,
+    tokenStatusSelectionLabels,
 } from '@project/common/util';
 import React, { useCallback, useState, useEffect, useMemo, useRef } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import LabelWithHoverEffect from '@project/common/components/LabelWithHoverEffect';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import UploadIcon from '@mui/icons-material/Upload';
+import DownloadIcon from '@mui/icons-material/Download';
+import ManageSearchIcon from '@mui/icons-material/ManageSearch';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import Autocomplete from '@mui/material/Autocomplete';
@@ -30,7 +35,6 @@ import Radio from '@mui/material/Radio';
 import RadioGroup from '@mui/material/RadioGroup';
 import Stack from '@mui/material/Stack';
 import Switch from '@mui/material/Switch';
-import TextField from '@mui/material/TextField';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import { useTheme } from '@mui/material/styles';
@@ -68,6 +72,7 @@ import { WaniKani } from '@project/common/wanikani';
 import { Yomitan } from '@project/common/yomitan';
 import SwitchLabelWithHoverEffect from '@project/common/components/SwitchLabelWithHoverEffect';
 import SettingsTextField from '@project/common/components/SettingsTextField';
+import ColorPickerField from '@project/common/components/ColorPickerField';
 import NumericSettingInput from '@project/common/components/NumericSettingInput';
 import SettingsSection, { SettingsSubSection } from '@project/common/components/SettingsSection';
 import type {
@@ -100,7 +105,7 @@ import KeyboardShortcutLink from '@project/common/components/KeyboardShortcutLin
 
 const yomitanInstallerUrl = 'https://github.com/yomidevs/yomitan-api';
 const yomitanMecabInstallerUrl = 'https://github.com/yomidevs/yomitan-mecab-installer';
-const waniKaniApiTokenSetupUrl = 'https://docs.asbplayer.dev/docs/guides/annotation#setup';
+const waniKaniApiTokenSetupUrl = `${project.urls.docs}/docs/guides/annotation#setup`;
 const maskApiToken = (apiToken: string) => '•'.repeat(Array.from(apiToken).length);
 
 // These values show all digits with an increasing number of digits
@@ -192,30 +197,6 @@ const tokenAnnotationSelection = (
     statuses: tokenAnnotationStatuses.filter((status) => config.onStatuses[status][annotation]),
     states: tokenAnnotationStates.filter((state) => config.onStates[state][annotation]),
 });
-
-const tokenAnnotationStatusSelectionLabels = (
-    statuses: TokenStatus[],
-    statusLabel: (status: TokenStatus) => string
-): string[] => {
-    const sortedStatuses = Array.from(new Set(statuses)).sort((lhs, rhs) => lhs - rhs);
-    const labels: string[] = [];
-
-    for (let blockStart = 0; blockStart < sortedStatuses.length; ) {
-        let blockEnd = blockStart;
-        while (blockEnd + 1 < sortedStatuses.length && sortedStatuses[blockEnd + 1] === sortedStatuses[blockEnd] + 1) {
-            ++blockEnd;
-        }
-
-        if (blockEnd - blockStart + 1 >= 3) {
-            labels.push(`${statusLabel(sortedStatuses[blockStart])} \u2192 ${statusLabel(sortedStatuses[blockEnd])}`);
-        } else {
-            for (let i = blockStart; i <= blockEnd; ++i) labels.push(statusLabel(sortedStatuses[i]));
-        }
-        blockStart = blockEnd + 1;
-    }
-
-    return labels;
-};
 
 const withTokenAnnotationHoverEnabled = (
     config: DictionaryTokenAnnotationConfig,
@@ -535,6 +516,10 @@ interface Props {
     supportsDictionaryMatchAcrossScripts: boolean;
     supportsDictionaryTokenStatusDisplayAlpha: boolean;
     supportsDictionaryYomitanMecab: boolean;
+    supportsDictionaryPlayback: boolean;
+    selectedDictionaryTrack: number;
+    onSelectedDictionaryTrackChanged: (track: number) => void;
+    onPlaybackSettingsClick: () => void;
     onSettingChanged: <K extends keyof AsbplayerSettings>(key: K, value: AsbplayerSettings[K]) => Promise<void>;
     onViewKeyboardShortcuts: () => void;
     profiles: Profile[];
@@ -551,6 +536,10 @@ const DictionarySettingsTab: React.FC<Props> = ({
     supportsDictionaryMatchAcrossScripts,
     supportsDictionaryTokenStatusDisplayAlpha,
     supportsDictionaryYomitanMecab,
+    supportsDictionaryPlayback,
+    selectedDictionaryTrack,
+    onSelectedDictionaryTrackChanged,
+    onPlaybackSettingsClick,
     onSettingChanged,
     onViewKeyboardShortcuts,
     profiles,
@@ -560,7 +549,6 @@ const DictionarySettingsTab: React.FC<Props> = ({
     const { t } = useTranslation();
     const { ankiConnectUrl, ankiConnectApiKey, dictionaryTracks } = settings;
     const initialDictionaryTracksRef = useRef(dictionaryTracks);
-    const [selectedDictionaryTrack, setSelectedDictionaryTrack] = useState<number>(0);
     const [tokenAnnotationTarget, setTokenAnnotationTarget] = useState<TokenAnnotationConfigTarget>('video');
     const selectedDictionary = dictionaryTracks[selectedDictionaryTrack];
 
@@ -1041,7 +1029,12 @@ const DictionarySettingsTab: React.FC<Props> = ({
                 <SettingsSection>{t('settings.manageWords')}</SettingsSection>
                 <Stack spacing={1}>
                     {supportsDictionaryBrowser && (
-                        <Button variant="contained" color="primary" onClick={() => setWordBrowserOpen(true)}>
+                        <Button
+                            variant="contained"
+                            color="primary"
+                            startIcon={<ManageSearchIcon />}
+                            onClick={() => setWordBrowserOpen(true)}
+                        >
                             {t('settings.dictionaryBrowser.title')}
                         </Button>
                     )}
@@ -1055,6 +1048,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                 variant="contained"
                                 color="primary"
                                 style={{ flex: 1 }}
+                                startIcon={<UploadIcon />}
                                 onClick={() => setDictionaryImportOpen(true)}
                             >
                                 {t('action.importDictionaryLocalRecords')}
@@ -1063,6 +1057,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                 variant="contained"
                                 color="primary"
                                 style={{ flex: 1 }}
+                                startIcon={<DownloadIcon />}
                                 onClick={handleExportDictionaryDB}
                                 loading={exportingDictionaryDB}
                             >
@@ -1140,7 +1135,11 @@ const DictionarySettingsTab: React.FC<Props> = ({
                         </Stack>
                     )}
                 </Stack>
-                <SettingsSection docs="docs/reference/settings#annotation">{t('settings.annotation')}</SettingsSection>
+                <div id="dictionary-annotation-settings">
+                    <SettingsSection docs="docs/reference/settings#annotation">
+                        {t('settings.annotation')}
+                    </SettingsSection>
+                </div>
                 <SettingsTextField
                     select
                     fullWidth
@@ -1151,7 +1150,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                     value={selectedDictionaryTrack}
                     onChange={(e) => {
                         const track = Number(e.target.value);
-                        setSelectedDictionaryTrack(track);
+                        onSelectedDictionaryTrackChanged(track);
                         setShowDictionaryWaniKaniApiToken(!dictionaryTracks[track].dictionaryWaniKaniApiToken);
                     }}
                 >
@@ -1304,7 +1303,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                                 const selectedValues = tokenAnnotationOptionValues(selected);
                                                 const selection =
                                                     tokenAnnotationSelectionFromOptionValues(selectedValues);
-                                                const statusLabels = tokenAnnotationStatusSelectionLabels(
+                                                const statusLabels = tokenStatusSelectionLabels(
                                                     selection.statuses,
                                                     tokenAnnotationStatusLabel
                                                 );
@@ -1334,6 +1333,25 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                     </SettingsTextField>
                                 );
                             })}
+                            {supportsDictionaryPlayback && (
+                                <Typography variant="caption" color="textSecondary">
+                                    <Trans
+                                        i18nKey="settings.dictionaryEnabledHelper"
+                                        values={{
+                                            section: `${t('extension.settings.playback')} → ${t('settings.annotation')}`,
+                                        }}
+                                        components={[
+                                            <Link key={0} component="button" onClick={onPlaybackSettingsClick} />,
+                                            <Link
+                                                key={1}
+                                                href={`${project.urls.docs}/docs/common-issues#enable-or-disable-annotation-for-a-track`}
+                                                target="_blank"
+                                                rel="noreferrer"
+                                            />,
+                                        ]}
+                                    />
+                                </Typography>
+                            )}
                         </Stack>
                     </Box>
                 </Box>
@@ -2280,16 +2298,14 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                             />
                                         </div>
                                         <Stack direction="row" spacing={1} sx={{ flexGrow: 1, alignItems: 'end' }}>
-                                            <TextField
-                                                type="color"
+                                            <ColorPickerField
                                                 sx={{ width: '50%' }}
                                                 value={color}
-                                                color="primary"
                                                 disabled={!display}
-                                                onChange={(e) =>
+                                                onChange={(hex) =>
                                                     updateTokenStatusConfig({
                                                         ...selectedDictionary.dictionaryTokenStatusConfig[tokenStatus],
-                                                        color: e.target.value,
+                                                        color: hex,
                                                     })
                                                 }
                                             />
@@ -2349,20 +2365,18 @@ const DictionarySettingsTab: React.FC<Props> = ({
                             const tokenStatus: TokenStatus = NUM_TOKEN_STATUSES - 1 - i;
                             if (tokenStatus === tokenStylingToHide) return null;
                             return (
-                                <SettingsTextField
+                                <ColorPickerField
                                     key={i}
-                                    type="color"
                                     label={t(`settings.dictionaryTokenStatus${tokenStatus}`)}
                                     fullWidth
                                     value={selectedDictionary.dictionaryTokenStatusColors[tokenStatus]}
-                                    color="primary"
-                                    onChange={(e) => {
+                                    onChange={(hex) => {
                                         const newColors = [...selectedDictionary.dictionaryTokenStatusColors];
-                                        newColors[tokenStatus] = e.target.value;
+                                        newColors[tokenStatus] = hex;
                                         const newConfigs = [...selectedDictionary.dictionaryTokenStatusConfig];
                                         newConfigs[tokenStatus] = {
                                             ...newConfigs[tokenStatus],
-                                            color: e.target.value,
+                                            color: hex,
                                         };
 
                                         const newTracks = [...dictionaryTracks];

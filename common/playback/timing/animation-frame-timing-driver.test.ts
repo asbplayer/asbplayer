@@ -340,8 +340,11 @@ describe('AnimationFrameTimingDriver', () => {
             index: 0,
         };
         const plan: PlaybackPlan<IndexedSubtitleModel> = {
+            tokenSelection: { onPause: new Map() },
             subtitleVisibility: SubtitleVisibility.whenDue,
             timelineSubtitles: {
+                actionBlocks: [],
+                hiddenSubtitleIndexes: [],
                 durationMs: 3000,
                 blocks: [],
                 displaySubtitles: [subtitle],

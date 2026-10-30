@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: false
 
 model: gpt-6-luna
-max-ai-credits: -1 # Bypass built-in pricing table
+max-ai-credits: 10000 # AWF's per-run hard cap; -1 fails AWF config validation
 engine:
   id: codex
   env:
@@ -42,7 +42,7 @@ jobs:
       branch_name: ${{ steps.deploy.outputs.branch_name }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Prepare deploy branch
@@ -151,7 +151,7 @@ safe-outputs:
             fi
             echo "DEPLOY_BRANCH=$branch" >> "$GITHUB_ENV"
         - name: Checkout deploy branch
-          uses: actions/checkout@v4
+          uses: actions/checkout@v7
           with:
             ref: ${{ env.DEPLOY_BRANCH }}
             fetch-depth: 0

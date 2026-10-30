@@ -28,6 +28,9 @@ const makeController = () => {
     let nowMs = 0;
     const playbackStates: PlaybackState[] = [];
     const controller = new PlaybackStateController({
+        automaticallyPaused: () => false,
+        hiddenSubtitleIndexesAt: () => [],
+        hideSubtitlesForRepeatAt: () => false,
         paused: () => state.paused,
         showingSubtitlesAt: (timestampMs) =>
             subtitles.filter(({ start, end }) => timestampMs >= start && timestampMs < end),
@@ -41,12 +44,71 @@ const makeController = () => {
     return { controller, playbackStates, state, setNow: (value: number) => (nowMs = value) };
 };
 
+describe('adaptive word visibility', () => {
+    it('hides a whole subtitle only while playback is running', () => {
+        let paused = false;
+        const states: PlaybackState[] = [];
+        const controller = new PlaybackStateController({
+            automaticallyPaused: () => false,
+            hideSubtitlesForRepeatAt: () => false,
+            paused: () => paused,
+            showingSubtitlesAt: () => [subtitles[0]],
+            invisibleSubtitlesAt: () => [],
+            subtitlesVisible: () => true,
+            hiddenSubtitleIndexesAt: () => [0],
+            playbackStateChanged: (state) => states.push(state),
+            now: () => 0,
+        });
+        controller.bind();
+        controller.notify(500, { force: false });
+        paused = true;
+        controller.notify(500, { force: false });
+        expect(states[0].hiddenSubtitleIndexes).toEqual([0]);
+        expect(states[1].hiddenSubtitleIndexes).toBeUndefined();
+    });
+});
+
+describe('repeat subtitle visibility', () => {
+    it('reveals every displayed track on manual pause but preserves suppression on automatic pause', () => {
+        let paused = false;
+        let hideForRepeat = true;
+        let automaticallyPaused = false;
+        const states: PlaybackState[] = [];
+        const controller = new PlaybackStateController({
+            automaticallyPaused: () => automaticallyPaused,
+            hiddenSubtitleIndexesAt: () => [],
+            paused: () => paused,
+            showingSubtitlesAt: () => [subtitles[0], subtitles[1]],
+            invisibleSubtitlesAt: () => [],
+            subtitlesVisible: () => true,
+            hideSubtitlesForRepeatAt: () => hideForRepeat,
+            playbackStateChanged: (state) => states.push(state),
+            now: () => 0,
+        });
+        controller.bind();
+        controller.notify(500, { force: false });
+        paused = true;
+        controller.notify(500, { force: false });
+        automaticallyPaused = true;
+        controller.notify(500, { force: false });
+        paused = false;
+        hideForRepeat = false;
+        controller.notify(500, { force: false });
+
+        expect(states.map((state) => state.hiddenSubtitleIndexes)).toEqual([[0, 1], undefined, [0, 1], undefined]);
+    });
+});
+
 describe('PlaybackStateController', () => {
     it('publishes pause and layout changes immediately between forced notifications', () => {
         const playbackStates: PlaybackState[] = [];
         let visible = true;
         let paused = false;
+        let automaticallyPaused = false;
         const controller = new PlaybackStateController({
+            automaticallyPaused: () => automaticallyPaused,
+            hiddenSubtitleIndexesAt: () => [],
+            hideSubtitlesForRepeatAt: () => false,
             paused: () => paused,
             showingSubtitlesAt: () => [subtitles[0]],
             invisibleSubtitlesAt: (timestampMs) => (timestampMs >= 600 ? [subtitles[1]] : []),
@@ -63,6 +125,7 @@ describe('PlaybackStateController', () => {
         controller.notify(600, { force: false });
         controller.notify(625, { force: false });
         visible = false;
+        automaticallyPaused = true;
         controller.notify(700, { force: false });
         controller.notify(750, { force: false });
         controller.notify(800, { force: true });
@@ -109,6 +172,9 @@ describe('PlaybackStateController', () => {
     it('publishes invisible indexes for layout placeholders', () => {
         const playbackStates: PlaybackState[] = [];
         const controller = new PlaybackStateController({
+            automaticallyPaused: () => false,
+            hiddenSubtitleIndexesAt: () => [],
+            hideSubtitlesForRepeatAt: () => false,
             paused: () => false,
             showingSubtitlesAt: () => [subtitles[0]],
             subtitlesVisible: () => true,
@@ -284,6 +350,9 @@ describe('PlaybackStateController', () => {
     it('publishes invisible placeholders while hidden and sorts all hidden indexes', () => {
         const playbackStates: PlaybackState[] = [];
         const controller = new PlaybackStateController({
+            automaticallyPaused: () => false,
+            hiddenSubtitleIndexesAt: () => [],
+            hideSubtitlesForRepeatAt: () => false,
             paused: () => false,
             showingSubtitlesAt: () => [subtitles[1]],
             invisibleSubtitlesAt: () => [subtitles[0]],

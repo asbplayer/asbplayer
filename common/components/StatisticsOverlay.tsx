@@ -80,11 +80,12 @@ const calculateBestTrackSnapshot = (
     if (trackSnapshots === undefined || trackSnapshots.length === 0) {
         return [undefined, -1];
     }
-    let best = trackSnapshots[0];
-    let bestIndex = 0;
+    let best: DictionarySimplifiedStatisticsTrackSnapshot | undefined;
+    let bestIndex = -1;
     for (let i = 0; i < trackSnapshots.length; ++i) {
         const s = trackSnapshots[i];
-        if (s.comprehensionPercent > best.comprehensionPercent) {
+        if (s.numConsideredTokens === 0) continue;
+        if (best === undefined || s.comprehensionPercent > best.comprehensionPercent) {
             best = s;
             bestIndex = i;
         }
