@@ -227,6 +227,7 @@
         "subtitleFileNotOpen": "字幕文件 {{fileName}} 未打开。",
         "unknownExtension": "无法识别 {{fileName}} 的文件格式",
         "unsupportedExtension": "不支持该文件格式：{{extension}}",
+        "audioConversionFailed": "Failed to convert {{codec}} audio",
         "videoPlayerDragAndDropNotAllowed": "播放器无法接收拖放文件，请拖至视频画面外。",
         "restoreSessionFailed": "恢复上次会话失败，文件可能已被移动或删除。"
     },
@@ -343,6 +344,8 @@
         "savedTimestamp": "已保存进度：{{timestamp}}",
         "resumePlaybackPrompt": "Resume at {{time}}?",
         "resumePlaybackButton": "Resume",
+        "audioConversionStarted": "Converting {{codec}} audio due to browser compatibility, playback can begin while the conversion continues.",
+        "videoLoadingDelayed": "The browser is still loading this video. Playback will be available when loading finishes.",
         "updatedCard": "已更新卡片：{{result}}",
         "enabledRepeatPlayback": "循环模式：已启用",
         "disabledRepeatPlayback": "循环模式：已禁用",

@@ -227,6 +227,7 @@
         "subtitleFileNotOpen": "Plik napisów {{fileName}} nie jest otwarty.",
         "unknownExtension": "Nie można rozpoznać rozszerzenia {{fileName}}",
         "unsupportedExtension": "Niewspierane rozszerzenie {{extension}}",
+        "audioConversionFailed": "Failed to convert {{codec}} audio",
         "videoPlayerDragAndDropNotAllowed": "Odtwarzacz wideo nie może przyjąć upuszczonych plików. Zamiast tego upuść poza ramką wideo.",
         "restoreSessionFailed": "Nie udało się przywrócić ostatniej sesji. Pliki mogły zostać przeniesione lub usunięte."
     },
@@ -343,6 +344,8 @@
         "savedTimestamp": "Zapisano: {{timestamp}}",
         "resumePlaybackPrompt": "Resume at {{time}}?",
         "resumePlaybackButton": "Resume",
+        "audioConversionStarted": "Converting {{codec}} audio due to browser compatibility, playback can begin while the conversion continues.",
+        "videoLoadingDelayed": "The browser is still loading this video. Playback will be available when loading finishes.",
         "updatedCard": "Zaktualizowana karta: {{result}}",
         "enabledRepeatPlayback": "Tryb zapętlenia: Włączony",
         "disabledRepeatPlayback": "Tryb zapętlenia: Wyłączony",

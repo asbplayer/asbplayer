@@ -65,7 +65,7 @@ import TableRow from '@mui/material/TableRow';
 import Tooltip from '@project/common/components/Tooltip';
 import Typography from '@mui/material/Typography';
 import TextField from '@mui/material/TextField';
-import type Clock from '@project/common/playback/timing/clock';
+import type Clock from '@project/common/playback/media/clock';
 import { useAppBarHeight } from '@project/common/hooks/use-app-bar-height';
 import type { MineSubtitleParams } from '@project/common/app/hooks/use-app-web-socket-commands';
 import { useSubtitleFind } from '@project/common/app/hooks/use-subtitle-find';

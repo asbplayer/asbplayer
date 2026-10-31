@@ -10,6 +10,9 @@ extern "C" {
 
 const char* asb_runtime_info_json(void) ASB_NOEXCEPT;
 
+double asb_transcode_audio(double input_size, int track_index) ASB_NOEXCEPT;
+const char* asb_last_error(void) ASB_NOEXCEPT;
+
 #ifdef __cplusplus
 }
 #endif

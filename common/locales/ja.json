@@ -227,6 +227,7 @@
         "subtitleFileNotOpen": "字幕ファイル「{{fileName}} 」が開いていません",
         "unknownExtension": "{{fileName}}の拡張子を確認できません",
         "unsupportedExtension": "対応していない拡張子です：{{extension}}",
+        "audioConversionFailed": "Failed to convert {{codec}} audio",
         "videoPlayerDragAndDropNotAllowed": "動画プレイヤーはドロップしたファイルを受け取れません。動画のフレーム外にファイルをドロップしてください。",
         "restoreSessionFailed": "前回のセッションの復元に失敗しました。"
     },
@@ -343,6 +344,8 @@
         "savedTimestamp": "保存しました：{{timestamp}}",
         "resumePlaybackPrompt": "Resume at {{time}}?",
         "resumePlaybackButton": "Resume",
+        "audioConversionStarted": "Converting {{codec}} audio due to browser compatibility, playback can begin while the conversion continues.",
+        "videoLoadingDelayed": "The browser is still loading this video. Playback will be available when loading finishes.",
         "updatedCard": "カードの更新：{{result}}",
         "enabledRepeatPlayback": "リピートプレイバック：オン",
         "disabledRepeatPlayback": "リピートプレイバック：オフ",

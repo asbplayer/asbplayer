@@ -11,6 +11,7 @@ import type { GlobalState, GlobalStateProvider } from '@project/common/global-st
 import type { DictionaryStorage } from '@project/common/dictionary-db';
 import { DictionaryProvider } from '@project/common/dictionary-db';
 import type { LogProvider } from '@project/common/util/log';
+import type { AudioTranscodeHost } from '@project/common/audio-transcode';
 
 interface Props {
     origin: string;
@@ -22,6 +23,7 @@ interface Props {
     globalStateProvider: GlobalStateProvider;
     extension: ChromeExtension;
     logProvider: LogProvider;
+    audioTranscodeHost: AudioTranscodeHost;
 }
 
 const RootApp = ({
@@ -34,6 +36,7 @@ const RootApp = ({
     globalStateProvider,
     fetcher,
     logProvider,
+    audioTranscodeHost,
 }: Props) => {
     const dictionaryProvider = useMemo(() => new DictionaryProvider(dictionaryStorage), [dictionaryStorage]);
     const [settings, setSettings] = useState<AsbplayerSettings>();
@@ -111,6 +114,7 @@ const RootApp = ({
             logoUrl={logoUrl}
             dictionaryProvider={dictionaryProvider}
             logProvider={logProvider}
+            audioTranscodeHost={audioTranscodeHost}
             settingsProvider={settingsProvider}
             settings={settings}
             globalState={globalState}

@@ -132,7 +132,7 @@ import { HoveredToken } from '@project/common/annotations';
 import { v4 as uuidv4 } from 'uuid';
 import { debounced } from '@project/extension/src/services/debounced';
 
-import VideoFrameTimingDriver from '@project/common/playback/timing/video-frame-timing-driver';
+import VideoFrameTimingDriver from '@project/common/playback/media/video-frame-timing-driver';
 import InterpolatedContentClock from '@project/extension/src/services/interpolated-content-clock';
 import { mediaSourceIdentity } from '@project/extension/src/pages/util';
 import { isFirefoxBuild } from '@project/extension/src/services/build-flags';
@@ -541,6 +541,11 @@ export default class Binding {
                     playbackRate: () => this.video.playbackRate,
                     durationMs: () => this.video.duration * 1000,
                     currentTimeMs: () => this.currentTimeMs,
+                    ready: () => this.video.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA,
+                    preservesPitch: () => this.video.preservesPitch,
+                    volume: () => this.video.volume,
+                    muted: () => this.video.muted,
+                    subscribePlaybackRequests: () => () => {},
                     hasVideoTrack: () =>
                         video.readyState >= HTMLMediaElement.HAVE_METADATA &&
                         video.videoWidth > 0 &&
@@ -605,6 +610,9 @@ export default class Binding {
                 },
                 seek: async (targetTimestampMs) => {
                     await this.seek(targetTimestampMs);
+                },
+                setMuted: (muted) => {
+                    this.video.muted = muted;
                 },
                 setPlaybackRate: (playbackRate) => {
                     if (this.video.playbackRate !== playbackRate) this.video.playbackRate = playbackRate;

@@ -1,10 +1,10 @@
 import { mkdtemp, rename, rm, stat } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { download, packageRoot } from './lib.mjs';
+import { download } from './lib.mjs';
 import { fetchAsset, findRelease, githubHeaders } from './github-release.mjs';
 
 /** Acquire the selected release for app hosting, without a native toolchain or source downloads. */
-export const prepareRuntime = async (lock, cacheDirectory = resolve(packageRoot, '.cache/runtimes')) => {
+export const prepareRuntime = async (lock, cacheDirectory) => {
     const { sha256, bytes } = lock.runtimeArchive;
     if (!/^[a-f0-9]{64}$/.test(sha256) || !Number.isSafeInteger(bytes) || bytes <= 0) {
         throw new Error('Invalid FFmpeg runtime hash or size in artifact-lock.json');

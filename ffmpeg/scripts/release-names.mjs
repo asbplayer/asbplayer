@@ -11,11 +11,13 @@ parseRuntimeVersion(runtimeVersion);
 /** Public release names shared by packaging, selection, CI, and the client build. */
 export const releaseNames = (version) => {
     const resolve = (template) => template.replaceAll('{{version}}', version);
+    const runtimeRoot = resolve(artifact);
     const sourcesRoot = resolve(sources);
     return {
         tag: resolve(releaseTag),
         title: resolve(releaseTitle),
-        runtimeArchive: `${resolve(artifact)}.tar.gz`,
+        runtimeArchive: `${runtimeRoot}.tar.gz`,
+        runtimeRoot,
         sourcesArchive: `${sourcesRoot}.tar.gz`,
         sourcesRoot,
     };

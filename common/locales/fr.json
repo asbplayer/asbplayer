@@ -227,6 +227,7 @@
         "subtitleFileNotOpen": "Le fichier de sous-titres \"{{fileName}}\" n’est pas ouvert.",
         "unknownExtension": "Impossible de déterminer l’extension de \"{{fileName}} \"",
         "unsupportedExtension": "Extension \"{{extension}}\" non prise en charge.",
+        "audioConversionFailed": "Failed to convert {{codec}} audio",
         "videoPlayerDragAndDropNotAllowed": "Le lecteur vidéo ne peut pas recevoir de fichiers glissés. Déposez-les en dehors de la zone de la vidéo.",
         "restoreSessionFailed": "Impossible de restaurer la dernière session. Les fichiers ont peut-être été déplacés ou supprimés."
     },
@@ -343,6 +344,8 @@
         "savedTimestamp": "Enregistré : {{timestamp}}",
         "resumePlaybackPrompt": "Resume at {{time}}?",
         "resumePlaybackButton": "Resume",
+        "audioConversionStarted": "Converting {{codec}} audio due to browser compatibility, playback can begin while the conversion continues.",
+        "videoLoadingDelayed": "The browser is still loading this video. Playback will be available when loading finishes.",
         "updatedCard": "Carte mise à jour : {{result}}",
         "enabledRepeatPlayback": "Répéter la lecture : Activé",
         "disabledRepeatPlayback": "Répéter la lecture : Désactivé",

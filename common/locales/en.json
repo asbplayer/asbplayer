@@ -227,6 +227,7 @@
         "subtitleFileNotOpen": "Subtitle file {{fileName}} is not open.",
         "unknownExtension": "Unable to determine extension of {{fileName}}",
         "unsupportedExtension": "Unsupported extension {{extension}}",
+        "audioConversionFailed": "Failed to convert {{codec}} audio",
         "videoPlayerDragAndDropNotAllowed": "Video player cannot receive dropped files. Drop outside of the video frame instead.",
         "restoreSessionFailed": "Failed to restore last session. The files may have been moved or deleted."
     },
@@ -343,6 +344,8 @@
         "savedTimestamp": "Saved: {{timestamp}}",
         "resumePlaybackPrompt": "Resume at {{time}}?",
         "resumePlaybackButton": "Resume",
+        "audioConversionStarted": "Converting {{codec}} audio due to browser compatibility, playback can begin while the conversion continues.",
+        "videoLoadingDelayed": "The browser is still loading this video. Playback will be available when loading finishes.",
         "updatedCard": "Updated card: {{result}}",
         "enabledRepeatPlayback": "Repeat playback: On",
         "disabledRepeatPlayback": "Repeat playback: Off",

@@ -9,7 +9,7 @@
         "strict": true,
         "skipLibCheck": true,
         "downlevelIteration": true,
-        "moduleResolution": "Node",
+        "moduleResolution": "Bundler",
         "resolveJsonModule": true
     },
     "include": ["./src/**/*", "decs.d.ts", "vite-env.d.ts", "plausible.d.ts"]

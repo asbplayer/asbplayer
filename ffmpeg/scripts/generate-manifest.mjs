@@ -58,7 +58,6 @@ const manifest = {
     linkedLibraries: measured.info.linkedLibraries,
     libraries: measured.info.libraries,
     operations: measured.info.operations,
-    // Declared build inputs; wasmMemory records observed memory from the compiled module.
     limits: config.limits,
     wasmMemory: measured.memory,
     bridgeCompileArguments: ['-std=c++23', '-O3', '-fno-exceptions', '-fno-rtti'],

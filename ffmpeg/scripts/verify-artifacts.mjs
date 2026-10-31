@@ -1,7 +1,7 @@
 import { execFile } from 'node:child_process';
 import { mkdtemp, readFile, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { resolve } from 'node:path';
+import { basename, resolve } from 'node:path';
 import { isDeepStrictEqual, promisify } from 'node:util';
 import { packageRoot, readJson, sha256, upstreamSources, verifyFile } from './lib.mjs';
 import { verifyRuntimeArchive } from './runtime-archive-validator.cjs';
@@ -119,6 +119,7 @@ await verifyRuntimeDirectory(destination, manifest);
 
 const release = resolve(packageRoot, 'release');
 const runtimeArchive = resolve(release, candidate ? names.runtimeArchive : lock.runtimeArchive.filename);
+const runtimeRoot = basename(runtimeArchive, '.tar.gz');
 if (candidate) {
     if (!isDeepStrictEqual(manifest.sources, upstreamSources(config))) {
         throw new Error('Upstream sources do not match build-config.json');
@@ -142,11 +143,11 @@ if (candidate) {
     }
 }
 // The app downloads only this archive, so it must contain exactly the verified runtime directory.
-await verifyRuntimeArchive(runtimeArchive, version);
+await verifyRuntimeArchive(runtimeArchive, runtimeRoot);
 const extracted = await mkdtemp(resolve(tmpdir(), 'asbplayer-ffmpeg-verify-'));
 try {
     await execFileAsync('tar', ['-xzf', runtimeArchive, '-C', extracted]);
-    const archived = resolve(extracted, version);
+    const archived = resolve(extracted, runtimeRoot);
     if ((await sha256(resolve(archived, 'manifest.json'))) !== (await sha256(manifestPath))) {
         throw new Error('Runtime archive manifest differs from the prepared runtime');
     }
@@ -159,7 +160,7 @@ const wasmPath = resolve(destination, 'ffmpeg-core.wasm');
 const wasm = new WebAssembly.Module(await readFile(wasmPath));
 const exports = new Set(WebAssembly.Module.exports(wasm).map(({ name }) => name));
 const glue = await readFile(resolve(destination, 'ffmpeg-core.js'), 'utf8');
-for (const name of ['asb_runtime_info_json']) {
+for (const name of ['asb_runtime_info_json', 'asb_transcode_audio', 'asb_last_error']) {
     if (!exports.has(name) && !glue.includes('_' + name)) throw new Error('WASM export ' + name + ' is missing');
 }
 const imports = WebAssembly.Module.imports(wasm).map(({ module: namespace, name }) => namespace + '.' + name);
