@@ -52,6 +52,7 @@ Use these values for current project defaults, links, and UI metadata. Keep user
 
 - `version` is the extension build version. A maintainer bumps it before a release, or anyone is free to bump it in their PR when a feature needs a new version for a runtime compatibility check (usually a minor version, never major). Most changes, fixes, and features should not change it. Existing feature compatibility checks keep the version in which that feature was introduced.
 - `releases.extension.publishedVersion` tracks the latest extension version published to **all stores**, including Chrome, Firefox, and Firefox for Android. A maintainer updates it only after that version is available in every store. It may lag behind `version` during development and store review.
+- `releases.app.releaseTag` is the tag template for app deploys. Each deploy tags its date-based version (`app-v26.10.30`); further deploys on the same day add `.1`, `.2`, and so on. The About dialog links to the running build's tag.
 
 After editing `project.json`, run `pnpm sync:project` and include the generated changes in your commit. `pnpm check:project` (also part of `pnpm verify`) detects stale generated files. The Anki add-on and Go server packaging scripts also synchronize configuration before building, so their distributions do not need the repository at runtime.
 

@@ -53,6 +53,15 @@ pre-agent-steps:
       uses: actions/setup-node@v7
       with:
           node-version-file: '.nvmrc'
+    - name: Fetch full history and release tags
+      run: |
+          set -euo pipefail
+          # The compiled agent checkout is shallow (fetch-depth: 1); tag ancestry
+          # needs full history.
+          if [ "$(git rev-parse --is-shallow-repository)" = "true" ]; then
+              git fetch --unshallow --no-tags origin
+          fi
+          git fetch --tags origin
     - name: Collect milestone items
       env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -64,14 +73,6 @@ pre-agent-steps:
           cat milestone-items.md
           echo "--- release-meta.json ---"
           cat release-meta.json
-    - name: Collect webapp-only items
-      env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          INPUT_VERSION: ${{ inputs.version }}
-      run: |
-          bash scripts/release-notes/collect-app-only-items.sh "$INPUT_VERSION" webapp-only-items.md
-          echo "--- webapp-only-items.md ---"
-          cat webapp-only-items.md
 
 safe-outputs:
     threat-detection: false
@@ -237,18 +238,13 @@ publishes it. Your job is only the categorized change lists.
 
 - `milestone-items.md` in the workspace root: every issue and pull request attached
   to the milestone `Extension v<version>`. Each block lists the number, kind, state,
-  merge status, author, labels, changed files (for pull requests) and a truncated body.
-- `webapp-only-items.md` in the workspace root: merged pull requests since the
-  previous extension release that affect the web app but are attached to no
-  extension milestone. Same block format as `milestone-items.md`. Its first line is
-  the exact title to use for the webapp-only section.
-- `release-meta.json`: the resolved `version`, `milestone`, `milestone_number` and a
-  best-effort `compare_url`.
+  merge status, author, labels, changed files (for pull requests), the first app tag
+  that contained a merged pull request, and a truncated body.
+- `release-meta.json`: `version`, `milestone`, `milestone_number`,
+  `previous_version`, `app_versions`, and a best-effort `compare_url`.
 
-The milestone is the **only** source of extension release items, and
-`milestone-items.md` plus `webapp-only-items.md` are the **only** sources of
-webapp-only items. Do not derive items from the git history, from GitHub's
-auto-generated release notes, or from anything that is not in these files.
+`milestone-items.md` is the **only** source of items. Do not add items from git
+history, generated release notes, or anywhere else.
 
 ## Choosing items
 
@@ -279,9 +275,9 @@ Labels are hints, not the final word: a `bug`-labeled change that is really a
 refactor belongs under QoL, and a `documentation` change may be QoL. Decide from the
 title, body and changed file paths. Only when the category is genuinely ambiguous,
 use the read-only GitHub tools (for example `pull_request_read` or
-`search_pull_requests`) to look at a pull request's diff; skip that if the diff is
-very large (more than roughly 5000 changed lines) and categorize from metadata
-instead.
+`search_pull_requests`) to look at a pull request's diff. If the diff is very large
+(more than roughly 5000 changed lines), or you still cannot decide, put the item in
+`### Uncategorized`.
 
 You may add `####` sub-groupings under a section when several bullets clearly belong
 together (for example, per-site subtitle detection). Omit a section entirely when it
@@ -289,14 +285,29 @@ has no entries.
 
 ## Webapp-only changes
 
-The web app deploys continuously, so changes ship to it without waiting for
-extension releases. The release notes carry a section for webapp-only changes so
-extension users can see what the web app gained since the previous extension
-release. The section's items come from two sources, and each appears **only** there,
-never in the main sections:
+The web app deploys continuously. The section starts with one line listing the app
+versions released since the previous extension release, oldest first, each linked to
+its tag:
 
-1. Every pull request listed in `webapp-only-items.md`.
-2. Milestone pull requests that affect only the web app, classified below.
+```text
+- Released web app versions [app-v26.10.13](https://github.com/asbplayer/asbplayer/releases/tag/app-v26.10.13), [app-v26.10.20](https://github.com/asbplayer/asbplayer/releases/tag/app-v26.10.20), and [app-v26.10.30](https://github.com/asbplayer/asbplayer/releases/tag/app-v26.10.30)
+```
+
+Read the tags from `app_versions` in `release-meta.json`. Write "Released web app
+version X" for one, "versions X and Y" for two, and use a serial comma for three or
+more. Omit the line when `app_versions` is empty.
+
+Then list the milestone pull requests that affect only the web app. Each bullet ends
+with the tag that first released it, from the pull request's `first_app_release`
+field:
+
+```text
+- <description> by @<author> in <pull request link> ([app-v26.10.20](https://github.com/asbplayer/asbplayer/releases/tag/app-v26.10.20))
+```
+
+Omit the tag suffix when `first_app_release` is `none`. Webapp-only items appear only
+in this section. Closely related items (for example localization updates) may share
+one bullet.
 
 Classify every milestone pull request as webapp-only or extension-affecting:
 
@@ -308,12 +319,8 @@ Classify every milestone pull request as webapp-only or extension-affecting:
    changes, determine whether the extension uses the changed code — read the pull
    request diff with the read-only GitHub tools, or use the read-only bash commands
    to grep the repository for imports of the changed modules from `extension/`.
-3. When the surface cannot be determined, treat the pull request as
-   extension-affecting so it stays in the main sections.
-
-Bullets in the webapp-only section use the same format as the main sections. You may
-collapse several closely related items (for example localization updates) into one
-bullet that links them all.
+3. If the surface still cannot be determined, put the pull request in
+   `### Uncategorized`.
 
 ## Formatting
 
@@ -355,6 +362,10 @@ Ignore bots. Omit the whole section when you can determine no new contributors.
 
 <!-- Human: write the release summary here. Do not auto-generate. -->
 
+### Uncategorized
+<!-- Human: move each item into the correct section. -->
+- ...
+
 ### Enhancements
 - ...
 
@@ -365,15 +376,20 @@ Ignore bots. Omit the whole section when you can determine no new contributors.
 - ...
 
 ### Webapp-only changes since v1.22.0
+- Released web app versions [app-v26.10.13](https://github.com/asbplayer/asbplayer/releases/tag/app-v26.10.13) and [app-v26.10.20](https://github.com/asbplayer/asbplayer/releases/tag/app-v26.10.20)
+- ...
 - ...
 
 ## New Contributors
 * ...
 ```
 
-Title the webapp-only section with the first line of `webapp-only-items.md` (for
-example `### Webapp-only changes since v1.22.0`) and place it after the QoL section.
-Omit it entirely when it has no items.
+Place `### Uncategorized` right after the `## What's Changed` placeholder for items
+whose section or webapp surface could not be determined. Omit it when empty.
+
+Title the webapp-only section `### Webapp-only changes since v<previous_version>`
+using `previous_version` from `release-meta.json`, after the QoL section. Always
+include it, even when no pull request qualifies.
 
 Then call the `create_draft_release` tool exactly once with:
 
@@ -383,4 +399,4 @@ Then call the `create_draft_release` tool exactly once with:
 Call the tool exactly once even when the workflow is a dry run; the release job
 handles the dry-run preview. If `milestone-items.md` contains no eligible merged
 items, still call the tool with a body that says the milestone had no merged changes
-(the webapp-only section still appears when it has items).
+(the webapp-only section still appears).

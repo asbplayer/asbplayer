@@ -9,6 +9,9 @@ import { extensionReleaseInfo } from './extension-release-info.ts';
 const releaseProject = () => ({
     version: '2.3.4',
     releases: {
+        app: {
+            releaseTag: 'app-v{{version}}',
+        },
         extension: {
             publishedVersion: '2.3.3',
             releaseTitle: 'example-player-extension-v{{version}}',
@@ -97,6 +100,7 @@ test('milestone collection uses the configured release tag template for both def
                 "if (args[0] !== 'api') process.exit(1);",
                 "if (args.some((arg) => arg.includes('/milestones?'))) process.stdout.write('42\\n');",
                 "else if (args.some((arg) => arg.includes('/issues?'))) process.exit(0);",
+                "else if (args.some((arg) => arg.includes('/releases?'))) process.stdout.write('v2.3.3\\n');",
                 "else if (args.some((arg) => arg.endsWith('/releases/generate-notes'))) {",
                 "    const tag = args.find((arg) => arg.startsWith('tag_name=')).slice('tag_name='.length);",
                 "    process.stdout.write('**Full Changelog**: https://github.com/example/player/compare/extension-v2.3.2...' + tag + '\\n');",
@@ -124,6 +128,8 @@ test('milestone collection uses the configured release tag template for both def
             const metadata = JSON.parse(readFileSync(join(root, 'release-meta.json'), 'utf8'));
             assert.equal(metadata.version, version);
             assert.equal(metadata.milestone, `Extension v${version}`);
+            assert.equal(metadata.previous_version, 'v2.3.3');
+            assert.deepEqual(metadata.app_versions, []);
             assert.equal(
                 metadata.compare_url,
                 `https://github.com/example/player/compare/extension-v2.3.2...extension-v${version}`
