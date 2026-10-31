@@ -148,3 +148,25 @@ it('exposes the resolved WebM end timestamp on the media fragment', () => {
     expect(mediaFragment?.timestamp).toEqual(1_200);
     expect(mediaFragment?.endTimestamp).toEqual(1_700);
 });
+
+it('treats a webp image as animated only when the card says so', () => {
+    const animated = MediaFragment.fromCard(
+        makeCard({ image: { base64: 'webp', extension: 'webp', animated: true } }),
+        0,
+        0
+    );
+    const still = MediaFragment.fromCard(makeCard({ image: { base64: 'webp', extension: 'webp' } }), 0, 0);
+
+    expect(animated?.animated).toBe(true);
+    expect(still?.animated).toBe(false);
+});
+
+it('refuses to convert an animated image to PNG', async () => {
+    const mediaFragment = MediaFragment.fromCard(
+        makeCard({ image: { base64: 'webp', extension: 'webp', animated: true } }),
+        0,
+        0
+    );
+
+    await expect(mediaFragment!.pngBlob()).rejects.toThrow('Cannot convert animated media fragment to PNG');
+});

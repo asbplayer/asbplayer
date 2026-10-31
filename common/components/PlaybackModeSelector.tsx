@@ -10,6 +10,7 @@ type SelectorProps = Omit<
 >;
 
 interface PlaybackModeSelectorButtonProps {
+    open: boolean;
     anchorRef: React.RefObject<HTMLButtonElement | null>;
     onClick: React.MouseEventHandler<HTMLButtonElement>;
     onMouseEnter: React.MouseEventHandler<HTMLButtonElement>;
@@ -102,6 +103,7 @@ export default function PlaybackModeSelector({
     return (
         <>
             {renderButton({
+                open,
                 anchorRef: buttonRef,
                 onClick: handleButtonClick,
                 onMouseEnter: handleMouseEnter,

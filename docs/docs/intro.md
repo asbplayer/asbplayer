@@ -2,6 +2,8 @@
 sidebar_position: 1
 ---
 
+import project from '@site/src/project';
+
 # What is asbplayer? {#what-is-asbplayer}
 
 ## A language-learning assistant {#a-language-learning-assistant}
@@ -11,12 +13,13 @@ sidebar_position: 1
 - **Easily create high-quality, multimedia flashcards** out of subtitled videos.
 - **Load text-selectable subtitles onto most video sources**, including streaming sources. You can use **auto-detected subtitles** on popular streaming services like Netflix and YouTube, or your own **subtitle files**. A generic fallback subtitle detection algorithm allows asbplayer to detect subtitles on 85% of all other streaming services.
 - **Seek through subtitles** using a **navigable subtitle list**.
+- **Utilize customizable [keyboard shortcuts](./reference/settings.md#keyboard-shortcuts)** to access most of asbplayer's features.
 - **Optimize language acquisition** with **playback modes** like:
     - **Condensed playback**: Skip unsubtitled sections of video.
     - **Fast-forward playback**: Fast-forward through unsubtitled sections of video.
     - **Auto-pause**: Automatically pause at the beginning or end of every subtitle.
     - **Repeat**: Automatically repeat subtitles indefinitely or for a specified number of times.
-- **Use customizable [keyboard shortcuts](./reference/settings.md#keyboard-shortcuts)** to access most of asbplayer's features.
+- **Use customizable [recipes](./guides/recipes.md)** to create and import immersion presets with asbplayer's rich playback features.
 - **Annotate subtitles** with the help of tools such as [Yomitan](https://yomitan.wiki/)
     - **Word styling** (color/underline/outline, etc.) based on a word's status (uncollected/unknown/learning, etc.) synced from Anki, WaniKani, and/or tracked locally in asbplayer.
     - **Reading annotation** for reading displayed above each word or based on status.
@@ -24,16 +27,16 @@ sidebar_position: 1
     - **Frequency annotation** for rank-based frequency displayed below each word or based on status.
     - **Glossary annotation** for a short definition or explanation of the word.
     - **Statistics and Comprehension** on your known words for the current media.
+    - **Adaptive Playback** that uses **playback modes** and the annotation data to optimize your learning experience.
     - **Word browser** to manage local and view words synced from external sources.
     - Many more features for future releases! Some planned features include:
-        - **Adaptive Playback** that uses **playback modes** and the annotation data to optimize your learning experience.
         - **Auto mining** on uncollected/unknown/learning words.
         - **Rich Anki Card Creation** for generating high-quality flashcards from annotated subtitles.
         - **Statistics and Comprehension** on your known words across media.
 
 ## A website and browser extension {#a-website-and-browser-extension}
 
-In order to make asbplayer as widely available as possible, asbplayer comes in two different forms, a [website](https://app.asbplayer.dev) which works with local video files, and a [browser extension](https://chromewebstore.google.com/detail/asbplayer-language-learni/hkledmpjpaehamkiehglnbelcpdflcab) which works with streaming video. Neither one is required to use the other - however, they work together to make the asbplayer user experience as seamless as possible.
+In order to make asbplayer as widely available as possible, asbplayer comes in two different forms, a <a href={project.urls.app}>website</a> which works with local video files, and a <a href={project.extension.chrome.storeUrl}>browser extension</a> which works with streaming video. Neither one is required to use the other - however, they work together to make the asbplayer user experience as seamless as possible.
 
 ## Why use asbplayer? {#why-use-asbplayer}
 

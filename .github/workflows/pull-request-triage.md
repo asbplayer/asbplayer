@@ -14,7 +14,7 @@ on:
         type: boolean
 
 model: gpt-6-luna
-max-ai-credits: -1 # Bypass built-in pricing table
+max-ai-credits: 10000 # AWF's per-run hard cap; -1 fails AWF config validation
 engine:
   id: codex
   env:
@@ -38,6 +38,7 @@ safe-outputs:
 
 tools:
   bash: false
+  cli-proxy: false
   web-fetch:
   github:
     toolsets: [pull_requests, repos]
@@ -69,4 +70,4 @@ Each PR should have exactly one of the above labels. If it already has one of th
 
 ## Handling read failures
 
-If a PR's diff cannot be retrieved despite the size pre-check, do not stop and do not abandon the remaining PRs. Score that PR from its available metadata (title, body, changed files, checks, comments) with a lower `confidence` value, note the uncertainty in the label rationale, and continue with the remaining PRs. Do not give up on reading the remaining PR diffs because of a single failure - future reads on different PRs may succeed. Label every PR you scored, even if some could not be fully analyzed. Only call `missing_tool` or `missing_data` if reads fail for all PRs.
+If a PR's diff cannot be retrieved despite the size pre-check, do not stop and do not abandon the remaining PRs. Score that PR from its available metadata (title, body, changed files, checks, comments) with a lower `confidence` value, note the uncertainty in the label rationale, and continue with the remaining PRs. Do not give up on reading the remaining PR diffs because of a single failure - future reads on different PRs may succeed. Label every PR you scored, even if some could not be fully analyzed. Only call `report_missing_tool` or `report_missing_data` if reads fail for all PRs.

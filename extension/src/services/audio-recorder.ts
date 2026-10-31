@@ -12,6 +12,10 @@ export default class AudioRecorder {
     private timeoutId?: ReturnType<typeof setTimeout>;
     private timeoutResolve?: (base64: string) => void;
 
+    get isRecording() {
+        return this.recording;
+    }
+
     constructor() {
         this.recording = false;
         this.recorder = null;

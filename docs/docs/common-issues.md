@@ -2,6 +2,8 @@
 sidebar_position: 5
 ---
 
+import project from '@site/src/project';
+
 # Common issues {#common-issues}
 
 ## General {#general}
@@ -12,7 +14,7 @@ It's possible to hide the subtitles in asbplayer through a few ways:
 
 - The [`Toggle subtitles`](./reference/settings.md#subtitles-keyboard-shortcuts) keyboard shortcut.
 - The [`Toggle subtitle track X in video`](./reference/settings.md#subtitles-keyboard-shortcuts) keyboard shortcuts.
-- The [`Show subtitles`](./reference/settings.md#show-subtitles) option in `Misc > Playback Modes`
+- The [`Show subtitles`](./reference/settings.md#show-subtitles) option in `Playback > Playback modes`
 
 ### asbplayer can't connect to Anki. It shows an error message e.g. 'Failed to fetch.' {#anki-connection-failed}
 
@@ -48,18 +50,18 @@ Make sure that in the extension details, the extension has access to all sites.
 
 ### Keyboard shortcuts aren't working. {#keyboard-shortcuts-arent-working}
 
-Check the [keyboard shortcut settings](https://app.asbplayer.dev/?view=settings#keyboard-shortcuts) or the [keyboard shortcuts reference](./reference/settings.md#keyboard-shortcuts).
+Check the <a href={new URL('?view=settings#keyboard-shortcuts', project.urls.app).href}>keyboard shortcut settings</a> or the [keyboard shortcuts reference](./reference/settings.md#keyboard-shortcuts).
 
 Also, if using the extension:
 
-- Check `chrome://extensions/shortcuts`.
+- Check `chrome://extensions/shortcuts` in Chrome, or `about:addons` → gear icon → `Manage Extension Shortcuts` in Firefox.
 - Try refreshing the page and loading subtitles again.
-- Try uninstalling and reinstalling the extension, and restarting Chrome.
+- Try uninstalling and reinstalling the extension, and restarting your browser.
 - Make sure the extension isn't installed twice.
 
 ### asbplayer isn't properly cropping screenshots from streaming video. {#screenshot-cropping-issues}
 
-Make sure the browser zoom setting is at 100%. Cropping can be disabled altogether from the [extension settings](https://app.asbplayer.dev/?view=settings#misc-settings).
+Make sure the browser zoom setting is at 100%. Cropping can be disabled altogether from the <a href={new URL('?view=settings#misc-settings', project.urls.app).href}>extension settings</a>.
 
 ### I'm having trouble creating cards using JP mining note. {#jp-mining-note-issues}
 
@@ -83,12 +85,21 @@ This can happen because `Experimental Web Platform features` is enabled in `chro
 
 Annotation is considered disabled if the following settings are set to these values:
 
-- [`Colorize subtitles based on known words`](./reference/settings.md#colorize-subtitles-based-on-known-words): **Off**
-- [`Generate statistics automatically`](./reference/settings.md#generate-statistics-automatically): **Off**
-- [`Display word readings`](./reference/settings.md#display-word-readings): _Nothing selected_ (empty value)
-- [`Display word frequency`](./reference/settings.md#display-word-frequency): _Nothing selected_ (empty value)
-- [`Display pitch accent (Japanese)`](./reference/settings.md#display-pitch-accent-japanese): _Nothing selected_ (empty value)
-- [`Display word definitions`](./reference/settings.md#display-word-definitions): _Nothing selected_ (empty value)
+- In [`Settings > Annotation`](./reference/settings.md#annotation):
+  - [`Colorize subtitles based on known words`](./reference/settings.md#colorize-subtitles-based-on-known-words): **Off**
+  - [`Generate statistics automatically`](./reference/settings.md#generate-statistics-automatically): **Off**
+  - [`Display word readings`](./reference/settings.md#display-word-readings): _Nothing selected_ (empty value)
+  - [`Display word frequency`](./reference/settings.md#display-word-frequency): _Nothing selected_ (empty value)
+  - [`Display pitch accent (Japanese)`](./reference/settings.md#display-pitch-accent-japanese): _Nothing selected_ (empty value)
+  - [`Display word definitions`](./reference/settings.md#display-word-definitions): _Nothing selected_ (empty value)
+- In [`Settings > Playback > Annotation`](./reference/settings.md#playback-annotation):
+  - [`Select first matching word on pause`](./reference/settings.md#select-first-matching-word-on-pause): Never
+  - [`Auto-pause subtitles containing these words`](./reference/settings.md#auto-pause-subtitles-containing-these-words): No word filter
+  - [`Play subtitles containing these words in condensed mode`](./reference/settings.md#play-subtitles-containing-these-words-in-condensed-mode): No word filter
+  - [`Play subtitles containing these words at normal speed in fast-forward mode`](./reference/settings.md#play-subtitles-containing-these-words-at-normal-speed-in-fast-forward-mode): No word filter
+  - [`Repeat subtitles containing these words`](./reference/settings.md#repeat-subtitles-containing-these-words): No word filter
+  - [`Show these words during playback`](./reference/settings.md#show-these-words-during-playback): No word filter
+  - [`Adjust fast-forward rate by comprehension`](./reference/settings.md#adjust-fast-forward-rate-by-comprehension): **Off**
 
 To enable annotation for a track, set at least one of the above settings to a value other than the disabled value. Certain annotations may only show on hover if they are [configured to do so](./reference/settings.md#only-display-word-color-on-hover).
 

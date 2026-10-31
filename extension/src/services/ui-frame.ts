@@ -1,3 +1,4 @@
+import project from '@project/common/project';
 import { isFirefoxBuild } from '@project/extension/src/services/build-flags';
 import type { FetchOptions } from '@project/extension/src/services/frame-bridge-client';
 import FrameBridgeClient from '@project/extension/src/services/frame-bridge-client';
@@ -33,7 +34,7 @@ export default class UiFrame {
     private _fetchOptions: FetchOptions | undefined;
     private _client: FrameBridgeClient | undefined;
     private _frame: HTMLIFrameElement | undefined;
-    private _language: string = 'en';
+    private _language: string = project.defaultLanguage;
     private _dirty = true;
     private _bound = false;
 

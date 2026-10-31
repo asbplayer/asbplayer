@@ -1,5 +1,6 @@
-import type { ForwardedRef, ReactNode } from 'react';
-import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
+import { effectiveSettings } from '@project/common/settings/settings-recipes';
+import type { ForwardedRef, ReactNode, Ref } from 'react';
+import React, { useCallback, useEffect, useMemo, useState, useRef, useImperativeHandle } from 'react';
 import { makeStyles } from '@mui/styles';
 import type { Theme } from '@mui/material';
 import type {
@@ -40,7 +41,7 @@ import {
 } from '@project/common/util';
 import type { SubtitleCollection } from '@project/common/subtitle-collection';
 import type { RichTextWindow, RenderedRichText, SubtitleAnnotations } from '@project/common/annotations';
-import type { TokenJumpMatch } from '@project/common/annotations/token-navigation';
+import type { TokenJumpMatch, TokenSelectionLocation } from '@project/common/annotations/token-navigation';
 import {
     getAnnotationsHtml,
     renderRichTextWindow,
@@ -49,6 +50,7 @@ import {
     ASB_SUBTITLE_INDEX_ATTRIBUTE,
 } from '@project/common/annotations';
 import type { KeyBinder } from '@project/common/key-binder';
+import { useRecipeKeyBindings } from '@project/common/hooks/use-recipe-key-bindings';
 import SubtitleTextImage from '@project/common/components/SubtitleTextImage';
 import NoteAddIcon from '@mui/icons-material/NoteAdd';
 import CloseIcon from '@mui/icons-material/Close';
@@ -65,12 +67,13 @@ import Typography from '@mui/material/Typography';
 import TextField from '@mui/material/TextField';
 import type Clock from '@project/common/playback/timing/clock';
 import { useAppBarHeight } from '@project/common/hooks/use-app-bar-height';
-import type { MineSubtitleParams } from '@project/common/app/hooks/use-app-web-socket-client';
+import type { MineSubtitleParams } from '@project/common/app/hooks/use-app-web-socket-commands';
 import { useSubtitleFind } from '@project/common/app/hooks/use-subtitle-find';
 import { isMobile } from 'react-device-detect';
 import type { ExtensionMessage } from '@project/common/app/services/chrome-extension';
 import type ChromeExtension from '@project/common/app/services/chrome-extension';
-import type { MineSubtitleCommand, WebSocketClient } from '@project/common/web-socket-client';
+import type { MineSubtitleCommand, WebSocketCommandDispatcher } from '@project/common/web-socket-client';
+import { localMediaId } from '@project/common/web-socket-client/web-socket-media';
 import { clampSubtitlePlayerWidth } from '@project/common/app/components/video-subtitle-split';
 import { useTokenSelection } from '@project/common/app/hooks/use-token-selection';
 import '@project/common/app/components/subtitles.css';
@@ -650,7 +653,14 @@ const ResizeHandle = React.forwardRef(function ResizeHandle(
     );
 });
 
+export interface SubtitlePlayerHandle {
+    selectPauseToken: (target: TokenSelectionLocation, options?: { onlyIfUnselected?: boolean }) => boolean;
+    clearPauseTokenSelection: () => void;
+}
+
 interface SubtitlePlayerProps {
+    onSettingsChanged: (settings: Partial<AsbplayerSettings>) => void;
+    ref?: Ref<SubtitlePlayerHandle>;
     clock: Clock;
     extension: ChromeExtension;
     onSeek: (progress: number, shouldPlay: boolean) => void;
@@ -690,10 +700,12 @@ interface SubtitlePlayerProps {
     keyBinder: KeyBinder;
     maxResizeWidth: number;
     initialWidth?: number;
-    webSocketClient?: WebSocketClient;
+    webSocketCommands?: WebSocketCommandDispatcher;
 }
 
 export default function SubtitlePlayer({
+    onSettingsChanged,
+    ref,
     clock,
     extension,
     onSeek,
@@ -727,8 +739,10 @@ export default function SubtitlePlayer({
     keyBinder,
     maxResizeWidth,
     initialWidth,
-    webSocketClient,
+    webSocketCommands,
 }: SubtitlePlayerProps) {
+    useRecipeKeyBindings(keyBinder, settings, onSettingsChanged, disableKeyEvents, subtitles);
+    const playbackSettings = useMemo(() => effectiveSettings(settings), [settings]);
     const { t } = useTranslation();
     const clockRef = useRef<Clock>(clock);
     clockRef.current = clock;
@@ -756,10 +770,10 @@ export default function SubtitlePlayer({
                 richTextWindowRef.current,
                 windowSubtitles,
                 'subtitlePlayer',
-                settings.dictionaryTracks
+                playbackSettings.dictionaryTracks
             );
         },
-        [settings.dictionaryTracks, handleVisibleRangeChanged]
+        [playbackSettings.dictionaryTracks, handleVisibleRangeChanged]
     );
 
     useEffect(() => {
@@ -771,10 +785,10 @@ export default function SubtitlePlayer({
                 richTextWindowRef.current,
                 windowSubtitles,
                 'subtitlePlayer',
-                settings.dictionaryTracks
+                playbackSettings.dictionaryTracks
             );
         }
-    }, [subtitles, settings.dictionaryTracks]);
+    }, [subtitles, playbackSettings.dictionaryTracks]);
 
     const subtitleCollectionRef = useRef<SubtitleAnnotations | SubtitleCollection<DisplaySubtitleModel>>(
         subtitleCollection
@@ -818,7 +832,7 @@ export default function SubtitlePlayer({
         },
         [clock.running, onSeek]
     );
-    const { requestTokenSelection, clearTokenSelection } = useTokenSelection({
+    const { selectToken, requestTokenSelection, clearTokenSelection, clearPauseTokenSelection } = useTokenSelection({
         rootRef: scrollerElementRef,
         maxAttempts: 20,
         keyBinder,
@@ -828,9 +842,24 @@ export default function SubtitlePlayer({
         onMatch: handleTokenSelectionMatch,
         disabledGetter: tokenSelectionDisabled,
     });
+    useImperativeHandle(
+        ref,
+        () => ({
+            selectPauseToken: (target, options) => {
+                const subtitle = subtitleListRef.current.find((subtitle) => subtitle.index === target.subtitleIndex);
+                if (hiddenRef.current || !subtitle || disabledSubtitleTracks[subtitle.track]) return false;
+                if (selectToken(target, { ...options, autoPause: true })) return true;
+                const index = subtitleListRef.current.findIndex((subtitle) => subtitle.index === target.subtitleIndex);
+                if (index >= 0) virtuosoRef.current?.scrollToIndex({ index, align: 'center', behavior: 'auto' });
+                return false;
+            },
+            clearPauseTokenSelection,
+        }),
+        [selectToken, clearPauseTokenSelection, disabledSubtitleTracks]
+    );
     const find = useSubtitleFind({
         subtitles,
-        dictionaryTracks: settings.dictionaryTracks,
+        dictionaryTracks: playbackSettings.dictionaryTracks,
         disableKeyEventsRef,
         hiddenRef,
         lastScrollTimestampRef,
@@ -997,9 +1026,9 @@ export default function SubtitlePlayer({
             () => disableKeyEvents,
             () => clock.time({ maxMs: length }),
             () => subtitles,
-            () => settings.seekableTracks
+            () => playbackSettings.seekableTracks
         );
-    }, [keyBinder, onOffsetChange, disableKeyEvents, clock, subtitles, length, settings.seekableTracks]);
+    }, [keyBinder, onOffsetChange, disableKeyEvents, clock, subtitles, length, playbackSettings.seekableTracks]);
 
     useEffect(() => {
         return keyBinder.bindSeekToSubtitle(
@@ -1216,15 +1245,13 @@ export default function SubtitlePlayer({
     );
 
     useEffect(() => {
-        if (!webSocketClient || extension.supportsWebSocketClient) {
-            // Do not handle mining commands here if the extension supports the web socket client.
-            // The extension will handle the commands for us.
-            return;
-        }
-
-        webSocketClient.onMineSubtitle = async ({
-            body: { fields: receivedFields, postMineAction: receivedPostMineAction },
+        const onMineSubtitle = async ({
+            body: { fields: receivedFields, postMineAction: receivedPostMineAction, mediaId },
         }: MineSubtitleCommand) => {
+            if (mediaId !== undefined && mediaId !== localMediaId(extension.id)) {
+                return false;
+            }
+
             const fields = receivedFields ?? {};
             const word = fields[settings.wordField] || undefined;
             const definition = fields[settings.definitionField] || undefined;
@@ -1245,7 +1272,9 @@ export default function SubtitlePlayer({
             const postMineAction = receivedPostMineAction ?? PostMineAction.showAnkiDialog;
             return copyFromWebSocketClient({ postMineAction, text, word, definition, customFieldValues });
         };
-    }, [webSocketClient, extension, settings, copyFromWebSocketClient]);
+
+        return webSocketCommands?.setHandlers({ onMineSubtitle });
+    }, [webSocketCommands, extension, settings, copyFromWebSocketClient]);
 
     useEffect(() => {
         if (extension.installed) {
@@ -1319,8 +1348,8 @@ export default function SubtitlePlayer({
     // Avoid re-rendering the entire subtitle table by having handleCopy operate on refs
     const calculateSurroundingSubtitlesForIndexRef = useRef(calculateSurroundingSubtitlesForIndex);
     calculateSurroundingSubtitlesForIndexRef.current = calculateSurroundingSubtitlesForIndex;
-    const settingsRef = useRef(settings);
-    settingsRef.current = settings;
+    const settingsRef = useRef(playbackSettings);
+    settingsRef.current = playbackSettings;
     const onCopyRef = useRef(onCopy);
     onCopyRef.current = onCopy;
     const onSeekRef = useRef(onSeek);
@@ -1460,7 +1489,7 @@ export default function SubtitlePlayer({
             showCopyButton: showCopyButton && subtitleListCustomization.showMiningButton,
             timestampDisplay: subtitleListCustomization.timestampDisplay,
             disabledSubtitleTracks,
-            dictionaryTracks: settings.dictionaryTracks,
+            dictionaryTracks: playbackSettings.dictionaryTracks,
             richTextWindowRef,
             selectedSubtitleIndexes,
             highlightedJumpToSubtitleIndex,
@@ -1478,7 +1507,7 @@ export default function SubtitlePlayer({
             subtitleListCustomization.showMiningButton,
             subtitleListCustomization.timestampDisplay,
             disabledSubtitleTracks,
-            settings.dictionaryTracks,
+            playbackSettings.dictionaryTracks,
             selectedSubtitleIndexes,
             highlightedJumpToSubtitleIndex,
             currentSubtitleIndexes,

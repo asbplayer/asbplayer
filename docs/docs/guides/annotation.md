@@ -2,6 +2,8 @@
 sidebar_position: 1
 ---
 
+import project from '@site/src/project';
+
 # Annotation {#annotation}
 
 asbplayer can annotate subtitles to better assist with language learning. Annotation features include:
@@ -13,6 +15,7 @@ asbplayer can annotate subtitles to better assist with language learning. Annota
 - **Pitch Accent Annotation**: accent patterns displayed on furigana or kana words (requires at least one pitch accent dictionary)
 - **Glossary Annotation**: short definitions or explanations displayed for each word
 - **Statistics and Comprehension**: provides insights into your known words for the current media.
+- **Adaptive Playback**: uses playback modes and annotation data to optimize your learning experience.
 - **Word Browser**: manage local and view words synced from external sources.
 - **Many more features for future releases!**
 
@@ -45,4 +48,4 @@ If you rely on the **local word database**, installing the asbplayer browser ext
 
 ## Troubleshooting {#troubleshooting}
 
-Please refer to the [common issues](../common-issues.md#annotation) section of the docs for troubleshooting annotation issues. If you can't find a solution there, please reach out on [Discord](https://discord.gg/ad7VAQru7m) or submit a [bug report](https://github.com/asbplayer/asbplayer/issues) with detailed information about your issue and steps to reproduce it.
+Please refer to the [common issues](../common-issues.md#annotation) section of the docs for troubleshooting annotation issues. If you can't find a solution there, please reach out on <a href={project.urls.discord}>Discord</a> or submit a <a href={`${project.urls.repo}/issues`}>bug report</a> with detailed information about your issue and steps to reproduce it.

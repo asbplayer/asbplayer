@@ -1,3 +1,4 @@
+import project from '@project/common/project';
 import { asbError } from '@project/common/util/log';
 import { download, timeDurationDisplay } from '@project/common/util';
 import { MediaFragment } from '@project/common';
@@ -66,6 +67,7 @@ interface Props {
     dictionaryProvider: DictionaryProvider;
     settingsProvider: SettingsProvider;
     settings: AsbplayerSettings;
+    onSettingsChanged: (settings: Partial<AsbplayerSettings>) => void;
     extension: ChromeExtension;
 }
 
@@ -101,7 +103,13 @@ const sameAsbplayerInstance = (a: AsbplayerInstance, b: AsbplayerInstance) => {
 const emptyArray: VideoTabModel[] = [];
 const miningContext = new MiningContext();
 
-export default function SidePanel({ dictionaryProvider, settingsProvider, settings, extension }: Props) {
+export default function SidePanel({
+    dictionaryProvider,
+    settingsProvider,
+    settings,
+    onSettingsChanged,
+    extension,
+}: Props) {
     const { t } = useTranslation();
     const playbackPreferences = useMemo(() => new PlaybackPreferenceController(), []);
     const subtitleReader = useMemo(
@@ -584,7 +592,7 @@ export default function SidePanel({ dictionaryProvider, settingsProvider, settin
     );
 
     const handleOpenUserGuide = useCallback(() => {
-        void browser.tabs.create({ active: true, url: 'https://docs.asbplayer.dev/docs/intro' });
+        void browser.tabs.create({ active: true, url: `${project.urls.docs}/docs/intro` });
     }, []);
     const noOp = useCallback(() => {}, []);
 
@@ -741,6 +749,7 @@ export default function SidePanel({ dictionaryProvider, settingsProvider, settin
                         <>
                             <SidePanelRecordingOverlay show={recordingAudio} />
                             <Player
+                                supportsDictionaryPlayback
                                 ref={playerRef}
                                 origin={browser.runtime.getURL('/sidepanel.html')}
                                 subtitles={subtitles}
@@ -751,6 +760,7 @@ export default function SidePanel({ dictionaryProvider, settingsProvider, settin
                                 dictionaryProvider={dictionaryProvider}
                                 settingsProvider={settingsProvider}
                                 settings={settings}
+                                onSettingsChanged={onSettingsChanged}
                                 playbackPreferences={playbackPreferences}
                                 onCopy={handleMineFromSubtitlePlayer}
                                 onError={handleError}

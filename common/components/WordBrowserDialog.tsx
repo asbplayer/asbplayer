@@ -215,9 +215,11 @@ function tokenKeyToString(key: DictionaryTokenKey) {
     return JSON.stringify(key);
 }
 
+const sortCollator = new Intl.Collator(undefined, { sensitivity: 'base', numeric: true });
+
 function compareValues(lhs: string | number, rhs: string | number) {
     if (typeof lhs === 'number' && typeof rhs === 'number') return lhs - rhs;
-    return String(lhs).localeCompare(String(rhs), undefined, { sensitivity: 'base', numeric: true });
+    return sortCollator.compare(String(lhs), String(rhs));
 }
 
 function dedupeNumbers(values: number[]) {

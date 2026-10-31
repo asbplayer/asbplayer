@@ -29,9 +29,14 @@ import type {
     AnkiExportMode,
     BrowserFeatures,
     IndexedSubtitleModel,
+    AudioErrorCode,
 } from '@project/common/src/model';
 import type { AsbPlayerToVideoCommandV2 } from '@project/common/src/command';
 import type { LogLine, LogSnapshot } from '@project/common/util/log-utils';
+import type {
+    Response as WebSocketResponse,
+    WebSocketCommand,
+} from '@project/common/web-socket-client/web-socket-commands';
 import type {
     DictionaryLocalTokenInput,
     DictionaryTokenKey,
@@ -161,6 +166,9 @@ export interface RecordMediaAndForwardSubtitleMessage extends Message, CardTextF
     readonly mediaTimestamp: number;
     readonly isBulkExport?: boolean;
     readonly noteId?: number;
+    // Set when an animated-WebP tab-capture stream was already armed (getUserMedia negotiated) in the
+    // offscreen document before the mining seek, so the recording can skip opening one.
+    readonly animatedWebpArmed?: boolean;
 }
 
 export interface StartRecordingMediaMessage extends Message, ImageCaptureParams {
@@ -587,12 +595,69 @@ export interface CropAndResizeMessage extends Message, ImageCaptureParams {
     readonly dataUrl: string;
 }
 
+// The page's viewport, which the captured tab frames correspond to
+export interface CaptureViewport {
+    readonly width: number;
+    readonly height: number;
+    readonly devicePixelRatio: number;
+}
+
+// The area of the tab to capture, in the page's coordinates (offset by the iframe for a video inside one)
+export interface CaptureArea {
+    readonly rect: RectModel;
+    readonly viewport: CaptureViewport;
+}
+
+// Asks the root frame to turn a video's rect into a CaptureArea
+export interface ResolveCaptureAreaMessage extends Message {
+    readonly command: 'resolve-capture-area';
+    readonly rect: RectModel;
+    readonly frameId?: string;
+}
+
+// Asks the offscreen document to also capture the video as an animated WebP, from the same tab-capture stream
+export interface AnimatedWebpCaptureRequest extends CaptureArea {
+    readonly maxWidth: number;
+    readonly maxHeight: number;
+    readonly fps: number;
+    readonly quality: number;
+}
+
 export interface StartRecordingAudioWithTimeoutMessage extends Message {
     readonly command: 'start-recording-audio-with-timeout';
     readonly timeout: number;
-    readonly streamId: string;
+    // Omitted when the offscreen document already armed a capture for the animated WebP
+    readonly streamId?: string;
     readonly requestId: string;
     readonly encodeAsMp3: boolean;
+    readonly image?: AnimatedWebpCaptureRequest;
+}
+
+// Opens the tab-capture stream in the offscreen document ahead of the mining seek, see
+// PrepareAnimatedWebpRecordingMessage
+export interface ArmAnimatedWebpCaptureMessage extends Message {
+    readonly command: 'arm-animated-webp-capture';
+    readonly streamId: string;
+    readonly fps: number;
+    readonly quality: number;
+    readonly viewport: CaptureViewport;
+}
+
+export interface ArmAnimatedWebpCaptureResponse {
+    readonly armed: boolean;
+    readonly error?: string;
+}
+
+// Sent by the content script before the mining seek, so the tab-capture stream (settings lookup +
+// chrome.tabCapture negotiation + getUserMedia) is already flowing by the time playback resumes at the
+// padding-adjusted start, instead of only starting afterward and clipping the beginning of the clip.
+export interface PrepareAnimatedWebpRecordingMessage extends Message, ImageCaptureParams {
+    readonly command: 'prepare-animated-webp-recording';
+}
+
+export interface PrepareAnimatedWebpRecordingResponse {
+    readonly armed: boolean;
+    readonly error?: string;
 }
 
 export interface StartRecordingAudioWithTimeoutViaCaptureStreamMessage extends Message {
@@ -604,8 +669,9 @@ export interface StartRecordingAudioWithTimeoutViaCaptureStreamMessage extends M
 
 export interface StartRecordingAudioMessage extends Message {
     readonly command: 'start-recording-audio';
-    readonly streamId: string;
+    readonly streamId?: string;
     readonly requestId: string;
+    readonly image?: AnimatedWebpCaptureRequest;
 }
 
 export interface StartRecordingAudioViaCaptureStreamMessage extends Message {
@@ -622,10 +688,14 @@ export enum StartRecordingErrorCode {
     noActiveTabPermission = 1,
     drmProtected = 2,
     other = 3,
+    recordingInProgress = 4,
 }
 
 export interface StartRecordingResponse {
     started: boolean;
+    // The animated WebP capture armed ahead of the seek was gone (discarded after a timeout), so the sender
+    // should ask again with a stream id
+    armedCaptureMissing?: boolean;
     error?: {
         code: StartRecordingErrorCode;
         message: string;
@@ -653,6 +723,9 @@ export interface AudioBase64Message extends Message {
     readonly command: 'audio-base64';
     readonly base64: string;
     readonly requestId: string;
+    // Set when an animated WebP was captured along with the audio. base64 is empty when the capture failed.
+    readonly image?: { readonly base64: string };
+    readonly audioError?: AudioErrorCode;
 }
 
 export interface EditKeyboardShortcutsMessage extends Message {
@@ -806,6 +879,16 @@ export interface JumpToSubtitleMessage extends Message {
     readonly command: 'jump-to-subtitle';
     readonly subtitle: SubtitleModel;
     readonly subtitleFileName: string;
+}
+
+export interface WebSocketCommandMessage extends MessageWithId {
+    readonly command: 'web-socket-command';
+    readonly webSocketCommand: WebSocketCommand;
+}
+
+export interface WebSocketCommandResponseMessage extends MessageWithId {
+    readonly command: 'web-socket-command-response';
+    readonly response?: WebSocketResponse<object>;
 }
 
 export interface DownloadImageMessage extends Message, CardModel {

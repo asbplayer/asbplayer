@@ -1,3 +1,4 @@
+import project from '@project/common/project';
 import { asbError } from '@project/common/util/log';
 import type { ReadCallback } from 'i18next';
 import i18n from 'i18next';
@@ -18,7 +19,7 @@ let init: Promise<any> = i18n
     .init({
         partialBundledLanguages: true,
         resources: {},
-        fallbackLng: 'en',
+        fallbackLng: project.defaultLanguage,
         debug: import.meta.env.MODE === 'development',
         ns: 'translation',
         defaultNS: 'translation',

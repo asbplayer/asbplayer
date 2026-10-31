@@ -1,3 +1,4 @@
+import project from '@project/common/project';
 import { ExtensionDictionaryStorage } from '@/services/extension-dictionary-storage';
 import { ExtensionSettingsStorage } from '@/services/extension-settings-storage';
 import type { ExtensionMessage } from '@project/common/app';
@@ -69,7 +70,7 @@ const StatisticsUi = () => {
     const fallbackMediaIdWithSubtitles = useLastMediaId();
     const mediaIdWithSubtitles = currentMediaIdWithSubtitles ?? fallbackMediaIdWithSubtitles;
 
-    const { initialized: i18nInitialized } = useI18n({ language: settings?.language ?? 'en' });
+    const { initialized: i18nInitialized } = useI18n({ language: settings?.language ?? project.defaultLanguage });
 
     if (!settings || theme === undefined || !i18nInitialized) {
         return null;

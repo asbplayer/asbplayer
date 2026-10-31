@@ -45,6 +45,7 @@ const TestPlayer = ({
     onMatch,
     subtitleData,
     exposeRequest,
+    exposeSelection,
     maxAttempts = 1,
 }: {
     name: string;
@@ -53,9 +54,10 @@ const TestPlayer = ({
     subtitleData: typeof subtitles;
     exposeRequest?: (request: (target: TokenSelectionLocation, options?: TokenSelectionRequestOptions) => void) => void;
     maxAttempts?: number;
+    exposeSelection?: (selection: ReturnType<typeof useTokenSelection>) => void;
 }) => {
     const rootRef = useRef<HTMLDivElement>(null);
-    const { requestTokenSelection } = useTokenSelection({
+    const selection = useTokenSelection({
         rootRef,
         maxAttempts,
         keyBinder,
@@ -65,7 +67,8 @@ const TestPlayer = ({
         onMatch,
         disabledGetter: () => false,
     });
-    exposeRequest?.(requestTokenSelection);
+    exposeSelection?.(selection);
+    exposeRequest?.(selection.requestTokenSelection);
     return (
         <div ref={rootRef} className="asbplayer-token-container" data-player={name} tabIndex={-1}>
             <button>{name}</button>
@@ -145,6 +148,38 @@ describe('useTokenSelection', () => {
         if (!selected) expect(traces[1].msg).toContain('"attempts":3');
         expect(frames).toHaveLength(0);
         expect(container.querySelector('.asb-token-selected') !== null).toBe(selected);
+    });
+
+    it('restores pause selection after annotation renders and clears it without clearing a manual selection', () => {
+        let selection!: ReturnType<typeof useTokenSelection>;
+        const renderPlayer = (subtitleData = subtitles) =>
+            root.render(
+                <TestPlayer
+                    name="subtitles"
+                    keyBinder={new TestKeyBinder()}
+                    subtitleData={subtitleData}
+                    onMatch={jest.fn()}
+                    exposeSelection={(api) => {
+                        selection = api;
+                    }}
+                />
+            );
+        act(() => renderPlayer());
+        const target = { subtitleIndex: 0, tokenStart: 0 };
+        expect(selection.selectToken({ ...target, tokenStart: 99 }, { autoPause: true })).toBe(false);
+        expect(selection.selectToken(target, { autoPause: true })).toBe(true);
+        expect(container.querySelector('.asb-token-auto-pause-selected')).not.toBeNull();
+        act(() => renderPlayer([...subtitles]));
+        expect(container.querySelector('.asb-token-auto-pause-selected')).not.toBeNull();
+        selection.clearPauseTokenSelection();
+        expect(container.querySelector('.asb-token-selected')).toBeNull();
+        act(() => renderPlayer([...subtitles]));
+        expect(container.querySelector('.asb-token-selected')).toBeNull();
+        selection.selectToken(target);
+        expect(selection.selectToken(target, { autoPause: true, onlyIfUnselected: true })).toBe(true);
+        act(() => renderPlayer([...subtitles]));
+        selection.clearPauseTokenSelection();
+        expect(container.querySelector('.asb-token-selected')).not.toBeNull();
     });
 
     it('keeps shared token jumps with their last owning player', () => {

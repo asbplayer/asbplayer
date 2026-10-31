@@ -110,7 +110,7 @@ export const emptySubtitleTrack = (t: TFunction) => {
 
 const initialTrackIds = ['-', '-', '-'];
 
-export const useVideoDataSyncDialogState = () => {
+export const useVideoDataSyncDialogState = (files?: FileWithId[]) => {
     const { t } = useTranslation();
     const [subtitleTrackSelectorOpen, setSubtitleTrackSelectorOpen] = useState<boolean>(false);
     const [subtitleTrackSelectorDisabled, setSubtitleTrackSelectorDisabled] = useState<boolean>(false);
@@ -126,12 +126,42 @@ export const useVideoDataSyncDialogState = () => {
     }, [t, subtitleTrackSelectorTracks]);
     const [subtitleTrackSelectorSelectedTrackIds, setSubtitleTrackSelectorSelectedTrackIds] =
         useState<string[]>(initialTrackIds);
-    const openSubtitleTrackSelector = useCallback(() => setSubtitleTrackSelectorOpen(true), []);
+    const openSubtitleTrackSelectorWithFiles = useCallback(
+        (candidates?: FileWithId[]) => {
+            if (candidates !== undefined) {
+                const loadedTracks = new Map<string, VideoDataSubtitleTrack>();
+                for (const { file, id } of candidates) {
+                    if (id === '-') continue;
+                    loadedTracks.set(id, {
+                        id,
+                        label: file.name,
+                        file,
+                        extension: file.name.substring(file.name.lastIndexOf('.') + 1),
+                    });
+                }
+                // A zero-byte SRT preserves empty slots without making confirmation fetch the "-" URL.
+                setSubtitleTrackSelectorTracks([
+                    { ...emptySubtitleTrack(t), file: new File([''], '.srt') },
+                    ...loadedTracks.values(),
+                ]);
+                setSubtitleTrackSelectorSelectedTrackIds(
+                    initialTrackIds.map((_, index) => candidates[index]?.id ?? '-')
+                );
+            }
+            setSubtitleTrackSelectorOpen(true);
+        },
+        [t]
+    );
+    const openSubtitleTrackSelector = useCallback(
+        () => openSubtitleTrackSelectorWithFiles(files),
+        [files, openSubtitleTrackSelectorWithFiles]
+    );
     const closeSubtitleTrackSelector = useCallback(() => setSubtitleTrackSelectorOpen(false), []);
 
     return {
         subtitleTrackSelectorOpen,
         openSubtitleTrackSelector,
+        openSubtitleTrackSelectorWithFiles,
         closeSubtitleTrackSelector,
         subtitleTrackSelectorSelectedTrackIds,
         setSubtitleTrackSelectorSelectedTrackIds,
@@ -314,9 +344,11 @@ export default function VideoDataSyncDialog({
                             value={subtitleTracks.find((track) => track.id === selectedSubtitleTrackIds[i])?.id ?? '-'}
                             disabled={isLoading || disabled}
                             onChange={(e) => {
+                                if (e.target.value === undefined) return;
                                 const newSelectedSubtitles = [...selectedSubtitleTrackIds];
                                 newSelectedSubtitles[i] = e.target.value;
                                 onSelectedSubtitleTrackIds(newSelectedSubtitles);
+                                setFocusOkAfterFileSelection(true);
                             }}
                         >
                             {subtitleTracks.map((subtitle) => (
@@ -344,12 +376,23 @@ export default function VideoDataSyncDialog({
     const threeSubtitleTrackSelectors = generateSubtitleTrackSelectors(3);
     const okActionRef = useRef<ButtonBaseActions | null>(null);
     const videoNameRef = useRef<HTMLInputElement>(null);
+    const [focusOkAfterFileSelection, setFocusOkAfterFileSelection] = useState(false);
 
     useEffect(() => {
-        if (open && trimmedName && !videoNameRef.current?.contains(document.activeElement) && !disabled) {
-            okActionRef.current?.focusVisible();
+        if (!open) {
+            setFocusOkAfterFileSelection(false);
+            return;
         }
-    }, [open, trimmedName, disabled]);
+
+        if (
+            (hideVideoNameTextField || trimmedName) &&
+            (focusOkAfterFileSelection || !videoNameRef.current?.contains(document.activeElement)) &&
+            !disabled
+        ) {
+            okActionRef.current?.focusVisible();
+            setFocusOkAfterFileSelection(false);
+        }
+    }, [open, trimmedName, disabled, hideVideoNameTextField, focusOkAfterFileSelection]);
 
     const [fileInputTrackNumber, setFileInputTrackNumber] = useState<number>();
     const [onlineDialogOpen, setOnlineDialogOpen] = useState(false);
@@ -361,6 +404,8 @@ export default function VideoDataSyncDialog({
             if (!files || files.length === 0) {
                 return;
             }
+
+            setFocusOkAfterFileSelection(true);
 
             if (fileInputTrackNumber === undefined) {
                 onOpenFiles(files);
@@ -501,7 +546,10 @@ export default function VideoDataSyncDialog({
                                         label={t('extension.videoDataSync.videoName')}
                                         value={name}
                                         disabled={disabled}
-                                        onChange={(e) => setName(e.target.value)}
+                                        onChange={(e) => {
+                                            setFocusOkAfterFileSelection(false);
+                                            setName(e.target.value);
+                                        }}
                                     />
                                 </Grid>
                             )}

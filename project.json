@@ -1,0 +1,127 @@
+{
+    "version": "1.23.0",
+    "names": {
+        "short": "asbplayer",
+        "long": "a subtitle player"
+    },
+    "urls": {
+        "app": "https://app.asbplayer.dev",
+        "docs": "https://docs.asbplayer.dev",
+        "repo": "https://github.com/asbplayer/asbplayer",
+        "discord": "https://discord.gg/ad7VAQru7m"
+    },
+    "releases": {
+        "extension": {
+            "publishedVersion": "1.22.0",
+            "releaseTitle": "asbplayer-extension-v{{version}}",
+            "releaseTag": "v{{version}}",
+            "sources": "asbplayer-{{version}}-sources"
+        },
+        "ankiAddon": {
+            "version": "1.0.0",
+            "minPointVersion": "25.02",
+            "package": "asbplayer-addon",
+            "releaseTitle": "asbplayer-ankiaddon-v{{version}}",
+            "releaseTag": "ankiaddon-v{{version}}",
+            "artifact": "asbplayer-{{version}}.ankiaddon"
+        }
+    },
+    "extension": {
+        "chrome": {
+            "minimumVersion": "116",
+            "id": "hkledmpjpaehamkiehglnbelcpdflcab",
+            "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAxmdAa3ymqAjLms43ympXqtyuJnC2bSYh70+5ZZmtyx/MsnGhTEdfbqtsp3BKxHbv0rPd49+Joacm1Shik5/mCppZ0h4I4ISMm983X01H6p/hfAzQYAcnvw/ZQNHAv1QgY9JiuyTBirCDoYB50Fxol/kI/0EviYXuX83KoYpjB0VGP/ssY9ocT//fQUbRmeLDJnciry8y6MduWXHzseOP99axQIjeVsNTE30L4fRN+ppX3aOkG/RFJNx0eI02qbLul3qw5dUuBK5GgMbYftwjHnDoOegnZYFr1sxRO1zsgmxdp/6du75RiDPRJOkPCz2GTrw4CX2FCywbDZlqaIpwqQIDAQAB",
+            "storeUrl": "https://chromewebstore.google.com/detail/asbplayer-language-learni/hkledmpjpaehamkiehglnbelcpdflcab",
+            "artifact": "asbplayer-extension-chrome-{{version}}"
+        },
+        "firefox": {
+            "id": "{e4b27483-2e73-4762-b2ec-8d988a143a40}",
+            "storeId": "asbplayer-language-learning",
+            "storeUrl": "https://addons.mozilla.org/firefox/addon/asbplayer-language-learning",
+            "artifact": "asbplayer-extension-firefox-{{version}}"
+        },
+        "firefoxAndroid": {
+            "id": "{49de9206-c73e-4829-be4d-bda770d7f4b5}",
+            "storeId": "asbplayer-android",
+            "storeUrl": "https://addons.mozilla.org/android/addon/asbplayer-android",
+            "artifact": "asbplayer-extension-firefox-android-{{version}}"
+        }
+    },
+    "development": {
+        "host": "localhost",
+        "port": 3000
+    },
+    "services": {
+        "webSocket": {
+            "host": "127.0.0.1",
+            "port": 8766,
+            "path": "/ws",
+            "postMineAction": 2,
+            "artifact": "asbplayer-ws"
+        },
+        "ankiConnect": {
+            "host": "127.0.0.1",
+            "port": 8765
+        },
+        "yomitan": {
+            "host": "127.0.0.1",
+            "port": 19633
+        }
+    },
+    "defaultLanguage": "en",
+    "languageUrl": "/locales/{{language}}.json",
+    "languages": [
+        {
+            "code": "en",
+            "version": 29
+        },
+        {
+            "code": "es",
+            "version": 26
+        },
+        {
+            "code": "ja",
+            "version": 34
+        },
+        {
+            "code": "de",
+            "version": 27
+        },
+        {
+            "code": "pl",
+            "version": 27
+        },
+        {
+            "code": "pt_BR",
+            "version": 26
+        },
+        {
+            "code": "zh_CN",
+            "version": 26
+        },
+        {
+            "code": "ru",
+            "version": 25
+        },
+        {
+            "code": "fi",
+            "version": 18
+        },
+        {
+            "code": "fr",
+            "version": 18
+        },
+        {
+            "code": "ko",
+            "version": 18
+        },
+        {
+            "code": "id",
+            "version": 17
+        },
+        {
+            "code": "it",
+            "version": 8
+        }
+    ]
+}

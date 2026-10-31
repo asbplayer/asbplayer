@@ -1,0 +1,67 @@
+name: Release Anki add-on
+
+on:
+    workflow_dispatch:
+
+permissions:
+    contents: write
+
+concurrency:
+    group: release-anki-addon
+    cancel-in-progress: false
+
+jobs:
+    release:
+        runs-on: ubuntu-latest
+        defaults:
+            run:
+                shell: bash
+        steps:
+            - uses: actions/checkout@v7
+              with:
+                  persist-credentials: false
+
+            - uses: actions/setup-node@v7
+              with:
+                  node-version-file: '.nvmrc'
+
+            - name: Check generated project configuration
+              run: |
+                  set -euo pipefail
+                  node --experimental-strip-types scripts/sync-project-config.ts --check
+
+            - name: Test add-on configuration and packaging
+              run: |
+                  set -euo pipefail
+                  node --test --experimental-strip-types scripts/sync-project-config.test.ts scripts/package-anki-addon.test.ts
+
+            - name: Read Anki release metadata
+              id: release-info
+              run: |
+                  set -euo pipefail
+                  node --experimental-strip-types scripts/anki-release-info.ts >> "$GITHUB_OUTPUT"
+
+            - name: Package add-on
+              run: |
+                  set -euo pipefail
+                  bash plugins/anki/package.sh
+
+            - name: Create draft GitHub release
+              env:
+                  GH_TOKEN: ${{ github.token }}
+                  GH_REPO: ${{ github.repository }}
+                  RELEASE_TAG: ${{ steps.release-info.outputs.tag }}
+                  RELEASE_TITLE: ${{ steps.release-info.outputs.title }}
+                  RELEASE_FILENAME: ${{ steps.release-info.outputs.filename }}
+              run: |
+                  set -euo pipefail
+                  if gh api --silent "repos/$GH_REPO/git/ref/tags/$RELEASE_TAG" >/dev/null 2>&1; then
+                      echo "Anki add-on tag $RELEASE_TAG already exists; bump releases.ankiAddon.version." >&2
+                      exit 1
+                  fi
+                  gh release create "$RELEASE_TAG" "plugins/anki/$RELEASE_FILENAME" \
+                    --draft \
+                    --target "$GITHUB_SHA" \
+                    --title "$RELEASE_TITLE" \
+                    --notes "Anki add-on for one-click mining. Install the attached .ankiaddon file from Anki's Add-ons dialog." \
+                    --latest=false

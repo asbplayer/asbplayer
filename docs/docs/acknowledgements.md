@@ -1,6 +1,8 @@
 ---
-sidebar_position: 8
+sidebar_position: 7
 ---
+
+import project from '@site/src/project';
 
 # Acknowledgements {#acknowledgements}
 
@@ -84,7 +86,7 @@ We epecially acknowledge the wonderful humans below.
 **yaacha** (Indonesian),
 **[@NeriSal](https://github.com/nerisal)** (Italian)
 
-If you are a non-English native, and would like to help translate asbplayer, join the [Crowdin project](https://crowdin.com/project/asbplayer). If your language isn't there, feel free to create an issue on the [issues page](https://github.com/asbplayer/asbplayer/issues).
+If you are a non-English native, and would like to help translate asbplayer, join the [Crowdin project](https://crowdin.com/project/asbplayer). If your language isn't there, feel free to create an issue on the <a href={`${project.urls.repo}/issues`}>issues page</a>.
 
 ## Sponsors {#sponsors}
 

@@ -7,8 +7,10 @@
         "jsx": "react-jsx",
         "esModuleInterop": true,
         "strict": true,
+        "skipLibCheck": true,
         "downlevelIteration": true,
-        "moduleResolution": "Node"
+        "moduleResolution": "Node",
+        "resolveJsonModule": true
     },
     "include": ["./src/**/*", "decs.d.ts", "vite-env.d.ts", "plausible.d.ts"]
 }

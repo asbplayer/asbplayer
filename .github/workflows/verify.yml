@@ -17,6 +17,22 @@ jobs:
             - name: Setup Node.js and pnpm
               uses: ./.github/actions/setup-node-pnpm
 
+            - uses: astral-sh/setup-uv@v9.0.0
+
+            - name: Check synchronized project files
+              run: |
+                  set -euo pipefail
+                  pnpm sync:project
+                  if [ -n "$(git status --porcelain --untracked-files=all)" ]; then
+                      echo "Run pnpm sync:project and commit the generated files."
+                      git status --short --untracked-files=all
+                      git diff
+                      exit 1
+                  fi
+
+            - name: Check Anki lockfile
+              run: uv lock --project plugins/anki --check
+
             - run: pnpm install --filter @project/extension --filter @project/common --filter @project/client
             - run: pnpm --filter @project/extension run zip
             - run: pnpm --filter @project/client run build

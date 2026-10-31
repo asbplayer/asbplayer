@@ -92,6 +92,8 @@ export default function ImageDialog({
 
     const webm = image.extension === 'webm';
 
+    const animated = image.animated;
+
     return (
         <div>
             <Modal disableRestoreFocus style={{ width: '100vw', height: '100dvh' }} open={open} onClose={onClose}>
@@ -120,7 +122,7 @@ export default function ImageDialog({
                             <CardMedia className={classes.image} image={dataUrl} title={image.name} style={{}} />
                         )}
                     </Card>
-                    {interval && image.canChangeTimestamp && !webm && (
+                    {interval && image.canChangeTimestamp && !animated && (
                         <Slider
                             slots={{ valueLabel: ValueLabelComponent }}
                             color="primary"

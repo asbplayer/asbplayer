@@ -746,6 +746,7 @@ export default class VideoChannel {
             fastForwardPlaybackMinimumSkipIntervalMs,
             streamingCondensedPlaybackMinimumSkipIntervalMs,
             repeatCountPreference,
+            repeatsBeforeShowingSubtitles,
             autoPauseResumeMode,
             autoPauseResumeDelayMs,
             autoPauseFixedDurationMs,
@@ -778,6 +779,8 @@ export default class VideoChannel {
         const message: MiscSettingsToVideoMessage = {
             command: 'miscSettings',
             value: {
+                recipes: settings.recipes,
+                activeRecipeId: settings.activeRecipeId,
                 themeType,
                 videoSubtitleSplitBehavior,
                 showSubtitleListMiningButton,
@@ -799,6 +802,7 @@ export default class VideoChannel {
                 fastForwardPlaybackMinimumSkipIntervalMs,
                 streamingCondensedPlaybackMinimumSkipIntervalMs,
                 repeatCountPreference,
+                repeatsBeforeShowingSubtitles,
                 autoPauseResumeMode,
                 autoPauseResumeDelayMs,
                 autoPauseFixedDurationMs,

@@ -37,6 +37,8 @@ describe('PlaybackTimeline', () => {
             subtitleTriggerStartOffset: -250,
         });
         const result = PlaybackTimeline.fromSubtitles({
+            actionBlocks: [],
+            hiddenSubtitleIndexes: [],
             durationMs: base.durationMs,
             blocks: base.blocks.map((block) => ({ ...block, startAction: true as const })),
             displaySubtitles: subtitles,
@@ -61,6 +63,8 @@ describe('PlaybackTimeline', () => {
         const subtitles = [makeSubtitle(1000, 2000, 0), makeSubtitle(4000, 5000, 1)];
         const base = timeline(subtitles);
         const result = PlaybackTimeline.fromSubtitles({
+            actionBlocks: [],
+            hiddenSubtitleIndexes: [],
             durationMs: base.durationMs,
             blocks: base.blocks.map((block) => ({ ...block, playbackModeStartMs: 1000, startAction: true as const })),
             displaySubtitles: subtitles,
@@ -86,22 +90,22 @@ describe('PlaybackTimeline', () => {
         expect(result.lookupAt(4000).segment.showingSubtitles).toEqual([]);
     });
 
-    it('provides the inactive members of a fixed connected group as invisible placeholders', () => {
+    it('restarts placeholders when a secondary subtitle is replaced during a longer primary subtitle', () => {
         const primary = makeSubtitle(1000, 10000, 0, { track: 0 });
         const firstSecondary = makeSubtitle(2000, 4000, 1, { track: 1 });
         const secondSecondary = makeSubtitle(6000, 8000, 2, { track: 1 });
         const result = timeline([], { displaySubtitles: [primary, firstSecondary, secondSecondary] });
 
         expect(result.invisibleSubtitlesAt(500)).toEqual([]);
-        expect(result.invisibleSubtitlesAt(1000)).toEqual([firstSecondary, secondSecondary]);
+        expect(result.invisibleSubtitlesAt(1000)).toEqual([firstSecondary]);
         expect(result.showingSubtitlesAt(1000)).toEqual([primary]);
-        expect(result.invisibleSubtitlesAt(2500)).toEqual([secondSecondary]);
+        expect(result.invisibleSubtitlesAt(2500)).toEqual([]);
         expect(result.showingSubtitlesAt(2500)).toEqual([primary, firstSecondary]);
-        expect(result.invisibleSubtitlesAt(4500)).toEqual([firstSecondary, secondSecondary]);
+        expect(result.invisibleSubtitlesAt(4500)).toEqual([firstSecondary]);
         expect(result.showingSubtitlesAt(4500)).toEqual([primary]);
-        expect(result.invisibleSubtitlesAt(6500)).toEqual([firstSecondary]);
+        expect(result.invisibleSubtitlesAt(6500)).toEqual([]);
         expect(result.showingSubtitlesAt(6500)).toEqual([primary, secondSecondary]);
-        expect(result.invisibleSubtitlesAt(8500)).toEqual([firstSecondary, secondSecondary]);
+        expect(result.invisibleSubtitlesAt(8500)).toEqual([secondSecondary]);
         expect(result.showingSubtitlesAt(8500)).toEqual([primary]);
         expect(result.invisibleSubtitlesAt(10000)).toEqual([]);
     });
@@ -131,17 +135,47 @@ describe('PlaybackTimeline', () => {
         expect(result.showingSubtitlesAt(4500)).toEqual([second]);
     });
 
-    it('forms one fixed group through transitive overlaps across multiple tracks', () => {
+    it('does not carry expired placeholders through transitive overlaps across multiple tracks', () => {
         const first = makeSubtitle(1000, 4000, 0, { track: 0 });
         const second = makeSubtitle(3000, 6000, 1, { track: 1 });
         const third = makeSubtitle(5000, 8000, 2, { track: 2 });
         const result = timeline([], { displaySubtitles: [first, second, third] });
-        expect(result.invisibleSubtitlesAt(1500)).toEqual([second, third]);
+        expect(result.invisibleSubtitlesAt(1500)).toEqual([second]);
         expect(result.showingSubtitlesAt(1500)).toEqual([first]);
-        expect(result.invisibleSubtitlesAt(4500)).toEqual([first, third]);
+        expect(result.invisibleSubtitlesAt(4500)).toEqual([first]);
         expect(result.showingSubtitlesAt(4500)).toEqual([second]);
-        expect(result.invisibleSubtitlesAt(6500)).toEqual([first, second]);
+        expect(result.invisibleSubtitlesAt(6500)).toEqual([second]);
         expect(result.showingSubtitlesAt(6500)).toEqual([third]);
+    });
+
+    it('does not reserve duplicate dialogue or a later interjection before a split subtitle is replaced', () => {
+        // Timings and line breaks from SRT entries 602–607, loaded together on one track.
+        const subtitles = [
+            makeSubtitle(921250, 924609, 601, {
+                text: 'They look cute, but to think\nthey want to ruin humanity...',
+            }),
+            makeSubtitle(921297, 924550, 602, { text: '（夜雲）かわいいのに\n人を滅ぼす存在とはね' }),
+            makeSubtitle(924610, 928819, 603, {
+                text: 'This black-haired one is the one\nwho trampled over the 3rd Squad.',
+            }),
+            makeSubtitle(924634, 928346, 604, { text: '（恋）この黒髪は\n三番組の隊員を蹂躙(じゅうりん)し' }),
+            makeSubtitle(928346, 928888, 605, { text: '（恋）この黒髪は\n三番組の隊員を蹂躙(じゅうりん)し' }),
+            makeSubtitle(928346, 928888, 606, { text: '（ベル）ううっ…' }),
+        ];
+        const result = timeline([], { durationMs: 930000, displaySubtitles: subtitles });
+
+        expect(result.showingSubtitlesAt(922000)).toEqual(subtitles.slice(0, 2));
+        expect(result.invisibleSubtitlesAt(922000)).toEqual([]);
+        expect(result.showingSubtitlesAt(924610)).toEqual([subtitles[2]]);
+        expect(result.invisibleSubtitlesAt(924610)).toEqual([subtitles[3]]);
+        expect(result.showingSubtitlesAt(926000)).toEqual(subtitles.slice(2, 4));
+        expect(result.invisibleSubtitlesAt(926000)).toEqual([]);
+        expect(result.showingSubtitlesAt(928346)).toEqual([subtitles[2], ...subtitles.slice(4)]);
+        expect(result.invisibleSubtitlesAt(928346)).toEqual([]);
+        expect(result.showingSubtitlesAt(928819)).toEqual(subtitles.slice(4));
+        expect(result.invisibleSubtitlesAt(928819)).toEqual([subtitles[2]]);
+        expect(result.showingSubtitlesAt(928888)).toEqual([]);
+        expect(result.invisibleSubtitlesAt(928888)).toEqual([]);
     });
 
     it('does not form a fixed group through transitive 1 ms overlaps', () => {
@@ -156,16 +190,17 @@ describe('PlaybackTimeline', () => {
         expect(result.invisibleSubtitlesAt(19_000)).toEqual([]);
     });
 
-    it('starts a canonically ordered layout epoch when a fifth transitive subtitle enters', () => {
+    it('starts a canonically ordered layout epoch when a fifth mutually overlapping subtitle enters', () => {
         const subtitles = Array.from({ length: 5 }, (_, index) =>
-            makeSubtitle(1000 + index * 1000, 3000 + index * 1000, index, { track: index % 2 })
+            makeSubtitle(1000 + index * 1000, 7000 + index * 1000, index, { track: index % 2 })
         );
         const result = timeline([], { displaySubtitles: subtitles });
 
-        expect(result.invisibleSubtitlesAt(4500)).toEqual(subtitles.slice(0, 2));
-        expect(result.showingSubtitlesAt(4500)).toEqual(subtitles.slice(2, 4));
+        expect(result.invisibleSubtitlesAt(1500)).toEqual(subtitles.slice(1, 4));
+        expect(result.invisibleSubtitlesAt(4500)).toEqual([]);
+        expect(result.showingSubtitlesAt(4500)).toEqual(subtitles.slice(0, 4));
         expect(result.invisibleSubtitlesAt(5000)).toEqual([]);
-        expect(result.showingSubtitlesAt(5000)).toEqual(subtitles.slice(3, 5));
+        expect(result.showingSubtitlesAt(5000)).toEqual(subtitles);
     });
 
     it('renders every subtitle when more than four are genuinely visible simultaneously', () => {

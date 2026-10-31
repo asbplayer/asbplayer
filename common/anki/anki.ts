@@ -220,7 +220,8 @@ export async function exportCard(
                       card.subtitle.start,
                       card.image.base64,
                       card.image.extension,
-                      card.image.error
+                      card.image.error,
+                      card.image.animated
                   ),
         word: card.word,
         source: source,

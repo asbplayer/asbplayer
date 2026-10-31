@@ -65,6 +65,10 @@ export class JpegFileMediaFragmentData implements MediaFragmentData {
         return 'jpeg';
     }
 
+    get animated() {
+        return false;
+    }
+
     get error(): MediaFragmentErrorCode | undefined {
         return mediaFragmentErrorForFile(this._file);
     }
