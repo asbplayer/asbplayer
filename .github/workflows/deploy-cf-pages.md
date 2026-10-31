@@ -1,7 +1,7 @@
 ---
 name: "Agent: Create app deploy branch"
 description: |
-  Prepares a deploy pull request from main to cf-pages with LLM-generated release notes, a date-based app version tag, and a follow-up commit linking the app version to the tag.
+  Prepares a deploy pull request from main to cf-pages with LLM-generated release notes, the app version tag, and a commit linking the app to the tag.
 
 on:
   workflow_dispatch:
@@ -123,10 +123,9 @@ safe-outputs:
   jobs:
     finalize-deploy:
       description: >-
-        Create the cf-pages deploy pull request with the generated release notes,
-        reserve a date-based app version tag, and push a follow-up commit linking the
-        app version to the tag. Call this tool exactly once, after composing the
-        release notes.
+        Create the cf-pages deploy pull request with the release notes, reserve the
+        app version tag, and commit the version link. Call this tool exactly once,
+        after composing the release notes.
       runs-on: ubuntu-latest
       permissions:
         contents: write
@@ -198,15 +197,22 @@ safe-outputs:
               git push origin --delete "$stale_branch"
             done
 
-            # Reserve a date-based app version tag for the app's About dialog.
-            # No GitHub release is created. A same-day redeploy bumps the
-            # suffix to avoid a collision.
-            version=$(date -u +%Y.%m.%d)
-            tag="app-v$version"
-            suffix=1
+            # Reserve the app version tag from project.json. No GitHub release is
+            # created. The first deploy of the day uses the bare tag; later ones
+            # append .1, .2, ...
+            version=$(date -u +%y.%m.%d)
+            tag_template=$(jq -r '.releases.app.releaseTag' project.json)
+            if ! [[ "$tag_template" == *'{{version}}'* ]]; then
+              echo "::error::releases.app.releaseTag in project.json must contain {{version}}"
+              exit 1
+            fi
+            tag_prefix=${tag_template%%\{\{version\}\}*}
+            base_tag="${tag_template//\{\{version\}\}/$version}"
+            tag="$base_tag"
+            suffix=0
             while git ls-remote --exit-code origin "refs/tags/$tag" >/dev/null 2>&1; do
               suffix=$((suffix + 1))
-              tag="app-v$version.$suffix"
+              tag="$base_tag.$suffix"
             done
             echo "Reserved app version tag: $tag"
 
@@ -223,32 +229,38 @@ safe-outputs:
             git tag -a "$tag" -m "App deploy $version - release notes in PR #$pr_number"
             git push origin "refs/tags/$tag"
 
-            # Delete app-v* tags from superseded or abandoned deploy cycles. A
-            # tag's message names its deploy PR; keep a tag only when that PR
-            # merged into cf-pages.
-            git fetch --no-tags origin '+refs/tags/app-v*:refs/tags/app-v*'
-            for stale_tag in $(git tag --list 'app-v*'); do
-              if [ "$stale_tag" = "$tag" ]; then
-                continue
-              fi
-              tagged_pr=$(git tag -l --format='%(contents:subject)' "$stale_tag" \
-                | grep -oE '#[0-9]+' | head -n1 | tr -d '#')
-              if [ -z "$tagged_pr" ]; then
-                echo "Keeping $stale_tag: no deploy PR reference in its tag message"
-                continue
-              fi
-              merge_state=$(gh pr view "$tagged_pr" --json mergedAt,baseRefName \
-                --jq 'if .baseRefName == "cf-pages" and .mergedAt != null then "merged" else "unmerged" end' \
-                2>/dev/null || echo "missing")
-              if [ "$merge_state" = "merged" ]; then
-                continue
-              fi
-              if git push origin --delete "refs/tags/$stale_tag" 2>/dev/null; then
-                echo "Deleted stale app version tag $stale_tag (deploy PR #$tagged_pr is $merge_state)"
-              else
-                echo "::warning::Failed to delete stale app version tag $stale_tag"
-              fi
-            done
+            # Delete tags from superseded or abandoned deploy cycles, but only when
+            # the deploy PR is confirmed closed without merging. Deployed versions
+            # link to their tag, so any other result keeps it.
+            if [ -n "$tag_prefix" ]; then
+              git fetch --no-tags origin "+refs/tags/${tag_prefix}*:refs/tags/${tag_prefix}*"
+              for stale_tag in $(git tag --list "${tag_prefix}*"); do
+                if [ "$stale_tag" = "$tag" ]; then
+                  continue
+                fi
+                tagged_pr=$(git tag -l --format='%(contents:subject)' "$stale_tag" \
+                  | grep -oE '#[0-9]+' | head -n1 | tr -d '#')
+                if [ -z "$tagged_pr" ]; then
+                  echo "Keeping $stale_tag: no deploy PR reference in its tag message"
+                  continue
+                fi
+                pr_state=$(gh pr view "$tagged_pr" --json state,mergedAt,baseRefName \
+                  --jq 'if .baseRefName != "cf-pages" then "wrong-base"
+                        elif .mergedAt != null then "merged"
+                        elif .state == "CLOSED" then "closed"
+                        else "open" end' \
+                  2>/dev/null) || pr_state="unknown"
+                if [ "$pr_state" != "closed" ]; then
+                  echo "Keeping $stale_tag (deploy PR #$tagged_pr: $pr_state)"
+                  continue
+                fi
+                if git push origin --delete "refs/tags/$stale_tag" 2>/dev/null; then
+                  echo "Deleted stale app version tag $stale_tag (deploy PR #$tagged_pr closed unmerged)"
+                else
+                  echo "::warning::Failed to delete stale app version tag $stale_tag"
+                fi
+              done
+            fi
 
 ---
 
