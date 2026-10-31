@@ -53,7 +53,10 @@ export const createFfmpegBuildConfig = async ({
         metadata.runtimeArchive.sha256 = createHash('sha256').update(bytes).digest('hex');
         metadata.runtimeArchive.bytes = bytes.byteLength;
     } else {
-        archivePath = await prepareRuntime(artifactLock);
+        archivePath = await prepareRuntime(
+            artifactLock,
+            fileURLToPath(new URL('../ffmpeg/.cache/runtimes', import.meta.url))
+        );
     }
     return {
         define: runtimeDefines(metadata),

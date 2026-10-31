@@ -19,6 +19,8 @@ const openRuntimeCache = async (cacheStorage: CacheStorage | undefined): Promise
         return;
     }
 };
+const isVerified = (response: Response | undefined, sha256: string): response is Response & { readonly ok: true } =>
+    response !== undefined && response.ok && response.headers.get(verificationHeader) === sha256;
 
 const isHtml = (response: Response) => response.headers.get('Content-Type')?.toLowerCase().includes('text/html');
 
@@ -70,7 +72,7 @@ export const prepareFfmpegRuntimeArchive = async (
     archive: FfmpegRuntimeArchive,
     cacheStorage: CacheStorage | undefined,
     signal: AbortSignal,
-    { fetcher = fetch }: { fetcher?: typeof fetch } = {}
+    fetcher: typeof fetch
 ): Promise<Blob> => {
     signal.throwIfAborted();
     if (!/^[a-f0-9]{64}$/.test(archive.sha256) || !Number.isSafeInteger(archive.bytes) || archive.bytes <= 0) {
@@ -83,7 +85,7 @@ export const prepareFfmpegRuntimeArchive = async (
         return;
     });
     signal.throwIfAborted();
-    if (cached?.ok && cached.headers.get(verificationHeader) === archive.sha256) {
+    if (isVerified(cached, archive.sha256)) {
         asbTrace('ffmpeg/cache', 'Reusing verified runtime archive', { cacheName, bytes: archive.bytes });
         return cached.blob();
     }

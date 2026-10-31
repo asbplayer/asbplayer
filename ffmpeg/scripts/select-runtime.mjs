@@ -13,12 +13,12 @@ import { githubHeaders, findRelease, fetchAsset } from './github-release.mjs';
 
 const execFileAsync = promisify(execFile);
 
-const verifyPublishedRuntimeArchive = async (archivePath, extractionRoot, version) => {
-    await verifyRuntimeArchiveContents(archivePath, version);
+const verifyPublishedRuntimeArchive = async (archivePath, extractionRoot, version, rootName) => {
+    await verifyRuntimeArchiveContents(archivePath, rootName);
     await mkdir(extractionRoot, { recursive: true });
     await execFileAsync('tar', ['-xzf', archivePath, '-C', extractionRoot]);
 
-    const runtimeRoot = resolve(extractionRoot, version);
+    const runtimeRoot = resolve(extractionRoot, rootName);
     const manifest = await readJson(resolve(runtimeRoot, 'manifest.json'));
     verifyRuntimeManifest(manifest, version);
     await verifyRuntimeDirectory(runtimeRoot, manifest);
@@ -63,7 +63,8 @@ const selectRuntime = async () => {
         const manifest = await verifyPublishedRuntimeArchive(
             runtimeArchive,
             resolve(temporaryRoot, 'extracted'),
-            version
+            version,
+            names.runtimeRoot
         );
         // The release must also publish the exact upstream tarballs the runtime was built from.
         const sourcesFilename = names.sourcesArchive;

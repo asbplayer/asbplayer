@@ -40,9 +40,14 @@ import type {
 import PlaybackPositionController from '@project/common/playback/controllers/playback-position-controller';
 import PlaybackStateController from '@project/common/playback/controllers/playback-state-controller';
 import TokenSelectionController from '@project/common/playback/controllers/token-selection-controller';
+import ExternalAudioController from '@project/common/playback/controllers/external-audio-controller';
+import type { ExternalAudioTrack } from '@project/common/playback/controllers/external-audio-controller';
+import PlaybackAudio from '@project/common/playback/media/playback-audio';
+import type { PlaybackAudioSource } from '@project/common/playback/media/playback-audio';
+import type { VideoPlaybackEvent, VideoPlaybackState } from '@project/common/playback/media/media';
 import type { TokenSelectionControllerCallbacks } from '@project/common/playback/controllers/token-selection-controller';
 
-import type { TimingDriver } from '@project/common/playback/timing/timing-driver';
+import type { TimingDriver } from '@project/common/playback/media/timing-driver';
 import { CachedLocalStorage } from '@project/common/app/services/cached-local-storage';
 
 const internalSeekWatchdogMs = 10_000;
@@ -121,6 +126,15 @@ export interface InitialPlaybackSettingsNotifications {
 
 type PlaybackRateSetting = 'playbackRate' | 'fastForwardModePlaybackRate';
 
+export interface PlaybackSeekOptions {
+    /** A remembered position may wait for audio conversion rather than clamp to the current buffer. */
+    readonly restorePlaybackPosition?: boolean;
+}
+
+export interface ExternalAudioSource extends ExternalAudioTrack, PlaybackAudioSource {
+    readonly onError: (error: unknown) => void;
+}
+
 export interface PlaybackEngineCallbacks {
     readonly pause: () => void;
     readonly selectToken: TokenSelectionControllerCallbacks['selectToken'];
@@ -128,6 +142,7 @@ export interface PlaybackEngineCallbacks {
     readonly play: () => Promise<void>;
     readonly seek: (timestampMs: number) => Promise<void>;
     readonly setPlaybackRate: (playbackRate: number) => void;
+    readonly setMuted: (muted: boolean) => void;
     readonly setSubtitleOffset: (
         offset: number,
         options: SubtitleOffsetOptions,
@@ -173,6 +188,8 @@ export interface PlaybackEngineOptions<T extends IndexedSubtitleModel> {
  *     ├── AutoPauseController
  *     ├── SubtitleVisibilityController
  *     ├── TokenSelectionController
+ *     ├── ExternalAudioController
+ *     ├── PlaybackAudio
  *     ├── PlaybackPlan
  *     └── PlaybackPlanExecutor
  *         ├── PlaybackTimeline
@@ -202,6 +219,11 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
     private readonly subtitleVisibilityController: SubtitleVisibilityController;
     private readonly playbackStateController: PlaybackStateController<T>;
     private readonly tokenSelectionController: TokenSelectionController;
+    private readonly externalAudioController: ExternalAudioController;
+    private readonly playbackAudio: PlaybackAudio;
+    private externalAudioActive = false;
+    private externalAudioError: (error: unknown) => void;
+    private originalMuted?: boolean;
     private autoPauseTimestampMs?: number;
     private readonly settingsProvider: SettingsProvider;
     private unbindOperationId = 0;
@@ -241,7 +263,24 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         this.playbackModesSuppressed = playbackModesSuppressed;
         this.playbackModeController = new PlaybackModeController(new Set([PlayMode.normal]), playbackModesDisabled);
         this.callbacks = callbacks;
+        this.externalAudioError = callbacks.onError;
         this.timingDriver = timingDriver;
+        this.playbackAudio = new PlaybackAudio({
+            onEvent: (event) => this.externalAudioController.audioEvent(event),
+            onError: (error) => this.externalAudioController.audioError(error),
+        });
+        this.externalAudioController = new ExternalAudioController({
+            videoState: () => this.videoPlaybackState(),
+            audioState: () => this.playbackAudio.state(),
+            play: () => this.play(),
+            pause: () => this.pause({ forBuffering: true }),
+            seek: (timestampMs) => this.seek(timestampMs),
+            playAudio: () => this.playbackAudio.play(),
+            pauseAudio: () => this.playbackAudio.pause(),
+            seekAudio: (timestampMs) => this.playbackAudio.seek(timestampMs),
+            audioSettingsChanged: (settings) => this.playbackAudio.settingsChanged(settings),
+            onError: (error) => this.externalAudioError(error),
+        });
         this.plan = this.buildPlan();
         this.subtitleVisibilityController = new SubtitleVisibilityController({
             automaticallyPaused: () => this.autoPauseController.automaticallyPaused,
@@ -255,7 +294,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
             },
         });
         this.autoPauseController = new AutoPauseController({
-            play: callbacks.play,
+            play: () => this.play(),
             resumeDelayStarted: () => this.subtitleVisibilityController.autoPauseResumeDelayStarted(),
             autoResumeFailed: () => {
                 this.tokenSelectionController.cancel();
@@ -280,13 +319,13 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         });
 
         const executorCallbacks: PlaybackPlanExecutorCallbacks<T> = {
-            play: callbacks.play,
+            play: () => this.play(),
             paused: () => this.timingDriver.paused(),
             pause: ({ timestampMs, playbackModeSubtitlesAtPause }) => {
                 this.autoPauseTimestampMs = timestampMs;
                 this.autoPauseController.autoPaused(playbackModeSubtitlesAtPause);
                 this.subtitleVisibilityController.autoPaused();
-                callbacks.pause();
+                this.pause();
                 this.tokenSelectionController.autoPaused(timestampMs);
                 void this.playbackPositionController.savePlaybackPosition(this.timingDriver.currentTimeMs());
             },
@@ -336,8 +375,8 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
                     callbacks.saveSettings(settings);
                 },
                 playbackPositionChanged: callbacks.playbackPositionChanged,
-                seek: (timestampMs) => this.seek(timestampMs),
-                play: callbacks.play,
+                seek: (timestampMs) => this.seek(timestampMs, { restorePlaybackPosition: true }),
+                play: () => this.play(),
                 showingSubtitlesAt: (timestampMs) => this.executor.showingSubtitlesAt(timestampMs),
                 playbackPositionsChanged: (positions) => {
                     this.settings = { ...this.settings, lastPlaybackPositions: [...positions] };
@@ -534,6 +573,10 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
     }
 
     bind(): void {
+        this.timingDriver.bindMedia(this.onVideoPlaybackEvent);
+        this.playbackAudio.bind();
+        this.updateOriginalAudioMuting();
+        this.externalAudioController.bind();
         if (this.timingDriver.bound) return;
         if (!this.ready.settings) {
             asbTrace('playback/lifecycle', 'Deferring playback engine bind until settings are ready');
@@ -584,6 +627,10 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
     }
 
     unbind(): void {
+        this.externalAudioController.unbind();
+        this.playbackAudio.unbind();
+        this.timingDriver.unbindMedia();
+        this.restoreOriginalAudioMuting();
         this.teardown({ saveSettings: true });
     }
 
@@ -749,7 +796,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
                 savePlaybackModes: false,
                 rebuildWhenUnchanged: true,
             }); // Reset to normal while subtitles are unavailable
-            this.unbind();
+            this.teardown({ saveSettings: true }); // Subtitle timing can stop while media and converted audio keep playing.
         }
     }
 
@@ -1177,8 +1224,53 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         this.callbacks.playbackModesChanged(transition);
     }
 
-    private async seek(timestampMs: number): Promise<void> {
-        const targetTimestampMs = this.clampTimestamp(timestampMs);
+    externalAudioChanged(source: ExternalAudioSource): void {
+        this.externalAudioActive = source.active;
+        this.externalAudioError = source.onError;
+        this.playbackAudio.sourceChanged({
+            element: source.element,
+            source: source.active ? source.source : undefined,
+        });
+        this.updateOriginalAudioMuting();
+        this.externalAudioController.trackChanged(source);
+    }
+
+    private videoPlaybackState(): VideoPlaybackState {
+        return this.timingDriver.mediaState();
+    }
+
+    private updateOriginalAudioMuting(): void {
+        if (!this.externalAudioActive) {
+            this.restoreOriginalAudioMuting();
+            return;
+        }
+        this.originalMuted ??= this.videoPlaybackState().muted;
+        this.callbacks.setMuted(true);
+    }
+
+    private restoreOriginalAudioMuting(): void {
+        if (this.originalMuted === undefined) return;
+        this.callbacks.setMuted(this.originalMuted);
+        this.originalMuted = undefined;
+    }
+
+    private readonly onVideoPlaybackEvent = (event: VideoPlaybackEvent): void => {
+        if (event === 'pause-requested') this.pause();
+        else if (event === 'play-requested') void this.play().catch((error: unknown) => this.callbacks.onError(error));
+        else this.externalAudioController.videoEvent(event);
+    };
+
+    private pause({ forBuffering = false }: { readonly forBuffering?: boolean } = {}): void {
+        if (!forBuffering) this.externalAudioController.pauseRequested();
+        this.callbacks.pause();
+    }
+
+    private play(): Promise<void> {
+        return this.callbacks.play();
+    }
+
+    async seek(timestampMs: number, options?: PlaybackSeekOptions): Promise<void> {
+        const targetTimestampMs = this.externalAudioController.clampSeekMs(this.clampTimestamp(timestampMs), options);
         if (targetTimestampMs !== timestampMs) {
             asbTrace('playback/seek', 'Clamped seek target', {
                 requestedTimestampMs: timestampMs,
@@ -1193,7 +1285,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         warningCommand: 'pause-correction'
     ): Promise<{ seekIssued: boolean }> {
         if (this.autoPauseCorrectionDisabled) return { seekIssued: false };
-        const targetTimestampMs = this.clampTimestamp(timestampMs);
+        const targetTimestampMs = this.externalAudioController.clampSeekMs(this.clampTimestamp(timestampMs));
         if (Math.abs(this.timingDriver.currentTimeMs() - targetTimestampMs) < playbackPlanCorrectionToleranceMs) {
             return { seekIssued: false };
         }
@@ -1202,6 +1294,10 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
     }
 
     private async performSeek(targetTimestampMs: number, warningCommand: 'seek' | 'pause-correction'): Promise<void> {
+        if (!this.timingDriver.bound) {
+            await this.callbacks.seek(targetTimestampMs); // Media remains usable without subtitles, when no timing listeners can observe seek completion.
+            return;
+        }
         if (warningCommand === 'seek') {
             asbTrace('playback/seek', 'Starting internal seek', {
                 currentTimestampMs: this.timingDriver.currentTimeMs(),

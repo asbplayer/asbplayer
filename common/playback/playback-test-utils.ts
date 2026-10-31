@@ -5,7 +5,7 @@ import type { PlaybackPlanInput } from '@project/common/playback/plan/playback-p
 import PlaybackTimeline from '@project/common/playback/timeline/playback-timeline';
 import { compilePlaybackTimelineSubtitles } from '@project/common/playback/timeline/playback-timeline-compiler';
 import type { PlaybackTimelineOptions } from '@project/common/playback/timeline/playback-timeline-compiler';
-import type { TimingDriverCallbacks } from '@project/common/playback/timing/timing-driver';
+import type { TimingDriverCallbacks } from '@project/common/playback/media/timing-driver';
 
 export const emptyTimingDriverCallbacks: TimingDriverCallbacks = {
     onTime: async () => {},

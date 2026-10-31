@@ -227,6 +227,7 @@
         "subtitleFileNotOpen": "Berkas takarir {{fileName}} belum dibuka.",
         "unknownExtension": "Tidak dapat mengenali ekstensi {{fileName}}",
         "unsupportedExtension": "Ekstensi {{extension}} tidak didukung",
+        "audioConversionFailed": "Failed to convert {{codec}} audio",
         "videoPlayerDragAndDropNotAllowed": "Pemutar video tidak dapat menerima berkas yang dijatuhkan langsung. Letakkan di luar bingkai video.",
         "restoreSessionFailed": "Gagal memulihkan sesi terakhir. File mungkin telah dipindahkan atau dihapus."
     },
@@ -343,6 +344,8 @@
         "savedTimestamp": "Disimpan: {{timestamp}}",
         "resumePlaybackPrompt": "Resume at {{time}}?",
         "resumePlaybackButton": "Resume",
+        "audioConversionStarted": "Converting {{codec}} audio due to browser compatibility, playback can begin while the conversion continues.",
+        "videoLoadingDelayed": "The browser is still loading this video. Playback will be available when loading finishes.",
         "updatedCard": "Kartu diperbarui: {{result}}",
         "enabledRepeatPlayback": "Pemutaran ulang: Aktif",
         "disabledRepeatPlayback": "Pemutaran ulang: Nonaktif",

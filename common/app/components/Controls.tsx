@@ -35,7 +35,7 @@ import VolumeOffIcon from '@mui/icons-material/VolumeOff';
 import VolumeUpIcon from '@mui/icons-material/VolumeUp';
 import type { AudioTrackModel, PlayMode, VideoTabModel } from '@project/common';
 import type { Recipe, SubtitleAlignment } from '@project/common/settings';
-import type Clock from '@project/common/playback/timing/clock';
+import type Clock from '@project/common/playback/media/clock';
 import type PlaybackPreferenceController from '@project/common/playback/controllers/playback-preference-controller';
 import Tooltip from '@project/common/components/Tooltip';
 import Menu from '@mui/material/Menu';
@@ -238,7 +238,7 @@ const useProgressBarStyles = makeStyles<Theme>((theme) => ({
         top: -120,
     },
     fillContainer: {
-        background: 'rgba(30,30,30,0.7)',
+        background: theme.palette.mode === 'dark' ? theme.palette.grey[800] : theme.palette.grey[300],
         width: '100%',
         height: 5,
         position: 'relative',
@@ -250,7 +250,13 @@ const useProgressBarStyles = makeStyles<Theme>((theme) => ({
         }),
         height: 8,
     },
+    buffered: {
+        position: 'absolute',
+        height: '100%',
+        backgroundColor: theme.palette.mode === 'dark' ? theme.palette.grey[400] : theme.palette.grey[600],
+    },
     fill: {
+        position: 'relative',
         background: 'linear-gradient(to left, #ff1f62, #49007a)',
         height: '100%',
     },
@@ -309,6 +315,7 @@ interface ProgressBarProps {
     onSeek: (progress: number) => void;
     onSeekPreview?: (progress: number) => string | undefined;
     value: number;
+    bufferedMs?: number;
     length: number;
     videoHeight: number | undefined;
     videoWidth: number | undefined;
@@ -320,6 +327,7 @@ function ProgressBar({
     onSeek,
     onSeekPreview,
     value,
+    bufferedMs,
     length,
     videoHeight,
     videoWidth,
@@ -415,6 +423,14 @@ function ProgressBar({
             )}
             <div ref={containerRef} className={classes.container}>
                 <div className={fillContainerClassName}>
+                    {bufferedMs !== undefined && (
+                        <div
+                            className={classes.buffered}
+                            style={{
+                                width: `${length > 0 ? Math.min(100, Math.max(0, (100 * bufferedMs) / length)) : 0}%`,
+                            }}
+                        />
+                    )}
                     <div className={classes.fill} style={fillStyle}></div>
                     <div className={classes.handleContainer}>
                         <div className={handleClassName} style={handleStyle} />
@@ -592,6 +608,7 @@ interface ControlsProps {
     length: number;
     offsetEnabled?: boolean;
     displayLength?: number;
+    bufferedMs?: number;
     offset: number;
     playbackRate: number;
     playbackRateEnabled?: boolean;
@@ -656,6 +673,7 @@ export default function Controls({
     length,
     offsetEnabled,
     displayLength,
+    bufferedMs,
     offset,
     playbackRate,
     playbackRateEnabled,
@@ -1045,6 +1063,7 @@ export default function Controls({
                             onSeekPreview={onSeekPreview}
                             onSeek={handleSeek}
                             value={progress * 100}
+                            bufferedMs={bufferedMs}
                             length={length}
                             videoHeight={videoHeight}
                             videoWidth={videoWidth}

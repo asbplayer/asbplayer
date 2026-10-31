@@ -394,7 +394,10 @@
         "subtitlePlayer.multiSubtitleSelectHelp": "Tooltip text that explains how to select adjacent subtitles from subtitle list for mining. ",
         "update.alert": "Text that is displayed when asbplayer is updated.",
         "update.body": "Text that is displayed when asbplayer is updated.",
-        "update.heading": "Text that is displayed when asbplayer is updated."
+        "update.heading": "Text that is displayed when asbplayer is updated.",
+        "info.audioConversionStarted": "Shown when asbplayer starts converting audio the browser cannot play. {{codec}} is the audio format, e.g. \"E-AC-3\" or \"DTS\".",
+        "info.videoLoadingDelayed": "Shown for any local video that has not produced a frame after three seconds, including videos without audio conversion. Remains for at least seven seconds after detection and until a frame arrives.",
+        "error.audioConversionFailed": "Shown when converting audio the browser cannot play fails. {{codec}} is the audio format, e.g. \"E-AC-3\" or \"DTS\"."
     },
     "statistics": {
         "title": "Section heading for vocabulary statistics.",

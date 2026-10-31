@@ -23,4 +23,4 @@ An unused archive remains until FFmpeg is needed again or the browser evicts it.
 
 ## How the selection reaches the browser
 
-[selected-runtime.ts](../src/selected-runtime.ts) exposes committed defaults from the lock. [client/ffmpeg-build.ts](../../client/ffmpeg-build.ts) acquires the selected archive through [prepare-runtime.mjs](../scripts/prepare-runtime.mjs), supplies Vite definitions, and copies selected or candidate bytes to the same stable URL, and [metadata.ts](../src/metadata.ts) exposes those values to browser code, applying build-time overrides when present.
+[selected-runtime.ts](../src/selected-runtime.ts) exposes the committed selection from the lock. [client/ffmpeg-build.ts](../../client/ffmpeg-build.ts) acquires the selected archive through [prepare-runtime.mjs](../scripts/prepare-runtime.mjs), supplies Vite definitions, and copies selected or candidate bytes to the same stable URL. [metadata.ts](../src/metadata.ts) requires those build definitions and exposes that build's exact selection to browser code.

@@ -110,6 +110,13 @@ export interface FileModel {
     readonly blobUrl: string;
     readonly playbackRate?: number;
     readonly audioTrack?: string;
+    /**
+     * Audio transcoded from a track this browser cannot decode, used in place of the file's own
+     * audio when recording. Session-scoped, like {@link blobUrl}.
+     */
+    readonly transcodedAudioBlobUrl?: string;
+    /** Available audio in an immutable partial or completed snapshot, in milliseconds. */
+    readonly transcodedAudioDurationMs?: number;
 }
 
 export interface CopyHistoryItem extends CardModel {
