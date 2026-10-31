@@ -8,8 +8,12 @@
 #                omitted or empty, it is read from project.json.
 #   output-file  Where to write the item blocks (default: milestone-items.md).
 #
-# Also writes release-meta.json with the resolved version, milestone title/number
-# and a best-effort Full Changelog compare URL.
+# Also writes release-meta.json with the version, milestone, previous extension
+# release, app tags since that release, and a best-effort Full Changelog compare URL.
+#
+# Merged pull requests list the first app tag that contained them, read from local
+# git tags. The workflow fetches full history and tags first; without them these
+# fields are empty.
 #
 # Only items attached to the milestone titled "Extension v<version>" are emitted.
 # The generated compare URL is best-effort: the generate-notes API needs write
@@ -36,6 +40,40 @@ fi
 if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
     echo "Could not resolve a valid extension version (got '$version')." >&2
     exit 1
+fi
+
+# --- Resolve the previous published extension release ---------------------------
+# Extension tags are v<semver>, so component tags (app-v*, etc.) never match. The
+# current version is excluded so re-drafting a published version still finds the
+# release before it.
+
+prev_tag=$(gh api "repos/$repo/releases?per_page=100" \
+    --jq "[.[]
+        | select(.draft == false)
+        | select(.tag_name != \"$version\" and .tag_name != \"v$version\")
+        | select(.tag_name | test(\"^v?[0-9]+[.][0-9]+[.][0-9]+$\"))
+        | select(.published_at != null)]
+        | sort_by(.published_at) | reverse | .[0].tag_name // empty")
+
+if [ -z "$prev_tag" ]; then
+    echo "No previous published extension release found." >&2
+    exit 1
+fi
+prev_version="v${prev_tag#v}"
+echo "Previous extension release: $prev_tag"
+
+# App tags since the previous extension release, oldest first.
+app_prefix=$(jq -r '.releases.app.releaseTag' "$PROJECT_ROOT/project.json" | sed 's/{{version}}.*//')
+app_versions_json='[]'
+app_version_list=''
+if [ -n "$app_prefix" ] && git rev-parse -q --verify "refs/tags/$prev_tag" >/dev/null 2>&1; then
+    while read -r app_tag; do
+        [ -z "$app_tag" ] && continue
+        app_version_list="${app_version_list}${app_tag}"$'\n'
+        app_versions_json=$(jq -c --arg tag "$app_tag" '. + [$tag]' <<< "$app_versions_json")
+    done < <(git tag --list "${app_prefix}*" --contains "$prev_tag" | sort)
+else
+    echo "Tag $prev_tag is not available locally; app release fields will be empty." >&2
 fi
 
 tag=$(node --experimental-strip-types "$PROJECT_ROOT/scripts/extension-release-info.ts" tag "$version")
@@ -106,12 +144,29 @@ while IFS= read -r item; do
             else
                 echo "- merged_at: (not merged)"
             fi
-            files=$(gh api "repos/$repo/pulls/$number/files?per_page=100" \
-                --jq '[.[] | .filename]' 2>/dev/null || echo '[]')
+            files=$(gh api --paginate --slurp \
+                "repos/$repo/pulls/$number/files?per_page=100" 2>/dev/null \
+                | jq '[.[][] | .filename]' 2>/dev/null || echo '[]')
             file_count=$(printf '%s' "$files" | jq 'length' 2>/dev/null || echo 0)
             paths=$(printf '%s' "$files" | jq -r '.[0:15] | join(", ")' 2>/dev/null || echo "")
             echo "- changed_files: ${file_count}"
             echo "- paths: ${paths}"
+            if [ -n "$merged" ]; then
+                merge_sha=$(gh api "repos/$repo/pulls/$number" \
+                    --jq '.merge_commit_sha // empty' 2>/dev/null || true)
+                first_app_release=""
+                if [ -n "$merge_sha" ] && [ -n "$app_prefix" ] \
+                    && git cat-file -e "${merge_sha}^{commit}" 2>/dev/null; then
+                    first_app_release=$(git tag --list "${app_prefix}*" \
+                        --contains "$merge_sha" | sort | head -n1 || true)
+                fi
+                # Tags older than the previous extension release are outside the section
+                if [ -n "$first_app_release" ] \
+                    && ! grep -qxF "$first_app_release" <<< "$app_version_list"; then
+                    first_app_release=""
+                fi
+                echo "- first_app_release: ${first_app_release:-none}"
+            fi
         fi
         echo "- author: ${author:-unknown}"
         echo "- labels: ${labels:-none}"
@@ -139,13 +194,17 @@ jq -n \
     --arg version "$version" \
     --arg milestone "$milestone_title" \
     --argjson milestone_number "$milestone_number" \
+    --arg previous_version "$prev_version" \
+    --argjson app_versions "$app_versions_json" \
     --arg compare_url "$compare_url" \
     '{
         version: $version,
         milestone: $milestone,
         milestone_number: $milestone_number,
+        previous_version: $previous_version,
+        app_versions: $app_versions,
         compare_url: $compare_url
     }' > "$META_FILE"
 
 echo "Collected $item_count item(s) into $OUTPUT_FILE"
-echo "Wrote $META_FILE (version=$version, compare_url=${compare_url:-none})"
+echo "Wrote $META_FILE (version=$version, previous_version=$prev_version, app_versions=$(jq -r 'length' <<< "$app_versions_json"), compare_url=${compare_url:-none})"

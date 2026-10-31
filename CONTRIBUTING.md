@@ -52,6 +52,7 @@ Use these values for current project defaults, links, and UI metadata. Keep user
 
 - `version` is the extension build version. A maintainer bumps it before a release, or anyone is free to bump it in their PR when a feature needs a new version for a runtime compatibility check (usually a minor version, never major). Most changes, fixes, and features should not change it. Existing feature compatibility checks keep the version in which that feature was introduced.
 - `releases.extension.publishedVersion` tracks the latest extension version published to **all stores**, including Chrome, Firefox, and Firefox for Android. A maintainer updates it only after that version is available in every store. It may lag behind `version` during development and store review.
+- `releases.app.releaseTag` is the tag template for app deploys. Each deploy tags its date-based version (`app-v26.10.30`); further deploys on the same day add `.1`, `.2`, and so on. The About dialog links to the running build's tag.
 
 After editing `project.json`, run `pnpm sync:project` and include the generated changes in your commit. `pnpm check:project` (also part of `pnpm verify`) detects stale generated files. The Anki add-on and Go server packaging scripts also synchronize configuration before building, so their distributions do not need the repository at runtime.
 
@@ -106,3 +107,25 @@ Supported languages and their translation revisions are maintained in `project.j
 To add a language, add its entry to `project.json`, then run `pnpm sync:project`. Sync creates missing common, extension, and external locale files from their English sources and records the copied strings as untranslated. Existing translations are preserved. Commit the generated files together with the configuration change, then rebuild to make the language selectable. Locale scripts use the configured language list; extra files in the locale directories do not add supported languages.
 
 Enable new target languages separately in Crowdin's project settings and add a mapping in `scripts/loc/crowdin.yml` when Crowdin's language code differs from the local code. Adding a local language does not enable it on Crowdin.
+
+## Release process
+
+### Webapp
+
+In general, the webapp can be deployed at any time. Webapp-facing changes are written to be backwards compatible with older extensions.
+
+1. Use the [action](https://github.com/asbplayer/asbplayer/actions/workflows/deploy-cf-pages.lock.yml) to create a deploy PR against `cf-pages`. 
+2. Review the PR and merge once ready. Any change to `cf-pages` is automatically deployed to [https://app.asbplayer.dev](https://app.asbplayer.dev). The PWA's service worker will pick up the new changes and prompt users to update.
+
+### Extension
+
+
+1. If an webapp deploy is required for new loc keys and features, and settings shared by both the webapp and extension, deploy the webapp first. If there are new loc keys, ensure that `project.json` loc versions are incremented on `main`.
+2. Use the snapshot [action](https://github.com/asbplayer/asbplayer/actions/workflows/release-snapshot-build.yml) to distribute release candidate snapshots on Discord a few days prior to releasing. This gives users an opportunity to test the new build before it's released. It is a known issue that this process is unreliable because only a few users pay attention to snapshots.
+3. Use the [action](https://github.com/asbplayer/asbplayer/actions/workflows/draft-extension-release.lock.yml) to draft a GitHub release.
+4. The drafted text will be incomplete, so fill in any blanks and edit as necessary.
+5. Checkout the release tag and create a new Chromium build locally using `pnpm --filter @project/extension run zip`.
+6. Publish the build through the Chrome store dev console.
+7. Confirm that the new build is released on the Chrome store. This can take hours to days.
+8. Deploy the Firefox builds using the [Firefox action](https://github.com/asbplayer/asbplayer/actions/workflows/release-firefox-build.yml) and the [Firefox for Android action](https://github.com/asbplayer/asbplayer/actions/workflows/release-firefox-android-build.yml).
+9. Publish all extension artifacts (`crx` for the Chrome build and `xpi` for Firefox builds) on the release page.

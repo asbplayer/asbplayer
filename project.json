@@ -11,6 +11,9 @@
         "discord": "https://discord.gg/ad7VAQru7m"
     },
     "releases": {
+        "app": {
+            "releaseTag": "app-v{{version}}"
+        },
         "extension": {
             "publishedVersion": "1.22.0",
             "releaseTitle": "asbplayer-extension-v{{version}}",
