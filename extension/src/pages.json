@@ -13,7 +13,9 @@
             "key": "crunchyroll",
             "host": "(www\\.)?crunchyroll\\.com",
             "pageScript": "crunchyroll-page.js",
+            "subtitleDiscoveryRequestTarget": "video",
             "syncAllowedAtPath": "watch",
+            "refreshSubtitleDataOnPickerOpen": true,
             "autoSync": {
                 "enabled": true
             }
