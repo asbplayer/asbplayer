@@ -986,7 +986,7 @@ describe('pause token selection', () => {
             const style = document.createElement('style');
             style.textContent = readFileSync(join(__dirname, '../app/components/subtitles.css'), 'utf8');
             const root = document.createElement('div');
-            root.className = 'asbplayer-token-container';
+            root.className = 'asb-token-container';
             root.innerHTML =
                 '<div class="asbplayer-subtitles" data-asb-subtitle-index="0">' +
                 '<span class="asb-token" data-asb-token-start="0">one</span> ' +

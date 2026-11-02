@@ -70,7 +70,7 @@ const TestPlayer = ({
     exposeSelection?.(selection);
     exposeRequest?.(selection.requestTokenSelection);
     return (
-        <div ref={rootRef} className="asbplayer-token-container" data-player={name} tabIndex={-1}>
+        <div ref={rootRef} className="asb-token-container" data-player={name} tabIndex={-1}>
             <button>{name}</button>
             <span data-asb-subtitle-index="0">
                 <span data-asb-token-start="0">word</span>
@@ -96,7 +96,7 @@ describe('useTokenSelection', () => {
     afterEach(() => {
         act(() => root.unmount());
         container.remove();
-        document.body.classList.remove('asbplayer-token-container');
+        document.body.classList.remove('asb-token-container');
         document.body.removeAttribute('tabindex');
         claimTokenSelectionFocus(null);
         jest.restoreAllMocks();
@@ -230,7 +230,7 @@ describe('useTokenSelection', () => {
         expect(videoMatch).toHaveBeenCalledTimes(1);
         expect(subtitleMatch).not.toHaveBeenCalled();
 
-        document.body.className = 'asbplayer-token-container';
+        document.body.className = 'asb-token-container';
         document.body.tabIndex = -1;
         document.body.focus();
         act(() => {

@@ -4,6 +4,7 @@ import type { IndexedSubtitleModel } from '@project/common';
 import {
     ASB_TOKEN_SELECTED_CLASS,
     ASB_TOKEN_START_ATTRIBUTE,
+    ASB_TOKEN_CONTAINER_CLASS,
     clearTokenSelectionInRoot,
     clearAutoPauseTokenSelectionInRoot,
     currentTokenSelectionLocation,
@@ -20,7 +21,7 @@ import { asbTrace } from '@project/common/util/log';
 let lastTokenSelectionOwner: HTMLElement | null = null; // Necessary so VideoPlayer and SubtitlePlayer can coordinate token selection focus (especially after yomitan popup)
 
 const playerContainerFor = (element: Element | null) => {
-    const container = element?.closest<HTMLElement>('.asbplayer-token-container') ?? null;
+    const container = element?.closest<HTMLElement>(`.${ASB_TOKEN_CONTAINER_CLASS}`) ?? null;
     return container === container?.ownerDocument.body ? null : container;
 };
 

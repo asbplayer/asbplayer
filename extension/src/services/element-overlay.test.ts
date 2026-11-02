@@ -724,8 +724,8 @@ describe('CachingElementOverlay document focus', () => {
             document.body.appendChild(targetElement);
             overlay = new CachingElementOverlay({
                 targetElement,
-                nonFullscreenContainerClassName: `asbplayer-subtitles-container-${anchor}`,
-                fullscreenContainerClassName: `asbplayer-subtitles-container-${anchor}`,
+                nonFullscreenContainerClassName: `asb-subtitles-container-${anchor}`,
+                fullscreenContainerClassName: `asb-subtitles-container-${anchor}`,
                 nonFullscreenContentClassName: 'asbplayer-subtitles',
                 fullscreenContentClassName: 'asbplayer-fullscreen-subtitles',
                 offsetAnchor,
