@@ -26,6 +26,7 @@ export const ASB_PITCH_ACCENT_LINE_CLASS = 'asb-pitch-accent-line';
 export const ASB_SUBTITLE_CONTAINER_BOTTOM_CLASS = 'asbplayer-subtitles-container-bottom';
 export const ASB_SUBTITLE_CONTAINER_TOP_CLASS = 'asbplayer-subtitles-container-top';
 export const ASB_TOKEN_CONTAINER_CLASS = 'asbplayer-token-container';
+export const ASB_OVERLAY_DOCUMENT_FOCUSED_CLASS = 'asbplayer-overlay-document-focused';
 
 const tokenSelectionScopeSelector = [
     `.${ASB_SUBTITLE_CONTAINER_BOTTOM_CLASS}`,

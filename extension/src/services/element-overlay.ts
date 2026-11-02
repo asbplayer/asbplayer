@@ -1,4 +1,5 @@
 import { OffscreenDomCache } from '@project/common';
+import { ASB_OVERLAY_DOCUMENT_FOCUSED_CLASS } from '@project/common/annotations/dom-annotations';
 import type { SubtitlesWidthUnit } from '@project/common/settings';
 
 export enum OffsetAnchor {
@@ -73,6 +74,7 @@ export class CachingElementOverlay implements ElementOverlay {
     private onMouseOut: (event: MouseEvent) => void;
     private applyContainerStylesOverride?: (container: HTMLElement) => void;
     private readonly onContainerStyles?: (container: HTMLElement) => void;
+    private documentFocusChangeListener?: () => void;
 
     nonFullscreenContainerClassName: string;
     nonFullscreenContentClassName: string;
@@ -429,6 +431,12 @@ export class CachingElementOverlay implements ElementOverlay {
     }
 
     hide() {
+        if (this.documentFocusChangeListener) {
+            window.removeEventListener('focus', this.documentFocusChangeListener, true);
+            window.removeEventListener('blur', this.documentFocusChangeListener, true);
+            this.documentFocusChangeListener = undefined;
+        }
+
         if (this.nonFullscreenElementFullscreenChangeListener) {
             document.removeEventListener('fullscreenchange', this.nonFullscreenElementFullscreenChangeListener);
         }
@@ -478,6 +486,7 @@ export class CachingElementOverlay implements ElementOverlay {
     }
 
     private _applyContainerStyles(container: HTMLElement, { fullscreen }: ApplyContainerStylesOptions) {
+        this._trackDocumentFocus(container);
         this.onContainerStyles?.(container);
         if (this.applyContainerStylesOverride !== undefined) {
             this.applyContainerStylesOverride?.(container);
@@ -540,6 +549,21 @@ export class CachingElementOverlay implements ElementOverlay {
 
         container.style.top = top + 'px';
         container.style.bottom = '';
+    }
+
+    private _trackDocumentFocus(container: HTMLElement) {
+        // The page can have focus even when body does not match :focus-within.
+        // Track document focus on our overlays without changing body attributes.
+        container.classList.toggle(ASB_OVERLAY_DOCUMENT_FOCUSED_CLASS, document.hasFocus());
+        if (this.documentFocusChangeListener) return;
+
+        this.documentFocusChangeListener = () => {
+            const focused = document.hasFocus();
+            this.nonFullscreenContainerElement?.classList.toggle(ASB_OVERLAY_DOCUMENT_FOCUSED_CLASS, focused);
+            this.fullscreenContainerElement?.classList.toggle(ASB_OVERLAY_DOCUMENT_FOCUSED_CLASS, focused);
+        };
+        window.addEventListener('focus', this.documentFocusChangeListener, true);
+        window.addEventListener('blur', this.documentFocusChangeListener, true);
     }
 
     private _applyResponsiveContentStyles(container: HTMLElement, videoWidth: number) {
