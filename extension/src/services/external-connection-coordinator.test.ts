@@ -1,13 +1,14 @@
 import { afterEach, beforeEach, describe, expect, jest } from '@jest/globals';
 import type { VideoTabModel } from '@project/common';
+import {
+    approvedExternalConnections,
+    deniedRequestCooldownMs,
+    denyExternalConnection,
+} from '@project/common/global-state';
 import type { ExternalConnectionsState } from '@project/common/global-state';
 import type { SettingsProvider } from '@project/common/settings';
 import type TabRegistry from '@project/extension/src/services/tab-registry';
-import {
-    deniedRequestCooldownMs,
-    deniedRequestCooldownsKey,
-    ExternalConnectionCoordinator,
-} from '@project/extension/src/services/external-connection-coordinator';
+import { ExternalConnectionCoordinator } from '@project/extension/src/services/external-connection-coordinator';
 import { ExtensionBadgeController } from '@project/extension/src/services/extension-badge-controller';
 import { ExtensionGlobalStateProvider } from '@project/extension/src/services/extension-global-state-provider';
 import { MockStorageArea } from '@project/extension/src/services/mock-storage-area';
@@ -77,7 +78,6 @@ class FakePort {
 
 class Harness {
     readonly storage = new MockStorageArea();
-    readonly sessionStorage = new MockStorageArea();
     readonly locks = new MockLockManager();
     readonly globalStateProvider = new ExtensionGlobalStateProvider(this.storage, this.locks);
     readonly badgeAction = { setBadgeText: jest.fn() };
@@ -104,7 +104,6 @@ class Harness {
             },
             storage: {
                 local: this.storage,
-                session: this.sessionStorage,
             },
         };
         this.coordinator = new ExternalConnectionCoordinator({
@@ -134,37 +133,45 @@ class Harness {
         await this.globalStateProvider.set({ externalConnections: this.approvedState(id, name) });
     }
 
-    async seedPending(pending: ExternalConnectionsState['pending']) {
-        await this.globalStateProvider.set({ externalConnections: { approved: {}, pending } });
+    async seedPending(pending: ExternalConnectionsState['connections']) {
+        await this.globalStateProvider.set({ externalConnections: { connections: pending } });
     }
 
-    async pendingEntries(): Promise<ExternalConnectionsState['pending']> {
-        return (await this.globalStateProvider.get(['externalConnections'])).externalConnections.pending;
+    async pendingEntries(): Promise<ExternalConnectionsState['connections']> {
+        return Object.fromEntries(
+            Object.entries(
+                (await this.globalStateProvider.get(['externalConnections'])).externalConnections.connections
+            ).filter(([, c]) => c.approvedAt === undefined && c.deniedAt === undefined)
+        );
     }
 
-    async approvedEntries(): Promise<ExternalConnectionsState['approved']> {
-        return (await this.globalStateProvider.get(['externalConnections'])).externalConnections.approved;
+    async approvedEntries(): Promise<ExternalConnectionsState['connections']> {
+        return approvedExternalConnections(
+            (await this.globalStateProvider.get(['externalConnections'])).externalConnections.connections
+        );
     }
 
-    async deniedRequestCooldowns(): Promise<{ [extensionId: string]: number }> {
-        return (await this.sessionStorage.get(deniedRequestCooldownsKey))[deniedRequestCooldownsKey] ?? {};
+    async deniedEntries(): Promise<ExternalConnectionsState['connections']> {
+        return Object.fromEntries(
+            Object.entries(
+                (await this.globalStateProvider.get(['externalConnections'])).externalConnections.connections
+            ).filter(([, c]) => c.deniedAt !== undefined)
+        );
     }
 
     emptyState(): ExternalConnectionsState {
-        return { approved: {}, pending: {} };
+        return { connections: {} };
     }
 
     pendingState(): ExternalConnectionsState {
         return {
-            approved: {},
-            pending: { sibling: { name: 'Sibling', requestedAt: Date.now() } },
+            connections: { sibling: { name: 'Sibling', requestedAt: Date.now() } },
         };
     }
 
     approvedState(id: string, name?: string): ExternalConnectionsState {
         return {
-            approved: { [id]: { name, approvedAt: Date.now() } },
-            pending: {},
+            connections: { [id]: { name, requestedAt: Date.now(), approvedAt: Date.now() } },
         };
     }
 
@@ -276,9 +283,9 @@ describe('external connection coordinator', () => {
         expect(Object.keys(await harness.pendingEntries())).toEqual(['sibling']);
 
         // The user denies the request.
-        await harness.externalConnectionsChanged(harness.emptyState());
+        await denyExternalConnection(harness.globalStateProvider, 'sibling', Date.now());
         await flush();
-        expect(Object.keys(await harness.deniedRequestCooldowns())).toEqual(['sibling']);
+        expect(Object.keys(await harness.deniedEntries())).toEqual(['sibling']);
 
         // The extension requests again within the cooldown window.
         await port.receive({ type: 'asbplayer-external-hello', name: 'Sibling' });
@@ -290,8 +297,8 @@ describe('external connection coordinator', () => {
     });
 
     it('allows a denied extension to request again after the cooldown expires', async () => {
-        await harness.sessionStorage.set({
-            [deniedRequestCooldownsKey]: { sibling: Date.now() - deniedRequestCooldownMs - 1 },
+        await harness.externalConnectionsChanged({
+            connections: { sibling: { requestedAt: 0, deniedAt: Date.now() - deniedRequestCooldownMs - 1 } },
         });
         const port = harness.connect('sibling');
         await flush();
@@ -312,7 +319,7 @@ describe('external connection coordinator', () => {
         await harness.approve('sibling');
         await flush();
 
-        expect(Object.keys(await harness.deniedRequestCooldowns())).toEqual([]);
+        expect((await harness.approvedEntries())['sibling'].deniedAt).toBeUndefined();
     });
 
     it('stores a hello name from an approved extension on its approval entry', async () => {
@@ -325,6 +332,7 @@ describe('external connection coordinator', () => {
         expect((await harness.approvedEntries())['sibling']).toEqual({
             name: 'Renamed Sibling',
             approvedAt: expect.any(Number),
+            requestedAt: expect.any(Number),
         });
         expect(Object.keys(await harness.pendingEntries())).toEqual([]);
     });
@@ -467,7 +475,7 @@ describe('external connection coordinator', () => {
 
     it('prunes expired pending requests and caps the number retained', async () => {
         const now = Date.now();
-        const pending: ExternalConnectionsState['pending'] = {};
+        const pending: ExternalConnectionsState['connections'] = {};
 
         for (let i = 1; i <= 12; i++) {
             pending[`recent${i}`] = { name: `Recent ${i}`, requestedAt: now - i * 60_000 };

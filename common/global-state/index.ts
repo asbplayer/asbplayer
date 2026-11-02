@@ -31,38 +31,44 @@ export interface GenericSubtitleParserState {
     };
 }
 
-export interface ApprovedExternalConnection {
-    name?: string;
-    approvedAt: number;
-}
-
-export interface PendingExternalConnection {
+export interface ExternalConnection {
     name?: string;
     requestedAt: number;
+    approvedAt?: number;
+    deniedAt?: number;
 }
 
 // Pending requests expire after this long so that unapproved requests cannot accumulate
 // indefinitely.
 export const pendingRequestExpirationMs = 24 * 60 * 60 * 1000;
+export const deniedRequestCooldownMs = 24 * 60 * 60 * 1000;
+
+export interface ExternalConnectionsState {
+    connections: { [extensionId: string]: ExternalConnection };
+}
 
 /**
  * Pending requests that have not yet expired. Callers rendering pending requests (or counting
  * them, e.g. for badges) should use this so that expired requests are never displayed even
  * before they have been pruned from the underlying state.
  */
-export const activePendingEntries = (
-    pending: ExternalConnectionsState['pending'],
+export const activePendingExternalConnections = (
+    connections: ExternalConnectionsState['connections'],
     now: number
-): ExternalConnectionsState['pending'] =>
+): ExternalConnectionsState['connections'] =>
     Object.fromEntries(
-        Object.entries(pending).filter(([, request]) => now - (request?.requestedAt ?? 0) <= pendingRequestExpirationMs)
+        Object.entries(connections).filter(
+            ([, c]) =>
+                c.approvedAt === undefined &&
+                c.deniedAt === undefined &&
+                now - (c?.requestedAt ?? 0) <= pendingRequestExpirationMs
+        )
     );
 
-export interface ExternalConnectionsState {
-    // Keyed by the external extension's runtime ID.
-    approved: { [extensionId: string]: ApprovedExternalConnection };
-    pending: { [extensionId: string]: PendingExternalConnection };
-}
+export const approvedExternalConnections = (
+    connections: ExternalConnectionsState['connections']
+): ExternalConnectionsState['connections'] =>
+    Object.fromEntries(Object.entries(connections).filter(([, c]) => c.approvedAt !== undefined));
 
 export const initialGlobalState: GlobalState = {
     ftueHasSeenAnkiDialogQuickSelectV2: false,
@@ -77,8 +83,7 @@ export const initialGlobalState: GlobalState = {
         jimakuRecentWorks: [],
     },
     externalConnections: {
-        approved: {},
-        pending: {},
+        connections: {},
     },
 };
 
@@ -117,34 +122,42 @@ export const mutateExternalConnections = async (
 export const approveExternalConnection = async (
     provider: GlobalStateProvider,
     extensionId: string,
-    name?: string
+    now: number
 ): Promise<void> => {
     await mutateExternalConnections(provider, (externalConnections) => {
-        const request = externalConnections.pending[extensionId];
-        delete externalConnections.pending[extensionId];
-        externalConnections.approved[extensionId] = { name: name ?? request?.name, approvedAt: Date.now() };
+        const connection = externalConnections.connections[extensionId];
+        if (connection === undefined || connection.approvedAt !== undefined || connection.deniedAt !== undefined) {
+            // Pending expiration check is intentionally skipped here, and kept purely visual to avoid complexity
+            // managing time vs expiration.
+            return false;
+        }
+
+        connection.approvedAt = now;
         return true;
     });
 };
 
-export const denyExternalConnection = async (provider: GlobalStateProvider, extensionId: string): Promise<void> => {
+export const denyExternalConnection = async (
+    provider: GlobalStateProvider,
+    extensionId: string,
+    now: number
+): Promise<void> => {
     await mutateExternalConnections(provider, (externalConnections) => {
-        if (!(extensionId in externalConnections.pending)) {
+        const connection = externalConnections.connections[extensionId];
+        if (connection === undefined || connection.approvedAt !== undefined || connection.deniedAt !== undefined) {
             return false;
         }
-
-        delete externalConnections.pending[extensionId];
+        connection.deniedAt = now;
         return true;
     });
 };
 
 export const removeExternalConnection = async (provider: GlobalStateProvider, extensionId: string): Promise<void> => {
     await mutateExternalConnections(provider, (externalConnections) => {
-        if (!(extensionId in externalConnections.approved)) {
+        if (!(extensionId in externalConnections.connections)) {
             return false;
         }
-
-        delete externalConnections.approved[extensionId];
+        delete externalConnections.connections[extensionId];
         return true;
     });
 };

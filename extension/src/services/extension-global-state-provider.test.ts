@@ -35,8 +35,7 @@ it('can retrieve all keys', async () => {
             jimakuRecentWorks: [],
         },
         externalConnections: {
-            approved: {},
-            pending: {},
+            connections: {},
         },
     });
 });
@@ -70,11 +69,11 @@ it('falls back to the initial value when a global state key is removed', async (
     const updates: any[] = [];
     provider.onUpdated((state) => updates.push(state));
 
-    await provider.set({ externalConnections: { approved: { sibling: { approvedAt: 0 } }, pending: {} } });
+    await provider.set({ externalConnections: { connections: { sibling: { approvedAt: 0, requestedAt: 0 } } } });
     await storage.remove('externalConnections');
 
     expect(updates).toEqual([
-        { externalConnections: { approved: { sibling: { approvedAt: 0 } }, pending: {} } },
+        { externalConnections: { connections: { sibling: { approvedAt: 0, requestedAt: 0 } } } },
         { externalConnections: initialGlobalState.externalConnections },
     ]);
 });
@@ -111,13 +110,13 @@ describe('updateWithLocking', () => {
         const provider = new ExtensionGlobalStateProvider(new MockStorageArea(), locks);
 
         await mutateExternalConnections(provider, (externalConnections) => {
-            externalConnections.approved['ext-1'] = { name: 'ext', approvedAt: 123 };
+            externalConnections.connections['ext-1'] = { name: 'ext', approvedAt: 123, requestedAt: 111 };
             return true;
         });
 
         expect(locks.requestedNames).toEqual(['asbplayer-global-state:externalConnections']);
         const stored = (await provider.get(['externalConnections'])).externalConnections;
-        expect(stored).toEqual({ approved: { 'ext-1': { name: 'ext', approvedAt: 123 } }, pending: {} });
+        expect(stored).toEqual({ connections: { 'ext-1': { name: 'ext', approvedAt: 123, requestedAt: 111 } } });
     });
 
     it('does not write when the mutator reports no change', async () => {
@@ -142,7 +141,7 @@ describe('updateWithLocking', () => {
 
         await expect(
             mutateExternalConnections(provider, (externalConnections) => {
-                externalConnections.approved['ext-1'] = { name: 'ext', approvedAt: 123 };
+                externalConnections.connections['ext-1'] = { name: 'ext', approvedAt: 123, requestedAt: 102 };
                 return true;
             })
         ).rejects.toThrow('Concurrent update when writing key externalConnections');

@@ -1,8 +1,9 @@
 import { describe, expect, it } from '@jest/globals';
-import type { GlobalState, GlobalStateUpdatedMessage } from '@project/common';
+import type { GlobalStateUpdatedMessage } from '@project/common';
 import type ChromeExtension from '@project/common/app/services/chrome-extension';
 import { AppExtensionGlobalStateProvider } from '@project/common/app/services/app-extension-global-state-provider';
-import { mutateExternalConnections } from '@project/common/global-state';
+import { initialGlobalState, mutateExternalConnections } from '@project/common/global-state';
+import type { GlobalState } from '@project/common/global-state';
 
 const stubExtension = (installed: boolean) => {
     const messageCallbacks: ((message: any) => void)[] = [];
@@ -32,7 +33,7 @@ const stubExtension = (installed: boolean) => {
     };
 };
 
-const globalStateUpdated = (state: any): GlobalStateUpdatedMessage => ({
+const globalStateUpdated = (state: Partial<GlobalState>): GlobalStateUpdatedMessage => ({
     command: 'global-state-updated',
     state,
 });
@@ -73,10 +74,10 @@ describe('AppExtensionGlobalStateProvider.onUpdated', () => {
         const updates: any[] = [];
         provider.onUpdated((state) => updates.push(state));
 
-        publish(globalStateUpdated({ externalConnections: { approved: {}, pending: {} } }));
+        publish(globalStateUpdated({ externalConnections: { connections: {} } }));
         publish({ command: 'settings-updated' });
 
-        expect(updates).toEqual([{ externalConnections: { approved: {}, pending: {} } }]);
+        expect(updates).toEqual([{ externalConnections: { connections: {} } }]);
     });
 
     it('notifies multiple listeners and stops after unsubscribing all of them', () => {

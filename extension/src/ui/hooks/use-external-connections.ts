@@ -18,8 +18,14 @@ export const useExternalConnections = () => {
         });
     }, [provider]);
 
-    const approve = useCallback((extensionId: string) => approveExternalConnection(provider, extensionId), [provider]);
-    const deny = useCallback((extensionId: string) => denyExternalConnection(provider, extensionId), [provider]);
+    const approve = useCallback(
+        (extensionId: string) => approveExternalConnection(provider, extensionId, Date.now()),
+        [provider]
+    );
+    const deny = useCallback(
+        (extensionId: string) => denyExternalConnection(provider, extensionId, Date.now()),
+        [provider]
+    );
     const remove = useCallback((extensionId: string) => removeExternalConnection(provider, extensionId), [provider]);
 
     return {
