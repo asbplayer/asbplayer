@@ -1,4 +1,5 @@
-import { extractExtension, inferTracks, languageDisplayName } from '@/pages/util';
+import { extractExtension, inferTracks } from '@/pages/util';
+import { languageDisplayName } from '@project/common/util/subtitle-language';
 
 // Rutube's own frontend fetches subtitle info from
 // https://rutube.ru/api/play/options/{id}/?format=json, whose `captions` array holds

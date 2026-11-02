@@ -1,5 +1,6 @@
 import { extractExtension } from '@/pages/util';
 import { inferTracksFromInterceptedMpdViaXMLHTTPRequest } from '@/pages/mpd-util';
+import { genericSubtitleDisplayLabel } from '@project/common/util/subtitle-language';
 
 interface HboMaxPlayer {
     seek(timestampMs: number): void;
@@ -66,16 +67,15 @@ export default defineUnlistedScript(() => {
         }
     });
 
-    const deduplication: { [key: string]: number } = {};
-
-    inferTracksFromInterceptedMpdViaXMLHTTPRequest(/https:\/\/.+\.mpd/, (playlist, language) => {
-        const name = playlist.attributes?.NAME;
-        const playlistNumber = name in deduplication ? deduplication[name] + 1 : 0;
-        deduplication[name] = playlistNumber;
-        const deduplicatedName = `${name}-${playlistNumber}`;
+    inferTracksFromInterceptedMpdViaXMLHTTPRequest(/https:\/\/.+\.mpd/, (playlist, playlistLabel, metadata) => {
+        const language = metadata?.language;
+        const label =
+            language && playlistLabel.startsWith(`${language} `)
+                ? playlistLabel.slice(language.length).trim()
+                : playlistLabel;
         const segmentUrls = playlist.segments.map((s) => s.resolvedUri);
         return {
-            label: name === undefined ? language : `${language} - ${deduplicatedName}`,
+            label: genericSubtitleDisplayLabel(label, language, playlistLabel),
             language,
             url: segmentUrls,
             extension: extractExtension(playlist.resolvedUri, 'vtt'),
