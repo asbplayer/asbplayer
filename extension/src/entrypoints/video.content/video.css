@@ -1,4 +1,4 @@
-.asbplayer-subtitles-container-bottom {
+.asb-subtitles-container-bottom {
     position: absolute !important;
     transform: translate(-50%, -100%) !important;
     display: inline-block !important;
@@ -6,7 +6,7 @@
     pointer-events: auto !important;
 }
 
-.asbplayer-subtitles-container-top {
+.asb-subtitles-container-top {
     position: absolute !important;
     transform: translate(-50%) !important;
     display: inline-block !important;
@@ -77,13 +77,13 @@ div.asbplayer-fullscreen-subtitles > span {
 }
 
 /* Document focus is tracked on our overlays without making the host body focusable. */
-.asbplayer-overlay-document-focused
+.asb-overlay-document-focused
     :is(.asbplayer-subtitles, .asbplayer-fullscreen-subtitles)
     :is(.asb-token-highlight:hover, .asb-token-selected) {
     background-color: rgb(0, 123, 255) !important;
 }
 
-.asbplayer-token-container:focus-within {
+.asb-token-container:focus-within {
     outline: none;
 }
 

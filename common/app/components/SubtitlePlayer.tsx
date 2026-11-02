@@ -48,6 +48,7 @@ import {
     emptyRichTextWindow,
     renderRichTextForSubtitle,
     ASB_SUBTITLE_INDEX_ATTRIBUTE,
+    ASB_TOKEN_CONTAINER_CLASS,
 } from '@project/common/annotations';
 import type { KeyBinder } from '@project/common/key-binder';
 import { useRecipeKeyBindings } from '@project/common/hooks/use-recipe-key-bindings';
@@ -1553,7 +1554,7 @@ export default function SubtitlePlayer({
     return (
         <Paper
             square
-            className={`${classes.container} asbplayer-token-container`}
+            className={`${classes.container} ${ASB_TOKEN_CONTAINER_CLASS}`}
             tabIndex={-1}
             style={{
                 width: resizable ? width : 'auto',
