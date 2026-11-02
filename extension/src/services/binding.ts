@@ -146,6 +146,7 @@ document.dispatchEvent(new CustomEvent('asbplayer-query-netflix'));
 const youtube = /(m|www)\.youtube\.com/.test(window.location.host);
 const disneyPlus = /www\.disneyplus\..+/.test(window.location.host);
 const crunchyroll = /(www\.)?crunchyroll\.com/.test(window.location.host);
+const isHboMax = /(^|\.)(hbo)?max\.com$/.test(window.location.hostname);
 
 interface DisneyPlaybackEventDetail {
     readonly timestampMs: number;
@@ -1877,7 +1878,7 @@ export default class Binding {
         asbTrace('playback/binding', 'Seeking media owner', {
             requestedTimestampMs: timestampMs,
             clampedTimestampMs,
-            route: netflix ? 'netflix' : disneyPlus ? 'disney-plus' : 'video-element',
+            route: netflix ? 'netflix' : disneyPlus ? 'disney-plus' : isHboMax ? 'hbo-player-api' : 'video-element',
         });
 
         if (netflix) {
@@ -1915,7 +1916,19 @@ export default class Binding {
                 );
             });
         } else if (!(crunchyroll && this._seekCrunchyroll(clampedTimestampMs / 1000))) {
-            seekWithNudge(this.video, clampedTimestampMs / 1000);
+            if (isHboMax) {
+                const handled = !this.video.dispatchEvent(
+                    new CustomEvent('asbplayer-hbo-max-seek', {
+                        detail: clampedTimestampMs,
+                        bubbles: true,
+                        composed: true,
+                        cancelable: true,
+                    })
+                );
+                if (!handled) this.video.currentTime = clampedTimestampMs / 1000; // Avoid the extra nudge seek on HBO even when the player API is unavailable.
+            } else {
+                seekWithNudge(this.video, clampedTimestampMs / 1000);
+            }
         }
     }
 
