@@ -182,6 +182,37 @@ describe('useTokenSelection', () => {
         expect(container.querySelector('.asb-token-selected')).not.toBeNull();
     });
 
+    it('preserves pending navigation when pause selection arrives before the token renders', () => {
+        const frames: FrameRequestCallback[] = [];
+        jest.mocked(window.requestAnimationFrame).mockImplementation((callback) => frames.push(callback));
+        let selection!: ReturnType<typeof useTokenSelection>;
+        act(() => {
+            root.render(
+                <TestPlayer
+                    name="subtitles"
+                    keyBinder={new TestKeyBinder()}
+                    subtitleData={subtitles}
+                    onMatch={jest.fn()}
+                    exposeSelection={(api) => (selection = api)}
+                />
+            );
+        });
+        selection.requestTokenSelection({ subtitleIndex: 0, tokenStart: 4 });
+        expect(
+            selection.selectToken({ subtitleIndex: 0, tokenStart: 0 }, { autoPause: true, onlyIfUnselected: true })
+        ).toBe(true);
+        expect(container.querySelector('.asb-token-selected')).toBeNull();
+
+        const token = document.createElement('span');
+        token.setAttribute('data-asb-token-start', '4');
+        token.textContent = 'two';
+        container.querySelector('[data-asb-subtitle-index]')!.append(token);
+        frames.shift()!(0);
+        selection.clearPauseTokenSelection();
+        expect(container.querySelector('.asb-token-selected')).toBe(token);
+        expect(document.getSelection()?.toString()).toBe('two');
+    });
+
     it('keeps shared token jumps with their last owning player', () => {
         const keyBinder = new TestKeyBinder();
         const videoMatch = jest.fn();

@@ -502,6 +502,70 @@ describe('adaptive fast-forward rate changes', () => {
 });
 
 describe('pause token selection', () => {
+    it.each([
+        { event: 'pause', navigateDuringRetry: false },
+        { event: 'pause', navigateDuringRetry: true },
+        { event: 'seek', navigateDuringRetry: false },
+        { event: 'seek', navigateDuringRetry: true },
+    ])(
+        'preserves manual token navigation across delayed pause selection: %j',
+        async ({ event, navigateDuringRetry }) => {
+            jest.useFakeTimers();
+            const root = document.createElement('div');
+            const html =
+                '<div data-asb-subtitle-index="0">' +
+                '<span data-asb-token-start="0">one</span> ' +
+                '<span data-asb-token-start="4">two</span></div>';
+            document.body.append(root);
+            const dictionaryTracks = JSON.parse(JSON.stringify(defaultSettings.dictionaryTracks));
+            dictionaryTracks[0].dictionaryPlaybackConfig.selectOnPause.onStatuses[1].enabled = true;
+            const harness = await makePlaybackEngine([PlayMode.normal], {
+                timestampMs: 1500,
+                paused: true,
+                subtitles: [
+                    {
+                        ...subtitle,
+                        text: 'one two',
+                        tokenization: {
+                            tokens: [
+                                { pos: [0, 3], states: [], status: 1, readings: [] },
+                                { pos: [4, 7], states: [], status: 1, readings: [] },
+                            ],
+                        },
+                    },
+                ],
+                settings: { dictionaryTracks },
+                selectToken: (target, options) => selectTokenInRoot(root, target, { ...options, autoPause: true }),
+                clearAutoPauseTokenSelection: () => clearAutoPauseTokenSelectionInRoot(root),
+            });
+            try {
+                const navigate = () => {
+                    root.innerHTML = html;
+                    selectTokenInRoot(root, { subtitleIndex: 0, tokenStart: 4 });
+                };
+                if (!navigateDuringRetry) navigate();
+                if (event === 'pause') harness.driver.callbacks.onPlaybackPaused();
+                else {
+                    harness.driver.callbacks.onSeekStarted('user-seek');
+                    harness.driver.discontinuity(1500);
+                }
+                if (navigateDuringRetry) {
+                    jest.advanceTimersByTime(32);
+                    navigate();
+                }
+                jest.advanceTimersByTime(200);
+                expect(root.querySelector('.asb-token-selected')?.textContent).toBe('two');
+                await harness.driver.start();
+                expect(root.querySelector('.asb-token-selected')?.textContent).toBe('two');
+            } finally {
+                harness.playbackEngine.unbind();
+                root.remove();
+                document.getSelection()?.removeAllRanges();
+                jest.useRealTimers();
+            }
+        }
+    );
+
     it.each([false, true])(
         'selects late annotations without another playback event (automatic pause: %s)',
         async (automatic) => {
