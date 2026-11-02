@@ -76,8 +76,10 @@ div.asbplayer-fullscreen-subtitles > span {
     display: inline;
 }
 
-.asbplayer-token-container:focus-within .asb-token-highlight:hover,
-.asbplayer-token-container:focus-within .asb-token-selected {
+/* Document focus is tracked on our overlays without making the host body focusable. */
+.asbplayer-overlay-document-focused
+    :is(.asbplayer-subtitles, .asbplayer-fullscreen-subtitles)
+    :is(.asb-token-highlight:hover, .asb-token-selected) {
     background-color: rgb(0, 123, 255) !important;
 }
 

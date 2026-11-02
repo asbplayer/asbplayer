@@ -1,4 +1,11 @@
-import { afterEach, beforeEach, describe, expect, it } from '@jest/globals';
+import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
+import { readFileSync } from 'fs';
+import { join } from 'path';
+import {
+    ASB_SUBTITLE_CONTAINER_BOTTOM_CLASS,
+    ASB_TOKEN_CONTAINER_CLASS,
+    selectTokenInRoot,
+} from '@project/common/annotations/dom-annotations';
 import { CachingElementOverlay, OffsetAnchor } from '@project/extension/src/services/element-overlay';
 
 describe('CachingElementOverlay fullscreen transitions', () => {
@@ -14,8 +21,68 @@ describe('CachingElementOverlay fullscreen transitions', () => {
 
     afterEach(() => {
         document.body.replaceChildren();
+        document.body.className = '';
+        document.body.removeAttribute('tabindex');
         delete (document as unknown as { fullscreenElement?: Element | null }).fullscreenElement;
         delete (document as unknown as { elementFromPoint?: typeof document.elementFromPoint }).elementFromPoint;
+    });
+
+    it('keeps host body attributes unchanged and scopes token focus to the overlay', () => {
+        document.body.className = 'host-page';
+        document.body.setAttribute('tabindex', '0');
+        const targetElement = document.createElement('video');
+        const overlay = new CachingElementOverlay({
+            targetElement,
+            nonFullscreenContainerClassName: `non-fullscreen-container ${ASB_SUBTITLE_CONTAINER_BOTTOM_CLASS}`,
+            nonFullscreenContentClassName: 'non-fullscreen-content',
+            fullscreenContainerClassName: `fullscreen-container ${ASB_SUBTITLE_CONTAINER_BOTTOM_CLASS}`,
+            fullscreenContentClassName: 'fullscreen-content',
+            offsetAnchor: OffsetAnchor.bottom,
+            onMouseOver: () => {},
+            onMouseOut: () => {},
+        });
+
+        try {
+            expect(document.body.className).toBe('host-page');
+            expect(document.body.getAttribute('tabindex')).toBe('0');
+
+            overlay.setHtml([
+                {
+                    key: 'subtitle',
+                    html: () =>
+                        '<span data-asb-subtitle-index="0"><span class="asb-token" data-asb-token-start="0">subtitle</span></span>',
+                },
+            ]);
+            const container = document.querySelector<HTMLElement>('.non-fullscreen-container');
+            expect(container?.classList.contains(ASB_TOKEN_CONTAINER_CLASS)).toBe(false);
+            expect(container?.hasAttribute('tabindex')).toBe(false);
+            expect(selectTokenInRoot(document.body, { subtitleIndex: 0, tokenStart: 0 })).toBe(true);
+            expect(container?.classList.contains(ASB_TOKEN_CONTAINER_CLASS)).toBe(true);
+            expect(container?.getAttribute('tabindex')).toBe('-1');
+            expect(document.activeElement).toBe(container);
+
+            fullscreenElement = document.documentElement;
+            document.dispatchEvent(new Event('fullscreenchange'));
+            const fullscreenContainer = document.querySelector<HTMLElement>('.fullscreen-container');
+            expect(selectTokenInRoot(document.body, { subtitleIndex: 0, tokenStart: 0 })).toBe(true);
+            expect(fullscreenContainer?.classList.contains(ASB_TOKEN_CONTAINER_CLASS)).toBe(true);
+            expect(fullscreenContainer?.getAttribute('tabindex')).toBe('-1');
+            expect(document.activeElement).toBe(fullscreenContainer);
+        } finally {
+            overlay.dispose();
+        }
+    });
+
+    it('does not make the document body focusable for tokens outside a subtitle container', () => {
+        document.body.className = 'host-page';
+        document.body.setAttribute('tabindex', '0');
+        document.body.innerHTML =
+            '<span data-asb-subtitle-index="0"><span class="asb-token" data-asb-token-start="0">subtitle</span></span>';
+
+        expect(selectTokenInRoot(document.body, { subtitleIndex: 0, tokenStart: 0 })).toBe(true);
+        expect(document.body.className).toBe('host-page');
+        expect(document.body.getAttribute('tabindex')).toBe('0');
+        expect(document.body.classList.contains(ASB_TOKEN_CONTAINER_CLASS)).toBe(false);
     });
 
     it('updates the class of every subtitle when moving into and out of fullscreen', () => {
@@ -614,4 +681,114 @@ describe('CachingElementOverlay fullscreen transitions', () => {
         expect(responsiveContent?.style.width).toBe('640px');
         overlay.dispose();
     });
+});
+
+describe('CachingElementOverlay document focus', () => {
+    let overlay: CachingElementOverlay | undefined;
+    let stylesheet: HTMLStyleElement;
+    let documentFocused: boolean;
+    let fullscreenElement: Element | null;
+
+    beforeEach(() => {
+        documentFocused = true;
+        fullscreenElement = null;
+        // jsdom cannot focus the viewport. Supply that browser state at its public boundary.
+        jest.spyOn(document, 'hasFocus').mockImplementation(() => documentFocused);
+        Object.defineProperty(document, 'fullscreenElement', {
+            configurable: true,
+            get: () => fullscreenElement,
+        });
+        stylesheet = document.createElement('style');
+        stylesheet.textContent = readFileSync(join(__dirname, '../entrypoints/video.content/video.css'), 'utf8');
+        document.head.appendChild(stylesheet);
+    });
+
+    afterEach(() => {
+        overlay?.dispose();
+        overlay = undefined;
+        stylesheet.remove();
+        document.body.replaceChildren();
+        document.getSelection()?.removeAllRanges();
+        delete (document as unknown as { fullscreenElement?: Element | null }).fullscreenElement;
+        jest.restoreAllMocks();
+    });
+
+    it.each([
+        ['top', OffsetAnchor.top],
+        ['bottom', OffsetAnchor.bottom],
+    ] as const)(
+        'highlights selected %s tokens with viewport focus and follows document focus changes',
+        (anchor, offsetAnchor) => {
+            const bodyAttributes = [...document.body.attributes].map(({ name, value }) => [name, value]);
+            const targetElement = document.createElement('video');
+            document.body.appendChild(targetElement);
+            overlay = new CachingElementOverlay({
+                targetElement,
+                nonFullscreenContainerClassName: `asbplayer-subtitles-container-${anchor}`,
+                fullscreenContainerClassName: `asbplayer-subtitles-container-${anchor}`,
+                nonFullscreenContentClassName: 'asbplayer-subtitles',
+                fullscreenContentClassName: 'asbplayer-fullscreen-subtitles',
+                offsetAnchor,
+                applyContainerStylesOverride: () => {},
+                onMouseOver: () => {},
+                onMouseOut: () => {},
+            });
+            const render = () => {
+                overlay!.setHtml([
+                    {
+                        key: 'subtitle',
+                        html: () =>
+                            '<span data-asb-subtitle-index="0"><span class="asb-token" data-asb-token-start="0">word</span></span>',
+                    },
+                ]);
+                expect(
+                    selectTokenInRoot(
+                        overlay!.containerElement!,
+                        { subtitleIndex: 0, tokenStart: 0 },
+                        {
+                            focusContainer: false,
+                            scrollIntoView: false,
+                        }
+                    )
+                ).toBe(true);
+            };
+            const background = () =>
+                getComputedStyle(document.querySelector<HTMLElement>('.asb-token-selected')!).backgroundColor;
+            const blue = 'rgb(0, 123, 255)';
+
+            render();
+            expect(document.activeElement).toBe(document.body);
+            expect(background()).toBe(blue);
+
+            documentFocused = false;
+            window.dispatchEvent(new FocusEvent('blur'));
+            expect(background()).not.toBe(blue);
+            documentFocused = true;
+            window.dispatchEvent(new FocusEvent('focus'));
+            expect(background()).toBe(blue);
+
+            fullscreenElement = document.documentElement;
+            document.dispatchEvent(new Event('fullscreenchange'));
+            expect(background()).toBe(blue);
+            documentFocused = false;
+            window.dispatchEvent(new FocusEvent('blur'));
+            expect(background()).not.toBe(blue);
+            documentFocused = true;
+            window.dispatchEvent(new FocusEvent('focus'));
+            expect(background()).toBe(blue);
+
+            fullscreenElement = null;
+            document.dispatchEvent(new Event('fullscreenchange'));
+            expect(background()).toBe(blue);
+
+            overlay.hide();
+            documentFocused = false;
+            render();
+            expect(background()).not.toBe(blue);
+            documentFocused = true;
+            window.dispatchEvent(new FocusEvent('focus'));
+            expect(background()).toBe(blue);
+            expect([...document.body.attributes].map(({ name, value }) => [name, value])).toEqual(bodyAttributes);
+        }
+    );
 });
