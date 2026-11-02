@@ -269,6 +269,7 @@ export default class Binding {
     recordMedia: boolean;
 
     private seekedListener?: EventListener;
+    private recordingPauseListener?: EventListener;
     private videoChangeListener?: EventListener;
     private canPlayListener?: EventListener;
     private mouseMoveListener?: (event: MouseEvent) => void;
@@ -576,9 +577,6 @@ export default class Binding {
                             src: this._registeredVideoSrc,
                         };
                         void browser.runtime.sendMessage(command);
-                        if (this.recordingMedia && this.recordingPostMineAction !== undefined) {
-                            void this._toggleRecordingMedia(this.recordingPostMineAction);
-                        }
                     },
                     onSeeked: () => this.seekedListener?.(new Event('seeked')),
                     onPlaybackRateChanged: (playbackRate) => {
@@ -839,6 +837,14 @@ export default class Binding {
     }
 
     _subscribe() {
+        // Recording must respond to pauses even when no subtitles are loaded and
+        // the playback engine's timing driver is unbound.
+        this.recordingPauseListener = () => {
+            if (!this.recordingMedia || this.recordingPostMineAction === undefined) return;
+            void this._toggleRecordingMedia(this.recordingPostMineAction);
+        };
+        this.video.addEventListener('pause', this.recordingPauseListener);
+
         this.seekedListener = () => {
             const currentTimeCommand: VideoToExtensionCommand<CurrentTimeFromVideoMessage> = {
                 sender: 'asbplayer-video',
@@ -1559,6 +1565,11 @@ export default class Binding {
             this.canPlayListener = undefined;
         }
 
+        if (this.recordingPauseListener) {
+            this.video.removeEventListener('pause', this.recordingPauseListener);
+            this.recordingPauseListener = undefined;
+        }
+
         if (this.disneyPlusTimeListener) {
             document.removeEventListener('asbplayer-disney-plus-time', this.disneyPlusTimeListener);
             this.disneyPlusTimeListener = undefined;
@@ -1847,6 +1858,7 @@ export default class Binding {
         const noSubtitles = this.subtitleController.subtitles.length === 0;
         const audioPaddingStart = noSubtitles ? 0 : this.audioPaddingStart;
         const audioPaddingEnd = noSubtitles ? 0 : this.audioPaddingEnd;
+        this.recordingPostMineAction = PostMineAction.showAnkiDialog;
         this.recordingState = RecordingState.requested;
         this.recordingMediaStartedTimestamp = this.currentTimeMs;
         const rerecordSeekTargetMs = Math.max(0, start - audioPaddingStart);
