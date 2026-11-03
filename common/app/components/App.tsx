@@ -1955,6 +1955,7 @@ function App({
                                 onDownloadSectionAsSrt={handleDownloadCopyHistorySectionAsSrt}
                                 onSelect={handleSelectCopyHistoryItem}
                                 onAnki={handleAnki}
+                                itemAction={settings.miningHistoryItemAction}
                             />
                             <StatisticsDrawer
                                 mediaId={extension.id}

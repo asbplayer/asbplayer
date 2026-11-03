@@ -24,6 +24,7 @@ import {
 } from '@project/common/settings/settings-dictionary';
 import {
     AutoPausePreference,
+    MiningHistoryItemAction,
     PlayMode,
     PostMineAction,
     PostMinePlayback,
@@ -212,6 +213,7 @@ export const defaultSettings: AsbplayerSettings = {
     alwaysUseSubtitleForSentence: false,
     tabName: project.names.short,
     miningHistoryStorageLimit: 25,
+    miningHistoryItemAction: MiningHistoryItemAction.doubleClick,
     clickToMineDefaultAction: PostMineAction.showAnkiDialog,
     postMiningPlaybackState: PostMinePlayback.remember,
     updateLastCardForSameSubtitle: false,

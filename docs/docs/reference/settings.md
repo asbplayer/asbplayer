@@ -939,6 +939,14 @@ The URL of the WebSocket server to connect to when enabling the WebSocket client
 
 Limits the number of cards that can be saved in the mining history.
 
+### Mining history item click action {#mining-history-item-action}
+
+Action to perform when clicking or double-clicking an item in the mining history list.
+
+- **None**: No action.
+- **Jump to timestamp on click**: Seeks media to the mined timestamp on single click.
+- **Jump to timestamp on double-click**: Seeks media to the mined timestamp on double click.
+
 ### Name of the tab {#name-of-the-tab}
 
 The name to use for the app tab.

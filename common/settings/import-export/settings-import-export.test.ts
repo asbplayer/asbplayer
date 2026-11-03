@@ -439,6 +439,7 @@ it('validates exported settings', () => {
         preferMp3: true,
         tabName: 'asbplayer',
         miningHistoryStorageLimit: 25,
+        miningHistoryItemAction: 2,
         preCacheSubtitleDom: true,
         clickToMineDefaultAction: 1,
         postMiningPlaybackState: 0,

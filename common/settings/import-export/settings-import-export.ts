@@ -866,6 +866,9 @@ const settingsSchema = {
         miningHistoryStorageLimit: {
             type: 'number',
         },
+        miningHistoryItemAction: {
+            type: 'number',
+        },
         preCacheSubtitleDom: {
             type: 'boolean',
         },

@@ -1,5 +1,5 @@
 import Drawer from '@project/common/components/Drawer';
-import type { CopyHistoryItem } from '@project/common';
+import type { CopyHistoryItem, MiningHistoryItemAction } from '@project/common';
 import { useTranslation } from 'react-i18next';
 import CopyHistoryList from '@project/common/app/components/CopyHistoryList';
 
@@ -14,6 +14,7 @@ interface CopyHistoryProps {
     onDeleteAll: () => void;
     onAnki: (item: CopyHistoryItem) => void;
     onSelect?: (item: CopyHistoryItem) => void;
+    itemAction?: MiningHistoryItemAction;
     onClipAudio: (item: CopyHistoryItem) => void;
     onDownloadImage: (item: CopyHistoryItem) => void;
     onDownloadSectionAsSrt?: (name: string, items: CopyHistoryItem[]) => void;

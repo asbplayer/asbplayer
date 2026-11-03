@@ -307,6 +307,12 @@ export enum PostMineAction {
     showUpdateCardDialog = 4,
 }
 
+export enum MiningHistoryItemAction {
+    none = 0,
+    singleClick = 1,
+    doubleClick = 2,
+}
+
 export enum PostMinePlayback {
     remember = 0,
     play = 1,
