@@ -49,21 +49,16 @@ pre-agent-steps:
         git fetch --unshallow origin
       fi
       git fetch --no-tags origin main
-  - name: Collect recent contributors
+  - name: Collect merged PR authors
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     run: |
       set -euo pipefail
-      # Authors of merged PRs since the newest "Acknowledge" commit that touched the
-      # acknowledgement files; the agent compares these against the contributor lists.
-      last_ack=$(git log --format='%H' -1 --grep='^Acknowledge' origin/main -- README.md docs/docs/acknowledgements.md)
-      if [ -n "$last_ack" ]; then
-        bash scripts/release-notes/collect-authors.sh "$last_ack" origin/main recent-contributors.md
-        echo "--- recent-contributors.md ---"
-        cat recent-contributors.md
-      else
-        echo "No 'Acknowledge' commit found" > recent-contributors.md
-      fi
+      # Every author of a merged PR, so the agent can report anyone missing from the
+      # acknowledgement lists without guessing which commit last updated them.
+      bash scripts/release-notes/collect-merged-pr-authors.sh > merged-pr-authors.txt
+      echo "--- merged-pr-authors.txt ---"
+      cat merged-pr-authors.txt
   - name: Collect release info
     run: |
       set -euo pipefail
@@ -75,7 +70,7 @@ pre-agent-steps:
         ls -1 docs/blog/*.mdx | tail -5
         echo
         echo "## Newest git tags"
-        git tag --sort=-creatordate | head -5
+        git tag --sort=-creatordate | sed -n '1,5p'
       } > release-info.md
       echo "--- release-info.md ---"
       cat release-info.md
@@ -90,7 +85,7 @@ You are auditing the asbplayer repository for drift between code and documentati
 
 Pre-generated files in the workspace root:
 
-- `recent-contributors.md`: one line per commit merged to main since the newest "Acknowledge..." commit that touched the acknowledgement files, formatted `short-sha|pr-number-or-dash|author-handle-or-name|subject`.
+- `merged-pr-authors.txt`: sorted GitHub logins of everyone who authored a merged pull request, with bots excluded.
 - `release-info.md`: latest extension version from `project.json`, newest release blog posts, newest git tags.
 
 The full git history is available locally.
@@ -103,7 +98,7 @@ The full git history is available locally.
 | Key bindings (extension) | `ChromeBoundKeyBindName` in `common/settings/settings.ts` and its usages (e.g. `chromeCommandBindsToKeyBinds`), plus the extension's command definitions |
 | Settings and their defaults | `common/settings/settings.ts` `Settings` interface; defaults in `common/settings/settings-provider.ts`; UI labels/wording in `common/locales/en.json` and components under `common/components/`, `common/app/components/` |
 | Released features | `docs/blog/*.mdx` release posts, git tags, and git history |
-| Recent contributor data | `recent-contributors.md` |
+| Merged PR authors | `merged-pr-authors.txt` |
 
 ## Documents to audit
 
@@ -130,7 +125,7 @@ Record every finding with evidence from BOTH sides (file:line for the doc, file:
 
 4. **README ↔ docs duplication**: compare `README.md`'s feature bullet list against `docs/docs/intro.md` bullet-by-bullet; report any content divergence (missing bullets, different wording of the same feature).
 
-5. **Acknowledgements**: compare the Contributors, Translators, and Sponsors lists between `README.md` and `docs/docs/acknowledgements.md` — sets AND order AND entry format (links, bold, plain names) must match exactly. Then compare the lists against `recent-contributors.md`: report contributors with merged PRs since the last "Acknowledge" commit who are missing from both lists. Ignore bot authors (`github-actions[bot]`, `dependabot[bot]`). If `killergerbah` appears missing, ignore them. They should not be added to the Contributors list.
+5. **Acknowledgements**: compare the Contributors, Translators, and Sponsors lists between `README.md` and `docs/docs/acknowledgements.md` — sets AND order AND entry format (links, bold, plain names) must match exactly. Then compare those lists against `merged-pr-authors.txt`: report logins that appear in no section of either file. Accounts can be renamed or listed under a plain name, so match the person, not just the string. Bots are already excluded from the file. If `killergerbah` appears missing, ignore them. They should not be added to the Contributors list.
 
 6. **Cross-references and dead links**: verify anchors between `guides/*`, `common-issues.md`, and `reference/settings.md` headings (e.g. `#seek-keyboard-shortcuts`), internal doc links, image paths, and links to app URLs (`?view=...` routes must exist in the code).
 

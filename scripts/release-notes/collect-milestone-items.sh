@@ -82,7 +82,7 @@ milestone_title="Extension v${version}"
 # --- Resolve the milestone -----------------------------------------------------
 
 milestone_number=$(gh api --paginate "repos/$repo/milestones?state=all&per_page=100" \
-    --jq ".[] | select(.title == \"$milestone_title\") | .number" | head -n1)
+    --jq ".[] | select(.title == \"$milestone_title\") | .number" | sed -n '1p')
 if [ -z "$milestone_number" ]; then
     echo "No milestone titled '$milestone_title' exists." >&2
     exit 1
