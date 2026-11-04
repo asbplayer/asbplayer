@@ -108,6 +108,14 @@ To add a language, add its entry to `project.json`, then run `pnpm sync:project`
 
 Enable new target languages separately in Crowdin's project settings and add a mapping in `scripts/loc/crowdin.yml` when Crowdin's language code differs from the local code. Adding a local language does not enable it on Crowdin.
 
+### Syncing with Crowdin
+
+[Crowdin](https://crowdin.com/project/asbplayer) is the source of truth for asbplayer localization.
+
+[Push loc](https://github.com/asbplayer/asbplayer/actions/workflows/push-loc.yml) pushes localization changes found in `en.json` to Crowdin, allowing new or changed strings become available on Crowdin for localization into other languages.
+
+[Pull loc](https://github.com/asbplayer/asbplayer/actions/workflows/pull-loc.yml) pulls new translations from Crowdin and creates a PR with updated translations.
+
 ## Release process
 
 ### Webapp
@@ -120,7 +128,7 @@ In general, the webapp can be deployed at any time. Webapp-facing changes are wr
 ### Extension
 
 
-1. If an webapp deploy is required for new loc keys and features, and settings shared by both the webapp and extension, deploy the webapp first. If there are new loc keys, ensure that `project.json` loc versions are incremented on `main`.
+1. If a webapp deploy is required for new loc keys, features, and settings shared by both the webapp and extension, deploy the webapp first. If there are new loc keys, ensure that `project.json` loc versions are incremented on `main` before deploying.
 2. Use the snapshot [action](https://github.com/asbplayer/asbplayer/actions/workflows/release-snapshot-build.yml) to distribute release candidate snapshots on Discord a few days prior to releasing. This gives users an opportunity to test the new build before it's released. It is a known issue that this process is unreliable because only a few users pay attention to snapshots.
 3. Use the [action](https://github.com/asbplayer/asbplayer/actions/workflows/draft-extension-release.lock.yml) to draft a GitHub release.
 4. The drafted text will be incomplete, so fill in any blanks and edit as necessary.
