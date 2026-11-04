@@ -861,6 +861,9 @@
         "confirmDelete": "Delete \"{{name}}\"?"
     },
     "externalConnections": {
+        "title": "External extensions",
+        "empty": "No external extensions to display.",
+        "help": "Learn about external extensions <docs>here</docs>.",
         "incomingRequest": "An external extension is requesting to connect to asbplayer.",
         "unknownName": "Unnamed extension"
     }

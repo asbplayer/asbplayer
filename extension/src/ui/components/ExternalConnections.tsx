@@ -2,17 +2,19 @@ import Button from '@mui/material/Button';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { useCallback } from 'react';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 import { useExternalConnections } from '@/ui/hooks/use-external-connections';
 import { activePendingExternalConnections, approvedExternalConnections } from '@project/common/global-state';
 import { asbError } from '@project/common/util/log';
-import Paper from '@mui/material/Paper';
 import Box from '@mui/material/Box';
 import Alert from '@mui/material/Alert';
 import LinkIcon from '@mui/icons-material/Link';
 import BlockIcon from '@mui/icons-material/Block';
 import LinkOffIcon from '@mui/icons-material/LinkOff';
 import ExtensionIcon from '@mui/icons-material/Extension';
+import Paper from '@mui/material/Paper';
+import Link from '@mui/material/Link';
+import project from '@project/common/project';
 
 const ExternalConnections: React.FC = () => {
     const { t } = useTranslation();
@@ -58,12 +60,12 @@ const ExternalConnections: React.FC = () => {
     const approved = Object.entries(approvedExternalConnections(externalConnections?.connections ?? {}));
 
     return (
-        <Paper square>
-            <Box p={2}>
-                <Typography variant="body1" color="textSecondary">
-                    {t('externalConnections.incomingRequest')}
-                </Typography>
-                {pending.length > 0 && (
+        <Box p={2} sx={{ width: '100%', height: '100%', overflowY: 'auto' }}>
+            {pending.length > 0 && (
+                <>
+                    <Typography variant="body1" color="textSecondary">
+                        {t('externalConnections.incomingRequest')}
+                    </Typography>
                     <Stack spacing={1} sx={{ mt: 1.5 }}>
                         {pending.map(([extensionId, request]) => (
                             <ExternalConnectionRow
@@ -93,26 +95,56 @@ const ExternalConnections: React.FC = () => {
                             </ExternalConnectionRow>
                         ))}
                     </Stack>
-                )}
-                {approved.length > 0 && (
-                    <Stack spacing={1} sx={{ mt: 1.5 }}>
-                        {approved.map(([extensionId, approval]) => (
-                            <ExternalConnectionRow key={extensionId} extensionId={extensionId} name={approval.name}>
-                                <Button
-                                    size="small"
-                                    variant="outlined"
-                                    color="error"
-                                    startIcon={<LinkOffIcon />}
-                                    onClick={() => handleRemove(extensionId)}
-                                >
-                                    {t('action.remove')}
-                                </Button>
-                            </ExternalConnectionRow>
-                        ))}
-                    </Stack>
-                )}
-            </Box>
-        </Paper>
+                </>
+            )}
+            {approved.length > 0 && (
+                <Stack spacing={1} sx={{ mt: 1.5 }}>
+                    {approved.map(([extensionId, approval]) => (
+                        <ExternalConnectionRow key={extensionId} extensionId={extensionId} name={approval.name}>
+                            <Button
+                                size="small"
+                                variant="outlined"
+                                color="error"
+                                startIcon={<LinkOffIcon />}
+                                onClick={() => handleRemove(extensionId)}
+                            >
+                                {t('action.remove')}
+                            </Button>
+                        </ExternalConnectionRow>
+                    ))}
+                </Stack>
+            )}
+            {pending.length === 0 && approved.length === 0 && (
+                <Box
+                    display="flex"
+                    sx={{
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: '100%',
+                        height: '100%',
+                        flexDirection: 'column',
+                    }}
+                >
+                    <Typography variant="h6" align="center">
+                        {t('externalConnections.empty')}
+                    </Typography>
+                    <Typography variant="h6" align="center">
+                        <Trans
+                            i18nKey="externalConnections.help"
+                            components={{
+                                docs: (
+                                    <Link
+                                        href={`${project.urls.docs}/docs/guides/external-extensions`}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                    />
+                                ),
+                            }}
+                        />
+                    </Typography>
+                </Box>
+            )}
+        </Box>
     );
 };
 
@@ -162,11 +194,13 @@ const ExternalConnectionRow: React.FC<ExternalConnectionRowProps> = ({
     }
 
     return (
-        <Stack direction="row" alignItems="center" spacing={1.5} sx={{ px: 2, py: 1.75 }}>
-            <ExtensionIcon color="action" />
-            {content}
-            {children}
-        </Stack>
+        <Paper variant="outlined">
+            <Stack direction="row" alignItems="center" spacing={1.5} sx={{ px: 2, py: 1.75 }}>
+                <ExtensionIcon color="action" />
+                {content}
+                {children}
+            </Stack>
+        </Paper>
     );
 };
 
