@@ -794,7 +794,7 @@ describe('DictionaryDB', () => {
                 },
                 { profile, token: '123', status: TokenStatus.UNKNOWN, lemmas: ['alpha'] },
             ],
-            [profile]
+            [profile, 'Default']
         );
 
         expect(result.importedTokens).toEqual([

@@ -10,7 +10,6 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import { makeStyles } from '@mui/styles';
 import type { Theme } from '@mui/material';
 import type { Profile } from '@project/common/settings';
-import type { TFunction } from 'i18next';
 
 const maxProfileNameLength = 16;
 const maxProfiles = 5;
@@ -46,7 +45,7 @@ interface ProfileMenuItemProps {
     onSetActiveProfile: (name: string | undefined) => void;
     divider: boolean;
     collapsed: boolean;
-    t: TFunction;
+    canRemove: boolean;
     className: string;
 }
 
@@ -70,7 +69,7 @@ function renderMenuItem({
     divider,
     profile,
     collapsed,
-    t,
+    canRemove,
     className,
 }: ProfileMenuItemProps) {
     return (
@@ -89,10 +88,10 @@ function renderMenuItem({
                 }}
                 style={{ flexGrow: 1 }}
             >
-                {profile?.name ?? t('settings.defaultProfile')}
+                {profile?.name}
             </div>
 
-            {profile !== undefined && !collapsed && (
+            {profile !== undefined && !collapsed && canRemove && (
                 <IconButton
                     onMouseDown={(e) => e.stopPropagation()}
                     onClick={() => {
@@ -208,7 +207,7 @@ export default function SettingsProfileSelectMenu({
                     color="primary"
                     variant="outlined"
                     label={t('settings.activeProfile')}
-                    value={activeProfile ?? '-'}
+                    value={activeProfile ?? ''}
                     SelectProps={{
                         renderValue: (option) => {
                             return renderMenuItem({
@@ -217,20 +216,12 @@ export default function SettingsProfileSelectMenu({
                                 onRemoveProfile,
                                 onSetActiveProfile,
                                 collapsed: true,
-                                t,
+                                canRemove: profiles.length > 1,
                                 className: collapsedMenuItemStyles.root,
                             });
                         },
                     }}
                 >
-                    <MenuItem
-                        key={''}
-                        value={'-'}
-                        onClick={() => onSetActiveProfile(undefined)}
-                        style={{ minHeight: 'auto' }}
-                    >
-                        {t('settings.defaultProfile')}
-                    </MenuItem>
                     {profiles.map((profile, index) => {
                         return renderMenuItem({
                             profile,
@@ -238,7 +229,7 @@ export default function SettingsProfileSelectMenu({
                             onRemoveProfile,
                             onSetActiveProfile,
                             collapsed: false,
-                            t,
+                            canRemove: profiles.length > 1,
                             className: expandedMenuItemStyles.root,
                         });
                     })}

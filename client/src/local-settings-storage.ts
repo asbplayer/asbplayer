@@ -7,6 +7,7 @@ import {
     prefixKey,
     prefixedSettings,
     profilesKey,
+    removedProfilesKey,
     settingsDeserializers,
     saveOnlySettings,
     unprefixKey,
@@ -83,29 +84,20 @@ export class LocalSettingsStorage implements AppSettingsStorage {
         return this._activeProfile();
     }
 
-    private _activeProfile(): Profile | undefined {
-        const name = cachedLocalStorage.get(activeProfileKey) ?? undefined;
-        if (name === undefined) {
-            return undefined;
-        }
-
+    private _activeProfile(): Profile {
         const profiles = this._profiles();
-        return profiles.find((p) => p.name === name);
+        const name = cachedLocalStorage.get(activeProfileKey);
+        const profile = profiles.find((p) => p.name === name) ?? profiles[0];
+        if (name !== profile.name) cachedLocalStorage.set(activeProfileKey, profile.name);
+        return profile;
     }
 
     async setActiveProfile(name: string | undefined): Promise<void> {
-        if (name === undefined) {
-            cachedLocalStorage.delete(activeProfileKey);
-        } else {
-            const profiles = this._profiles();
-            const profileExists = profiles.find((p) => p.name === name) !== undefined;
-
-            if (!profileExists) {
-                throw new Error(`Cannot set active profile to non-existant profile ${name}`);
-            }
-
-            cachedLocalStorage.set(activeProfileKey, name);
+        const profiles = this._profiles();
+        if (!profiles.some((p) => p.name === name)) {
+            throw new Error(`Cannot set active profile to non-existent profile ${name}`);
         }
+        cachedLocalStorage.set(activeProfileKey, name!);
     }
 
     async profiles(): Promise<Profile[]> {
@@ -114,12 +106,26 @@ export class LocalSettingsStorage implements AppSettingsStorage {
 
     private _profiles(): Profile[] {
         const value = cachedLocalStorage.get(profilesKey);
-
-        if (value === null) {
-            return [];
+        const profiles: Profile[] = value === null ? [] : JSON.parse(value);
+        const removedProfiles: string[] = JSON.parse(cachedLocalStorage.get(removedProfilesKey) ?? '[]');
+        const missingLegacyProfile =
+            !profiles.some((p) => p.name === 'Default') && !removedProfiles.includes('Default');
+        if (cachedLocalStorage.get('legacyDefaultProfileMigrated') !== 'true' || missingLegacyProfile) {
+            const legacy = this._getStored(Object.keys(defaultSettings) as (keyof AsbplayerSettings)[]);
+            // The legacy profile can have dictionary data even without stored settings.
+            // Keep its name so those records remain attached to the same profile.
+            const name = 'Default';
+            if (missingLegacyProfile) {
+                const profile = { name };
+                const migrated = this._getStored(Object.keys(defaultSettings) as (keyof AsbplayerSettings)[], profile);
+                this._set({ ...legacy, ...migrated }, profile);
+                profiles.unshift(profile);
+            }
+            cachedLocalStorage.set(profilesKey, JSON.stringify(profiles));
+            if (cachedLocalStorage.get(activeProfileKey) === null) cachedLocalStorage.set(activeProfileKey, name);
+            cachedLocalStorage.set('legacyDefaultProfileMigrated', 'true');
         }
-
-        return JSON.parse(value);
+        return profiles;
     }
 
     async addProfile(name: string): Promise<void> {
@@ -132,7 +138,12 @@ export class LocalSettingsStorage implements AppSettingsStorage {
         }
 
         cachedLocalStorage.set(profilesKey, JSON.stringify(profiles));
-        const initialValues = this._getStored(Object.keys(defaultSettings) as (keyof AsbplayerSettings)[]);
+        const removedProfiles: string[] = JSON.parse(cachedLocalStorage.get(removedProfilesKey) ?? '[]');
+        cachedLocalStorage.set(removedProfilesKey, JSON.stringify(removedProfiles.filter((p) => p !== name)));
+        const initialValues = this._getStored(
+            Object.keys(defaultSettings) as (keyof AsbplayerSettings)[],
+            this._activeProfile()
+        );
         this._set(initialValues, newProfile);
     }
 
@@ -140,11 +151,15 @@ export class LocalSettingsStorage implements AppSettingsStorage {
         const profiles = this._profiles();
         const activeProfile = this._activeProfile();
 
+        if (!profiles.some((p) => p.name === name)) return;
+        if (profiles.length <= 1) throw new Error('Cannot remove the last profile');
         if (name === activeProfile?.name) {
-            throw new Error('Cannot remove active profile');
+            await this.setActiveProfile(profiles.find((p) => p.name !== name)!.name);
         }
 
         const newProfiles = profiles.filter((p) => p.name !== name);
+        const removedProfiles: string[] = JSON.parse(cachedLocalStorage.get(removedProfilesKey) ?? '[]');
+        cachedLocalStorage.set(removedProfilesKey, JSON.stringify(Array.from(new Set([...removedProfiles, name]))));
         const prefixedKeys = Object.keys(prefixedSettings(defaultSettings, name));
 
         for (const key of prefixedKeys) {

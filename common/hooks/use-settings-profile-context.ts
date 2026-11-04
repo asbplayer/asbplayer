@@ -46,20 +46,18 @@ export const useSettingsProfileContext = ({ dictionaryProvider, settingsProvider
     const onRemoveProfile = useCallback(
         async (name: string) => {
             try {
-                await dictionaryProvider.deleteProfile(name);
-
-                if (name === activeProfile) {
-                    await settingsProvider.setActiveProfile(undefined);
-                    setActiveProfile(undefined);
-                    onProfileChanged();
-                }
+                const currentProfiles = await settingsProvider.profiles();
+                if (currentProfiles.length <= 1 || !currentProfiles.some((p) => p.name === name)) return;
                 await settingsProvider.removeProfile(name);
                 setProfiles(await settingsProvider.profiles());
+                setActiveProfile((await settingsProvider.activeProfile())?.name);
+                onProfileChanged();
+                await dictionaryProvider.deleteProfile(name);
             } catch (error) {
                 asbError('settings/profiles', `Failed to remove profile '${name}':`, error);
             }
         },
-        [dictionaryProvider, settingsProvider, activeProfile, onProfileChanged]
+        [dictionaryProvider, settingsProvider, onProfileChanged]
     );
     const onSetActiveProfile = useCallback(
         (name: string | undefined) =>
