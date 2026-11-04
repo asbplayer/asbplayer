@@ -44,6 +44,7 @@ import { PlayMode } from '@project/common';
 import RecipeSelect from '@project/common/components/RecipeSelect';
 import RecipeSummary from '@project/common/components/RecipeSummary';
 import NoWrapButton from '@project/common/components/NoWrapButton';
+import useConfirmation from '@project/common/hooks/use-confirmation';
 import { playbackModeLabelLocKey } from '@project/common/playback/controllers/playback-mode-controller';
 
 interface Props {
@@ -88,7 +89,15 @@ export default function RecipeSettings({ settings, onSettingsChanged, children }
     const [nameDirty, setNameDirty] = useState(false);
     const [paste, setPaste] = useState('');
     const [pasteError, setPasteError] = useState(false);
-    const [confirmDelete, setConfirmDelete] = useState(false);
+    const {
+        confirming: confirmingDelete,
+        confirm: confirmDelete,
+        reset: resetDeleteConfirmation,
+    } = useConfirmation(() => {
+        if (viewId === undefined) return;
+        onSettingsChanged(deleteRecipe(settings, viewId));
+        close();
+    });
     useEffect(() => {
         const importFromUrl = () => {
             const url = new URL(window.location.href);
@@ -100,7 +109,7 @@ export default function RecipeSettings({ settings, onSettingsChanged, children }
             setPreview(recipe);
             setPaste('');
             setPasteError(!recipe);
-            setConfirmDelete(false);
+            resetDeleteConfirmation();
             params.delete('recipe');
             const remaining = params.toString();
             url.hash = remaining ? `${section}?${remaining}` : section;
@@ -113,7 +122,7 @@ export default function RecipeSettings({ settings, onSettingsChanged, children }
             window.removeEventListener('hashchange', importFromUrl);
             window.removeEventListener('popstate', importFromUrl);
         };
-    }, []);
+    }, [resetDeleteConfirmation]);
     const parseImport = (text: string) => {
         setPaste(text);
         const recipe = parseRecipe(text);
@@ -133,7 +142,7 @@ export default function RecipeSettings({ settings, onSettingsChanged, children }
     const close = () => {
         setDialog(undefined);
         setPreview(undefined);
-        setConfirmDelete(false);
+        resetDeleteConfirmation();
     };
     const save = () => {
         const valid = normalizeRecipe(preview);
@@ -362,11 +371,6 @@ export default function RecipeSettings({ settings, onSettingsChanged, children }
                                         <ContentCopyIcon fontSize="small" />
                                     </IconButton>
                                 </Stack>
-                                {confirmDelete && (
-                                    <Alert severity="warning">
-                                        {t('recipes.confirmDelete', { name: preview.name })}
-                                    </Alert>
-                                )}
                             </>
                         )}
                         <Stack direction="row" justifyContent="flex-end" spacing={1} useFlexGap flexWrap="wrap">
@@ -380,18 +384,8 @@ export default function RecipeSettings({ settings, onSettingsChanged, children }
                                 </Button>
                             )}
                             {dialog === 'view' && (
-                                <Button
-                                    color="error"
-                                    onClick={() => {
-                                        if (!confirmDelete) {
-                                            setConfirmDelete(true);
-                                        } else if (viewId !== undefined) {
-                                            onSettingsChanged(deleteRecipe(settings, viewId));
-                                            close();
-                                        }
-                                    }}
-                                >
-                                    {t('action.delete')}
+                                <Button color="error" onClick={confirmDelete}>
+                                    {t(confirmingDelete ? 'action.confirm' : 'action.delete')}
                                 </Button>
                             )}
                             <Button onClick={close}>{t(dialog === 'view' ? 'action.close' : 'action.cancel')}</Button>
