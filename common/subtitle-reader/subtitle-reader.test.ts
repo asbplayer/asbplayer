@@ -37,8 +37,9 @@ const srtFile = (text: string) =>
 
 const parse = (xml: string, convertNetflixRuby = false, flatten = false, fileCount = 1) =>
     createReader({ convertNetflixRuby }).subtitles(
-        Array.from({ length: fileCount }, () => nfimscFile(xml)),
         flatten
+            ? [{ fileParts: Array.from({ length: fileCount }, () => nfimscFile(xml)) }]
+            : Array.from({ length: fileCount }, () => nfimscFile(xml)).map((file) => ({ fileParts: [file] }))
     );
 
 const rubyWithPrecedingKanaXml =
@@ -71,6 +72,52 @@ const srv3Document = (rows: string, mode = '0') =>
     rows +
     '</body></timedtext>';
 
+describe('SubtitleReader grouped tracks', () => {
+    it.each([
+        { name: 'adjacent tracks', secondTrack: 1 },
+        { name: 'an empty slot between tracks', secondTrack: 2 },
+    ])('preserves two segmented tracks with $name', async ({ secondTrack }) => {
+        const firstTrack = {
+            fileParts: [
+                vttFile('Shared text', 'vtt', '00:01.000 --> 00:02.000'),
+                vttFile('First language', 'vtt', '00:03.000 --> 00:04.000'),
+            ],
+        };
+        const otherTrack = {
+            fileParts: [
+                vttFile('Shared text', 'vtt', '00:01.000 --> 00:02.000'),
+                vttFile('Second language', 'vtt', '00:02.000 --> 00:03.000'),
+            ],
+        };
+        const tracks = secondTrack === 1 ? [firstTrack, otherTrack] : [firstTrack, { fileParts: [] }, otherTrack];
+
+        await expect(createReader().subtitles(tracks)).resolves.toEqual([
+            { start: 1000, end: 2000, text: 'Shared text', track: 0 },
+            { start: 1000, end: 2000, text: 'Shared text', track: secondTrack },
+            { start: 2000, end: 3000, text: 'Second language', track: secondTrack },
+            { start: 3000, end: 4000, text: 'First language', track: 0 },
+        ]);
+    });
+
+    it('keeps a complete file separate from a segmented track', async () => {
+        await expect(
+            createReader().subtitles([
+                { fileParts: [vttFile('Complete track', 'vtt', '00:02.000 --> 00:03.000')] },
+                {
+                    fileParts: [
+                        vttFile('First part', 'vtt', '00:01.000 --> 00:02.000'),
+                        vttFile('Second part', 'vtt', '00:03.000 --> 00:04.000'),
+                    ],
+                },
+            ])
+        ).resolves.toEqual([
+            { start: 1000, end: 2000, text: 'First part', track: 1 },
+            { start: 2000, end: 3000, text: 'Complete track', track: 0 },
+            { start: 3000, end: 4000, text: 'Second part', track: 1 },
+        ]);
+    });
+});
+
 describe('SubtitleReader YouTube pop-on captions', () => {
     it('caps overlapping two-line cues at the next start', async () => {
         const rows =
@@ -78,7 +125,7 @@ describe('SubtitleReader YouTube pop-on captions', () => {
             '<p t="4760" d="7640" w="1">the same global [music] food brands. Kit\nKats, Maggi, Cerelac, Fanta. The</p>' +
             '<p t="9880" d="6920" w="1">packaging may look nearly identical, but\nturn it around to check the ingredients.</p>';
 
-        await expect(createReader().subtitles([srv3File(srv3Document(rows))])).resolves.toEqual([
+        await expect(createReader().subtitles([{ fileParts: [srv3File(srv3Document(rows))] }])).resolves.toEqual([
             {
                 start: 0,
                 end: 4760,
@@ -107,7 +154,7 @@ describe('SubtitleReader YouTube pop-on captions', () => {
             '<p t="2600" d="4280" w="1"><s>or</s><s t="160"> Johannesburg, and you&#39;ll find many of</s></p>' +
             '<p t="4750" d="2130" w="1" a="1">\n</p>';
 
-        await expect(createReader().subtitles([srv3File(srv3Document(rows, '2'))])).resolves.toEqual([
+        await expect(createReader().subtitles([{ fileParts: [srv3File(srv3Document(rows, '2'))] }])).resolves.toEqual([
             { start: 0, end: 2590, text: 'Walk into supermarkets in London, Delhi,', track: 0 },
             { start: 2600, end: 4750, text: "or Johannesburg, and you'll find many of", track: 0 },
         ]);
@@ -121,7 +168,7 @@ describe('SubtitleReader YouTube pop-on captions', () => {
         const rows =
             '<p t="0" d="6000" w="1">First</p>' + `<p t="3000" d="6000" w="${nextWindow}" a="${append}">Second</p>`;
 
-        await expect(createReader().subtitles([srv3File(srv3Document(rows, mode))])).resolves.toEqual([
+        await expect(createReader().subtitles([{ fileParts: [srv3File(srv3Document(rows, mode))] }])).resolves.toEqual([
             { start: 0, end: 6000, text: 'First', track: 0 },
             { start: 3000, end: 9000, text: 'Second', track: 0 },
         ]);
@@ -130,7 +177,7 @@ describe('SubtitleReader YouTube pop-on captions', () => {
     it('preserves gaps between non-overlapping pop-on cues', async () => {
         const rows = '<p t="0" d="1000" w="1">First</p><p t="2000" d="1000" w="1">Second</p>';
 
-        await expect(createReader().subtitles([srv3File(srv3Document(rows))])).resolves.toEqual([
+        await expect(createReader().subtitles([{ fileParts: [srv3File(srv3Document(rows))] }])).resolves.toEqual([
             { start: 0, end: 1000, text: 'First', track: 0 },
             { start: 2000, end: 3000, text: 'Second', track: 0 },
         ]);
@@ -141,13 +188,13 @@ describe('SubtitleReader text content', () => {
     it('drops subtitles left with only invisible or whitespace characters (#669)', async () => {
         // A cue whose only content is a left-to-right mark (U+200E) has no meaningful
         // text, so it is dropped instead of rendered as a blank line.
-        const removed = await createReader().subtitles([srtFile('\u200e')]);
+        const removed = await createReader().subtitles([{ fileParts: [srtFile('\u200e')] }]);
         expect(removed).toHaveLength(0);
     });
 
     it('keeps subtitles that have real text alongside bidi marks (#669)', async () => {
         // Bidi marks are preserved within meaningful text; only empty cues are dropped.
-        const [subtitle] = await createReader().subtitles([srtFile('ab\u200ecd')]);
+        const [subtitle] = await createReader().subtitles([{ fileParts: [srtFile('ab\u200ecd')] }]);
         expect(subtitle.text).toBe('ab\u200ecd');
     });
 
@@ -158,7 +205,7 @@ describe('SubtitleReader text content', () => {
         ['encoded bidi marks', '<b>&lrm;&#x200f;</b>'],
         ['ruby readings without base text', '<ruby>\u200e<rp>(</rp><rt>ご</rt><rp>)</rp></ruby>'],
     ])('drops cues containing only %s', async (_scenario, text) => {
-        const subtitles = await createReader().subtitles([srtFile(text)]);
+        const subtitles = await createReader().subtitles([{ fileParts: [srtFile(text)] }]);
 
         expect(subtitles).toEqual([]);
     });
@@ -168,7 +215,7 @@ describe('SubtitleReader text content', () => {
         ['ruby base text', '<ruby>語<rp>(</rp><rt>ご</rt><rp>)</rp></ruby>'],
         ['encoded punctuation', '&amp;'],
     ])('keeps %s without changing its markup or entities', async (_scenario, text) => {
-        const subtitles = await createReader().subtitles([srtFile(text)]);
+        const subtitles = await createReader().subtitles([{ fileParts: [srtFile(text)] }]);
 
         expect(subtitles).toEqual([{ start: 0, end: 1000, text, track: 0 }]);
     });
@@ -177,7 +224,10 @@ describe('SubtitleReader text content', () => {
         const subtitles = await createReader({
             regexFilter: '\\[.+\\]',
             regexFilterTextReplacement: '',
-        }).subtitles([srtFile('<b>[THUNDER]</b>\u200e'), srtFile('<b>Hello</b>\u200e')]);
+        }).subtitles([
+            { fileParts: [srtFile('<b>[THUNDER]</b>\u200e')] },
+            { fileParts: [srtFile('<b>Hello</b>\u200e')] },
+        ]);
 
         expect(subtitles).toEqual([{ start: 0, end: 1000, text: '<b>Hello</b>\u200e', track: 1 }]);
     });
@@ -186,7 +236,7 @@ describe('SubtitleReader text content', () => {
         const subtitles = await createReader({
             regexFilter: '^\\[.+\\]$',
             regexFilterTextReplacement: '<b>&nbsp;\u200f</b><br>',
-        }).subtitles([srtFile('[THUNDER]')]);
+        }).subtitles([{ fileParts: [srtFile('[THUNDER]')] }]);
 
         expect(subtitles).toEqual([]);
     });
@@ -202,7 +252,7 @@ describe('SubtitleReader regex filter fallback', () => {
         const subtitles = await createReader({
             regexFilter: '^\\[.+\\]$',
             regexFilterTextReplacement: '',
-        }).subtitles([srtFile(text)]);
+        }).subtitles([{ fileParts: [srtFile(text)] }]);
 
         expect(subtitles).toEqual([]);
     });
@@ -215,7 +265,7 @@ describe('SubtitleReader regex filter fallback', () => {
         const subtitles = await createReader({
             regexFilter: '^\\[.+\\]$',
             regexFilterTextReplacement: replacement,
-        }).subtitles([srtFile('[THUNDER]\u200e')]);
+        }).subtitles([{ fileParts: [srtFile('[THUNDER]\u200e')] }]);
 
         expect(subtitles).toEqual([]);
     });
@@ -246,7 +296,9 @@ describe('SubtitleReader regex filter fallback', () => {
             regexFilterTextReplacement: '',
         },
     ])('preserves the original text when $scenario', async ({ text, regexFilter, regexFilterTextReplacement }) => {
-        const subtitles = await createReader({ regexFilter, regexFilterTextReplacement }).subtitles([srtFile(text)]);
+        const subtitles = await createReader({ regexFilter, regexFilterTextReplacement }).subtitles([
+            { fileParts: [srtFile(text)] },
+        ]);
 
         expect(subtitles).toEqual([{ start: 0, end: 1000, text, track: 0 }]);
     });
@@ -255,7 +307,7 @@ describe('SubtitleReader regex filter fallback', () => {
         const subtitles = await createReader({
             regexFilter: '\u200e$|^\\[.+\\]$',
             regexFilterTextReplacement: '',
-        }).subtitles([srtFile('[THUNDER]\u200e'), srtFile('[RAIN]\u200e')]);
+        }).subtitles([{ fileParts: [srtFile('[THUNDER]\u200e')] }, { fileParts: [srtFile('[RAIN]\u200e')] }]);
 
         expect(subtitles).toEqual([
             { start: 0, end: 1000, text: '[THUNDER]', track: 0 },
@@ -421,10 +473,14 @@ describe('SubtitleReader Netflix IMSC parsing', () => {
     });
 
     it('deduplicates cues that become equal after sanitization', async () => {
-        const subtitles = await createReader().subtitles(
-            [nfimscFile(nfimscDocument('safe&lt;img src=x onerror=alert(1)&gt;')), nfimscFile(nfimscDocument('safe'))],
-            true
-        );
+        const subtitles = await createReader().subtitles([
+            {
+                fileParts: [
+                    nfimscFile(nfimscDocument('safe&lt;img src=x onerror=alert(1)&gt;')),
+                    nfimscFile(nfimscDocument('safe')),
+                ],
+            },
+        ]);
 
         expect(subtitles).toHaveLength(1);
         expect(subtitles[0]).toMatchObject({
@@ -478,7 +534,7 @@ describe('SubtitleReader Netflix IMSC parsing', () => {
             ],
         },
     ])('preserves flattened cues when only the $difference differs', async ({ first, second, expected }) => {
-        const subtitles = await createReader().subtitles([nfimscFile(first), nfimscFile(second)], true);
+        const subtitles = await createReader().subtitles([{ fileParts: [nfimscFile(first), nfimscFile(second)] }]);
 
         expect(subtitles).toHaveLength(2);
         expect(subtitles).toMatchObject(expected.map((cue) => ({ ...cue, track: 0 })));
@@ -529,7 +585,7 @@ describe('SubtitleReader dfxp timestamp handling', () => {
     it('drops cues whose timestamps are not finite', async () => {
         const xml = '<tt><body><div><p begin="100t" end="200t">Dropped</p></div></body></tt>';
         const file = { name: 'test.dfxp', text: async () => xml } as unknown as File;
-        const subtitles = await createReader().subtitles([file]);
+        const subtitles = await createReader().subtitles([{ fileParts: [file] }]);
 
         expect(subtitles).toHaveLength(0);
     });
@@ -546,7 +602,7 @@ describe('SubtitleReader WebVTT timestamp stripping', () => {
         '123:45:56.789',
         '000:00:00.001',
     ])('strips a valid timestamp <%s> without changing cue timing or surrounding text', async (timestamp) => {
-        const subtitles = await createReader().subtitles([vttFile(`before<${timestamp}>after`)]);
+        const subtitles = await createReader().subtitles([{ fileParts: [vttFile(`before<${timestamp}>after`)] }]);
 
         expect(subtitles).toEqual([{ start: 0, end: 3599999999, text: 'beforeafter', track: 0 }]);
     });
@@ -572,8 +628,8 @@ describe('SubtitleReader WebVTT timestamp stripping', () => {
         '０１:０２.００３',
     ])('preserves timestamp-like text outside the timestamp grammar (%s)', async (timestamp) => {
         const subtitles = await createReader().subtitles([
-            vttFile(`before<${timestamp}>after`),
-            vttFile(`before&lt;${timestamp}&gt;after`),
+            { fileParts: [vttFile(`before<${timestamp}>after`)] },
+            { fileParts: [vttFile(`before&lt;${timestamp}&gt;after`)] },
         ]);
 
         expect(subtitles.map((subtitle) => subtitle.text)).toEqual([
@@ -591,7 +647,7 @@ describe('SubtitleReader WebVTT timestamp stripping', () => {
         '<00:01.001&gt;',
         '&lt;00:01.001>',
     ])('strips supported escaped timestamp delimiters (%s)', async (timestampTag) => {
-        const subtitles = await createReader().subtitles([vttFile(`before${timestampTag}after`)]);
+        const subtitles = await createReader().subtitles([{ fileParts: [vttFile(`before${timestampTag}after`)] }]);
 
         expect(subtitles).toEqual([{ start: 0, end: 3599999999, text: 'beforeafter', track: 0 }]);
     });
@@ -603,11 +659,15 @@ describe('SubtitleReader WebVTT timestamp stripping', () => {
         ['nfvtt', SubtitleHtml.remove, 'Hello world\nagain'],
     ])('strips multiple timestamps from %s with HTML mode %s', async (extension, subtitleHtml, expectedText) => {
         const subtitles = await createReader({ subtitleHtml }).subtitles([
-            vttFile(
-                '<c.yellow><b>Hello</b></c> <00:01.001><i>world</i>\n&lt;00:02.002&gt;again',
-                extension,
-                '00:00.000 --> 00:03.000'
-            ),
+            {
+                fileParts: [
+                    vttFile(
+                        '<c.yellow><b>Hello</b></c> <00:01.001><i>world</i>\n&lt;00:02.002&gt;again',
+                        extension,
+                        '00:00.000 --> 00:03.000'
+                    ),
+                ],
+            },
         ]);
 
         expect(subtitles).toEqual([{ start: 0, end: 3000, text: expectedText, track: 0 }]);
@@ -615,7 +675,9 @@ describe('SubtitleReader WebVTT timestamp stripping', () => {
 
     it('preserves ordinary text, formatting, entities, and untagged timestamps', async () => {
         const text = '<c.yellow><b>Meet</b></c> at 00:01.000 &amp; <ruby>語<rt>ご</rt></ruby>.';
-        const subtitles = await createReader().subtitles([vttFile(text, 'vtt', '00:00.000 --> 00:03.000')]);
+        const subtitles = await createReader().subtitles([
+            { fileParts: [vttFile(text, 'vtt', '00:00.000 --> 00:03.000')] },
+        ]);
 
         expect(subtitles).toEqual([
             { start: 0, end: 3000, text: '<b>Meet</b> at 00:01.000 &amp; <ruby>語<rt>ご</rt></ruby>.', track: 0 },
@@ -626,14 +688,14 @@ describe('SubtitleReader WebVTT timestamp stripping', () => {
         const subtitles = await createReader({
             regexFilter: 'Hello world',
             regexFilterTextReplacement: 'replaced',
-        }).subtitles([vttFile('Hello<00:01.001> world', 'vtt', '00:00.000 --> 00:03.000')]);
+        }).subtitles([{ fileParts: [vttFile('Hello<00:01.001> world', 'vtt', '00:00.000 --> 00:03.000')] }]);
 
         expect(subtitles).toEqual([{ start: 0, end: 3000, text: 'replaced', track: 0 }]);
     });
 
     it('drops cues containing only timestamp tags', async () => {
         const subtitles = await createReader().subtitles([
-            vttFile('<00:01.001>&lt;00:02.002&gt;', 'vtt', '00:00.000 --> 00:03.000'),
+            { fileParts: [vttFile('<00:01.001>&lt;00:02.002&gt;', 'vtt', '00:00.000 --> 00:03.000')] },
         ]);
 
         expect(subtitles).toEqual([]);
@@ -644,7 +706,7 @@ describe('SubtitleReader Netflix ruby text conversion', () => {
     it.each(['srt', 'vtt', 'nfvtt'])('renders imported ASCII and numeric readings from %s', async (extension) => {
         const text = 'MIU(ミウ)、007(ゼロゼロセブン)、さっきTwitter(ツイッター)と5G通信(つうしん)';
         const [subtitle] = await createReader({ convertNetflixRuby: true }).subtitles([
-            extension === 'srt' ? srtFile(text) : vttFile(text, extension),
+            { fileParts: [extension === 'srt' ? srtFile(text) : vttFile(text, extension)] },
         ]);
         const rendered = renderRichTextOntoSubtitles(
             [{ ...subtitle, index: 0 }],
@@ -672,7 +734,7 @@ describe('SubtitleReader Netflix ruby text conversion', () => {
 
     it('attaches readings to the final script run and adjusts later SRT token offsets', async () => {
         const [subtitle] = await createReader({ convertNetflixRuby: true }).subtitles([
-            srtFile('さっきTwitter(ツイッター)のトレンドに…と5G通信(つうしん)'),
+            { fileParts: [srtFile('さっきTwitter(ツイッター)のトレンドに…と5G通信(つうしん)')] },
         ]);
         const tokens = subtitle.tokenization?.tokens ?? [];
 
@@ -683,7 +745,7 @@ describe('SubtitleReader Netflix ruby text conversion', () => {
 
     it('keeps homogeneous ASCII and Japanese bases whole', async () => {
         const [subtitle] = await createReader({ convertNetflixRuby: true }).subtitles([
-            srtFile('MIU(ミウ)、捏造(ねつぞう)'),
+            { fileParts: [srtFile('MIU(ミウ)、捏造(ねつぞう)')] },
         ]);
         const tokens = subtitle.tokenization?.tokens ?? [];
 
@@ -722,17 +784,19 @@ describe('SubtitleReader SRT override tag handling', () => {
         '\\b800',
         '\\b900',
     ])('strips whitelisted ASS-style tag %s from SRT cue text (#471)', async (tag) => {
-        const [cue] = await createReader().subtitles([srtFile(`{${tag}}Hello`)]);
+        const [cue] = await createReader().subtitles([{ fileParts: [srtFile(`{${tag}}Hello`)] }]);
         expect(cue.text).toBe('Hello');
     });
 
     it('strips multiple whitelisted tags in one block', async () => {
-        const [cue] = await createReader().subtitles([srtFile('{\\an8\\i1\\b700}Hello{\\i0\\b0} world')]);
+        const [cue] = await createReader().subtitles([
+            { fileParts: [srtFile('{\\an8\\i1\\b700}Hello{\\i0\\b0} world')] },
+        ]);
         expect(cue.text).toBe('Hello world');
     });
 
     it('strips multiple override tags and keeps the surrounding text', async () => {
-        const [cue] = await createReader().subtitles([srtFile('{\\an8}{\\i1}Hello{\\i0} world')]);
+        const [cue] = await createReader().subtitles([{ fileParts: [srtFile('{\\an8}{\\i1}Hello{\\i0} world')] }]);
         expect(cue.text).toBe('Hello world');
     });
 
@@ -756,12 +820,14 @@ describe('SubtitleReader SRT override tag handling', () => {
         '{\\pos(10,20)\\an8}',
         '{\\an8',
     ])('preserves non-whitelisted or malformed block %s', async (block) => {
-        const [cue] = await createReader().subtitles([srtFile(`Hello${block} world`)]);
+        const [cue] = await createReader().subtitles([{ fileParts: [srtFile(`Hello${block} world`)] }]);
         expect(cue.text).toBe(`Hello${block} world`);
     });
 
     it('preserves unsupported blocks alongside whitelisted blocks', async () => {
-        const [cue] = await createReader().subtitles([srtFile('{\\an8}Hello{\\unknown}{\\i1} world{\\i0}')]);
+        const [cue] = await createReader().subtitles([
+            { fileParts: [srtFile('{\\an8}Hello{\\unknown}{\\i1} world{\\i0}')] },
+        ]);
         expect(cue.text).toBe('Hello{\\unknown} world');
     });
 });
@@ -779,7 +845,7 @@ describe('SubtitleReader Bilibili JSON parsing', () => {
                 }),
         } as unknown as File;
 
-        const subtitles = await createReader().subtitles([file]);
+        const subtitles = await createReader().subtitles([{ fileParts: [file] }]);
 
         expect(subtitles).toHaveLength(2);
         expect(subtitles[0]).toMatchObject({ start: 1250, end: 3500, text: 'First subtitle' });

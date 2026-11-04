@@ -111,11 +111,7 @@ export default class VideoSelectController {
 
             if (binding !== undefined && binding.subscribed) {
                 if (subtitleFiles !== undefined) {
-                    await binding.loadSubtitles(
-                        await this._filesForSubtitleFiles(subtitleFiles),
-                        false,
-                        fromAsbplayerId
-                    );
+                    await binding.loadSubtitles(await this._tracksForSubtitleFiles(subtitleFiles), fromAsbplayerId);
                 } else {
                     binding.showVideoDataDialog(openedFromMiningCommand, fromAsbplayerId);
                 }
@@ -126,7 +122,7 @@ export default class VideoSelectController {
 
             if (binding.subscribed) {
                 if (subtitleFiles !== undefined) {
-                    await binding.loadSubtitles(await this._filesForSubtitleFiles(subtitleFiles), false);
+                    await binding.loadSubtitles(await this._tracksForSubtitleFiles(subtitleFiles));
                 } else {
                     binding.showVideoDataDialog(openedFromMiningCommand);
                 }
@@ -184,10 +180,7 @@ export default class VideoSelectController {
                             if (this._subtitleFiles === undefined) {
                                 binding.showVideoDataDialog(false);
                             } else {
-                                await binding.loadSubtitles(
-                                    await this._filesForSubtitleFiles(this._subtitleFiles),
-                                    false
-                                );
+                                await binding.loadSubtitles(await this._tracksForSubtitleFiles(this._subtitleFiles));
                                 this._subtitleFiles = undefined;
                             }
                         }
@@ -222,10 +215,14 @@ export default class VideoSelectController {
         this._frame.hide();
     }
 
-    private async _filesForSubtitleFiles(subtitleFiles: SubtitleFile[]) {
-        const filePromises = subtitleFiles.map(
-            async (f) => new File([await (await fetch('data:text/plain;base64,' + f.base64)).blob()], f.name)
+    private async _tracksForSubtitleFiles(subtitleFiles: SubtitleFile[]) {
+        const subtitleFilePromises = subtitleFiles.map(
+            async (serializedSubtitleFile) =>
+                new File(
+                    [await (await fetch('data:text/plain;base64,' + serializedSubtitleFile.base64)).blob()],
+                    serializedSubtitleFile.name
+                )
         );
-        return Promise.all(filePromises);
+        return (await Promise.all(subtitleFilePromises)).map((subtitleFile) => ({ fileParts: [subtitleFile] }));
     }
 }

@@ -4,7 +4,7 @@ import { subtitlesToSrt } from '@project/common/subtitle-reader/subtitles-to-srt
 import { removeSubtitleHtml } from '@project/common/util';
 import { WebVTT } from 'videojs-vtt.js';
 import { XMLParser } from 'fast-xml-parser';
-import type { SubtitleTextImage, Token, Tokenization } from '@project/common';
+import type { LoadableSubtitleTrack, SubtitleTextImage, Token, Tokenization } from '@project/common';
 import { SubtitleHtml } from '@project/common';
 import DOMPurify from 'dompurify';
 
@@ -169,9 +169,19 @@ export default class SubtitleReader {
         this._pgsWorkerFactory = pgsWorkerFactory;
     }
 
-    async subtitles(files: File[], flatten?: boolean) {
-        const allNodes = (await Promise.all(files.map((f, i) => this._subtitles(f, flatten === true ? 0 : i))))
-            .flatMap((nodes) => nodes)
+    /**
+     * Parses selected tracks. Each outer array index becomes the cue's track
+     * index; all fileParts within a group belong to that same track.
+     */
+    async subtitles(tracks: LoadableSubtitleTrack[]) {
+        const allNodes = (
+            await Promise.all(
+                tracks.flatMap(({ fileParts }, track) =>
+                    fileParts.map((subtitleSourceFile) => this._subtitles(subtitleSourceFile, track))
+                )
+            )
+        )
+            .flat()
             .sort((n1, n2) => n1.start - n2.start);
 
         // Sanitize after all parser, filter, decoding, and flattening transformations.
@@ -207,10 +217,11 @@ export default class SubtitleReader {
         return a.start === b.start && a.end === b.end && a.text === b.text && a.track === b.track;
     }
 
-    async _subtitles(file: File, track: number): Promise<SubtitleNode[]> {
-        if (file.name.endsWith('.srt') || file.name.endsWith('.subrip')) {
+    /** Parses one complete subtitle file or one fragment of a track. */
+    async _subtitles(subtitleSourceFile: File, track: number): Promise<SubtitleNode[]> {
+        if (subtitleSourceFile.name.endsWith('.srt') || subtitleSourceFile.name.endsWith('.subrip')) {
             const parser = new SrtParser({ numericTimestamps: true });
-            const nodes = parser.fromSrt(await file.text());
+            const nodes = parser.fromSrt(await subtitleSourceFile.text());
             return nodes.map((node) => {
                 return {
                     start: Math.floor((node.startTime as number) * 1000),
@@ -221,9 +232,9 @@ export default class SubtitleReader {
             });
         }
 
-        if (file.name.endsWith('.vtt') || file.name.endsWith('.nfvtt')) {
+        if (subtitleSourceFile.name.endsWith('.vtt') || subtitleSourceFile.name.endsWith('.nfvtt')) {
             return new Promise((resolve, reject) => {
-                const isFromNetflix = file.name.endsWith('.nfvtt');
+                const isFromNetflix = subtitleSourceFile.name.endsWith('.nfvtt');
                 const parser = new WebVTT.Parser(window, WebVTT.StringDecoder());
                 const allBuffers: VTTCue[][] = [];
                 let lastTimestamp: number | undefined = undefined;
@@ -273,7 +284,8 @@ export default class SubtitleReader {
 
                     resolve(nodes);
                 };
-                file.text()
+                subtitleSourceFile
+                    .text()
                     .then((text) => {
                         parser.parse(text);
                         parser.flush();
@@ -282,8 +294,8 @@ export default class SubtitleReader {
             });
         }
 
-        if (file.name.endsWith('.ass')) {
-            const nodes = parseAss(await file.text(), {});
+        if (subtitleSourceFile.name.endsWith('.ass')) {
+            const nodes = parseAss(await subtitleSourceFile.text(), {});
             return nodes.dialogues.map((dialogue) => {
                 return {
                     start: Math.round(dialogue.start * 1000),
@@ -296,8 +308,8 @@ export default class SubtitleReader {
             });
         }
 
-        if (file.name.endsWith('.ytsrv3')) {
-            const text = await file.text();
+        if (subtitleSourceFile.name.endsWith('.ytsrv3')) {
+            const text = await subtitleSourceFile.text();
             const xml = this._xmlParser().parse(text);
             const subtitleRows = xml['timedtext']['body']['p'];
             const windowStyles = [xml['timedtext']['head']?.['ws'] ?? []].flat();
@@ -381,8 +393,8 @@ export default class SubtitleReader {
             return subtitles;
         }
 
-        if (file.name.endsWith('.ytxml')) {
-            const text = await file.text();
+        if (subtitleSourceFile.name.endsWith('.ytxml')) {
+            const text = await subtitleSourceFile.text();
             const xml = this._xmlParser().parse(text);
 
             if (Object.keys(xml).length === 0) {
@@ -436,16 +448,16 @@ export default class SubtitleReader {
             return subtitles;
         }
 
-        if (file.name.endsWith('.sup')) {
-            return this._parsePgs(file, track);
+        if (subtitleSourceFile.name.endsWith('.sup')) {
+            return this._parsePgs(subtitleSourceFile, track);
         }
 
-        if (file.name.endsWith('.nfimsc')) {
-            return this._parseNetflixImsc(await file.text(), track);
+        if (subtitleSourceFile.name.endsWith('.nfimsc')) {
+            return this._parseNetflixImsc(await subtitleSourceFile.text(), track);
         }
 
-        if (file.name.endsWith('.dfxp') || file.name.endsWith('ttml2')) {
-            const text = await file.text();
+        if (subtitleSourceFile.name.endsWith('.dfxp') || subtitleSourceFile.name.endsWith('ttml2')) {
+            const text = await subtitleSourceFile.text();
             const parser = new DOMParser();
             const doc = parser.parseFromString(text, 'application/xml');
             const nodes = this._xmlNodePath(doc.documentElement, ['body', 'div']);
@@ -480,8 +492,8 @@ export default class SubtitleReader {
             return subtitles;
         }
 
-        if (file.name.endsWith('.bbjson')) {
-            const body = JSON.parse(await file.text()).body;
+        if (subtitleSourceFile.name.endsWith('.bbjson')) {
+            const body = JSON.parse(await subtitleSourceFile.text()).body;
             return body.map((s: any) => ({
                 text: this._filterText(s.content),
                 start: s.from * 1000,
@@ -493,7 +505,7 @@ export default class SubtitleReader {
         throw new Error('Unsupported subtitle file format');
     }
 
-    private _parsePgs(file: File, track: number): Promise<SubtitleNode[]> {
+    private _parsePgs(subtitleSourceFile: File, track: number): Promise<SubtitleNode[]> {
         const subtitles: SubtitleNode[] = [];
         return new Promise((resolve, reject) => {
             let worker: Worker | undefined;
@@ -534,7 +546,7 @@ export default class SubtitleReader {
                 const offscreenCanvas = canvas.transferControlToOffscreen();
 
                 // Node ReadableStream clashes with web ReadableStream
-                const fileStream = file.stream() as unknown as ReadableStream;
+                const fileStream = subtitleSourceFile.stream() as unknown as ReadableStream;
                 worker.postMessage({ fileStream, canvas: offscreenCanvas }, [fileStream, offscreenCanvas]);
             })().catch((error) => {
                 worker?.terminate();
@@ -882,7 +894,13 @@ export default class SubtitleReader {
         return subtitlesToSrt(subtitles);
     }
 
-    async filesToSrt(files: File[]) {
-        return this.subtitlesToSrt(await this.subtitles(files));
+    /**
+     * Accepts complete subtitle files or fragments. Parses each source file as
+     * a separate track and combines the cues into one SRT, without track identities.
+     */
+    async filesToSrt(subtitleSourceFiles: File[]) {
+        return this.subtitlesToSrt(
+            await this.subtitles(subtitleSourceFiles.map((subtitleSourceFile) => ({ fileParts: [subtitleSourceFile] })))
+        );
     }
 }
