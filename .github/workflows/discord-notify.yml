@@ -1,7 +1,7 @@
 # Posts project activity to Discord incoming webhooks.
 #
 # Routing:
-#   - Stable release published (base repo)             -> #extension-releases
+#   - Stable release published (extension, ffmpeg, or anki addon) -> #releases
 #   - App deploy PR merged (base cf-pages, head
 #     deploy/cf-pages-*)                               -> #app-releases
 #   - Blog post added under docs/blog (push to main)   -> #announcements
@@ -10,7 +10,7 @@
 # A workflow_dispatch run re-sends the most recently added blog post to
 # #announcements so the test run exercises the real blog notification path.
 # The test_* inputs are checkboxes; enable any of the other ones to also send
-# a static test message to #extension-releases, #app-releases, or #github.
+# a static test message to #releases, #app-releases, or #github.
 #
 # The blog post body is posted as message text via components v2 Text Display
 # (converted by scripts/blog-post-to-discord.ts) and @mentions the role stored in the
@@ -32,6 +32,9 @@
 # pull_request_target (not pull_request) is used so secrets are available for
 # pull requests merged from forks. The workflow only reads the event payload and
 # never checks out or executes pull request code.
+#
+# The DISCORD_WEBHOOK_EXTENSION_RELEASES secret and extension_releases input
+# names predate the channel's rename from #extension-releases to #releases.
 
 name: Discord notify
 
@@ -55,7 +58,7 @@ on:
                 type: boolean
                 default: true
             test_extension_releases:
-                description: "Send a test notification to #extension-releases"
+                description: "Send a test notification to #releases"
                 type: boolean
                 default: false
             test_app_releases:
@@ -71,7 +74,7 @@ on:
                 type: string
                 default: ""
             webhook_extension_releases:
-                description: "Override webhook URL for #extension-releases (blank = default secret)"
+                description: "Override webhook URL for #releases (blank = default secret)"
                 type: string
                 default: ""
             webhook_app_releases:
@@ -94,13 +97,13 @@ env:
 
 jobs:
     extension-release:
-        name: Extension release
+        name: Release
         if: >-
             github.event_name == 'release' &&
             !github.event.release.prerelease
         runs-on: ubuntu-latest
         steps:
-            - name: Notify #extension-releases
+            - name: Notify #releases
               env:
                   WEBHOOK_URL: ${{ inputs.webhook_extension_releases || secrets.DISCORD_WEBHOOK_EXTENSION_RELEASES }}
                   URL: ${{ github.event.release.html_url }}
@@ -255,13 +258,13 @@ jobs:
             inputs.test_github)
         runs-on: ubuntu-latest
         steps:
-            - name: Test #extension-releases
+            - name: Test #releases
               if: ${{ inputs.test_extension_releases }}
               env:
                   WEBHOOK_URL: ${{ inputs.webhook_extension_releases || secrets.DISCORD_WEBHOOK_EXTENSION_RELEASES }}
               run: |
                   set -euo pipefail
-                  jq -n --arg content "Test notification for #extension-releases" \
+                  jq -n --arg content "Test notification for #releases" \
                     '{content: $content, allowed_mentions: {parse: []}}' \
                     | curl -sS --fail-with-body -X POST \
                         -H 'Content-Type: application/json' \
