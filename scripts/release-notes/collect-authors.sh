@@ -7,6 +7,9 @@
 #
 #     <short-sha>|<pr-number|->|<handle-or-name>|<subject>
 #
+# At most MAX_COMMITS commits are emitted; when the range is longer, the newest
+# commits are kept.
+#
 # Handle resolution priority:
 #   1. Author of the PR containing the commit (via the commits/{sha}/pulls API)
 #   2. GitHub user attached to the commit author email (via the commits/{sha} API)
@@ -20,7 +23,9 @@ HEAD_REF=$2
 OUTPUT_FILE=$3
 
 API_RATE_LIMIT_DELAY_SECONDS=1
-MAX_COMMITS=50
+# Bounds the per-commit API calls; raise it if release or deploy ranges routinely
+# exceed this many commits.
+MAX_COMMITS=100
 
 repo_full_name() {
     gh repo view --json nameWithOwner -q .nameWithOwner
@@ -52,7 +57,10 @@ truncate_subject() {
 
 repo=$(repo_full_name)
 
-commits=$(git log --format='%H%x09%an%x09%ae%x09%s' --reverse "$BASE_REF..$HEAD_REF" | head -n "$MAX_COMMITS")
+# --reverse with --max-count keeps the newest MAX_COMMITS in oldest-to-newest order.
+# Do not pipe through `head`: it exits early, `git log` dies of SIGPIPE, and
+# pipefail turns that into a failed step once the range exceeds the cap.
+commits=$(git log --format='%H%x09%an%x09%ae%x09%s' --reverse --max-count="$MAX_COMMITS" "$BASE_REF..$HEAD_REF")
 
 > "$OUTPUT_FILE"
 
