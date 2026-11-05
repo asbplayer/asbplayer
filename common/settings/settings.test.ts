@@ -1,4 +1,12 @@
 import {
+    areDictionaryPlaybackConfigsEqual,
+    areTokenAnnotationConfigsEqual,
+    getEnabledAnnotations,
+    getEnabledAnnotationsForHover,
+    dictionaryTrackEnabled,
+    dictionaryStatusCollectionEnabled,
+    dictionaryPlaybackGroupSettingsEnabled,
+    dictionaryPlaybackFeatures,
     autoPausePreferenceForCheckboxChange,
     calculateSeekableTracksValue,
     effectiveSubtitleListCustomization,
@@ -11,6 +19,87 @@ import {
 import type { AutoPausePreferenceEdge } from '.';
 import { describe, expect, it } from '@jest/globals';
 import { AutoPausePreference } from '@project/common/src/model';
+import { defaultSettings } from '@project/common/settings/settings-provider';
+
+it('compares dictionary playback fields by value regardless of object key order', () => {
+    const config = defaultSettings.dictionaryTracks[0].dictionaryPlaybackConfig;
+    const reorderFeature = (feature: typeof config.autoPause) => ({
+        onStates: feature.onStates.map((state) => ({ ...state })),
+        onStatuses: feature.onStatuses.map((status) => ({ ...status })),
+        rules: { maxFrequency: 0, minFrequency: 0, maxWords: 0, minWords: 0 },
+    });
+    const reordered = {
+        selectOnPause: {
+            onStatuses: config.selectOnPause.onStatuses.map((trigger) => ({ ...trigger })),
+            onStates: config.selectOnPause.onStates.map((trigger) => ({ ...trigger })),
+        },
+        wordVisibility: {
+            wholeSubtitleMatchThreshold: config.wordVisibility.wholeSubtitleMatchThreshold,
+            hideWordsIndividuallyUntilThreshold: config.wordVisibility.hideWordsIndividuallyUntilThreshold,
+            ...reorderFeature(config.wordVisibility),
+        },
+        repeat: reorderFeature(config.repeat),
+        fastForward: {
+            rateByComprehension: { ...config.fastForward.rateByComprehension },
+            ...reorderFeature(config.fastForward),
+        },
+        condensed: reorderFeature(config.condensed),
+        autoPause: reorderFeature(config.autoPause),
+    };
+    expect(areDictionaryPlaybackConfigsEqual(config, reordered)).toBe(true);
+    reordered.selectOnPause.onStatuses[0].enabled = true;
+    expect(areDictionaryPlaybackConfigsEqual(config, reordered)).toBe(false);
+    reordered.selectOnPause.onStatuses[0].enabled = false;
+    reordered.selectOnPause.onStates[0].enabled = true;
+    expect(areDictionaryPlaybackConfigsEqual(config, reordered)).toBe(false);
+    reordered.selectOnPause.onStates[0].enabled = false;
+    reordered.fastForward.rateByComprehension.enabled = true;
+    expect(areDictionaryPlaybackConfigsEqual(config, reordered)).toBe(false);
+    reordered.fastForward.rateByComprehension.enabled = false;
+    reordered.fastForward.rateByComprehension.minimumPercent = 80;
+    expect(areDictionaryPlaybackConfigsEqual(config, reordered)).toBe(false);
+    reordered.fastForward.rateByComprehension.minimumPercent = config.fastForward.rateByComprehension.minimumPercent;
+    reordered.repeat.rules.maxFrequency = 1;
+    expect(areDictionaryPlaybackConfigsEqual(config, reordered)).toBe(false);
+    reordered.repeat.rules.maxFrequency = 0;
+    reordered.repeat.rules.minFrequency = 1;
+    expect(areDictionaryPlaybackConfigsEqual(config, reordered)).toBe(false);
+    reordered.repeat.rules.minFrequency = 0;
+    reordered.autoPause.rules.minWords = 2;
+    expect(areDictionaryPlaybackConfigsEqual(config, reordered)).toBe(false);
+    reordered.autoPause.rules.minWords = 0;
+    reordered.wordVisibility.wholeSubtitleMatchThreshold = 0.5;
+    expect(areDictionaryPlaybackConfigsEqual(config, reordered)).toBe(false);
+    reordered.wordVisibility.wholeSubtitleMatchThreshold = 1;
+    reordered.wordVisibility.hideWordsIndividuallyUntilThreshold = false;
+    expect(areDictionaryPlaybackConfigsEqual(config, reordered)).toBe(false);
+    reordered.wordVisibility.hideWordsIndividuallyUntilThreshold = true;
+    reordered.autoPause.onStatuses[0].enabled = true;
+    expect(areDictionaryPlaybackConfigsEqual(config, reordered)).toBe(false);
+    reordered.autoPause.onStatuses[0].enabled = false;
+    reordered.repeat.onStates[0].enabled = true;
+    expect(areDictionaryPlaybackConfigsEqual(config, reordered)).toBe(false);
+});
+
+it('activates word filters only through selected statuses or states, independently of saved limits', () => {
+    const config = JSON.parse(JSON.stringify(defaultSettings.dictionaryTracks[0].dictionaryPlaybackConfig));
+    for (const feature of dictionaryPlaybackFeatures) {
+        config[feature].rules.minWords = 1;
+        config[feature].rules.maxWords = 2;
+        config[feature].rules.minFrequency = 10;
+        config[feature].rules.maxFrequency = 1000;
+        config.wordVisibility.wholeSubtitleMatchThreshold = 0.8;
+        expect(dictionaryPlaybackGroupSettingsEnabled(config, feature)).toBe(false);
+        config[feature].onStatuses[0].enabled = true;
+        expect(dictionaryPlaybackGroupSettingsEnabled(config, feature)).toBe(true);
+        config[feature].onStatuses[0].enabled = false;
+        config[feature].onStates[0].enabled = true;
+        expect(dictionaryPlaybackGroupSettingsEnabled(config, feature)).toBe(true);
+        config[feature].onStates[0].enabled = false;
+    }
+    config.fastForward.rateByComprehension.enabled = true;
+    expect(dictionaryPlaybackGroupSettingsEnabled(config, 'fastForward')).toBe(true);
+});
 
 describe('effectiveSubtitleListCustomization', () => {
     const configured = {
@@ -77,7 +166,7 @@ describe('autoPausePreferenceForCheckboxChange', () => {
             expected: AutoPausePreference.atStartAndEnd,
         },
     ])('maps $preference when edge $edge becomes $checked to $expected', ({ preference, edge, checked, expected }) => {
-        expect(autoPausePreferenceForCheckboxChange(preference, edge, checked)).toBe(expected);
+        expect(autoPausePreferenceForCheckboxChange(preference, edge, { checked })).toBe(expected);
     });
 });
 
@@ -145,3 +234,33 @@ describe('subtitlesWidth bounds', () => {
         expect(maxSubtitlesWidth('px')).toBe(10000);
     });
 });
+
+it.each([
+    { statuses: [1], states: [], statusCollection: true },
+    { statuses: [], states: [0], statusCollection: false },
+])(
+    'enables annotations independently for pause selection: $statuses / $states',
+    ({ statuses, states, statusCollection }) => {
+        const track = JSON.parse(JSON.stringify(defaultSettings.dictionaryTracks[0]));
+        expect(dictionaryTrackEnabled(track)).toBe(false);
+        const previous = JSON.parse(JSON.stringify(track.dictionaryTokenAnnotationConfig));
+        const previousPlayback = JSON.parse(JSON.stringify(track.dictionaryPlaybackConfig));
+        for (const status of statuses) track.dictionaryPlaybackConfig.selectOnPause.onStatuses[status].enabled = true;
+        for (const state of states) track.dictionaryPlaybackConfig.selectOnPause.onStates[state].enabled = true;
+        expect(dictionaryTrackEnabled(track)).toBe(true);
+        expect(dictionaryStatusCollectionEnabled(track, { includeStates: false })).toBe(statusCollection);
+        expect(dictionaryStatusCollectionEnabled(track, { includeStates: true })).toBe(true);
+        expect(areDictionaryPlaybackConfigsEqual(previousPlayback, track.dictionaryPlaybackConfig)).toBe(false);
+        expect(areTokenAnnotationConfigsEqual(previous, track.dictionaryTokenAnnotationConfig)).toBe(true);
+        const visualAnnotations = { color: false, reading: false, frequency: false, gloss: false, pitchAccent: false };
+        expect(getEnabledAnnotations(track)).toEqual(visualAnnotations);
+        for (const target of ['video', 'subtitlePlayer'] as const) {
+            expect(getEnabledAnnotationsForHover(getEnabledAnnotations(track), track, target, false)).toEqual(
+                visualAnnotations
+            );
+            expect(getEnabledAnnotationsForHover(getEnabledAnnotations(track), track, target, true)).toEqual(
+                visualAnnotations
+            );
+        }
+    }
+);

@@ -13,7 +13,9 @@
             "key": "crunchyroll",
             "host": "(www\\.)?crunchyroll\\.com",
             "pageScript": "crunchyroll-page.js",
+            "subtitleDiscoveryRequestTarget": "video",
             "syncAllowedAtPath": "watch",
+            "refreshSubtitleDataOnPickerOpen": true,
             "autoSync": {
                 "enabled": true
             }
@@ -158,7 +160,7 @@
         },
         {
             "key": "bilibili",
-            "host": "www\\.bilibili\\.tv",
+            "host": "www\\.bilibili\\.(tv|com)",
             "pageScript": "bilibili-page.js",
             "syncAllowedAtPath": "play|video",
             "autoSync": {
@@ -194,7 +196,7 @@
         },
         {
             "key": "hboMax",
-            "host": "play\\.(hbo)?max\\.com",
+            "host": "(hbo)?max\\.com",
             "pageScript": "hbo-max-page.js",
             "syncAllowedAtPath": "watch",
             "autoSync": {

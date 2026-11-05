@@ -1,8 +1,16 @@
 import { asbError } from '@project/common/util/log';
 import { useCallback, useEffect, useState } from 'react';
 import type { FileWithId } from '@project/common/file-selector';
-import type { FileSessionRecord, FileSystemFileHandleWithId } from '@project/common/file-system-access';
-import { IndexedDBFileSessionRepository, supportsFileSystemAccess } from '@project/common/file-system-access';
+import type {
+    FileSessionRecord,
+    FileSessionSourceIds,
+    FileSystemFileHandleWithId,
+} from '@project/common/file-system-access';
+import {
+    canRestoreSession,
+    IndexedDBFileSessionRepository,
+    supportsFileSystemAccess,
+} from '@project/common/file-system-access';
 
 let _repository: IndexedDBFileSessionRepository | undefined;
 const getRepository = () => {
@@ -21,14 +29,7 @@ export const useFileSession = () => {
         void fileSessionRepository
             .fetch()
             .then((record) => {
-                if (
-                    record &&
-                    (record.videoHandle ||
-                        record.subtitleHandles.length > 0 ||
-                        (record.cachedSubtitleFiles?.length ?? 0) > 0)
-                ) {
-                    setCanRestoreLastSession(true);
-                }
+                if (canRestoreSession(record)) setCanRestoreLastSession(true);
             })
             .catch((error) => {
                 asbError('app/session', 'Failed to inspect the last file session:', error);
@@ -91,8 +92,8 @@ export const useFileSession = () => {
     }, [fileSessionRepository]);
 
     const retainSourcesInSession = useCallback(
-        async (ids: string[]) => {
-            await fileSessionRepository?.retain(ids);
+        async (sources: FileSessionSourceIds) => {
+            await fileSessionRepository?.retain(sources);
         },
         [fileSessionRepository]
     );

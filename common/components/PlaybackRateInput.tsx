@@ -1,11 +1,9 @@
 import type { InputProps } from '@mui/material/Input';
-import type { MutableRefObject } from 'react';
 import React, { useCallback } from 'react';
+import type { MutableRefObject } from 'react';
+
 import VideoControlInput from '@project/common/components/VideoControlInput';
-import {
-    minimumPlaybackRate,
-    normalizePlaybackRate,
-} from '@project/common/playback/controllers/playback-mode-controller';
+import { minimumPlaybackRate, normalizePlaybackRate } from '@project/common/util';
 
 interface Props extends InputProps {
     inputRef: MutableRefObject<HTMLInputElement | undefined>;

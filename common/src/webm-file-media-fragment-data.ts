@@ -207,6 +207,10 @@ export class WebmFileMediaFragmentData implements MediaFragmentData {
         return 'webm';
     }
 
+    get animated() {
+        return true;
+    }
+
     get error(): MediaFragmentErrorCode | undefined {
         return mediaFragmentErrorForFile(this._file);
     }

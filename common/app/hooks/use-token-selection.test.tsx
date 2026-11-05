@@ -45,6 +45,7 @@ const TestPlayer = ({
     onMatch,
     subtitleData,
     exposeRequest,
+    exposeSelection,
     maxAttempts = 1,
 }: {
     name: string;
@@ -53,9 +54,10 @@ const TestPlayer = ({
     subtitleData: typeof subtitles;
     exposeRequest?: (request: (target: TokenSelectionLocation, options?: TokenSelectionRequestOptions) => void) => void;
     maxAttempts?: number;
+    exposeSelection?: (selection: ReturnType<typeof useTokenSelection>) => void;
 }) => {
     const rootRef = useRef<HTMLDivElement>(null);
-    const { requestTokenSelection } = useTokenSelection({
+    const selection = useTokenSelection({
         rootRef,
         maxAttempts,
         keyBinder,
@@ -65,9 +67,10 @@ const TestPlayer = ({
         onMatch,
         disabledGetter: () => false,
     });
-    exposeRequest?.(requestTokenSelection);
+    exposeSelection?.(selection);
+    exposeRequest?.(selection.requestTokenSelection);
     return (
-        <div ref={rootRef} className="asbplayer-token-container" data-player={name} tabIndex={-1}>
+        <div ref={rootRef} className="asb-token-container" data-player={name} tabIndex={-1}>
             <button>{name}</button>
             <span data-asb-subtitle-index="0">
                 <span data-asb-token-start="0">word</span>
@@ -93,7 +96,7 @@ describe('useTokenSelection', () => {
     afterEach(() => {
         act(() => root.unmount());
         container.remove();
-        document.body.classList.remove('asbplayer-token-container');
+        document.body.classList.remove('asb-token-container');
         document.body.removeAttribute('tabindex');
         claimTokenSelectionFocus(null);
         jest.restoreAllMocks();
@@ -147,6 +150,69 @@ describe('useTokenSelection', () => {
         expect(container.querySelector('.asb-token-selected') !== null).toBe(selected);
     });
 
+    it('restores pause selection after annotation renders and clears it without clearing a manual selection', () => {
+        let selection!: ReturnType<typeof useTokenSelection>;
+        const renderPlayer = (subtitleData = subtitles) =>
+            root.render(
+                <TestPlayer
+                    name="subtitles"
+                    keyBinder={new TestKeyBinder()}
+                    subtitleData={subtitleData}
+                    onMatch={jest.fn()}
+                    exposeSelection={(api) => {
+                        selection = api;
+                    }}
+                />
+            );
+        act(() => renderPlayer());
+        const target = { subtitleIndex: 0, tokenStart: 0 };
+        expect(selection.selectToken({ ...target, tokenStart: 99 }, { autoPause: true })).toBe(false);
+        expect(selection.selectToken(target, { autoPause: true })).toBe(true);
+        expect(container.querySelector('.asb-token-auto-pause-selected')).not.toBeNull();
+        act(() => renderPlayer([...subtitles]));
+        expect(container.querySelector('.asb-token-auto-pause-selected')).not.toBeNull();
+        selection.clearPauseTokenSelection();
+        expect(container.querySelector('.asb-token-selected')).toBeNull();
+        act(() => renderPlayer([...subtitles]));
+        expect(container.querySelector('.asb-token-selected')).toBeNull();
+        selection.selectToken(target);
+        expect(selection.selectToken(target, { autoPause: true, onlyIfUnselected: true })).toBe(true);
+        act(() => renderPlayer([...subtitles]));
+        selection.clearPauseTokenSelection();
+        expect(container.querySelector('.asb-token-selected')).not.toBeNull();
+    });
+
+    it('preserves pending navigation when pause selection arrives before the token renders', () => {
+        const frames: FrameRequestCallback[] = [];
+        jest.mocked(window.requestAnimationFrame).mockImplementation((callback) => frames.push(callback));
+        let selection!: ReturnType<typeof useTokenSelection>;
+        act(() => {
+            root.render(
+                <TestPlayer
+                    name="subtitles"
+                    keyBinder={new TestKeyBinder()}
+                    subtitleData={subtitles}
+                    onMatch={jest.fn()}
+                    exposeSelection={(api) => (selection = api)}
+                />
+            );
+        });
+        selection.requestTokenSelection({ subtitleIndex: 0, tokenStart: 4 });
+        expect(
+            selection.selectToken({ subtitleIndex: 0, tokenStart: 0 }, { autoPause: true, onlyIfUnselected: true })
+        ).toBe(true);
+        expect(container.querySelector('.asb-token-selected')).toBeNull();
+
+        const token = document.createElement('span');
+        token.setAttribute('data-asb-token-start', '4');
+        token.textContent = 'two';
+        container.querySelector('[data-asb-subtitle-index]')!.append(token);
+        frames.shift()!(0);
+        selection.clearPauseTokenSelection();
+        expect(container.querySelector('.asb-token-selected')).toBe(token);
+        expect(document.getSelection()?.toString()).toBe('two');
+    });
+
     it('keeps shared token jumps with their last owning player', () => {
         const keyBinder = new TestKeyBinder();
         const videoMatch = jest.fn();
@@ -164,7 +230,7 @@ describe('useTokenSelection', () => {
         expect(videoMatch).toHaveBeenCalledTimes(1);
         expect(subtitleMatch).not.toHaveBeenCalled();
 
-        document.body.className = 'asbplayer-token-container';
+        document.body.className = 'asb-token-container';
         document.body.tabIndex = -1;
         document.body.focus();
         act(() => {

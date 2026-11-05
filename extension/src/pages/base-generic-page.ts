@@ -1,5 +1,6 @@
 import type { VideoData, VideoDataSubtitleTrack } from '@project/common';
 import { subtitlesToSrt } from '@project/common/subtitle-reader/subtitles-to-srt';
+import { genericSubtitleDisplayLabel } from '@project/common/util/subtitle-language';
 import {
     limitM3U8SubtitleRenditions,
     parseM3U8,
@@ -12,7 +13,6 @@ import {
     bindVideoDataDiscovery,
     deduplicateTracks,
     detectedSubtitleLabel,
-    genericSubtitleDisplayLabel,
     isJsonContentType,
     nonEmptyString,
     normalizedContentType,

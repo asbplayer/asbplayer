@@ -1,4 +1,10 @@
-import type { ExtensionToAsbPlayerCommand, ExtensionToVideoCommand, SettingsUpdatedMessage } from '@project/common';
+import type {
+    Command,
+    ExtensionToAsbPlayerCommand,
+    ExtensionToVideoCommand,
+    Message,
+    SettingsUpdatedMessage,
+} from '@project/common';
 import { asbError } from '@project/common/util/log';
 import type TabRegistry from '@project/extension/src/services/tab-registry';
 import type { SettingsProvider } from '@project/common/settings';
@@ -27,7 +33,7 @@ export default class RefreshSettingsHandler {
         return 'settings-updated';
     }
 
-    handle() {
+    handle(command: Command<Message>, sender: Browser.runtime.MessageSender) {
         void this._settingsProvider
             .get(['language', 'webSocketClientEnabled'])
             .then(({ language, webSocketClientEnabled }) => {
@@ -69,7 +75,8 @@ export default class RefreshSettingsHandler {
             .query({ url: `${browser.runtime.getURL('/options.html')}` })
             .then((tabs) => {
                 for (const t of tabs) {
-                    if (t.id !== undefined) {
+                    // Skip the settings page that made the change, since it already has the new values
+                    if (t.id !== undefined && t.id !== sender.tab?.id) {
                         void browser.tabs.sendMessage(t.id, {
                             message: {
                                 command: 'settings-updated',

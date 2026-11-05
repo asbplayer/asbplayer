@@ -1,3 +1,4 @@
+import project from '@project/common/project';
 import React from 'react';
 import Typography from '@mui/material/Typography';
 import Link from '@mui/material/Link';
@@ -22,7 +23,7 @@ const SettingsSection = React.forwardRef<HTMLSpanElement, Props>(function Settin
         >
             {children}
             {docs && (
-                <Link href={`https://docs.asbplayer.dev/${docs}`} target="_blank">
+                <Link href={`${project.urls.docs}/${docs}`} target="_blank">
                     <IconButton>
                         <InfoIcon />
                     </IconButton>

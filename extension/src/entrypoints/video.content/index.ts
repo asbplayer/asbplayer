@@ -1,3 +1,4 @@
+import project from '@project/common/project';
 import { asbError, asbInfo, asbTrace } from '@project/common/util/log';
 import Binding from '@/services/binding';
 import { currentPageDelegate } from '@/services/pages';
@@ -5,10 +6,12 @@ import VideoSelectController from '@/controllers/video-select-controller';
 import type {
     CopyToClipboardMessage,
     CropAndResizeMessage,
+    ResolveCaptureAreaMessage,
     TabToExtensionCommand,
     ToggleSidePanelMessage,
 } from '@project/common';
 import { SettingsProvider } from '@project/common/settings';
+import { captureArea } from '@/services/animated-webp-capture';
 import { FrameInfoBroadcaster, FrameInfoListener } from '@/services/frame-info';
 import { cropAndResize } from '@project/common/src/image-transformer';
 import { TabAnkiUiController } from '@/controllers/tab-anki-ui-controller';
@@ -22,10 +25,10 @@ import { configureExtensionLogProvider } from '@/services/extension-log-provider
 
 import './video.css';
 
-const excludeGlobs = ['*://app.asbplayer.dev/*'];
+const excludeGlobs = [`*://${new URL(project.urls.app).hostname}/*`];
 
 if (import.meta.env.DEV) {
-    excludeGlobs.push('*://localhost:3000/*');
+    excludeGlobs.push(`*://${project.development.host}:${project.development.port}/*`);
 }
 
 export default defineContentScript({
@@ -267,6 +270,11 @@ export default defineContentScript({
                             cropAndResizeMessage.dataUrl,
                             cropAndResizeMessage.trimBlackBars
                         ).then((dataUrl) => sendResponse({ dataUrl }));
+                        return true;
+                    }
+                    case 'resolve-capture-area': {
+                        const { rect, frameId } = request.message as ResolveCaptureAreaMessage;
+                        sendResponse(captureArea(rect, frameId, frameInfoListener?.iframesById));
                         return true;
                     }
                     case 'show-anki-ui':

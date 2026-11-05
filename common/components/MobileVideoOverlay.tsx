@@ -1,14 +1,17 @@
+import PlaybackModeButton from '@project/common/components/PlaybackModeButton';
+import type { Recipe } from '@project/common/settings';
 import React, { useCallback, useMemo, useRef, useState } from 'react';
-import type { GridProps } from '@mui/material/Grid';
 import Grid from '@mui/material/Grid';
+import type { GridProps } from '@mui/material/Grid';
+
 import IconButton from '@mui/material/IconButton';
 import NoteAddIcon from '@mui/icons-material/NoteAdd';
 import NavigateBeforeIcon from '@mui/icons-material/NavigateBefore';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
-import TuneIcon from '@mui/icons-material/Tune';
-import type { MobileOverlayModel, PlayMode } from '@project/common';
 import { ControlType, PostMineAction } from '@project/common';
+import type { MobileOverlayModel, PlayMode } from '@project/common';
+
 import { makeStyles } from '@mui/styles';
 import { useTranslation } from 'react-i18next';
 import LogoIcon from '@project/common/components/LogoIcon';
@@ -18,7 +21,7 @@ import HoldableIconButton from '@project/common/components/HoldableIconButton';
 import PlaybackModeSelector from '@project/common/components/PlaybackModeSelector';
 import ScrollableNumberControls from '@project/common/components/ScrollableNumberControls';
 import Tooltip from '@project/common/components/Tooltip';
-import { minimumPlaybackRate } from '@project/common/playback/controllers/playback-mode-controller';
+import { minimumPlaybackRate } from '@project/common/util';
 
 type Anchor = 'top' | 'bottom';
 
@@ -87,6 +90,9 @@ interface Props {
     onLoadSubtitles?: () => void;
     onOffset: (offset: number) => void;
     onPlaybackRate: (playbackRate: number) => void;
+    recipes?: readonly Recipe[];
+    activeRecipeId?: number | null;
+    onRecipeSelected?: (index: number | null) => void;
     onPlayModeSelected: (playMode: PlayMode) => void;
     onSeek: (timestamp: number) => void;
     onToggleSubtitles: () => void;
@@ -107,6 +113,9 @@ const MobileVideoOverlay = React.forwardRef<HTMLDivElement, Props>(function Mobi
         onLoadSubtitles,
         onOffset,
         onPlaybackRate,
+        recipes,
+        activeRecipeId,
+        onRecipeSelected,
         onPlayModeSelected,
         onSeek,
         onToggleSubtitles,
@@ -432,7 +441,7 @@ const MobileVideoOverlay = React.forwardRef<HTMLDivElement, Props>(function Mobi
                         </Tooltip>
                     </Grid>
                 )}
-                {!model.emptySubtitleTrack && (
+                {(!model.emptySubtitleTrack || (!!recipes?.length && onRecipeSelected)) && (
                     <Grid item>
                         <PlaybackModeSelector
                             selectedPlayModes={new Set(model.playModes)}
@@ -440,24 +449,25 @@ const MobileVideoOverlay = React.forwardRef<HTMLDivElement, Props>(function Mobi
                             keepManualSelectorOpen
                             onSelectorOpened={onPlayModeSelectorOpened}
                             onSelectorClosed={onPlayModeSelectorClosed}
-                            renderButton={({ anchorRef, onClick, onMouseEnter, onMouseLeave }) => (
-                                <Tooltip {...defaultTooltipProps} title={t('controls.playbackMode')}>
-                                    <span>
-                                        <IconButton
-                                            ref={anchorRef}
-                                            disabled={model.recording}
-                                            onClick={onClick}
-                                            onMouseEnter={onMouseEnter}
-                                            onMouseLeave={onMouseLeave}
-                                        >
-                                            <TuneIcon
-                                                className={model.recording ? classes.inactiveButton : classes.button}
-                                            />
-                                        </IconButton>
-                                    </span>
-                                </Tooltip>
+                            renderButton={({ anchorRef, open, onClick, onMouseEnter, onMouseLeave }) => (
+                                <PlaybackModeButton
+                                    ref={anchorRef}
+                                    disabled={model.recording}
+                                    className={model.recording ? classes.inactiveButton : classes.button}
+                                    onClick={onClick}
+                                    onMouseEnter={onMouseEnter}
+                                    onMouseLeave={onMouseLeave}
+                                    aria-expanded={open}
+                                    recipes={onRecipeSelected ? recipes : undefined}
+                                    activeRecipeId={activeRecipeId}
+                                    tooltipProps={defaultTooltipProps}
+                                />
                             )}
                             selectorProps={{
+                                recipes,
+                                activeRecipeId,
+                                onRecipeSelect: onRecipeSelected,
+                                playModesEnabled: !model.emptySubtitleTrack,
                                 listStyle: {
                                     display: 'flex',
                                     justifyContent: 'flex-start',

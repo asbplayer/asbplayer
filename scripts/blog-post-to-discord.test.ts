@@ -28,7 +28,7 @@ Extension v1.21.0 has been released.
 
 <!-- truncate -->
 
-Thanks to [@ShanaryS](https://github.com/ShanaryS) and see the [guide](../docs/contributing).
+Thanks to [@ShanaryS](https://github.com/ShanaryS) and see the [guide](../docs/intro).
 
 #### A deeper heading
 `;
@@ -101,8 +101,8 @@ describe('toDiscordMarkdown', () => {
     });
 
     test('resolves relative links against the post URL', () => {
-        const markdown = toDiscordMarkdown('[guide](../docs/contributing)', options);
-        assert.equal(markdown, `[guide](${DOCS_BASE_URL}/docs/contributing)`);
+        const markdown = toDiscordMarkdown('[guide](../docs/intro)', options);
+        assert.equal(markdown, `[guide](${DOCS_BASE_URL}/docs/intro)`);
     });
 
     test('leaves absolute links untouched', () => {

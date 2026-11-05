@@ -48,6 +48,7 @@ const useStyles = makeStyles<Theme>((theme) => ({
 interface Props {
     anki: Anki;
     extension: ChromeExtension;
+    supportsDictionaryPlayback: boolean;
     open: boolean;
     dictionaryProvider: DictionaryProvider;
     logProvider: LogProvider;
@@ -65,6 +66,7 @@ interface Props {
 export default function SettingsDialog({
     anki,
     extension,
+    supportsDictionaryPlayback,
     open,
     dictionaryProvider,
     logProvider,
@@ -124,13 +126,16 @@ export default function SettingsDialog({
                     extensionSupportsDictionaryMatchAcrossScripts={extension.supportsDictionaryMatchAcrossScripts}
                     extensionSupportsSeekableTrackSetting={extension.supportsSeekableTrackSetting}
                     extensionSupportsAutoCopyableTrackSetting={extension.supportsAutoCopyableTrackSetting}
+                    extensionOwnsWebSocketClient={extension.supportsWebSocketClientOwnership}
                     extensionSupportsDictionaryTokenStatusDisplayAlpha={
                         extension.supportsDictionaryTokenStatusDisplayAlpha
                     }
+                    supportsDictionaryPlayback={supportsDictionaryPlayback}
                     extensionSupportsDictionaryYomitanMecab={extension.supportsDictionaryYomitanMecab}
                     extensionSupportsSubtitleTrackSelectorInWebApp={extension.supportsSubtitleTrackSelectorInWebApp}
                     extensionSupportsSubtitleListCustomization={extension.supportsSubtitleListCustomization}
                     extensionSupportsUpdateLastWithSameSubtitleText={extension.supportsUpdateLastWithSameSubtitleText}
+                    extensionSupportsAnimatedImageCapture={extension.supportsAnimatedImageCapture}
                     pageConfigs={extension.pageConfig}
                     insideApp
                     appVersionRepoPath={import.meta.env.VITE_APP_VERSION_REPO_PATH}

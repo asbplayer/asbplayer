@@ -6,15 +6,12 @@ import {
     basenameForVideo,
     bindVideoDataDiscovery,
     deduplicateTracks,
-    detectedSubtitleLabel,
-    genericSubtitleDisplayLabel,
     hasSubtitleMetadataHint,
     isJsonContentType,
     normalizedContentType,
     responseTextWithinLimit,
     tracksFromJson,
 } from '@project/extension/src/pages/subtitle-discovery';
-import { languageDisplayName } from '@project/extension/src/pages/util';
 
 function appendVideo() {
     const video = document.createElement('video');
@@ -37,66 +34,6 @@ afterEach(() => {
     document.head.querySelectorAll('meta[property="og:title"]').forEach((element) => element.remove());
     document.title = '';
     history.replaceState(null, '', '/');
-});
-
-it('selects the best generic subtitle display label', () => {
-    expect(genericSubtitleDisplayLabel('Spanish commentary', 'es-ES', detectedSubtitleLabel)).toBe(
-        'Español (España) · commentary'
-    );
-    expect(genericSubtitleDisplayLabel('es', undefined, detectedSubtitleLabel)).toBe('Español');
-    expect(genericSubtitleDisplayLabel(undefined, 'es-ES', detectedSubtitleLabel)).toBe('Español (España)');
-    expect(genericSubtitleDisplayLabel(undefined, undefined, detectedSubtitleLabel)).toBe(detectedSubtitleLabel);
-});
-
-it('appends unresolvable language tags to the available label using the dot separator', () => {
-    expect(genericSubtitleDisplayLabel('Commentary', 'qaa', detectedSubtitleLabel)).toBe('Commentary · qaa');
-    expect(genericSubtitleDisplayLabel(undefined, 'qaa', detectedSubtitleLabel)).toBe(`${detectedSubtitleLabel} · qaa`);
-});
-
-it.each([
-    ['SDH', 'sdh', ['SDH', 'sdh', 'Sdh']],
-    ['HI', 'hi', ['HI', 'hi', 'Hi']],
-    ['OC', 'oc', ['OC', 'oc', 'Oc']],
-    ['VI', 'vi', ['VI', 'vi', 'Vi']],
-    ['ALT', 'alt', ['ALT', 'alt', 'Alt']],
-    ['FAN', 'fan', ['FAN', 'fan', 'Fan']],
-])(
-    'recognizes the subtitle qualifier %s case-insensitively instead of as language code %s',
-    (_qualifier, language, labels) => {
-        const languageDisplay = languageDisplayName(language);
-
-        for (const label of labels) {
-            expect(genericSubtitleDisplayLabel(label, undefined, detectedSubtitleLabel)).toBe(label);
-            expect(genericSubtitleDisplayLabel(label, language, detectedSubtitleLabel)).toBe(
-                `${languageDisplay} · ${label}`
-            );
-        }
-    }
-);
-
-it('omits language-code labels that are redundant with the supplied language', () => {
-    expect(genericSubtitleDisplayLabel('en', 'en', detectedSubtitleLabel)).toBe('English');
-    expect(genericSubtitleDisplayLabel('eng', 'en-US', detectedSubtitleLabel)).toBe('English (United States)');
-    expect(genericSubtitleDisplayLabel('es', 'es-ES', detectedSubtitleLabel)).toBe('Español (España)');
-});
-
-it('preserves label details while adding or refining its language display name', () => {
-    expect(genericSubtitleDisplayLabel('SDH', 'en-US', detectedSubtitleLabel)).toBe('English (United States) · SDH');
-    expect(genericSubtitleDisplayLabel('English SDH', 'en-US', detectedSubtitleLabel)).toBe(
-        'English (United States) · SDH'
-    );
-    expect(genericSubtitleDisplayLabel('English (United States) SDH', 'en-US', detectedSubtitleLabel)).toBe(
-        'English (United States) · SDH'
-    );
-    expect(genericSubtitleDisplayLabel('English', 'en-US', detectedSubtitleLabel)).toBe('English (United States)');
-});
-
-it('recognizes localized language names as equivalent to the supplied language', () => {
-    expect(genericSubtitleDisplayLabel('Japanese', 'ja', detectedSubtitleLabel)).toBe('日本語');
-    expect(genericSubtitleDisplayLabel('Portuguese', 'pt-BR', detectedSubtitleLabel)).toBe('Português (Brasil)');
-    expect(genericSubtitleDisplayLabel('Spanish commentary', 'es-ES', detectedSubtitleLabel)).toBe(
-        'Español (España) · commentary'
-    );
 });
 
 it('normalizes JSON MIME types and restricts resolved URLs to supported protocols', () => {
