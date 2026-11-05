@@ -16,6 +16,7 @@ import { ensureOffscreenAudioServiceDocument } from '@project/extension/src/serv
 import type { SettingsProvider } from '@project/common/settings';
 import { animatedWebpSettings } from '@project/extension/src/services/animated-webp-media';
 import { resolveCaptureArea } from '@project/extension/src/services/video-capturer';
+import { StartRecordingErrorCode } from '@project/common';
 
 export interface Requester {
     tabId: number;
@@ -63,12 +64,19 @@ export class OffscreenAudioRecorder implements AudioRecorderDelegate {
     }
 
     private _mediaStreamId(tabId: number): Promise<string> {
-        return new Promise((resolve) => {
+        return new Promise((resolve, reject) => {
             browser.tabCapture.getMediaStreamId(
                 {
                     targetTabId: tabId,
                 },
-                (streamId) => resolve(streamId)
+                (streamId) => {
+                    const error = browser.runtime.lastError;
+                    if (error || !streamId) {
+                        reject(new Error(error?.message ?? 'Failed to obtain a tab capture stream ID'));
+                        return;
+                    }
+                    resolve(streamId);
+                }
             );
         });
     }
@@ -125,7 +133,25 @@ export class OffscreenAudioRecorder implements AudioRecorderDelegate {
             }
         }
 
-        return send(await this._mediaStreamId(tabId));
+        let streamId: string;
+
+        try {
+            streamId = await this._mediaStreamId(tabId);
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+
+            return {
+                started: false,
+                error: {
+                    code: errorMessage.includes('activeTab')
+                        ? StartRecordingErrorCode.noActiveTabPermission
+                        : StartRecordingErrorCode.other,
+                    message: errorMessage,
+                },
+            };
+        }
+
+        return send(streamId);
     }
 
     private async _animatedWebpCaptureRequest(
