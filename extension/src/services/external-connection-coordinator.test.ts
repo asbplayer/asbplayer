@@ -10,6 +10,7 @@ import type { SettingsProvider } from '@project/common/settings';
 import type TabRegistry from '@project/extension/src/services/tab-registry';
 import {
     ExternalConnectionCoordinator,
+    externalConnectionInitializeThrottleMs,
     externalConnectionUsageFlushMs,
 } from '@project/extension/src/services/external-connection-coordinator';
 import { ExtensionBadgeController } from '@project/extension/src/services/extension-badge-controller';
@@ -267,6 +268,29 @@ describe('external connection coordinator', () => {
         expect(harness.lastGlobalBadgeText()).toEqual('!');
         expect(harness.badgeAction.setBadgeText).toHaveBeenCalledWith({ tabId: 1, text: '!' });
         expect(harness.badgeAction.setBadgeText).toHaveBeenCalledWith({ tabId: 2, text: '!' });
+    });
+
+    it('throttles initialize to once per extension id', async () => {
+        const port = harness.connect('sibling');
+
+        const firstId = await port.request('initialize', { name: 'First' });
+        expect(port.responseFor(firstId)).toEqual({ jsonrpc: '2.0', id: firstId, result: { state: 'pending' } });
+        const first = (await harness.pendingEntries())['sibling'];
+        expect(first.name).toBe('First');
+
+        jest.advanceTimersByTime(1_000);
+        const secondId = await port.request('initialize', { name: 'Second' });
+        expect(port.responseFor(secondId)).toEqual({ jsonrpc: '2.0', id: secondId, result: { state: 'pending' } });
+        const second = (await harness.pendingEntries())['sibling'];
+        expect(second.name).toBe('First');
+        expect(second.requestedAt).toBe(first.requestedAt);
+
+        jest.advanceTimersByTime(externalConnectionInitializeThrottleMs - 1_000);
+        const thirdId = await port.request('initialize', { name: 'Third' });
+        expect(port.responseFor(thirdId)).toEqual({ jsonrpc: '2.0', id: thirdId, result: { state: 'pending' } });
+        const third = (await harness.pendingEntries())['sibling'];
+        expect(third.name).toBe('Third');
+        expect(third.requestedAt).not.toBe(first.requestedAt);
     });
 
     it('does not badge video tabs when there are no active video elements', async () => {

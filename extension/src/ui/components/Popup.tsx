@@ -117,6 +117,7 @@ const NavButton: React.FC<ButtonProps & { label: string }> = ({ label, ...button
                 variant="text"
                 color="inherit"
                 fullWidth={false}
+                aria-label={label}
                 sx={{
                     flex: '0 0 auto',
                     px: 1,
@@ -174,7 +175,6 @@ const Popup = ({
         whereVideoElement: (v) => v.id === currentTabId,
     });
     const hasPendingExternalConnection =
-        externalConnections !== undefined &&
         Object.values(activePendingExternalConnections(externalConnections, Date.now())).length > 0;
     const autoSelectedPendingRef = useRef(false);
     const autoSelectedMediaIdRef = useRef<string | undefined>(undefined);
@@ -203,7 +203,7 @@ const Popup = ({
         }
     }, [currentMediaIdWithSubtitles, hasPendingExternalConnection]);
 
-    if (!i18nInitialized || externalConnections === undefined) {
+    if (!i18nInitialized) {
         return null;
     }
 

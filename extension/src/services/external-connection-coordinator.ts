@@ -29,19 +29,21 @@ import type { ExtensionBadgeController } from '@project/extension/src/services/e
 // unapproved requests cannot accumulate indefinitely.
 const maxPendingRequests = 10;
 
-// A denied extension may not re-request approval for this long. Session storage is used so
-// that cooldowns survive service worker restarts but reset with each browser session.
-export const deniedRequestCooldownsKey = 'externalConnectionDeniedCooldowns';
-
 const badgeReason = 'externalConnections';
 
 // Usage is buffered in memory and flushed well within the service worker's 30-second idle
 // timeout, so a flush scheduled by recent RPC activity always runs before suspension.
 export const externalConnectionUsageFlushMs = 5_000;
+export const externalConnectionInitializeThrottleMs = 10_000;
 
 interface PendingExternalUsage {
     lastUsedAt: number;
     methods: Record<string, ExternalMethodUsage>;
+}
+
+interface InitializeThrottle {
+    startedAt: number;
+    promise?: Promise<ApprovalState>;
 }
 
 class ExternalRpcError extends Error {
@@ -69,6 +71,7 @@ export class ExternalConnectionCoordinator {
     private readonly _dispatcher: ExternalCommandDispatcher;
     private readonly _ports = new Map<string, Set<Browser.runtime.Port>>();
     private _pendingUsage = new Map<string, PendingExternalUsage>();
+    private _initializeThrottles = new Map<string, InitializeThrottle>();
     private _usageFlushTimer?: ReturnType<typeof setTimeout>;
     // onUpdated carries no oldValue, so track approved IDs across updates to detect additions/revocations.
     private _lastApprovedIds?: Set<string>;
@@ -247,7 +250,7 @@ export class ExternalConnectionCoordinator {
                     throw new ExternalRpcError(jsonRpcErrorCodes.invalidParams, 'Invalid params', parsed.error.issues);
                 }
 
-                return { state: await this._initialize(senderId, parsed.data as { name?: string }) };
+                return { state: await this._initializeWithThrottle(senderId, parsed.data as { name?: string }) };
             }
             case 'approval-state': {
                 const parsed = paramsSchema.safeParse(params ?? {});
@@ -311,6 +314,37 @@ export class ExternalConnectionCoordinator {
         return 'denied';
     }
 
+    private _initializeWithThrottle(senderId: string, params: { name?: string }): Promise<ApprovalState> {
+        const now = Date.now();
+        const existing = this._initializeThrottles.get(senderId);
+
+        if (existing !== undefined && now - existing.startedAt < externalConnectionInitializeThrottleMs) {
+            // Reuse an in-flight initialize, but read freshly once it has settled so that an
+            // approval that happened during the throttle window is reported correctly.
+            return existing.promise ?? this._approvalState(senderId);
+        }
+
+        const throttle: InitializeThrottle = { startedAt: now };
+        const promise = this._initialize(senderId, params);
+        throttle.promise = promise;
+        this._initializeThrottles.set(senderId, throttle);
+
+        void promise.then(
+            () => {
+                if (throttle.promise === promise) {
+                    throttle.promise = undefined;
+                }
+            },
+            () => {
+                if (this._initializeThrottles.get(senderId) === throttle) {
+                    this._initializeThrottles.delete(senderId);
+                }
+            }
+        );
+
+        return promise;
+    }
+
     private async _initialize(senderId: string, params: { name?: string }): Promise<ApprovalState> {
         const name = params.name !== undefined && params.name.length > 0 ? params.name : undefined;
         let approvalState: ApprovalState = 'pending';
@@ -365,7 +399,7 @@ export class ExternalConnectionCoordinator {
     }
 
     private async _onExternalConnectionsUpdated(externalConnections: ExternalConnectionsState) {
-        this._dropRemovedUsage(externalConnections);
+        this._dropRemovedConnectionState(externalConnections);
 
         const signature = externalConnectionsPermissionSignature(externalConnections);
 
@@ -474,10 +508,16 @@ export class ExternalConnectionCoordinator {
         return { ...prunedPending, ...rest };
     }
 
-    private _dropRemovedUsage(externalConnections: ExternalConnectionsState) {
+    private _dropRemovedConnectionState(externalConnections: ExternalConnectionsState) {
         for (const extensionId of this._pendingUsage.keys()) {
             if (!(extensionId in externalConnections)) {
                 this._pendingUsage.delete(extensionId);
+            }
+        }
+
+        for (const extensionId of this._initializeThrottles.keys()) {
+            if (!(extensionId in externalConnections)) {
+                this._initializeThrottles.delete(extensionId);
             }
         }
     }

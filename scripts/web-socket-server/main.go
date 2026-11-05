@@ -412,7 +412,7 @@ func (forwarder forwarder) publishMessageAndAwaitResponse(command clientCommand)
 		if err != nil {
 			return clientResponse{}, &rpcError{Code: jsonRpcInternalError, Message: "Internal error", Data: err.Error()}
 		}
-		return clientResponse{}, &rpcError{Code: jsonRpcNoClients, Message: "No clients", Data: err.Error()}
+		return clientResponse{}, &rpcError{Code: jsonRpcNoClients, Message: "No clients"}
 	}
 
 	select {
@@ -716,6 +716,7 @@ func main() {
 		port, ankiConnectUrl, postMineAction, interceptField, interceptValue)
 
 	e := echo.New()
+	e.Use(middleware.Recover())
 	e.Use(middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{
 		LogStatus:        true,
 		LogMethod:        true,

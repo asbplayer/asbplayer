@@ -63,10 +63,10 @@ const ExternalConnections: React.FC = () => {
         setExtensionIdForStatistics(undefined);
         setConnectionStatisticsOpen(false);
     }, []);
-    const firstPending = Object.entries(activePendingExternalConnections(externalConnections ?? {}, Date.now()))[0];
+    const firstPending = Object.entries(activePendingExternalConnections(externalConnections, Date.now()))[0];
     const firstPendingId = firstPending?.[0];
     const firstPendingRequest = firstPending?.[1];
-    const approved = Object.entries(approvedExternalConnections(externalConnections ?? {}));
+    const approved = Object.entries(approvedExternalConnections(externalConnections));
 
     return (
         <Box p={1.5} sx={{ width: '100%', height: '100%', overflowY: 'auto' }}>
@@ -91,15 +91,18 @@ const ExternalConnections: React.FC = () => {
                 <Stack spacing={1} sx={{ mt: 1.5 }}>
                     {approved.map(([extensionId, approval]) => (
                         <ExternalConnectionRow key={extensionId} extensionId={extensionId} name={approval.name}>
-                            <Button
-                                size="small"
-                                variant="outlined"
-                                color="info"
-                                startIcon={<BarChartIcon />}
-                                onClick={() => handleOpenConnectionStatistics(extensionId)}
-                            >
-                                {t('statistics.title')}
-                            </Button>
+                            <Tooltip title={t('statistics.title')}>
+                                <Button
+                                    size="small"
+                                    variant="outlined"
+                                    color="info"
+                                    aria-label={t('statistics.title')}
+                                    onClick={() => handleOpenConnectionStatistics(extensionId)}
+                                    sx={{ minWidth: 0, px: 1 }}
+                                >
+                                    <BarChartIcon fontSize="small" />
+                                </Button>
+                            </Tooltip>
                             <Button
                                 size="small"
                                 variant="outlined"
@@ -113,7 +116,7 @@ const ExternalConnections: React.FC = () => {
                     ))}
                 </Stack>
             )}
-            {externalConnections !== undefined && firstPending === undefined && approved.length === 0 && (
+            {firstPending === undefined && approved.length === 0 && (
                 <Box
                     display="flex"
                     sx={{
@@ -143,7 +146,7 @@ const ExternalConnections: React.FC = () => {
                     </Typography>
                 </Box>
             )}
-            {extensionIdForStatistics && externalConnections?.[extensionIdForStatistics] && (
+            {extensionIdForStatistics && externalConnections[extensionIdForStatistics] && (
                 <ConnectionStatistics
                     open={connectionStatisticsOpen}
                     extensionId={extensionIdForStatistics}
