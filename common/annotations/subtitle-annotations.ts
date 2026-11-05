@@ -1,10 +1,11 @@
-import { areTokenizationsEqual } from '@project/common/util';
+import { arrayEquals } from '@project/common/util';
 import { asbTrace } from '@project/common/util/log';
 import type {
     DictionaryBuildAnkiCacheState,
     DictionaryBuildWaniKaniCacheState,
     Fetcher,
     IndexedSubtitleModel,
+    Token,
     Tokenization,
     TokenizedSubtitleModel,
 } from '@project/common';
@@ -23,17 +24,33 @@ import type { InternalToken } from '@project/common/annotations/render-annotatio
 import { BuildAnnotations } from '@project/common/annotations/build-annotations';
 import type { InternalSubtitleModel } from '@project/common/annotations/build-annotations';
 
-function originalTokenization(tokenization: Tokenization | undefined): Tokenization {
-    return {
-        tokens:
-            tokenization?.tokens
-                ?.filter((t) => !(t as InternalToken).__internal)
-                .map((t) => ({
-                    pos: [t.pos[0], t.pos[1]],
-                    readings: t.readings.map((r) => ({ pos: [r.pos[0], r.pos[1]], reading: r.reading })),
-                    states: [],
-                })) ?? [],
-    };
+const isOriginalToken = (token: Token) => !(token as InternalToken).__internal;
+
+/** Compares only source-provided tokens (positions and readings) without copying them. */
+function originalTokenizationsEqual(a: Tokenization | undefined, b: Tokenization | undefined): boolean {
+    if (a === b) return true;
+    const left = a?.tokens ?? [];
+    const right = b?.tokens ?? [];
+    let leftIndex = 0;
+    let rightIndex = 0;
+    while (true) {
+        while (leftIndex < left.length && !isOriginalToken(left[leftIndex])) leftIndex++;
+        while (rightIndex < right.length && !isOriginalToken(right[rightIndex])) rightIndex++;
+        const leftToken = left[leftIndex++];
+        const rightToken = right[rightIndex++];
+        if (leftToken === undefined || rightToken === undefined) return leftToken === rightToken;
+        if (leftToken === rightToken) continue;
+        if (!arrayEquals(leftToken.pos, rightToken.pos)) return false;
+        if (
+            !arrayEquals(
+                leftToken.readings,
+                rightToken.readings,
+                (l, r) => l.reading === r.reading && arrayEquals(l.pos, r.pos)
+            )
+        ) {
+            return false;
+        }
+    }
 }
 
 export function needsReset(subtitles: TokenizedSubtitleModel[], previousSubtitles: TokenizedSubtitleModel[]) {
@@ -41,11 +58,10 @@ export function needsReset(subtitles: TokenizedSubtitleModel[], previousSubtitle
         subtitles.length !== previousSubtitles.length ||
         subtitles.some((s) => {
             const prev = previousSubtitles[s.index];
+            if (prev === undefined) return true;
+            if (s === prev) return false;
             if ((s.originalText ?? s.text) !== (prev.originalText ?? prev.text)) return true;
-            return !areTokenizationsEqual(
-                originalTokenization(s.tokenization),
-                originalTokenization(prev.tokenization)
-            );
+            return !originalTokenizationsEqual(s.tokenization, prev.tokenization);
         })
     );
 }

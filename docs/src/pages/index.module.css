@@ -2,6 +2,8 @@
     --asbplayer-color: #ff3f78;
     --asbplayer-gradient: linear-gradient(135deg, #ff3f78 0%, #ff6f9a 100%);
     --asbplayer-hero-bg: radial-gradient(ellipse at 50% 0%, rgba(255, 63, 120, 0.08) 0%, transparent 60%);
+    --discord-brand: #5865f2;
+    --discord-brand-dark: #4752c4;
 }
 
 [data-theme='dark'] {
@@ -166,6 +168,43 @@
 
 [data-theme='dark'] .ctaSection p {
     color: var(--ifm-color-emphasis-500);
+}
+
+.ctaButtons {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    width: 100%;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.discordButton {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    --ifm-button-background-color: var(--discord-brand);
+    --ifm-button-border-color: var(--discord-brand);
+    --ifm-button-color: #fff;
+}
+
+.discordIcon {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+    background-color: currentColor;
+    mask-image: var(--discord-icon);
+    mask-size: contain;
+    mask-repeat: no-repeat;
+    mask-position: center;
+}
+
+.discordButton:hover,
+.discordButton:active {
+    --ifm-button-background-color: var(--discord-brand-dark);
+    --ifm-button-border-color: var(--discord-brand-dark);
 }
 
 @media screen and (max-width: 996px) {

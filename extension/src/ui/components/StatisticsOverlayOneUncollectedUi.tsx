@@ -1,3 +1,4 @@
+import project from '@project/common/project';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { StyledEngineProvider, ThemeProvider } from '@mui/material/styles';
 import type { PaletteMode } from '@mui/material/styles';
@@ -34,7 +35,7 @@ const StatisticsOverlayOneUncollectedUi: React.FC<Props> = ({ bridge }) => {
     const [mediaId, setMediaId] = useState<string>();
     const [entries, setEntries] = useState<DictionaryStatisticsSentenceBucketEntry[]>([]);
     const [totalSentences, setTotalSentences] = useState<number>(0);
-    const [language, setLanguage] = useState<string>('en');
+    const [language, setLanguage] = useState<string>(project.defaultLanguage);
     const [dictionaryTracks, setDictionaryTracks] = useState<DictionaryTrack[]>([]);
 
     const theme = useMemo(() => createTheme(themeType), [themeType]);

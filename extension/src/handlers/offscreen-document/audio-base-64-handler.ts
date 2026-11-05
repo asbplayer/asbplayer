@@ -17,8 +17,8 @@ export default class AudioBase64Handler {
     }
 
     handle(command: Command<Message>) {
-        const audioBase64Command = command as Command<AudioBase64Message>;
-        this._audioRecorder.onAudioBase64(audioBase64Command.message.base64, audioBase64Command.message.requestId);
+        const { base64, requestId, image, audioError } = (command as Command<AudioBase64Message>).message;
+        this._audioRecorder.onAudioBase64(base64, requestId, image, audioError);
         return false;
     }
 }

@@ -1,0 +1,38 @@
+---
+slug: 1.22.0-released
+title: Extension v1.22.0 released
+authors: [killergerbah]
+tags: []
+---
+
+Extension v1.22.0, asbplayer's first extension release under [AGPL](https://github.com/asbplayer/asbplayer/blob/main/LICENSE), was released last week.
+
+<!-- truncate -->
+
+Under the new license, asbplayer will remain free (as in freedom), and open source forever.
+It will also be possible for asbplayer to depend on and be distributed with other GPL-licensed code.
+Huge thanks to [@ShanaryS](https://github.com/ShanaryS) who meticulously researched and advocated for the license change, to the great benefit of asbplayer and its users.
+They did this _in addition_ to their voluminous contributions to the release: jump-to-next-token keybinds, word definition annotations, a log viewer to enhance bug reports,
+several subtitle detectors, and many bug fixes.
+
+Also thanks to [@mwojick](https://github.com/mwojick) for migrating the project to pnpm.
+Without his work the project would still be taking on the order of minutes to build, and not be nearly as accessible to developers as it is now.
+
+Additionally, I would like to acknowledge regular contributors:
+
+- [@mcgrizzz](https://github.com/mcgrizzz) who, in addition to introducing significant upgrades to the WebSocket API protocol, fixed up the Crunchyroll and Jimaku integrations.
+- [@xwxb](https://github.com/xwxb) who continues to own the Jimaku integration and made automatic episode extraction more configurable via a regex.
+- [@artjomsR](https://github.com/artjomsR) who added a setting to make subtitle container width configurable in pixels rather than just percentage.
+- [@rajpiskala](https://github.com/rajpiskala) who fixed a bug where loaded subtitle file names got stuck on screen.
+- [@thntx](https://github.com/thntx) who added a way to batch update recently added cards with the same subtitle text content.
+
+And a special thanks to new contributors as well:
+
+- [@chadzimmerman](https://github.com/chadzimmerman) who added Rutube subtitle detection and made the original changes to add support for OK.ru and VK.
+- [@gpressutto5](https://github.com/gpressutto5) who added an option to trim black bars from screenshots.
+- [@ravensgulls](https://github.com/ravensgulls) who made the original change to add subtitle detection for Dreaming.
+- [@awelotta](https://github.com/awelotta) who enhanced Netflix-style ruby detection to support alphanumeric words.
+- [@0xSm0ky](https://github.com/0xSm0ky) who fixed a bugs in subtitle text rendering.
+
+This was a very large release. Thanks to all the contributors both old and new for making this release possible.
+Full release notes can be read [here](https://github.com/asbplayer/asbplayer/releases/tag/v1.22.0).

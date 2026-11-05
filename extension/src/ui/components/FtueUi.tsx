@@ -1,3 +1,4 @@
+import project from '@project/common/project';
 import Link from '@mui/material/Link';
 import Typography from '@mui/material/Typography';
 import { Trans, useTranslation } from 'react-i18next';
@@ -51,7 +52,7 @@ const WelcomeMessage: React.FC<{ className: string }> = ({ className }) => {
                                 color="primary"
                                 target="_blank"
                                 rel="noreferrer"
-                                href={'https://docs.asbplayer.dev/docs/intro/'}
+                                href={`${project.urls.docs}/docs/intro/`}
                             >
                                 readme
                             </Link>,

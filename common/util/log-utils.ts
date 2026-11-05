@@ -12,6 +12,8 @@ export interface LogLine {
     readonly msg: string;
 }
 
+const REDACTED_APP_URL = '[REDACTED_APP_URL]';
+
 export interface LogSnapshot {
     readonly lines: readonly LogLine[];
 }
@@ -19,6 +21,10 @@ export interface LogSnapshot {
 export interface LogStorage {
     append(lines: readonly LogLine[]): Promise<void>;
     getLogs(): Promise<LogSnapshot>;
+}
+
+function trimTrailingSlashes(value: string): string {
+    return value.replace(/\/+$/, '');
 }
 
 export function trimLogLines(lines: readonly LogLine[]): LogLine[] {
@@ -49,6 +55,33 @@ function formatLine(logLine: LogLine, consolePrefix: string): string {
 
 export function formatLogLine(logLine: LogLine): string {
     return formatLine(logLine, '');
+}
+
+export function formatRedactedLogText(
+    lines: readonly LogLine[],
+    streamingAppUrl: string,
+    defaultStreamingAppUrl: string
+): string {
+    const appUrls = new Set<string>();
+
+    try {
+        const configuredUrl = new URL(streamingAppUrl);
+        if (configuredUrl.origin !== new URL(defaultStreamingAppUrl).origin) {
+            appUrls.add(trimTrailingSlashes(streamingAppUrl));
+            appUrls.add(trimTrailingSlashes(configuredUrl.href));
+            if (configuredUrl.origin !== 'null') appUrls.add(configuredUrl.origin);
+        }
+    } catch {
+        // Leave logs unchanged for invalid URLs.
+    }
+
+    return lines
+        .map((line) => {
+            let msg = line.msg;
+            for (const url of appUrls) msg = msg.split(url).join(REDACTED_APP_URL);
+            return formatLogLine(msg === line.msg ? line : { ...line, msg });
+        })
+        .join('\n');
 }
 
 export function formatConsoleLogLine(logLine: LogLine): string {

@@ -2,6 +2,9 @@
 sidebar_position: 2
 ---
 
+import project, { appOrigin } from '@site/src/project';
+import CodeBlock from '@theme/CodeBlock';
+
 import NoteAddIcon from '@site/src/components/NoteAddIcon';
 
 # Mining subtitles {#mining-subtitles}
@@ -12,19 +15,17 @@ import NoteAddIcon from '@site/src/components/NoteAddIcon';
 
 1. Install [Anki](https://apps.ankiweb.net/).
 2. Add [AnkiConnect](https://ankiweb.net/shared/info/2055492159) to Anki.
-3. If mining from video files, add `https://app.asbplayer.dev` to the `webCorsOriginList` in AnkiConnect's settings:
-   ```json
-   {
-     "apiKey": null,
-     "apiLogPath": null,
-     "ignoreOriginList": [],
-     "webBindAddress": "127.0.0.1",
-     "webBindPort": 8765,
-     "webCorsOriginList": [
-       "https://app.asbplayer.dev" // <-- Make sure this line is here
-     ]
-   }
-   ```
+3. If mining from video files, add <code>{appOrigin}</code> to the `webCorsOriginList` in AnkiConnect's settings:
+
+   <CodeBlock language="json">{JSON.stringify({
+     apiKey: null,
+     apiLogPath: null,
+     ignoreOriginList: [],
+     webBindAddress: project.services.ankiConnect.host,
+     webBindPort: project.services.ankiConnect.port,
+     webCorsOriginList: [appOrigin],
+   }, null, 2)}</CodeBlock>
+
 4. Add a **Deck**.
 5. Add a **Note Type**.
    We encourage you to create your own note type or use a pre-made one. But if you'd like to just get started follow the steps below to create a basic note type:
@@ -62,7 +63,7 @@ import NoteAddIcon from '@site/src/components/NoteAddIcon';
 
 ## Configure asbplayer {#configure-asbplayer}
 
-1. Open [asbplayer's settings](https://app.asbplayer.dev/?view=settings).
+1. Open <a href={new URL('?view=settings', project.urls.app).href}>asbplayer's settings</a>.
 2. Select the **Deck** and **Note Type** you just created.
 3. For each of the **Sentence**, **Definition**, **Word**, **Audio**, **Image**, **Source**, and **URL** fields, select the corresponding field in the note type.
 

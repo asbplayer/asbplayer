@@ -1,11 +1,12 @@
 #!/bin/bash
+set -euo pipefail
 
-if [ -z $CROWDIN_API_TOKEN ]; then
+if [ -z "${CROWDIN_API_TOKEN:-}" ]; then
     echo "CROWDIN_API_TOKEN not defined"
     exit 1
 fi
 
 node loc-xliff.js
-crowdin --verbose pull -T $CROWDIN_API_TOKEN
+crowdin --verbose pull -T "$CROWDIN_API_TOKEN"
 node xliff-loc.js
 

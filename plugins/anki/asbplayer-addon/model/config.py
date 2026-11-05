@@ -1,12 +1,18 @@
+import json
+from pathlib import Path
 from typing import Any
 
 from aqt import mw
 
+_defaults = json.loads(
+    (Path(__file__).resolve().parents[1] / "config.json").read_text(encoding="utf-8")
+)
+
 
 class AddonConfig:
-    DEFAULT_ENABLED = True
-    DEFAULT_PORT = 8766
-    DEFAULT_POST_MINE_ACTION = 2
+    DEFAULT_ENABLED = _defaults["enabled"]
+    DEFAULT_PORT = _defaults["port"]
+    DEFAULT_POST_MINE_ACTION = _defaults["postMineAction"]
 
     def __init__(self, module_name: str) -> None:
         self._module_name = module_name

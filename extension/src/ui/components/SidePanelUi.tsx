@@ -13,6 +13,7 @@ import Paper from '@mui/material/Paper';
 import { StyledEngineProvider } from '@mui/material/styles';
 import { DictionaryProvider } from '@project/common/dictionary-db';
 import { ExtensionDictionaryStorage } from '@/services/extension-dictionary-storage';
+import { useSettingsUpdates } from '@project/extension/src/ui/hooks/use-settings-updates';
 
 const dictionaryProvider = new DictionaryProvider(new ExtensionDictionaryStorage());
 const settingsProvider = new SettingsProvider(new ExtensionSettingsStorage());
@@ -21,6 +22,8 @@ const SidePanelUi = () => {
     const [settings, setSettings] = useState<AsbplayerSettings>();
     const extension = useChromeExtension({ component: 'sidePanel' });
     const theme = useMemo(() => settings && createTheme(settings.themeType), [settings]);
+
+    const onSettingsChanged = useSettingsUpdates(settingsProvider, setSettings);
 
     useEffect(() => {
         void settingsProvider
@@ -53,6 +56,7 @@ const SidePanelUi = () => {
                         dictionaryProvider={dictionaryProvider}
                         settingsProvider={settingsProvider}
                         settings={settings}
+                        onSettingsChanged={onSettingsChanged}
                         extension={extension}
                     />
                 </Paper>

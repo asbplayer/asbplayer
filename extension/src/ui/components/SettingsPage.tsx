@@ -1,3 +1,4 @@
+import project from '@project/common/project';
 import type { CardModel } from '@project/common';
 import { HttpFetcher } from '@project/common';
 import { useCallback, useMemo } from 'react';
@@ -5,6 +6,7 @@ import { makeStyles } from '@mui/styles';
 import { useTranslation } from 'react-i18next';
 import Box from '@mui/material/Box';
 import SettingsForm from '@project/common/components/SettingsForm';
+import { isFirefoxBuild } from '@project/extension/src/services/build-flags';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
@@ -20,6 +22,7 @@ import { testCard } from '@project/common/settings';
 import { useTheme } from '@mui/material/styles';
 import type { Theme } from '@mui/material/styles';
 import { settingsPageConfigs } from '@/services/pages';
+import { openExtensionShortcuts } from '@/services/extension-shortcuts';
 import type { DictionaryProvider } from '@project/common/dictionary-db';
 import type { LogProvider } from '@project/common/util/log';
 import { useLocationHash } from '@project/common/hooks/use-location-hash';
@@ -93,11 +96,7 @@ const SettingsPage = ({
 
     const commands = useCommandKeyBinds();
 
-    const handleOpenExtensionShortcuts = useCallback(() => {
-        void browser.tabs.create({ active: true, url: 'chrome://extensions/shortcuts' });
-    }, []);
-
-    const { initialized: i18nInitialized } = useI18n({ language: settings?.language ?? 'en' });
+    const { initialized: i18nInitialized } = useI18n({ language: settings?.language ?? project.defaultLanguage });
     const { supportedLanguages } = useSupportedLanguages();
 
     const { hash: scrollToId } = useLocationHash();
@@ -127,6 +126,7 @@ const SettingsPage = ({
                         extensionSupportsAutoPauseResume
                         extensionSupportsExportCardBind
                         extensionSupportsPageSettings
+                        extensionSupportsAnimatedImageCapture={!isFirefoxBuild}
                         extensionSupportsDictionary
                         extensionSupportsDictionaryBrowser
                         extensionSupportsDictionaryWaniKani
@@ -134,12 +134,14 @@ const SettingsPage = ({
                         extensionSupportsSeekableTrackSetting
                         extensionSupportsAutoCopyableTrackSetting
                         extensionSupportsDictionaryTokenStatusDisplayAlpha
+                        supportsDictionaryPlayback
                         extensionSupportsDictionaryYomitanMecab
                         extensionSupportsSubtitleTrackSelectorInWebApp
                         extensionSupportsSubtitleListCustomization
                         extensionSupportsUpdateLastWithSameSubtitleText
+                        extensionSupportsAnimatedMediaFragment={!isFirefoxBuild}
                         chromeKeyBinds={commands}
-                        onOpenChromeExtensionShortcuts={handleOpenExtensionShortcuts}
+                        onOpenChromeExtensionShortcuts={openExtensionShortcuts}
                         onSettingsChanged={onSettingsChanged}
                         dictionaryProvider={dictionaryProvider}
                         logProvider={logProvider}
