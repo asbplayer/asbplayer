@@ -1,9 +1,10 @@
 import { asbError } from '@project/common/util/log';
-import type { ExternalConnectionsState, GlobalStateProvider } from '@project/common/global-state';
+import type { ExternalConnectionsState, ExternalMethodUsage, GlobalStateProvider } from '@project/common/global-state';
 import {
     activePendingExternalConnections,
     approvedExternalConnections,
     deniedRequestCooldownMs,
+    externalConnectionsPermissionSignature,
     mutateExternalConnections,
 } from '@project/common/global-state';
 import type { ExternalCommand } from '@project/common/external-commands';
@@ -34,6 +35,15 @@ export const deniedRequestCooldownsKey = 'externalConnectionDeniedCooldowns';
 
 const badgeReason = 'externalConnections';
 
+// Usage is buffered in memory and flushed well within the service worker's 30-second idle
+// timeout, so a flush scheduled by recent RPC activity always runs before suspension.
+export const externalConnectionUsageFlushMs = 5_000;
+
+interface PendingExternalUsage {
+    lastUsedAt: number;
+    methods: Record<string, ExternalMethodUsage>;
+}
+
 class ExternalRpcError extends Error {
     constructor(
         readonly code: number,
@@ -58,8 +68,11 @@ export class ExternalConnectionCoordinator {
     private readonly _badgeController: ExtensionBadgeController;
     private readonly _dispatcher: ExternalCommandDispatcher;
     private readonly _ports = new Map<string, Set<Browser.runtime.Port>>();
+    private _pendingUsage = new Map<string, PendingExternalUsage>();
+    private _usageFlushTimer?: ReturnType<typeof setTimeout>;
     // onUpdated carries no oldValue, so track approved IDs across updates to detect additions/revocations.
     private _lastApprovedIds?: Set<string>;
+    private _lastPermissionSignature?: string;
 
     constructor({
         globalStateProvider,
@@ -103,7 +116,7 @@ export class ExternalConnectionCoordinator {
         ]);
 
         const pendingCount = Object.entries(
-            activePendingExternalConnections(externalConnections?.connections ?? {}, Date.now())
+            activePendingExternalConnections(externalConnections ?? {}, Date.now())
         ).length;
         this._badgeController.setGlobalAlert(badgeReason, pendingCount > 0);
         this._badgeController.setTabAlerts(
@@ -144,6 +157,8 @@ export class ExternalConnectionCoordinator {
 
             if (ports.size === 0) {
                 this._ports.delete(senderId);
+                void this.flushUsage();
+                void this._recordDisconnected(senderId);
             }
         });
 
@@ -205,6 +220,8 @@ export class ExternalConnectionCoordinator {
         if (methodDef === undefined) {
             throw new ExternalRpcError(jsonRpcErrorCodes.methodNotFound, 'Method not found');
         }
+
+        this._recordUsage(senderId, method);
 
         const knownMethod = method as ExternalApiMethodName;
         const paramsSchema = methodDef.paramsSchema;
@@ -277,15 +294,15 @@ export class ExternalConnectionCoordinator {
     private async _approvalState(senderId: string): Promise<ApprovalState> {
         const { externalConnections } = await this._globalStateProvider.get(['externalConnections']);
 
-        if (externalConnections?.connections?.[senderId]?.deniedAt !== undefined) {
+        if (externalConnections?.[senderId]?.deniedAt !== undefined) {
             return 'denied';
         }
 
-        if (externalConnections?.connections?.[senderId]?.approvedAt !== undefined) {
+        if (externalConnections?.[senderId]?.approvedAt !== undefined) {
             return 'approved';
         }
 
-        const pending = activePendingExternalConnections(externalConnections?.connections ?? {}, Date.now())[senderId];
+        const pending = activePendingExternalConnections(externalConnections ?? {}, Date.now())[senderId];
 
         if (pending !== undefined) {
             return 'pending';
@@ -298,16 +315,17 @@ export class ExternalConnectionCoordinator {
         const name = params.name !== undefined && params.name.length > 0 ? params.name : undefined;
         let approvalState: ApprovalState = 'pending';
         await mutateExternalConnections(this._globalStateProvider, (externalConnections) => {
-            const connection = externalConnections.connections[senderId];
+            const connection = externalConnections[senderId];
             const now = Date.now();
             if (connection !== undefined) {
                 if (connection.approvedAt !== undefined) {
                     approvalState = 'approved';
-                    if (connection.name === name) {
-                        return false;
-                    }
-
-                    externalConnections.connections[senderId] = { ...connection, name };
+                    externalConnections[senderId] = {
+                        ...connection,
+                        methods: connection.methods ?? {},
+                        name,
+                        lastConnectedAt: now,
+                    };
                     return true;
                 }
 
@@ -318,13 +336,24 @@ export class ExternalConnectionCoordinator {
             }
 
             approvalState = 'pending';
-            externalConnections.connections = this._pruneConnections(
-                {
-                    ...externalConnections.connections,
-                    [senderId]: { name, requestedAt: now },
-                },
-                now
-            );
+            const nextConnection =
+                connection === undefined
+                    ? { methods: {}, name, requestedAt: now, lastConnectedAt: now }
+                    : {
+                          ...connection,
+                          methods: connection.methods ?? {},
+                          name,
+                          requestedAt: now,
+                          lastConnectedAt: now,
+                      };
+            delete nextConnection.deniedAt;
+            delete nextConnection.approvedAt;
+
+            const pruned = this._pruneConnections({ ...externalConnections, [senderId]: nextConnection }, now);
+            for (const extensionId of Object.keys(externalConnections)) {
+                delete externalConnections[extensionId];
+            }
+            Object.assign(externalConnections, pruned);
             return true;
         });
 
@@ -336,7 +365,18 @@ export class ExternalConnectionCoordinator {
     }
 
     private async _onExternalConnectionsUpdated(externalConnections: ExternalConnectionsState) {
-        const newApproved = new Set(Object.keys(approvedExternalConnections(externalConnections.connections)));
+        this._dropRemovedUsage(externalConnections);
+
+        const signature = externalConnectionsPermissionSignature(externalConnections);
+
+        if (signature === this._lastPermissionSignature) {
+            // Usage and connection timestamps changed; nothing that affects approval state did.
+            return;
+        }
+
+        this._lastPermissionSignature = signature;
+
+        const newApproved = new Set(Object.keys(approvedExternalConnections(externalConnections)));
 
         if (this._lastApprovedIds === undefined) {
             // The baseline fetch has not resolved yet.
@@ -354,7 +394,7 @@ export class ExternalConnectionCoordinator {
         this._lastApprovedIds = newApproved;
 
         // Prune expired/capped pending requests left behind by other writers of global state.
-        if (this._pendingRequestsNeedPrune(externalConnections.connections, Date.now())) {
+        if (this._pendingRequestsNeedPrune(externalConnections, Date.now())) {
             try {
                 await this._prunePendingRequests();
             } catch (error) {
@@ -386,19 +426,22 @@ export class ExternalConnectionCoordinator {
         }
     }
 
-    private _pendingRequestsNeedPrune(connections: ExternalConnectionsState['connections'], now: number): boolean {
+    private _pendingRequestsNeedPrune(connections: ExternalConnectionsState, now: number): boolean {
         return Object.keys(this._pruneConnections(connections, now)).length < Object.keys(connections).length;
     }
 
     private async _prunePendingRequests(): Promise<void> {
         await mutateExternalConnections(this._globalStateProvider, (externalConnections) => {
-            const pruned = this._pruneConnections(externalConnections.connections, Date.now());
+            const pruned = this._pruneConnections(externalConnections, Date.now());
 
-            if (Object.keys(pruned).length === Object.keys(externalConnections.connections).length) {
+            if (Object.keys(pruned).length === Object.keys(externalConnections).length) {
                 return false;
             }
 
-            externalConnections.connections = pruned;
+            for (const extensionId of Object.keys(externalConnections)) {
+                delete externalConnections[extensionId];
+            }
+            Object.assign(externalConnections, pruned);
             return true;
         });
     }
@@ -409,13 +452,10 @@ export class ExternalConnectionCoordinator {
             return;
         }
 
-        this._lastApprovedIds = new Set(Object.keys(approvedExternalConnections(externalConnections.connections)));
+        this._lastApprovedIds = new Set(Object.keys(approvedExternalConnections(externalConnections)));
     }
 
-    private _pruneConnections(
-        connections: ExternalConnectionsState['connections'],
-        now: number
-    ): ExternalConnectionsState['connections'] {
+    private _pruneConnections(connections: ExternalConnectionsState, now: number): ExternalConnectionsState {
         // Keep non-expired pending connections
         const prunedPending = Object.fromEntries(
             Object.entries(activePendingExternalConnections(connections, now))
@@ -434,9 +474,124 @@ export class ExternalConnectionCoordinator {
         return { ...prunedPending, ...rest };
     }
 
+    private _dropRemovedUsage(externalConnections: ExternalConnectionsState) {
+        for (const extensionId of this._pendingUsage.keys()) {
+            if (!(extensionId in externalConnections)) {
+                this._pendingUsage.delete(extensionId);
+            }
+        }
+    }
+
+    private _recordUsage(extensionId: string, method: string) {
+        const now = Date.now();
+        const pending = this._pendingUsage.get(extensionId) ?? { lastUsedAt: now, methods: {} };
+        const usage = pending.methods[method] ?? { count: 0, lastUsedAt: now };
+
+        usage.count += 1;
+        usage.lastUsedAt = now;
+        pending.methods[method] = usage;
+        pending.lastUsedAt = now;
+        this._pendingUsage.set(extensionId, pending);
+        this._scheduleUsageFlush();
+    }
+
+    private _scheduleUsageFlush() {
+        if (this._usageFlushTimer !== undefined) {
+            return;
+        }
+
+        this._usageFlushTimer = setTimeout(() => {
+            this._usageFlushTimer = undefined;
+            void this.flushUsage();
+        }, externalConnectionUsageFlushMs);
+    }
+
+    /** Persists buffered usage statistics. Also called when the last port for an extension closes. */
+    async flushUsage(): Promise<void> {
+        if (this._pendingUsage.size === 0) {
+            return;
+        }
+
+        const pending = this._pendingUsage;
+        this._pendingUsage = new Map();
+
+        try {
+            await mutateExternalConnections(this._globalStateProvider, (externalConnections) => {
+                let changed = false;
+
+                for (const [extensionId, usage] of pending) {
+                    const connection = externalConnections[extensionId];
+
+                    if (connection === undefined) {
+                        // The connection was removed while its usage was buffered.
+                        continue;
+                    }
+
+                    connection.methods ??= {};
+                    connection.lastUsedAt = Math.max(connection.lastUsedAt ?? 0, usage.lastUsedAt);
+
+                    for (const [method, methodUsage] of Object.entries(usage.methods)) {
+                        const existing = connection.methods[method];
+
+                        if (existing === undefined) {
+                            connection.methods[method] = { ...methodUsage };
+                        } else {
+                            existing.count += methodUsage.count;
+                            existing.lastUsedAt = Math.max(existing.lastUsedAt, methodUsage.lastUsedAt);
+                        }
+                    }
+
+                    changed = true;
+                }
+
+                return changed;
+            });
+        } catch (error) {
+            this._mergePendingUsage(pending);
+            asbError('external-connection', 'Failed to flush external connection usage:', error);
+        }
+    }
+
+    private _mergePendingUsage(pending: Map<string, PendingExternalUsage>) {
+        for (const [extensionId, usage] of pending) {
+            const existing = this._pendingUsage.get(extensionId) ?? { lastUsedAt: usage.lastUsedAt, methods: {} };
+            existing.lastUsedAt = Math.max(existing.lastUsedAt, usage.lastUsedAt);
+
+            for (const [method, methodUsage] of Object.entries(usage.methods)) {
+                const existingMethod = existing.methods[method];
+
+                if (existingMethod === undefined) {
+                    existing.methods[method] = { ...methodUsage };
+                } else {
+                    existingMethod.count += methodUsage.count;
+                    existingMethod.lastUsedAt = Math.max(existingMethod.lastUsedAt, methodUsage.lastUsedAt);
+                }
+            }
+
+            this._pendingUsage.set(extensionId, existing);
+        }
+    }
+
+    private async _recordDisconnected(extensionId: string) {
+        try {
+            await mutateExternalConnections(this._globalStateProvider, (externalConnections) => {
+                const connection = externalConnections[extensionId];
+
+                if (connection === undefined) {
+                    return false;
+                }
+
+                connection.lastDisconnectedAt = Date.now();
+                return true;
+            });
+        } catch (error) {
+            asbError('external-connection', `Failed to record disconnect for ${extensionId}:`, error);
+        }
+    }
+
     private async _approvedIds(): Promise<Set<string>> {
         const { externalConnections } = await this._globalStateProvider.get(['externalConnections']);
-        return new Set(Object.keys(approvedExternalConnections(externalConnections.connections)));
+        return new Set(Object.keys(approvedExternalConnections(externalConnections)));
     }
 
     private _post(port: Browser.runtime.Port, message: unknown) {

@@ -8,7 +8,10 @@ import {
 import type { ExternalConnectionsState } from '@project/common/global-state';
 import type { SettingsProvider } from '@project/common/settings';
 import type TabRegistry from '@project/extension/src/services/tab-registry';
-import { ExternalConnectionCoordinator } from '@project/extension/src/services/external-connection-coordinator';
+import {
+    ExternalConnectionCoordinator,
+    externalConnectionUsageFlushMs,
+} from '@project/extension/src/services/external-connection-coordinator';
 import { ExtensionBadgeController } from '@project/extension/src/services/extension-badge-controller';
 import { ExtensionGlobalStateProvider } from '@project/extension/src/services/extension-global-state-provider';
 import { MockStorageArea } from '@project/extension/src/services/mock-storage-area';
@@ -163,39 +166,39 @@ class Harness {
         await this.globalStateProvider.set({ externalConnections: this.approvedState(id, name) });
     }
 
-    async seedPending(pending: ExternalConnectionsState['connections']) {
-        await this.globalStateProvider.set({ externalConnections: { connections: pending } });
+    async seedPending(pending: ExternalConnectionsState) {
+        await this.globalStateProvider.set({ externalConnections: pending });
     }
 
-    async pendingEntries(): Promise<ExternalConnectionsState['connections']> {
+    async externalConnections(): Promise<ExternalConnectionsState> {
+        return (await this.globalStateProvider.get(['externalConnections'])).externalConnections;
+    }
+
+    async pendingEntries(): Promise<ExternalConnectionsState> {
         return Object.fromEntries(
-            Object.entries(
-                (await this.globalStateProvider.get(['externalConnections'])).externalConnections.connections
-            ).filter(([, c]) => c.approvedAt === undefined && c.deniedAt === undefined)
+            Object.entries(await this.externalConnections()).filter(
+                ([, c]) => c.approvedAt === undefined && c.deniedAt === undefined
+            )
         );
     }
 
-    async approvedEntries(): Promise<ExternalConnectionsState['connections']> {
-        return approvedExternalConnections(
-            (await this.globalStateProvider.get(['externalConnections'])).externalConnections.connections
-        );
+    async approvedEntries(): Promise<ExternalConnectionsState> {
+        return approvedExternalConnections(await this.externalConnections());
     }
 
-    async deniedEntries(): Promise<ExternalConnectionsState['connections']> {
+    async deniedEntries(): Promise<ExternalConnectionsState> {
         return Object.fromEntries(
-            Object.entries(
-                (await this.globalStateProvider.get(['externalConnections'])).externalConnections.connections
-            ).filter(([, c]) => c.deniedAt !== undefined)
+            Object.entries(await this.externalConnections()).filter(([, c]) => c.deniedAt !== undefined)
         );
     }
 
     emptyState(): ExternalConnectionsState {
-        return { connections: {} };
+        return {};
     }
 
     approvedState(id: string, name?: string): ExternalConnectionsState {
         return {
-            connections: { [id]: { name, requestedAt: Date.now(), approvedAt: Date.now() } },
+            [id]: { name, requestedAt: Date.now(), approvedAt: Date.now(), methods: {} },
         };
     }
 
@@ -216,12 +219,14 @@ describe('external connection coordinator', () => {
     let consoleErrorSpy: ReturnType<typeof jest.spyOn>;
 
     beforeEach(() => {
+        jest.useFakeTimers();
         consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
         harness = new Harness();
     });
 
     afterEach(() => {
         harness?.teardown();
+        jest.useRealTimers();
     });
 
     it('does not send anything to an unapproved connection until it identifies itself', async () => {
@@ -256,6 +261,8 @@ describe('external connection coordinator', () => {
         expect((await harness.pendingEntries())['sibling']).toEqual({
             name: 'Sibling',
             requestedAt: expect.any(Number),
+            lastConnectedAt: expect.any(Number),
+            methods: {},
         });
         expect(harness.lastGlobalBadgeText()).toEqual('!');
         expect(harness.badgeAction.setBadgeText).toHaveBeenCalledWith({ tabId: 1, text: '!' });
@@ -344,7 +351,11 @@ describe('external connection coordinator', () => {
 
     it('allows a denied extension to request again after the cooldown expires', async () => {
         await harness.externalConnectionsChanged({
-            connections: { 'denied-sibling': { requestedAt: 0, deniedAt: Date.now() - deniedRequestCooldownMs - 1 } },
+            'denied-sibling': {
+                requestedAt: 0,
+                deniedAt: Date.now() - deniedRequestCooldownMs - 1,
+                methods: {},
+            },
         });
         await flush();
         const port = harness.connect('denied-sibling');
@@ -354,6 +365,8 @@ describe('external connection coordinator', () => {
         expect((await harness.pendingEntries())['denied-sibling']).toEqual({
             name: 'Newcomer',
             requestedAt: expect.any(Number),
+            lastConnectedAt: expect.any(Number),
+            methods: {},
         });
     });
 
@@ -377,6 +390,8 @@ describe('external connection coordinator', () => {
             name: 'Renamed Sibling',
             approvedAt: expect.any(Number),
             requestedAt: expect.any(Number),
+            lastConnectedAt: expect.any(Number),
+            methods: {},
         });
         expect(Object.keys(await harness.pendingEntries())).toEqual([]);
     });
@@ -627,13 +642,13 @@ describe('external connection coordinator', () => {
 
     it('prunes expired pending requests and caps the number retained', async () => {
         const now = Date.now();
-        const pending: ExternalConnectionsState['connections'] = {};
+        const pending: ExternalConnectionsState = {};
 
         for (let i = 1; i <= 12; i++) {
-            pending[`recent${i}`] = { name: `Recent ${i}`, requestedAt: now - i * 60_000 };
+            pending[`recent${i}`] = { name: `Recent ${i}`, requestedAt: now - i * 60_000, methods: {} };
         }
 
-        pending['expired'] = { name: 'Expired', requestedAt: now - 25 * 60 * 60 * 1000 };
+        pending['expired'] = { name: 'Expired', requestedAt: now - 25 * 60 * 60 * 1000, methods: {} };
         await harness.seedPending(pending);
         const port = harness.connect('newcomer');
         await flush();
@@ -643,7 +658,12 @@ describe('external connection coordinator', () => {
 
         const pendingEntries = await harness.pendingEntries();
         expect(Object.keys(pendingEntries)).toHaveLength(10);
-        expect(pendingEntries['newcomer']).toEqual({ name: 'Newcomer', requestedAt: expect.any(Number) });
+        expect(pendingEntries['newcomer']).toEqual({
+            name: 'Newcomer',
+            requestedAt: expect.any(Number),
+            lastConnectedAt: expect.any(Number),
+            methods: {},
+        });
         expect(pendingEntries['recent1']).toBeDefined();
         expect(pendingEntries['recent9']).toBeDefined();
         expect(pendingEntries['recent10']).toBeUndefined();
@@ -672,5 +692,72 @@ describe('external connection coordinator', () => {
         port.simulateDisconnectFromClientSide();
         expect(port.disconnected).toEqual(true);
         expect(harness.coordinator.portsForExtensionId('sibling')).not.toContain(port);
+    });
+
+    it('records usage for every valid method and flushes it after the debounce', async () => {
+        await harness.approve('sibling');
+        const port = harness.connect('sibling');
+
+        await port.request('client-info', {});
+        await port.request('client-info', {});
+        await port.request('initialize', { name: 'Sibling' });
+
+        jest.advanceTimersByTime(externalConnectionUsageFlushMs);
+        await flush();
+
+        const connection = (await harness.externalConnections())['sibling'];
+        expect(connection.methods['client-info']).toEqual({ count: 2, lastUsedAt: expect.any(Number) });
+        expect(connection.methods['initialize']).toEqual({ count: 1, lastUsedAt: expect.any(Number) });
+        expect(connection.lastUsedAt).toEqual(expect.any(Number));
+    });
+
+    it('does not record unknown methods', async () => {
+        await harness.approve('sibling');
+        const port = harness.connect('sibling');
+
+        await port.request('unknown-command', {});
+        jest.advanceTimersByTime(externalConnectionUsageFlushMs);
+        await flush();
+
+        expect((await harness.externalConnections())['sibling'].methods).toEqual({});
+    });
+
+    it('drops buffered usage when the connection is removed before the flush', async () => {
+        await harness.approve('sibling');
+        const port = harness.connect('sibling');
+        await port.request('client-info', {});
+
+        await harness.externalConnectionsChanged(harness.emptyState());
+        jest.advanceTimersByTime(externalConnectionUsageFlushMs);
+        await flush();
+
+        expect(await harness.externalConnections()).toEqual({});
+    });
+
+    it('does not carry buffered usage into a re-added connection', async () => {
+        await harness.approve('sibling');
+        const port = harness.connect('sibling');
+        await port.request('client-info', {});
+
+        await harness.externalConnectionsChanged(harness.emptyState());
+        await harness.externalConnectionsChanged(harness.approvedState('sibling'));
+
+        jest.advanceTimersByTime(externalConnectionUsageFlushMs);
+        await flush();
+
+        expect((await harness.externalConnections())['sibling'].methods).toEqual({});
+    });
+
+    it('flushes usage and records the disconnect when the last port closes', async () => {
+        await harness.approve('sibling');
+        const port = harness.connect('sibling');
+        await port.request('client-info', {});
+
+        port.simulateDisconnectFromClientSide();
+        await flush();
+
+        const connection = (await harness.externalConnections())['sibling'];
+        expect(connection.methods['client-info']).toEqual({ count: 1, lastUsedAt: expect.any(Number) });
+        expect(connection.lastDisconnectedAt).toEqual(expect.any(Number));
     });
 });

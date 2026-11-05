@@ -74,10 +74,10 @@ describe('AppExtensionGlobalStateProvider.onUpdated', () => {
         const updates: any[] = [];
         provider.onUpdated((state) => updates.push(state));
 
-        publish(globalStateUpdated({ externalConnections: { connections: {} } }));
+        publish(globalStateUpdated({ externalConnections: {} }));
         publish({ command: 'settings-updated' });
 
-        expect(updates).toEqual([{ externalConnections: { connections: {} } }]);
+        expect(updates).toEqual([{ externalConnections: {} }]);
     });
 
     it('notifies multiple listeners and stops after unsubscribing all of them', () => {

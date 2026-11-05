@@ -175,7 +175,7 @@ const Popup = ({
     });
     const hasPendingExternalConnection =
         externalConnections !== undefined &&
-        Object.values(activePendingExternalConnections(externalConnections.connections, Date.now())).length > 0;
+        Object.values(activePendingExternalConnections(externalConnections, Date.now())).length > 0;
     const autoSelectedPendingRef = useRef(false);
     const autoSelectedMediaIdRef = useRef<string | undefined>(undefined);
 

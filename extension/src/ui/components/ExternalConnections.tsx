@@ -2,10 +2,11 @@ import Button from '@mui/material/Button';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import type { TypographyOwnProps } from '@mui/material/Typography';
-import { useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { useExternalConnections } from '@/ui/hooks/use-external-connections';
 import { activePendingExternalConnections, approvedExternalConnections } from '@project/common/global-state';
+import type { ExternalConnection } from '@project/common/global-state';
 import { asbError } from '@project/common/util/log';
 import Box from '@mui/material/Box';
 import Alert from '@mui/material/Alert';
@@ -21,6 +22,9 @@ import { isFirefoxBuild } from '@/services/build-flags';
 import Tooltip from '@project/common/components/Tooltip';
 import DialogContentText from '@mui/material/DialogContentText';
 import useConfirmation from '@project/common/hooks/use-confirmation';
+import BarChartIcon from '@mui/icons-material/BarChart';
+import Dialog from '@mui/material/Dialog';
+import DialogActions from '@mui/material/DialogActions';
 
 const ExternalConnections: React.FC = () => {
     const { t } = useTranslation();
@@ -48,27 +52,29 @@ const ExternalConnections: React.FC = () => {
         },
         [removeExternalConnection]
     );
-    const firstPending = Object.entries(
-        activePendingExternalConnections(externalConnections?.connections ?? {}, Date.now())
-    )[0];
+
+    const [extensionIdForStatistics, setExtensionIdForStatistics] = useState<string>();
+    const [connectionStatisticsOpen, setConnectionStatisticsOpen] = useState<boolean>(false);
+    const handleOpenConnectionStatistics = useCallback((extensionId: string) => {
+        setExtensionIdForStatistics(extensionId);
+        setConnectionStatisticsOpen(true);
+    }, []);
+    const handleCloseConnectionStatistics = useCallback(() => {
+        setExtensionIdForStatistics(undefined);
+        setConnectionStatisticsOpen(false);
+    }, []);
+    const firstPending = Object.entries(activePendingExternalConnections(externalConnections ?? {}, Date.now()))[0];
     const firstPendingId = firstPending?.[0];
     const firstPendingRequest = firstPending?.[1];
-    const approved = Object.entries(approvedExternalConnections(externalConnections?.connections ?? {}));
+    const approved = Object.entries(approvedExternalConnections(externalConnections ?? {}));
 
-    const { confirming: confirmingApproval, confirm: approveWithConfirmation } = useConfirmation(
-        () => void approveExternalConnection(firstPendingId)
-    );
     return (
         <Box p={1.5} sx={{ width: '100%', height: '100%', overflowY: 'auto' }}>
             {firstPending !== undefined && (
                 <Stack spacing={3} sx={{ mt: 1.5 }}>
                     <ExternalConnectionWarning extensionId={firstPendingId} />
                     <ExternalConnectionRow extensionId={firstPendingId} name={firstPendingRequest.name} pending>
-                        <ApproveButton
-                            extensionId={firstPendingId}
-                            confirming={confirmingApproval}
-                            onClick={approveWithConfirmation}
-                        />
+                        <ApproveButton extensionId={firstPendingId} onApprove={approveExternalConnection} />
                         <Button
                             size="small"
                             variant="outlined"
@@ -85,6 +91,15 @@ const ExternalConnections: React.FC = () => {
                 <Stack spacing={1} sx={{ mt: 1.5 }}>
                     {approved.map(([extensionId, approval]) => (
                         <ExternalConnectionRow key={extensionId} extensionId={extensionId} name={approval.name}>
+                            <Button
+                                size="small"
+                                variant="outlined"
+                                color="info"
+                                startIcon={<BarChartIcon />}
+                                onClick={() => handleOpenConnectionStatistics(extensionId)}
+                            >
+                                {t('statistics.title')}
+                            </Button>
                             <Button
                                 size="small"
                                 variant="outlined"
@@ -127,6 +142,14 @@ const ExternalConnections: React.FC = () => {
                         />
                     </Typography>
                 </Box>
+            )}
+            {extensionIdForStatistics && externalConnections?.[extensionIdForStatistics] && (
+                <ConnectionStatistics
+                    open={connectionStatisticsOpen}
+                    extensionId={extensionIdForStatistics}
+                    connection={externalConnections[extensionIdForStatistics]}
+                    onClose={handleCloseConnectionStatistics}
+                />
             )}
         </Box>
     );
@@ -228,13 +251,21 @@ const ExternalConnectionRow: React.FC<ExternalConnectionRowProps> = ({ extension
 
 const ApproveButton: React.FC<{
     extensionId: string;
-    confirming: boolean;
-    onClick: () => void;
-}> = ({ confirming, onClick }) => {
+    onApprove: (extensionId: string) => void;
+}> = ({ extensionId, onApprove }) => {
     const { t } = useTranslation();
+    const { confirming: confirmingApproval, confirm: approveWithConfirmation } = useConfirmation(
+        () => void onApprove(extensionId)
+    );
     return (
-        <Button size="small" variant="outlined" color="success" startIcon={<LinkIcon />} onClick={onClick}>
-            {confirming ? t('action.confirm') : t('action.approve')}
+        <Button
+            size="small"
+            variant="outlined"
+            color="success"
+            startIcon={<LinkIcon />}
+            onClick={approveWithConfirmation}
+        >
+            {confirmingApproval ? t('action.confirm') : t('action.approve')}
         </Button>
     );
 };
@@ -264,6 +295,76 @@ const ExternalConnectionWarning: React.FC<{ extensionId: string }> = ({ extensio
                 />
             </DialogContentText>
         </Stack>
+    );
+};
+
+const formatTimestamp = (timestamp: number | undefined): string | undefined =>
+    timestamp === undefined ? undefined : new Date(timestamp).toLocaleString();
+
+const ConnectionStatistics: React.FC<{
+    open: boolean;
+    extensionId: string;
+    connection: ExternalConnection;
+    onClose: () => void;
+}> = ({ open, extensionId, connection, onClose }) => {
+    const { t } = useTranslation();
+    const statistics = {
+        extensionId,
+        lastConnectedAt: formatTimestamp(connection.lastConnectedAt),
+        lastDisconnectedAt: formatTimestamp(connection.lastDisconnectedAt),
+        lastUsedAt: formatTimestamp(connection.lastUsedAt),
+        methods: Object.fromEntries(
+            Object.entries(connection.methods ?? {}).map(([method, usage]) => [
+                method,
+                {
+                    count: usage.count,
+                    lastUsedAt: formatTimestamp(usage.lastUsedAt),
+                },
+            ])
+        ),
+    };
+
+    return (
+        <Dialog
+            open={open}
+            onClose={onClose}
+            maxWidth="sm"
+            fullWidth
+            slotProps={{
+                paper: {
+                    sx: {
+                        backgroundColor: 'transparent',
+                        backgroundImage: 'none',
+                        boxShadow: 'none',
+                    },
+                },
+            }}
+        >
+            <Box
+                component="pre"
+                sx={{
+                    m: 0,
+                    p: 2,
+                    border: 1,
+                    borderColor: 'divider',
+                    borderRadius: 1,
+                    bgcolor: 'background.paper',
+                    color: 'text.primary',
+                    fontSize: '0.8125rem',
+                    fontFamily: 'monospace',
+                    lineHeight: 1.5,
+                    overflow: 'auto',
+                    maxHeight: '60vh',
+                }}
+            >
+                {JSON.stringify(statistics, null, 2)}
+            </Box>
+            <DialogActions sx={{ px: 0, pt: 1, pb: 0 }}>
+                <Button variant="text" size="small" onClick={onClose}>
+                    {t('action.close')}
+                </Button>
+            </DialogActions>
+        </Dialog>
     );
 };
 
