@@ -1,8 +1,10 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, realpathSync } from 'node:fs';
 import { basename } from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath } from 'node:url';
 
-export const DOCS_BASE_URL = 'https://docs.asbplayer.dev';
+const project = JSON.parse(readFileSync(new URL('../project.json', import.meta.url), 'utf8'));
+
+export const DOCS_BASE_URL: string = project.urls.docs;
 export const DEFAULT_PREFIX = 'New blog post:';
 export const COMPONENTS_TEXT_LIMIT = 4000;
 export const MESSAGE_FLAGS = (1 << 15) | (1 << 2); // IS_COMPONENTS_V2 | SUPPRESS_EMBEDS
@@ -158,4 +160,5 @@ function main(): void {
     process.stdout.write(`${JSON.stringify(convertPostFile(file, prefix))}\n`);
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) main();
+// Node resolves the entry module's symlinks but leaves argv[1] as given, so compare canonical paths.
+if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) main();

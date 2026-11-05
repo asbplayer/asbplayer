@@ -1,3 +1,4 @@
+import project from '@project/common/project';
 import { asbError } from '@project/common/util/log';
 import { sourceString } from '@project/common/util';
 import type {
@@ -36,11 +37,11 @@ import { frameColorSchemeStyleBlock } from '@/services/frame-color-scheme';
 // Otherwise, Chrome won't insert content scripts into the iframe (e.g. Yomichan won't work).
 async function html(language: string) {
     return `<!DOCTYPE html>
-                <html lang="en">
+                <html lang="${encodeURIComponent(language)}">
                 <head>
                     <meta charset="utf-8" />
                     <meta name="viewport" content="width=device-width, initial-scale=1" />
-                    <title>asbplayer - Anki</title>
+                    <title>${project.names.short} - Anki</title>
                     <style>
                         @import url(${browser.runtime.getURL('/fonts/fonts.css')});
                         ${frameColorSchemeStyleBlock()}

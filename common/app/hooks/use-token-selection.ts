@@ -4,8 +4,11 @@ import type { IndexedSubtitleModel } from '@project/common';
 import {
     ASB_TOKEN_SELECTED_CLASS,
     ASB_TOKEN_START_ATTRIBUTE,
+    ASB_TOKEN_CONTAINER_CLASS,
     clearTokenSelectionInRoot,
+    clearAutoPauseTokenSelectionInRoot,
     currentTokenSelectionLocation,
+    restorableTokenSelectionInRoot,
     selectTokenInRoot,
 } from '@project/common/annotations';
 import { findAdjacentTokenJumpMatch } from '@project/common/annotations/token-navigation';
@@ -18,7 +21,7 @@ import { asbTrace } from '@project/common/util/log';
 let lastTokenSelectionOwner: HTMLElement | null = null; // Necessary so VideoPlayer and SubtitlePlayer can coordinate token selection focus (especially after yomitan popup)
 
 const playerContainerFor = (element: Element | null) => {
-    const container = element?.closest<HTMLElement>('.asbplayer-token-container') ?? null;
+    const container = element?.closest<HTMLElement>(`.${ASB_TOKEN_CONTAINER_CLASS}`) ?? null;
     return container === container?.ownerDocument.body ? null : container;
 };
 
@@ -101,6 +104,37 @@ export const useTokenSelection = ({
         activeTokenSelectionOptionsRef.current = undefined;
         const root = rootRef.current;
         if (root) clearTokenSelectionInRoot(root);
+    }, [clearPendingTokenSelection, rootRef]);
+
+    const selectToken = useCallback(
+        (target: TokenSelectionLocation, options?: SelectTokenInRootOptions) => {
+            const root = rootRef.current;
+            // Navigation owns the selection even while its destination is waiting to render.
+            if (
+                options?.onlyIfUnselected &&
+                ((pendingTokenSelectionRef.current && !pendingTokenSelectionOptionsRef.current?.autoPause) ||
+                    (root && restorableTokenSelectionInRoot(root)))
+            ) {
+                return true;
+            }
+            if (!root || !selectTokenInRoot(root, target, options)) return false;
+            clearPendingTokenSelection();
+            lastTokenSelectionOwner = playerContainerFor(root);
+            onTokenSelectionClaimed?.();
+            activeTokenSelectionRef.current = target;
+            activeTokenSelectionOptionsRef.current = options;
+            return true;
+        },
+        [clearPendingTokenSelection, onTokenSelectionClaimed, rootRef]
+    );
+
+    const clearPauseTokenSelection = useCallback(() => {
+        if (activeTokenSelectionOptionsRef.current?.autoPause) {
+            clearPendingTokenSelection();
+            activeTokenSelectionRef.current = undefined;
+            activeTokenSelectionOptionsRef.current = undefined;
+        }
+        if (rootRef.current) clearAutoPauseTokenSelectionInRoot(rootRef.current);
     }, [clearPendingTokenSelection, rootRef]);
 
     const selectPendingToken = useCallback(() => {
@@ -263,5 +297,5 @@ export const useTokenSelection = ({
         rootRef,
     ]);
 
-    return { selectPendingToken, requestTokenSelection, clearTokenSelection };
+    return { selectToken, selectPendingToken, requestTokenSelection, clearTokenSelection, clearPauseTokenSelection };
 };

@@ -1,3 +1,4 @@
+import project from '@project/common/project';
 import { makeStyles } from '@mui/styles';
 import type { Theme } from '@mui/material';
 import { useTranslation } from 'react-i18next';
@@ -292,7 +293,7 @@ export default function Bar({
                 }}
             >
                 <List className={classes.menu} onMouseLeave={handleMenuClose} dense>
-                    <Link href="https://docs.asbplayer.dev/docs/intro">
+                    <Link href={`${project.urls.docs}/docs/intro`}>
                         <ListItem disablePadding>
                             <ListItemButton>
                                 <ListItemIcon>
@@ -302,7 +303,7 @@ export default function Bar({
                             </ListItemButton>
                         </ListItem>
                     </Link>
-                    <Link href="https://github.com/asbplayer/asbplayer/issues">
+                    <Link href={`${project.urls.repo}/issues`}>
                         <ListItem disablePadding>
                             <ListItemButton>
                                 <ListItemIcon>

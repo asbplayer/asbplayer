@@ -8,4 +8,6 @@ SCRIPTPATH="$(
 
 cd "$SCRIPTPATH"
 
-go build -o asbplayer-ws
+node --experimental-strip-types ../sync-project-config.ts
+ARTIFACT_NAME=$(jq -r '.services.webSocket.artifact' ../../project.json)
+go build -o "$ARTIFACT_NAME"

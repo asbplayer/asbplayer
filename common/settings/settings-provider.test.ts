@@ -1,3 +1,4 @@
+import project from '@project/common/project';
 import type { SubtitlesWidthUnit, PageSettings, SubtitleAlignment } from '@project/common/settings';
 import {
     SettingsProvider,
@@ -5,6 +6,7 @@ import {
     VideoSubtitleSplitBehavior,
     changeForTextSubtitleSetting,
     defaultSettings,
+    dictionaryPlaybackFeatures,
     isSaveOnlySettings,
     saveOnlySettings,
     textSubtitleSettingsForTrack,
@@ -12,6 +14,30 @@ import {
 import { describe, expect, it } from '@jest/globals';
 import { PlayMode } from '@project/common';
 import { MockSettingsStorage } from '@project/common/settings/mock-settings-storage';
+
+it('adjusts each feature’s status and state trigger lengths without losing rules or selections', async () => {
+    const storage = new MockSettingsStorage();
+    const playback = JSON.parse(JSON.stringify(defaultSettings.dictionaryTracks[0].dictionaryPlaybackConfig));
+    for (const feature of dictionaryPlaybackFeatures) {
+        playback[feature].onStatuses[0].enabled = true;
+        playback[feature].onStatuses.pop();
+        playback[feature].onStates.push({ enabled: true });
+        playback[feature].rules.maxWords = 2;
+    }
+    const savedTrack = { ...defaultSettings.dictionaryTracks[0], dictionaryPlaybackConfig: playback };
+    storage.setData({ dictionaryTracks: [savedTrack] });
+    const tracks = (await new SettingsProvider(storage).getAll()).dictionaryTracks;
+    for (const feature of dictionaryPlaybackFeatures) {
+        const actual = tracks[0].dictionaryPlaybackConfig[feature];
+        const defaults = defaultSettings.dictionaryTracks[0].dictionaryPlaybackConfig[feature];
+        expect(actual.onStatuses).toHaveLength(defaults.onStatuses.length);
+        expect(actual.onStates).toHaveLength(defaults.onStates.length);
+        expect(actual.onStatuses[0].enabled).toBe(true);
+        expect(actual.onStatuses.at(-1)).toEqual({ enabled: false });
+        expect(actual.onStates).toEqual(defaults.onStates);
+        expect(actual.rules.maxWords).toBe(2);
+    }
+});
 
 it('starts at default settings', async () => {
     const provider = new SettingsProvider(new MockSettingsStorage());
@@ -21,6 +47,10 @@ it('starts at default settings', async () => {
     expect(initialSettings.playbackRateNotificationEnabled).toBe(true);
     expect(initialSettings.rememberPlaybackRate).toBe(false);
     expect(initialSettings.fastForwardPlaybackMinimumSkipIntervalMs).toBe(500);
+    expect(initialSettings.dictionaryTracks[0].dictionaryPlaybackConfig.fastForward.rateByComprehension).toEqual({
+        enabled: false,
+        minimumPercent: 60,
+    });
     expect(initialSettings.repeatCountPreference).toBe(0);
     expect(initialSettings.rememberPlaybackModes).toBe(false);
     expect(initialSettings.lastPlaybackModes).toEqual([PlayMode.normal]);
@@ -76,12 +106,14 @@ it('returns the same object references if the values inside do not change', asyn
 it('changes different keys for different profiles', async () => {
     const storage = new MockSettingsStorage();
     const provider = new SettingsProvider(storage);
-    const defaultProfileValue = 'https://foo.bar';
+    const defaultProfileValue = 'https://custom.example.com';
     await provider.set({ streamingAppUrl: defaultProfileValue });
     await storage.addProfile('profile');
     await storage.setActiveProfile('profile');
     const profileValue = await provider.getSingle('streamingAppUrl');
-    expect(profileValue).toEqual('https://app.asbplayer.dev');
+    expect(profileValue).toEqual(project.urls.app);
+    await storage.setActiveProfile(undefined);
+    expect(await provider.getSingle('streamingAppUrl')).toEqual(defaultProfileValue);
 });
 
 it('provides default values for unpopulated, nested settings', async () => {
@@ -310,4 +342,20 @@ describe('streamingPages consistency', () => {
 
         expect(streamingPages).toEqual(defaultSettings.streamingPages);
     });
+});
+
+it('normalizes pause-selection trigger lengths without adding playback rules', async () => {
+    const storage = new MockSettingsStorage();
+    const track = JSON.parse(JSON.stringify(defaultSettings.dictionaryTracks[0]));
+    const selection = track.dictionaryPlaybackConfig.selectOnPause;
+    selection.onStatuses[1].enabled = true;
+    selection.onStates[0].enabled = true;
+    selection.onStatuses.pop();
+    selection.onStates.push({ enabled: true });
+    storage.setData({ dictionaryTracks: [track] });
+    const actual = (await new SettingsProvider(storage).getAll()).dictionaryTracks[0].dictionaryPlaybackConfig
+        .selectOnPause;
+    expect(actual.onStatuses.map((trigger) => trigger.enabled)).toEqual([false, true, false, false, false, false]);
+    expect(actual.onStates).toEqual([{ enabled: true }]);
+    expect(actual).not.toHaveProperty('rules');
 });

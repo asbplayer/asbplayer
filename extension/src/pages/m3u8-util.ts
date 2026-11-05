@@ -1,5 +1,6 @@
 import type { VideoDataSubtitleTrack } from '@project/common';
-import { detectedSubtitleLabel, genericSubtitleDisplayLabel } from '@project/extension/src/pages/subtitle-discovery';
+import { detectedSubtitleLabel } from '@project/extension/src/pages/subtitle-discovery';
+import { genericSubtitleDisplayLabel } from '@project/common/util/subtitle-language';
 import { Parser } from 'm3u8-parser';
 import {
     extractExtension,

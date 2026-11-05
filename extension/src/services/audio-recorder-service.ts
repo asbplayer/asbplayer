@@ -1,4 +1,5 @@
 import type {
+    AudioErrorCode,
     ExtensionToAsbPlayerCommand,
     ExtensionToVideoCommand,
     NotifyErrorMessage,
@@ -9,7 +10,11 @@ import type {
 } from '@project/common';
 import { StartRecordingErrorCode, StopRecordingErrorCode } from '@project/common';
 import type TabRegistry from '@project/extension/src/services/tab-registry';
-import type { AudioRecorderDelegate } from '@project/extension/src/services/audio-recorder-delegate';
+import type {
+    AudioRecorderDelegate,
+    ImageRecordingRequest,
+    RecordedMedia,
+} from '@project/extension/src/services/audio-recorder-delegate';
 import { v4 as uuidv4 } from 'uuid';
 
 interface Requester {
@@ -23,13 +28,15 @@ export class TimedRecordingInProgressError extends Error {}
 
 export class NoRecordingInProgressServiceError extends Error {}
 
+export class RecordingInProgressError extends Error {}
+
 export default class AudioRecorderService {
     private readonly _tabRegistry: TabRegistry;
     private readonly _delegate: AudioRecorderDelegate;
 
-    private audioBase64Promise?: Promise<string>;
-    private audioBase64Resolve?: (value: string) => void;
-    private audioBase64Reject?: (error: any) => void;
+    private mediaPromise?: Promise<RecordedMedia>;
+    private mediaResolve?: (value: RecordedMedia) => void;
+    private mediaReject?: (error: any) => void;
     private currentRecordRequestId: string | undefined;
 
     constructor(tabRegistry: TabRegistry, delegate: AudioRecorderDelegate) {
@@ -37,25 +44,45 @@ export default class AudioRecorderService {
         this._delegate = delegate;
     }
 
-    onAudioBase64(base64: string, requestId: string) {
+    onAudioBase64(base64: string, requestId: string, image?: { base64: string }, audioError?: AudioErrorCode) {
+        this._onRecordedMedia(
+            {
+                audioBase64: base64,
+                audioError,
+                image: image === undefined ? null : { base64: image.base64, extension: 'webp', animated: true },
+            },
+            requestId
+        );
+    }
+
+    private _onRecordedMedia(media: RecordedMedia, requestId: string) {
         if (this.currentRecordRequestId === requestId) {
-            this.audioBase64Resolve?.(base64);
-            this.audioBase64Resolve = undefined;
-            this.audioBase64Promise = undefined;
-            this.audioBase64Reject = undefined;
-            this.currentRecordRequestId = undefined;
+            this.mediaResolve?.(media);
+            this._clearPendingMedia();
         }
     }
 
-    async startWithTimeout(time: number, encodeAsMp3: boolean, requester: Requester): Promise<string> {
+    private _clearPendingMedia() {
+        this.mediaResolve = undefined;
+        this.mediaPromise = undefined;
+        this.mediaReject = undefined;
+        this.currentRecordRequestId = undefined;
+    }
+
+    async startWithTimeout(
+        time: number,
+        encodeAsMp3: boolean,
+        requester: Requester,
+        image?: ImageRecordingRequest
+    ): Promise<RecordedMedia> {
         const requestId = uuidv4();
 
         try {
-            const response = await this._delegate.startWithTimeout(time, encodeAsMp3, requestId, requester);
+            const response = await this._delegate.startWithTimeout(time, encodeAsMp3, requestId, requester, image);
 
             if (response.started) {
                 this._notifyRecordingStarted(requester);
-                return await this._prepareForAudioDataResponse(requestId);
+                return await this._prepareForMediaResponse(requestId);
             }
 
             throw this._handleStartError(response, requester);
@@ -64,16 +91,16 @@ export default class AudioRecorderService {
         }
     }
 
-    async start(requester: Requester) {
+    async start(requester: Requester, image?: ImageRecordingRequest) {
         try {
             const requestId = uuidv4();
-            const response = await this._delegate.start(requestId, requester);
+            const response = await this._delegate.start(requestId, requester, image);
 
             if (!response.started) {
                 throw this._handleStartError(response, requester);
             }
 
-            void this._prepareForAudioDataResponse(requestId);
+            void this._prepareForMediaResponse(requestId);
             this._notifyRecordingStarted(requester);
         } catch (e) {
             this._notifyRecordingFinished(requester);
@@ -96,6 +123,11 @@ export default class AudioRecorderService {
                 return new Error(errorMessage);
             case StartRecordingErrorCode.drmProtected:
                 return new DrmProtectedStreamError();
+            case StartRecordingErrorCode.recordingInProgress: {
+                const inProgressMessage = 'Cannot start recording: another recording is already in progress';
+                this._notifyError(inProgressMessage, { tabId, src });
+                return new RecordingInProgressError(inProgressMessage);
+            }
         }
     }
 
@@ -110,9 +142,9 @@ export default class AudioRecorderService {
         void browser.tabs.sendMessage(tabId, command);
     }
 
-    async stop(encodeAsMp3: boolean, requester: Requester): Promise<string> {
-        const audioBase64Promise = this.audioBase64Promise; // Audio delivery can clear the shared promise before the stop acknowledgment arrives.
-        if (audioBase64Promise === undefined) {
+    async stop(encodeAsMp3: boolean, requester: Requester): Promise<RecordedMedia> {
+        const mediaPromise = this.mediaPromise; // Media delivery can clear the shared promise before the stop acknowledgment arrives.
+        if (mediaPromise === undefined) {
             // Benign no-op: If the user spams cancel on a bulk export,
             // we can get a cancel request on a non-recording state.
             this._notifyRecordingFinished(requester);
@@ -132,7 +164,7 @@ export default class AudioRecorderService {
         }
 
         this._notifyRecordingFinished(requester);
-        return audioBase64Promise;
+        return mediaPromise;
     }
 
     private _notifyRecordingStarted({ tabId, src }: Requester) {
@@ -175,21 +207,18 @@ export default class AudioRecorderService {
         void browser.tabs.sendMessage(tabId, videoCommand);
     }
 
-    private _prepareForAudioDataResponse(requestId: string): Promise<string> {
-        if (this.audioBase64Promise !== undefined) {
-            this.audioBase64Reject?.(new Error('Audio request superseded by a newer request'));
-            this.audioBase64Resolve = undefined;
-            this.audioBase64Reject = undefined;
-            this.audioBase64Promise = undefined;
-            this.currentRecordRequestId = undefined;
+    private _prepareForMediaResponse(requestId: string): Promise<RecordedMedia> {
+        if (this.mediaPromise !== undefined) {
+            this.mediaReject?.(new Error('Audio request superseded by a newer request'));
+            this._clearPendingMedia();
         }
 
-        this.audioBase64Promise = new Promise<string>((resolve, reject) => {
-            this.audioBase64Resolve = resolve;
-            this.audioBase64Reject = reject;
+        this.mediaPromise = new Promise<RecordedMedia>((resolve, reject) => {
+            this.mediaResolve = resolve;
+            this.mediaReject = reject;
             this.currentRecordRequestId = requestId;
         });
-        return this.audioBase64Promise;
+        return this.mediaPromise;
     }
 
     private _notifyError(message: string, { tabId, src }: Requester) {

@@ -84,7 +84,7 @@ export const makeTimeline = (
 
 export const makePlaybackPlanInput = <T extends IndexedSubtitleModel>(
     subtitles: readonly T[],
-    options: Partial<PlaybackPlanInput<T>> = {}
+    options?: Partial<PlaybackPlanInput<T>>
 ): PlaybackPlanInput<T> => ({
     subtitles,
     durationMs: 6000,
@@ -95,6 +95,7 @@ export const makePlaybackPlanInput = <T extends IndexedSubtitleModel>(
     subtitleTriggerGapEndOffset: 0,
     subtitleTriggerGapStartOffset: 0,
     repeatCountPreference: 0,
+    repeatsBeforeShowingSubtitles: 0,
     condensedPlaybackMinimumSkipIntervalMs: 500,
     playbackRate: 1.25,
     fastForwardModePlaybackRate: 2.5,

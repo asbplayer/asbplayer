@@ -20,6 +20,7 @@ type Unbinder = (() => void) | false;
 export default class KeyBindings {
     private _keyBinder: DefaultKeyBinder | undefined;
 
+    private _unbindRecipes?: () => void;
     private _unbindPlay: Unbinder = false;
     private _unbindAutoPause: Unbinder = false;
     private _unbindCondensedPlayback: Unbinder = false;
@@ -66,6 +67,19 @@ export default class KeyBindings {
         if (this._bound) {
             this.unbind();
         }
+
+        this._unbindRecipes = this._keyBinder.bindRecipes(
+            (event, action) => {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                void context
+                    .selectRecipe(action)
+                    .catch((error) => asbError('playback/recipe', 'Recipe shortcut failed', { action, error }));
+            },
+            () => !context.synced,
+            () => context.subtitleController.subtitles,
+            true
+        );
 
         this._unbindPlay = this._keyBinder.bindPlay(
             (event) => {
@@ -507,6 +521,9 @@ export default class KeyBindings {
             this._unbindResetOffset();
             this._unbindResetOffset = false;
         }
+
+        this._unbindRecipes?.();
+        this._unbindRecipes = undefined;
 
         if (this._unbindToggleRepeat) {
             this._unbindToggleRepeat();

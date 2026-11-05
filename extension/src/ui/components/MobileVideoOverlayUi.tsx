@@ -1,3 +1,5 @@
+import project from '@project/common/project';
+import { useSettings } from '@project/extension/src/ui/hooks/use-settings';
 import type {
     AsbPlayerToVideoCommandV2,
     ControlType,
@@ -47,6 +49,7 @@ const saveLastControlType = async (controlType: ControlType): Promise<void> => {
 
 const MobileVideoOverlayUi = () => {
     const location = useMobileVideoOverlayLocation();
+    const { settings: recipeSettings, onSettingsChanged } = useSettings();
     const hiddenRef = useRef<boolean>(false);
 
     const handleMineSubtitle = useCallback(async () => {
@@ -233,7 +236,7 @@ const MobileVideoOverlayUi = () => {
         }
     }, []);
 
-    const { initialized: i18nInitialized } = useI18n({ language: model?.language ?? 'en' });
+    const { initialized: i18nInitialized } = useI18n({ language: model?.language ?? project.defaultLanguage });
     const { lastControlType, setLastControlType } = useLastScrollableControlType({
         isMobile,
         saveLastControlType,
@@ -264,6 +267,9 @@ const MobileVideoOverlayUi = () => {
                     onOffset={handleOffset}
                     onSeek={handleSeek}
                     onPlaybackRate={handlePlaybackRate}
+                    recipes={recipeSettings?.recipes}
+                    activeRecipeId={recipeSettings?.activeRecipeId}
+                    onRecipeSelected={(activeRecipeId) => onSettingsChanged({ activeRecipeId })}
                     onPlayModeSelected={handlePlayModeSelected}
                     onToggleSubtitles={handleToggleSubtitles}
                     onPlayModeSelectorOpened={handlePlayModeSelectorOpened}

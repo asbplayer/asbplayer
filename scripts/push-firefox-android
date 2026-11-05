@@ -1,8 +1,7 @@
 #!/bin/bash
+set -euo pipefail
 
-DEVICE=$(adb devices | awk '{print $1}' | grep -v List | grep -Ex "([a-zA-Z0-9]+)")
-
-if [ "$?" -eq 1 ]; then
+if ! DEVICE=$(adb devices | awk '{print $1}' | grep -v List | grep -Ex "([a-zA-Z0-9]+)"); then
     echo "Could not determine device"
     exit 1
 fi
@@ -12,6 +11,6 @@ SCRIPTPATH="$(
     pwd -P
 )"
 
-pushd $SCRIPTPATH/../extension/.output/firefox-android-mv2
-web-ext run -t firefox-android --adb-device $DEVICE --firefox-apk org.mozilla.fenix
+pushd "$SCRIPTPATH/../extension/.output/firefox-android-mv2"
+web-ext run -t firefox-android --adb-device "$DEVICE" --firefox-apk org.mozilla.fenix
 popd

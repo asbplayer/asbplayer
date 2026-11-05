@@ -10,7 +10,6 @@ import Typography from '@mui/material/Typography';
 import FormHelperText from '@mui/material/FormHelperText';
 import InputAdornment from '@mui/material/InputAdornment';
 import IconButton from '@mui/material/IconButton';
-import Tooltip from '@mui/material/Tooltip';
 import Switch from '@mui/material/Switch';
 import EditIcon from '@mui/icons-material/Edit';
 import SettingsTextField from '@project/common/components/SettingsTextField';
@@ -64,6 +63,18 @@ const keyBindSectionByName: { [key in KeyBindName]: KeyboardShortcutSection } = 
     takeScreenshot: 'mining',
     toggleRecording: 'mining',
     toggleSidePanel: 'playback',
+    cycleRecipesForward: 'playback',
+    cycleRecipesBackward: 'playback',
+    toggleRecipe1: 'playback',
+    toggleRecipe2: 'playback',
+    toggleRecipe3: 'playback',
+    toggleRecipe4: 'playback',
+    toggleRecipe5: 'playback',
+    toggleRecipe6: 'playback',
+    toggleRecipe7: 'playback',
+    toggleRecipe8: 'playback',
+    toggleRecipe9: 'playback',
+    toggleRecipe10: 'playback',
     togglePlay: 'playback',
     toggleAutoPause: 'playback',
     toggleCondensedPlayback: 'playback',
@@ -242,8 +253,6 @@ function KeyBindField({ label, keys, boundViaChrome, onKeysChange, onOpenExtensi
         placeholder = t('settings.unboundBind');
     }
 
-    const firefoxExtensionShortcut = isFirefox && boundViaChrome;
-
     return (
         <Grid2 container className={classes.container} wrap={'nowrap'} spacing={1}>
             <Grid2
@@ -269,24 +278,9 @@ function KeyBindField({ label, keys, boundViaChrome, onKeysChange, onOpenExtensi
                             input: {
                                 endAdornment: (
                                     <InputAdornment position="end">
-                                        {!firefoxExtensionShortcut && (
-                                            <IconButton
-                                                ref={ref}
-                                                sx={{ marginRight: -1 }}
-                                                onClick={handleEditKeyBinding}
-                                            >
-                                                <EditIcon fontSize="small" />
-                                            </IconButton>
-                                        )}
-                                        {firefoxExtensionShortcut && (
-                                            <Tooltip title={t('settings.firefoxExtensionShortcutHelp')}>
-                                                <span>
-                                                    <IconButton disabled={true}>
-                                                        <EditIcon fontSize="small" />
-                                                    </IconButton>
-                                                </span>
-                                            </Tooltip>
-                                        )}
+                                        <IconButton ref={ref} sx={{ marginRight: -1 }} onClick={handleEditKeyBinding}>
+                                            <EditIcon fontSize="small" />
+                                        </IconButton>
                                     </InputAdornment>
                                 ),
                             },
@@ -303,6 +297,7 @@ interface Props {
     onSettingChanged: <K extends keyof AsbplayerSettings>(key: K, value: AsbplayerSettings[K]) => Promise<void>;
     chromeKeyBinds: { [key: string]: string | undefined };
     extensionInstalled?: boolean;
+    supportsDictionaryPlayback: boolean;
     extensionSupportsExportCardBind?: boolean;
     extensionSupportsSidePanel?: boolean;
     extensionSupportsAutoPauseResume?: boolean;
@@ -329,6 +324,7 @@ const KeyboardShortcutsSettingsTab: React.FC<Props> = ({
     settings,
     onSettingChanged,
     chromeKeyBinds,
+    supportsDictionaryPlayback,
     extensionInstalled,
     extensionSupportsExportCardBind,
     extensionSupportsSidePanel,
@@ -401,6 +397,26 @@ const KeyboardShortcutsSettingsTab: React.FC<Props> = ({
                 boundViaBrowser: isFirefox,
                 hide: !extensionInstalled || !extensionSupportsSidePanel,
             },
+            cycleRecipesForward: {
+                label: t('binds.cycleRecipesForward'),
+                boundViaBrowser: false,
+                hide: !supportsDictionaryPlayback,
+            },
+            cycleRecipesBackward: {
+                label: t('binds.cycleRecipesBackward'),
+                boundViaBrowser: false,
+                hide: !supportsDictionaryPlayback,
+            },
+            ...(Object.fromEntries(
+                Array.from({ length: 10 }, (_, index) => [
+                    `toggleRecipe${index + 1}`,
+                    {
+                        label: t('binds.toggleRecipe', { number: index + 1 }),
+                        boundViaBrowser: false,
+                        hide: !supportsDictionaryPlayback,
+                    },
+                ])
+            ) as Record<Extract<KeyBindName, `toggleRecipe${number}`>, KeyBindProperties>),
             togglePlay: { label: t('binds.togglePlay'), boundViaBrowser: false },
             toggleAutoPause: {
                 label: t('binds.toggleAutoPause'),
@@ -643,6 +659,7 @@ const KeyboardShortcutsSettingsTab: React.FC<Props> = ({
         }),
         [
             t,
+            supportsDictionaryPlayback,
             extensionInstalled,
             extensionSupportsSidePanel,
             extensionSupportsExportCardBind,

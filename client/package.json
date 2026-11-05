@@ -1,6 +1,5 @@
 {
     "name": "@project/client",
-    "version": "0.1.0",
     "private": true,
     "license": "AGPL-3.0-or-later",
     "type": "module",
@@ -26,7 +25,6 @@
         "typescript": "catalog:",
         "vite": "^8.2.2"
     },
-    "homepage": "https://app.asbplayer.dev",
     "scripts": {
         "start": "VITE_APP_VERSION_REPO_PATH=\"commit/$(git rev-parse --short HEAD)\" vite",
         "verify": "../scripts/loc/loc-keys-match && tsc && jest",

@@ -18,7 +18,7 @@ const webmMimeTypeCandidates = [
 
 export const minWebmMediaFragmentDurationMs = 300;
 
-export type MediaFragmentFormat = 'jpeg' | 'webm';
+export type MediaFragmentFormat = 'jpeg' | 'webm' | 'webp';
 
 export const makeMediaFragmentFileName = (prefix: string, timestamp: number) => {
     return `${prefix.replaceAll(' ', '_').substring(0, Math.min(prefix.length, maxPrefixLength))}_${Math.floor(
@@ -181,15 +181,24 @@ export class Base64MediaFragmentData implements MediaFragmentData {
     private readonly _base64: string;
     private readonly _extension: string;
     private readonly _error?: MediaFragmentErrorCode;
+    private readonly _animated: boolean;
 
     private cachedBlob?: Blob;
 
-    constructor(name: string, timestamp: number, base64: string, extension: string, error?: MediaFragmentErrorCode) {
+    constructor(
+        name: string,
+        timestamp: number,
+        base64: string,
+        extension: string,
+        error?: MediaFragmentErrorCode,
+        animated: boolean = false
+    ) {
         this._name = name;
         this._timestamp = timestamp;
         this._base64 = base64;
         this._extension = extension;
         this._error = error;
+        this._animated = animated;
     }
 
     get name() {
@@ -206,6 +215,10 @@ export class Base64MediaFragmentData implements MediaFragmentData {
 
     get error() {
         return this._error;
+    }
+
+    get animated() {
+        return this._animated;
     }
 
     atTimestamp() {
@@ -256,6 +269,7 @@ export interface MediaFragmentData {
     atTimestamp: (timestamp: number) => MediaFragmentData;
     canChangeTimestamp: boolean;
     error?: MediaFragmentErrorCode;
+    animated: boolean;
     dispose: () => void;
 }
 
@@ -311,7 +325,8 @@ export default class MediaFragment {
                 card.subtitle.start,
                 card.image.base64,
                 card.image.extension,
-                card.image.error
+                card.image.error,
+                card.image.animated
             );
         }
 
@@ -333,11 +348,14 @@ export default class MediaFragment {
         timestamp: number,
         base64: string,
         extension: string,
-        error: MediaFragmentErrorCode | undefined
+        error: MediaFragmentErrorCode | undefined,
+        animated: boolean = false
     ) {
         const prefix = subtitleFileName.substring(0, subtitleFileName.lastIndexOf('.'));
         const mediaFragmentName = `${makeMediaFragmentFileName(prefix, timestamp)}.${extension}`;
-        return new MediaFragment(new Base64MediaFragmentData(mediaFragmentName, timestamp, base64, extension, error));
+        return new MediaFragment(
+            new Base64MediaFragmentData(mediaFragmentName, timestamp, base64, extension, error, animated)
+        );
     }
 
     static fromFile(file: FileModel, timestamp: number, maxWidth: number, maxHeight: number, trimBlackBars: boolean) {
@@ -376,6 +394,10 @@ export default class MediaFragment {
         return this.data.error;
     }
 
+    get animated() {
+        return this.data.animated;
+    }
+
     async base64() {
         return this.data.base64();
     }
@@ -389,8 +411,8 @@ export default class MediaFragment {
     }
 
     async pngBlob() {
-        if (this.extension === 'webm') {
-            throw new Error('Cannot convert WebM media fragment to PNG');
+        if (this.animated) {
+            throw new Error('Cannot convert animated media fragment to PNG');
         }
 
         const sourceBlob = await this.blob();

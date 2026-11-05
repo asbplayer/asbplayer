@@ -51,7 +51,7 @@ export default class RerecordMediaHandler {
         if (tabId === undefined) throw new Error('Cannot rerecord media without a valid tab ID');
 
         try {
-            const audioBase64 = await this._audioRecorder.startWithTimeout(
+            const { audioBase64 } = await this._audioRecorder.startWithTimeout(
                 rerecordCommand.message.duration / rerecordCommand.message.playbackRate +
                     rerecordCommand.message.audioPaddingEnd,
                 false,

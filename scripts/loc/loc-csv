@@ -1,11 +1,13 @@
 #!/bin/bash
+set -euo pipefail
 
 function json_to_csv() {
     jq -r '[paths(scalars) as $path | {"key": $path | join("."), "value": getpath($path)}] | .[] | "\"\(.key)\",\"\",\"\",\"\(.value)\""' $1
 }
 mkdir -p csv
-for locale in $(ls ../extension/src/_locales); do
+SCRIPTPATH="$(cd -- "$(dirname "$0")" >/dev/null 2>&1; pwd -P)"
+while IFS= read -r locale; do
     echo "Key,Notes,English,Translation" >> csv/$locale.csv
-    json_to_csv ../common/locales/$locale.json >> csv/$locale.csv
-    json_to_csv ../extension/src/_locales/$locale/messages.json >> csv/$locale.csv
-done
+    json_to_csv "$SCRIPTPATH/../../common/locales/$locale.json" >> csv/$locale.csv
+    json_to_csv "$SCRIPTPATH/../../extension/public/_locales/$locale/messages.json" >> csv/$locale.csv
+done < <(jq -r '.languages[].code' "$SCRIPTPATH/../../project.json")

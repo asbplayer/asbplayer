@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="<%= defaultLanguage %>">
     <head>
         <meta charset="utf-8" />
         <link rel="icon" href="/favicon.ico" />
@@ -8,12 +8,12 @@
         <meta name="description" content="Browser-based media player for mining sentences from subtitles." />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="<%- url %>" />
-        <meta property="og:title" content="asbplayer" />
+        <meta property="og:title" content="<%= projectName %>" />
         <meta property="og:description" content="Browser-based media player for mining sentences from subtitles." />
         <meta property="og:image" content="/logo512.png" />
         <link rel="apple-touch-icon" href="/logo192.png" />
         <%- plausible %>
-        <title>asbplayer</title>
+        <title><%= projectName %></title>
     </head>
     <body>
         <noscript>You need to enable JavaScript to run this app.</noscript>

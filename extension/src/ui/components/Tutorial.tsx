@@ -1,3 +1,4 @@
+import project from '@project/common/project';
 import { useTheme } from '@mui/material/styles';
 import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
@@ -208,7 +209,7 @@ const FinishedDialog: React.FC<{ open: boolean; onClose: () => void }> = ({ open
                             Settings
                         </Link>,
                         <p key={1} />,
-                        <Link href="https://docs.asbplayer.dev/docs/intro/" target="_blank" rel="noreferrer" key={2}>
+                        <Link href={`${project.urls.docs}/docs/intro/`} target="_blank" rel="noreferrer" key={2}>
                             user guide
                         </Link>,
                     ]}

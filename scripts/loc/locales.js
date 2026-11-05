@@ -1,4 +1,4 @@
-import { readFile, writeFile, readdir } from 'fs/promises';
+import { readFile, writeFile } from 'fs/promises';
 import { join } from 'path';
 import { fileURLToPath } from 'url';
 import { flatten, unflatten } from 'flat';
@@ -27,8 +27,8 @@ export const merge = (a, b) => {
 };
 
 export async function supportedLocales() {
-    const files = await readdir(commonLocalesPath);
-    return files.map((f) => /(.+)\.json/.exec(f)[1]);
+    const project = await readJson(join(dirname, '../../project.json'));
+    return project.languages.map(({ code }) => code);
 }
 
 async function readJson(path) {

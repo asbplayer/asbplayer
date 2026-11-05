@@ -1,12 +1,10 @@
 import { describe, expect, it } from '@jest/globals';
 import { AutoPausePreference, PlayMode } from '@project/common';
 import type { IndexedSubtitleModel } from '@project/common';
+
 import { makePlaybackPlanInput, makeSubtitle } from '@project/common/playback/playback-test-utils';
-import {
-    buildPlaybackPlan,
-    fastForwardingForPlanState,
-    normalizeAutoPauseDurationBounds,
-} from '@project/common/playback/plan/playback-plan';
+import { buildPlaybackPlan, fastForwardingForPlanState } from '@project/common/playback/plan/playback-plan';
+import { normalizeAutoPauseDurationBounds } from '@project/common/util';
 import PlaybackTimeline from '@project/common/playback/timeline/playback-timeline';
 import { AutoPauseResumeMode, SubtitleVisibility } from '@project/common/settings';
 
@@ -139,6 +137,7 @@ describe('buildPlaybackPlan', () => {
                     pause: true,
                     repeat: {
                         count: 2,
+                        repeatsBeforeShowingSubtitles: 0,
                     },
                 },
             })
@@ -177,6 +176,7 @@ describe('buildPlaybackPlan', () => {
                 pause: expectedPauseAtEnd,
                 repeat: {
                     count: 1,
+                    repeatsBeforeShowingSubtitles: 0,
                 },
             });
         }
@@ -198,6 +198,7 @@ describe('buildPlaybackPlan', () => {
                     pause: false,
                     repeat: {
                         count: 1,
+                        repeatsBeforeShowingSubtitles: 0,
                     },
                 },
             })
@@ -215,8 +216,22 @@ describe('buildPlaybackPlan', () => {
             pause: true,
             repeat: {
                 count: 2,
+                repeatsBeforeShowingSubtitles: 0,
             },
         });
+    });
+
+    it('caps subtitle reveal to the finite repeat count', () => {
+        const finite = makePlan([PlayMode.repeat], {
+            repeatCountPreference: 2,
+            repeatsBeforeShowingSubtitles: 5,
+        });
+        const unlimited = makePlan([PlayMode.repeat], {
+            repeatCountPreference: 0,
+            repeatsBeforeShowingSubtitles: 5,
+        });
+        expect(finite.timelineSubtitles.blocks[0].endAction?.repeat?.repeatsBeforeShowingSubtitles).toBe(2);
+        expect(unlimited.timelineSubtitles.blocks[0].endAction?.repeat?.repeatsBeforeShowingSubtitles).toBe(5);
     });
 
     it('normalizes a negative repeat count to unlimited playback', () => {
