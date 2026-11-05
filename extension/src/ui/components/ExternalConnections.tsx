@@ -2,7 +2,7 @@ import Button from '@mui/material/Button';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import type { TypographyOwnProps } from '@mui/material/Typography';
-import { useState, useCallback } from 'react';
+import { useCallback } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { useExternalConnections } from '@/ui/hooks/use-external-connections';
 import { activePendingExternalConnections, approvedExternalConnections } from '@project/common/global-state';
@@ -20,30 +20,13 @@ import project from '@project/common/project';
 import { isFirefoxBuild } from '@/services/build-flags';
 import Tooltip from '@project/common/components/Tooltip';
 import DialogContentText from '@mui/material/DialogContentText';
+import useConfirmation from '@project/common/hooks/use-confirmation';
 
 const ExternalConnections: React.FC = () => {
     const { t } = useTranslation();
 
     const { externalConnections, approveExternalConnection, denyExternalConnection, removeExternalConnection } =
         useExternalConnections();
-    const [extensionIdForWarning, setExtensionIdForWarning] = useState<string>();
-    const handleCancelWarning = useCallback(() => setExtensionIdForWarning(undefined), []);
-
-    const handleAcknowledgeWarning = useCallback(
-        async (extensionId: string) => {
-            try {
-                await approveExternalConnection(extensionId);
-                setExtensionIdForWarning(undefined);
-            } catch (error) {
-                asbError('external-connection', `Failed to approve external connection ${extensionId}:`, error);
-            }
-        },
-        [approveExternalConnection]
-    );
-
-    const handleShowWarning = useCallback((extensionId: string) => {
-        setExtensionIdForWarning(extensionId);
-    }, []);
 
     const handleDeny = useCallback(
         async (extensionId: string) => {
@@ -65,100 +48,85 @@ const ExternalConnections: React.FC = () => {
         },
         [removeExternalConnection]
     );
-    // Do not render expired, pending connection requests; they will be pruned from the
-    // underlying state on the next state update.
-    const pending = Object.entries(
+    const firstPending = Object.entries(
         activePendingExternalConnections(externalConnections?.connections ?? {}, Date.now())
-    );
+    )[0];
+    const firstPendingId = firstPending?.[0];
+    const firstPendingRequest = firstPending?.[1];
     const approved = Object.entries(approvedExternalConnections(externalConnections?.connections ?? {}));
 
+    const { confirming: confirmingApproval, confirm: approveWithConfirmation } = useConfirmation(
+        () => void approveExternalConnection(firstPendingId)
+    );
     return (
-        <Box p={2} sx={{ width: '100%', height: '100%', overflowY: 'auto' }}>
-            {extensionIdForWarning && (
-                <ExternalConnectionWarning
-                    extensionId={extensionIdForWarning}
-                    onAcknowledgeWarning={handleAcknowledgeWarning}
-                    onCancel={handleCancelWarning}
-                />
-            )}
-            {!extensionIdForWarning && (
-                <>
-                    {pending.length > 0 && (
-                        <>
-                            <Typography variant="body1" color="textSecondary">
-                                {t('externalConnections.incomingRequest')}
-                            </Typography>
-                            <Stack spacing={1} sx={{ mt: 1.5 }}>
-                                {pending.map(([extensionId, request]) => (
-                                    <ExternalConnectionRow
-                                        key={extensionId}
-                                        extensionId={extensionId}
-                                        name={request.name}
-                                        pending
-                                    >
-                                        <ApproveButton extensionId={extensionId} onClick={handleShowWarning} />
-                                        <Button
-                                            size="small"
-                                            variant="outlined"
-                                            color="error"
-                                            startIcon={<BlockIcon />}
-                                            onClick={() => handleDeny(extensionId)}
-                                        >
-                                            {t('action.deny')}
-                                        </Button>
-                                    </ExternalConnectionRow>
-                                ))}
-                            </Stack>
-                        </>
-                    )}
-                    {approved.length > 0 && (
-                        <Stack spacing={1} sx={{ mt: 1.5 }}>
-                            {approved.map(([extensionId, approval]) => (
-                                <ExternalConnectionRow key={extensionId} extensionId={extensionId} name={approval.name}>
-                                    <Button
-                                        size="small"
-                                        variant="outlined"
-                                        color="error"
-                                        startIcon={<LinkOffIcon />}
-                                        onClick={() => handleRemove(extensionId)}
-                                    >
-                                        {t('action.remove')}
-                                    </Button>
-                                </ExternalConnectionRow>
-                            ))}
-                        </Stack>
-                    )}
-                    {pending.length === 0 && approved.length === 0 && (
-                        <Box
-                            display="flex"
-                            sx={{
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                width: '100%',
-                                height: '100%',
-                                flexDirection: 'column',
-                            }}
+        <Box p={1.5} sx={{ width: '100%', height: '100%', overflowY: 'auto' }}>
+            {firstPending !== undefined && (
+                <Stack spacing={3} sx={{ mt: 1.5 }}>
+                    <ExternalConnectionWarning extensionId={firstPendingId} />
+                    <ExternalConnectionRow extensionId={firstPendingId} name={firstPendingRequest.name} pending>
+                        <ApproveButton
+                            extensionId={firstPendingId}
+                            confirming={confirmingApproval}
+                            onClick={approveWithConfirmation}
+                        />
+                        <Button
+                            size="small"
+                            variant="outlined"
+                            color="error"
+                            startIcon={<BlockIcon />}
+                            onClick={() => handleDeny(firstPendingId)}
                         >
-                            <Typography variant="h6" align="center">
-                                {t('externalConnections.empty')}
-                            </Typography>
-                            <Typography variant="h6" align="center">
-                                <Trans
-                                    i18nKey="externalConnections.help"
-                                    components={{
-                                        docs: (
-                                            <Link
-                                                href={`${project.urls.docs}/docs/guides/external-extensions`}
-                                                target="_blank"
-                                                rel="noreferrer"
-                                            />
-                                        ),
-                                    }}
-                                />
-                            </Typography>
-                        </Box>
-                    )}
-                </>
+                            {t('action.deny')}
+                        </Button>
+                    </ExternalConnectionRow>
+                </Stack>
+            )}
+            {approved.length > 0 && (
+                <Stack spacing={1} sx={{ mt: 1.5 }}>
+                    {approved.map(([extensionId, approval]) => (
+                        <ExternalConnectionRow key={extensionId} extensionId={extensionId} name={approval.name}>
+                            <Button
+                                size="small"
+                                variant="outlined"
+                                color="error"
+                                startIcon={<LinkOffIcon />}
+                                onClick={() => handleRemove(extensionId)}
+                            >
+                                {t('action.remove')}
+                            </Button>
+                        </ExternalConnectionRow>
+                    ))}
+                </Stack>
+            )}
+            {externalConnections !== undefined && firstPending === undefined && approved.length === 0 && (
+                <Box
+                    display="flex"
+                    sx={{
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: '100%',
+                        height: '100%',
+                        flexDirection: 'column',
+                    }}
+                >
+                    <Typography variant="h6" align="center">
+                        {t('externalConnections.empty')}
+                    </Typography>
+                    <Typography variant="h6" align="center">
+                        <Trans
+                            i18nKey="externalConnections.help"
+                            components={{
+                                docs: (
+                                    <Link
+                                        href={`${project.urls.docs}/docs/guides/external-extensions`}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                    />
+                                ),
+                            }}
+                        />
+                    </Typography>
+                </Box>
             )}
         </Box>
     );
@@ -234,7 +202,7 @@ const ExternalConnectionRow: React.FC<ExternalConnectionRowProps> = ({ extension
                 sx={{
                     alignItems: 'center',
                     '& .MuiAlert-message': { flex: 1, minWidth: 0 },
-                    '& .MuiAlert-action': { mr: 0 },
+                    '& .MuiAlert-action': { mr: 0, pt: 0 },
                 }}
                 action={
                     <Stack direction="row" alignItems="center" spacing={1}>
@@ -260,67 +228,41 @@ const ExternalConnectionRow: React.FC<ExternalConnectionRowProps> = ({ extension
 
 const ApproveButton: React.FC<{
     extensionId: string;
-    onClick: (extensionId: string) => void;
-}> = ({ extensionId, onClick }) => {
+    confirming: boolean;
+    onClick: () => void;
+}> = ({ confirming, onClick }) => {
     const { t } = useTranslation();
     return (
-        <Button
-            size="small"
-            variant="outlined"
-            color="success"
-            startIcon={<LinkIcon />}
-            onClick={() => onClick(extensionId)}
-        >
-            {t('action.approve')}
+        <Button size="small" variant="outlined" color="success" startIcon={<LinkIcon />} onClick={onClick}>
+            {confirming ? t('action.confirm') : t('action.approve')}
         </Button>
     );
 };
 
-const ExternalConnectionWarning: React.FC<{
-    extensionId: string;
-    onAcknowledgeWarning: (extensionId: string) => void;
-    onCancel: () => void;
-}> = ({ extensionId, onAcknowledgeWarning, onCancel }) => {
+const ExternalConnectionWarning: React.FC<{ extensionId: string }> = ({ extensionId }) => {
     const { t } = useTranslation();
     return (
-        <Stack spacing={1} sx={{ height: '100%' }}>
-            <Box
-                display="flex"
-                sx={{
-                    flexDirection: 'column',
-                    flexGrow: 1,
-                    justifyContent: 'center',
-                }}
-            >
-                <DialogContentText sx={{ mb: 2 }}>
-                    <Trans
-                        i18nKey={'externalConnections.warning'}
-                        components={[<ExtensionId inline key={0} id={extensionId} />]}
-                    />
-                </DialogContentText>
-                <DialogContentText>
-                    <Trans
-                        i18nKey={'externalConnections.extensionDetailsHelper'}
-                        values={{ address: 'about:addons' }}
-                        components={[
-                            isFirefoxBuild ? (
-                                <code key={0}>about:addons</code>
-                            ) : (
-                                <ExtensionId inline link id={extensionId} />
-                            ),
-                        ]}
-                    />
-                </DialogContentText>
-            </Box>
-
-            <Box display="flex" sx={{ justifyContent: 'flex-end' }}>
-                <Stack direction="row" spacing={1}>
-                    <ApproveButton extensionId={extensionId} onClick={onAcknowledgeWarning} />
-                    <Button variant="outlined" onClick={onCancel}>
-                        {t('action.cancel')}
-                    </Button>
-                </Stack>
-            </Box>
+        <Stack spacing={2}>
+            <DialogContentText>{t('externalConnections.incomingRequest')}</DialogContentText>
+            <DialogContentText>
+                <Trans
+                    i18nKey={'externalConnections.warning'}
+                    components={[<ExtensionId inline key={0} id={extensionId} />]}
+                />
+            </DialogContentText>
+            <DialogContentText>
+                <Trans
+                    i18nKey={'externalConnections.extensionDetailsHelper'}
+                    values={{ address: 'about:addons' }}
+                    components={[
+                        isFirefoxBuild ? (
+                            <code key={0}>about:addons</code>
+                        ) : (
+                            <ExtensionId inline link id={extensionId} />
+                        ),
+                    ]}
+                />
+            </DialogContentText>
         </Stack>
     );
 };
