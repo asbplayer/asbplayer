@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals
 import type { ImageCaptureParams } from '@project/common';
 import { OffscreenAudioRecorder } from '@project/extension/src/services/audio-recorder-delegate';
 import type { SettingsProvider } from '@project/common/settings';
+import { StartRecordingErrorCode } from '@project/common';
 
 jest.mock('@project/extension/src/services/build-flags', () => ({ isFirefoxBuild: false }));
 jest.mock('@project/extension/src/services/animated-webp-media', () => ({
@@ -89,5 +90,41 @@ describe('OffscreenAudioRecorder', () => {
             recorder.startWithTimeout(1000, false, 'id', requester, { captureParams, armed: true })
         ).resolves.toEqual({ started: true });
         expect(sentMessages().map((message) => message.streamId)).toEqual([undefined, 'stream']);
+    });
+
+    it.each([
+        {
+            name: 'missing activeTab permission',
+            message: 'Extension has not been invoked for the current page (see activeTab permission).',
+            expectedCode: StartRecordingErrorCode.noActiveTabPermission,
+        },
+        {
+            name: 'another capture error',
+            message: 'Capture failed',
+            expectedCode: StartRecordingErrorCode.other,
+        },
+    ])('reports $name without starting WebP recording', async ({ message, expectedCode }) => {
+        const browserMock = (globalThis as any).browser;
+
+        browserMock.tabCapture.getMediaStreamId = (_: unknown, callback: (id: string | undefined) => void) => {
+            browserMock.runtime.lastError = { message };
+
+            try {
+                callback(undefined);
+            } finally {
+                delete browserMock.runtime.lastError;
+            }
+        };
+
+        const response = await recorder.startWithTimeout(1000, false, 'id', requester, image);
+
+        expect(response).toEqual({
+            started: false,
+            error: {
+                code: expectedCode,
+                message,
+            },
+        });
+        expect(sendMessage).not.toHaveBeenCalled();
     });
 });
