@@ -260,8 +260,9 @@ export function tracksFromJson(value: unknown, baseUrl: string, options: JsonDis
                 inheritedContentType,
                 inheritedLanguage,
             });
-            if (definition !== undefined) tracks.push(trackFromDef(definition));
-            else if (contextual && current.subtitleContext) {
+            if (definition !== undefined) {
+                tracks.push(trackFromDef(definition));
+            } else if (contextual && current.subtitleContext) {
                 const kind = metadataString(record, ['kind'])?.toLowerCase();
                 const declaredType = normalizedContentType(metadataString(record, ['mimetype', 'contenttype', 'type']));
                 const hasExplicitSubtitleMetadata = Object.keys(record).some((key) => {
@@ -318,8 +319,9 @@ export function tracksFromJson(value: unknown, baseUrl: string, options: JsonDis
                     const referenceUrl = subtitleReferenceUrl(key, child, baseUrl);
                     const referenceExtension =
                         referenceUrl === undefined ? undefined : subtitleExtensionForUrl(referenceUrl);
-                    if (referenceUrl !== undefined && referenceExtension === undefined) metadataUrls.add(referenceUrl);
-                    else if (referenceUrl !== undefined && referenceExtension !== undefined) {
+                    if (referenceUrl !== undefined && referenceExtension === undefined) {
+                        metadataUrls.add(referenceUrl);
+                    } else if (referenceUrl !== undefined && referenceExtension !== undefined) {
                         tracks.push(
                             trackFromDef({
                                 label: genericSubtitleDisplayLabel(

@@ -563,8 +563,9 @@ describe('pause token selection', () => {
                     selectTokenInRoot(root, { subtitleIndex: 0, tokenStart: 4 });
                 };
                 if (!navigateDuringRetry) navigate();
-                if (event === 'pause') harness.driver.callbacks.onPlaybackPaused();
-                else {
+                if (event === 'pause') {
+                    harness.driver.callbacks.onPlaybackPaused();
+                } else {
                     harness.driver.callbacks.onSeekStarted('user-seek');
                     harness.driver.discontinuity(1500);
                 }
@@ -602,8 +603,9 @@ describe('pause token selection', () => {
                 },
             });
             try {
-                if (automatic) await harness.driver.time(2100);
-                else {
+                if (automatic) {
+                    await harness.driver.time(2100);
+                } else {
                     harness.driver.isPaused = true;
                     harness.driver.callbacks.onPlaybackPaused();
                 }

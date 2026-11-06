@@ -9,9 +9,11 @@ let version = runtimeVersion;
 let releaseId;
 if (values.bump !== undefined) {
     const [minor, patch] = parseRuntimeVersion(artifactLock.runtimeVersion);
-    if (values.bump === 'patch') version = `0.${minor}.${patch + 1n}`;
-    else if (values.bump === 'minor') version = `0.${minor + 1n}.0`;
-    else if (values.bump === 'current') {
+    if (values.bump === 'patch') {
+        version = `0.${minor}.${patch + 1n}`;
+    } else if (values.bump === 'minor') {
+        version = `0.${minor + 1n}.0`;
+    } else if (values.bump === 'current') {
         const repository = process.env.GH_REPO || process.env.GITHUB_REPOSITORY;
         if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository ?? '')) {
             throw new Error('Set GH_REPO or GITHUB_REPOSITORY to find the current FFmpeg draft');
@@ -38,7 +40,9 @@ if (values.bump !== undefined) {
         version = drafts[0].version;
         releaseId = drafts[0].release.id;
         if (!Number.isSafeInteger(releaseId) || releaseId <= 0) throw new Error('Invalid GitHub draft release ID');
-    } else throw new Error('FFmpeg release bump must be patch, minor, or current');
+    } else {
+        throw new Error('FFmpeg release bump must be patch, minor, or current');
+    }
 }
 if (positionals.length > 1) throw new Error('Pass at most one release field');
 
