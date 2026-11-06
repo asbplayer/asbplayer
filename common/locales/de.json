@@ -346,7 +346,7 @@
         "resumePlaybackPrompt": "Resume at {{time}}?",
         "resumePlaybackButton": "Resume",
         "audioConversionStarted": "Converting {{codec}} audio due to browser compatibility, playback can begin while the conversion continues.",
-        "videoLoadingDelayed": "The browser is still loading this video. Playback will be available when loading finishes.",
+        "videoLoadingDelayed": "The browser is still loading this video, playback will be available when loading finishes.",
         "updatedCard": "Updated card: {{result}}",
         "enabledRepeatPlayback": "Repeat playback: On",
         "disabledRepeatPlayback": "Repeat playback: Off",

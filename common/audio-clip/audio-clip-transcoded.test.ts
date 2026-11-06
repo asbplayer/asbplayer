@@ -49,7 +49,7 @@ class TestAudio {
         { id: 'selected', enabled: false },
     ];
     seeking = false;
-    readyState = 4;
+    readyState = HTMLMediaElement.HAVE_ENOUGH_DATA;
     duration = 10;
     seekable = { length: 1, end: () => this.duration };
     onended: (() => void) | null = null;
@@ -97,7 +97,7 @@ beforeEach(() => {
     createdAudio = new Promise((resolve) => (audioCreated = resolve));
     Object.assign(globalThis, {
         Audio: TestAudio,
-        HTMLMediaElement: { HAVE_FUTURE_DATA: 3 },
+        HTMLMediaElement: { HAVE_FUTURE_DATA: 3, HAVE_ENOUGH_DATA: 4 },
         MediaStream: TestStream,
         MediaRecorder: TestRecorder,
     });

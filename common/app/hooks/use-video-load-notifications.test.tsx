@@ -38,7 +38,7 @@ beforeEach(() => {
     container = document.createElement('div');
     root = createRoot(container);
     video = document.createElement('video');
-    readyState = 0;
+    readyState = HTMLMediaElement.HAVE_NOTHING;
     error = null;
     Object.defineProperties(video, {
         readyState: { get: () => readyState },

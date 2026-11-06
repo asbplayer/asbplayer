@@ -3754,7 +3754,7 @@ describe('external audio playback', () => {
                 {
                     paused: () => video.paused,
                     currentTimeMs: () => video.currentTime * 1000,
-                    ready: () => video.readyState >= 3,
+                    ready: () => video.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA,
                     preservesPitch: () => video.preservesPitch,
                     volume: () => video.volume,
                     muted: () => video.muted,
@@ -3825,12 +3825,15 @@ describe('external audio playback', () => {
         audio = document.createElement('audio');
         videoPaused = false;
         audioPaused = true;
-        ready = 0;
+        ready = HTMLMediaElement.HAVE_NOTHING;
         end = 0;
         duration = NaN;
         initialSubtitles = [];
         localStorage.clear();
-        Object.defineProperties(video, { paused: { get: () => videoPaused }, readyState: { value: 4 } });
+        Object.defineProperties(video, {
+            paused: { get: () => videoPaused },
+            readyState: { value: HTMLMediaElement.HAVE_ENOUGH_DATA },
+        });
         Object.defineProperties(audio, {
             paused: { get: () => audioPaused },
             readyState: { get: () => ready },
@@ -3870,7 +3873,7 @@ describe('external audio playback', () => {
     };
     const available = async (seconds: number) => {
         end = seconds;
-        ready = 3;
+        ready = HTMLMediaElement.HAVE_FUTURE_DATA;
         await settle(async () => audio.dispatchEvent(new Event('canplay')));
     };
 
@@ -3881,7 +3884,7 @@ describe('external audio playback', () => {
         await available(10);
         expect(videoPaused).toBe(false);
         expect(audioPaused).toBe(false);
-        ready = 2;
+        ready = HTMLMediaElement.HAVE_CURRENT_DATA;
         await settle(async () => audio.dispatchEvent(new Event('waiting')));
         expect(videoPaused).toBe(true);
         expect(audioPaused).toBe(true);
@@ -3905,7 +3908,7 @@ describe('external audio playback', () => {
         await settle(async () => engine.subtitlesChanged([]));
         expect(video.muted).toBe(true);
         expect(audioPaused).toBe(false);
-        ready = 2;
+        ready = HTMLMediaElement.HAVE_CURRENT_DATA;
         await settle(async () => audio.dispatchEvent(new Event('waiting')));
         expect(videoPaused).toBe(true);
         await available(20);

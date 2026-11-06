@@ -119,7 +119,7 @@ export default class VideoChannel {
         this.paused = true;
         this.duration = 0;
         this.isReady = false;
-        this.readyState = 0;
+        this.readyState = HTMLMediaElement.HAVE_NOTHING;
         this._playbackRate = 1;
         this.playModes = new Set([PlayMode.normal]);
         this.selectedAudioTrack = undefined;
@@ -157,7 +157,7 @@ export default class VideoChannel {
                     this.isReady = true;
                     this.audioTracks = readyMessage.audioTracks;
                     this.selectedAudioTrack = readyMessage.selectedAudioTrack;
-                    this.readyState = 4;
+                    this.readyState = HTMLMediaElement.HAVE_ENOUGH_DATA;
                     this.time = readyMessage.currentTime;
                     this._playbackRate = readyMessage.playbackRate;
 
@@ -182,7 +182,7 @@ export default class VideoChannel {
                     const readyStateMessage = event.data as ReadyStateFromVideoMessage;
 
                     this.readyState = readyStateMessage.value;
-                    if (this.readyState === 4) {
+                    if (this.readyState === HTMLMediaElement.HAVE_ENOUGH_DATA) {
                         this.oncanplay?.(new Event('canplay'));
                     }
                     break;
@@ -376,7 +376,7 @@ export default class VideoChannel {
 
     set currentTime(value: number) {
         this.time = value;
-        this.readyState = 3;
+        this.readyState = HTMLMediaElement.HAVE_FUTURE_DATA;
         const message: CurrentTimeToVideoMessage = { command: 'currentTime', value: this.time };
         this.protocol.postMessage(message);
     }

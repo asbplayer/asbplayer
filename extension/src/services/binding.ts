@@ -754,7 +754,7 @@ export default class Binding {
         });
         let bound = false;
 
-        if (this.video.readyState === 4) {
+        if (this.video.readyState === HTMLMediaElement.HAVE_ENOUGH_DATA) {
             this._bind();
             bound = true;
         } else {
@@ -1980,7 +1980,7 @@ export default class Binding {
         } catch {
             // Ignore exception
 
-            if (this.video.readyState !== 4) {
+            if (this.video.readyState !== HTMLMediaElement.HAVE_ENOUGH_DATA) {
                 // Deal with Amazon Prime player pausing in the middle of play, without loss of generality
                 return new Promise((resolve, reject) => {
                     const listener = () => {

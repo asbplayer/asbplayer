@@ -6,7 +6,7 @@ const element = () => {
     let paused = true;
     Object.defineProperties(audio, {
         paused: { get: () => paused },
-        readyState: { value: 3 },
+        readyState: { value: HTMLMediaElement.HAVE_FUTURE_DATA },
         duration: { value: 12 },
         buffered: { value: { length: 1, start: () => 2, end: () => 10 } },
     });

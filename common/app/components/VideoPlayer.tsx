@@ -691,7 +691,7 @@ export default function VideoPlayer({
             setVideo(videoElement);
             clock.setTime(videoElement.currentTime * 1000, { paused: videoElement.paused });
 
-            if (videoElement.readyState === 4) {
+            if (videoElement.readyState === HTMLMediaElement.HAVE_ENOUGH_DATA) {
                 notifyReady(videoElement, playerChannel, setAudioTracks, setSelectedAudioTrack);
                 setVideoWidth(videoElement.videoWidth);
                 setVideoHeight(videoElement.videoHeight);
@@ -710,7 +710,7 @@ export default function VideoPlayer({
                     readyState: videoElement.readyState,
                     currentTimeMs: videoElement.currentTime * 1000,
                 });
-                playerChannel.readyState(4);
+                playerChannel.readyState(HTMLMediaElement.HAVE_ENOUGH_DATA);
                 clock.setTime(videoElement.currentTime * 1000, { paused: videoElement.paused });
             };
 
@@ -1020,7 +1020,9 @@ export default function VideoPlayer({
             void playbackEngineRef.current?.seek(currentTime * 1000).catch((error: unknown) => {
                 onErrorRef.current?.(String(error));
             });
-            if (videoRef.current?.readyState === 4) playerChannel.readyState(4);
+            if (videoRef.current?.readyState === HTMLMediaElement.HAVE_ENOUGH_DATA) {
+                playerChannel.readyState(HTMLMediaElement.HAVE_ENOUGH_DATA);
+            }
         });
 
         playerChannel.onAudioTrackSelected((id) => {

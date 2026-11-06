@@ -15,7 +15,7 @@ export class FakeWebSocket {
     readonly CLOSED = 3;
 
     readonly url: string;
-    readyState = 0;
+    readyState = this.CONNECTING;
     sent: string[] = [];
     onmessage?: (event: { data: string }) => void | Promise<void>;
     onclose?: (event: { reason: string }) => void;
