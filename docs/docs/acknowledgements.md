@@ -20,7 +20,7 @@ We epecially acknowledge the wonderful humans below.
 [@artjomsR](https://github.com/artjomsR),
 [@iam6lake](https://github.com/iam6lake),
 [@bpwhelan](https://github.com/bpwhelan),
-[@pooky-programs](https://github.com/pooky-programs),
+[@pooksh](https://github.com/pooksh),
 [@m-edlund](https://github.com/m-edlund),
 [@nekorushi](https://github.com/nekorushi),
 [@Viterkim](https://github.com/Viterkim),
@@ -66,7 +66,18 @@ We epecially acknowledge the wonderful humans below.
 [@gpressutto5](https://github.com/gpressutto5),
 [@chadzimmerman](https://github.com/chadzimmerman),
 [@awelotta](https://github.com/awelotta),
-[@0xSm0ky](https://github.com/0xSm0ky)
+[@0xSm0ky](https://github.com/0xSm0ky),
+[@Hawkheart](https://github.com/Hawkheart),
+[@JSchoreels](https://github.com/JSchoreels),
+[@JayXT](https://github.com/JayXT),
+[@MironPascalCaseFan](https://github.com/MironPascalCaseFan),
+[@N-akashiya](https://github.com/N-akashiya),
+[@NalinGHub](https://github.com/NalinGHub),
+[@cbgmvinicius](https://github.com/cbgmvinicius),
+[@dajiaohuang](https://github.com/dajiaohuang),
+[@ilyankin](https://github.com/ilyankin),
+[@joaquinmuzzi](https://github.com/joaquinmuzzi),
+[@mvanhorn](https://github.com/mvanhorn)
 
 ## Translators {#translators}
 
@@ -86,7 +97,7 @@ We epecially acknowledge the wonderful humans below.
 **[@825i](https://github.com/825i)** (Finnish),
 **[@Jaybird1291](https://github.com/jaybird1291)** (French),
 **Tigerbabe aka Gyaru Jinsei Juku** (Korean),
-**yaacha** (Indonesian),
+**[@yaaacha](https://github.com/yaaacha)** (Indonesian),
 **[@NeriSal](https://github.com/nerisal)** (Italian)
 
 If you are a non-English native, and would like to help translate asbplayer, join the [Crowdin project](https://crowdin.com/project/asbplayer). If your language isn't there, feel free to create an issue on the <a href={`${project.urls.repo}/issues`}>issues page</a>.

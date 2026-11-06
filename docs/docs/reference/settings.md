@@ -218,6 +218,18 @@ Keyboard shortcuts can be used to access most of asbplayer's features.
 | Toggle repeat mode              | Shift + R        |
 | Toggle when subtitles are shown |                  |
 | Cycle auto-pause resume mode    |                  |
+| Cycle through recipes forward   |                  |
+| Cycle through recipes backward  |                  |
+| Toggle recipe 1                 |                  |
+| Toggle recipe 2                 |                  |
+| Toggle recipe 3                 |                  |
+| Toggle recipe 4                 |                  |
+| Toggle recipe 5                 |                  |
+| Toggle recipe 6                 |                  |
+| Toggle recipe 7                 |                  |
+| Toggle recipe 8                 |                  |
+| Toggle recipe 9                 |                  |
+| Toggle recipe 10                |                  |
 
 ### <a href={new URL('?view=settings#playback', project.urls.app).href}>Seek</a> keyboard shortcuts {#seek-keyboard-shortcuts}
 
@@ -575,6 +587,14 @@ This setting only applies if [**Display word frequency**](#display-word-frequenc
 
 If enabled for video or subtitle list, word frequency is hidden by default and only appears when you hover over the subtitle text in the video or subtitle list respectively.
 
+### Only display word definitions on hover {#only-display-word-definitions-on-hover}
+
+:::note
+This setting only applies if [**Display word definitions**](#display-word-definitions) is enabled.
+:::
+
+If enabled for video or subtitle list, word definitions are hidden by default and only appear when you hover over the subtitle text in the video or subtitle list respectively.
+
 ### Only display pitch accent on hover {#only-display-pitch-accent-on-hover}
 
 :::note
@@ -590,6 +610,10 @@ Controls the size of word readings (furigana) in em units (% of subtitle font si
 ### Word frequency size {#word-frequency-size}
 
 Controls the size of word frequency in em units (% of subtitle font size).
+
+### Word definition size {#word-definition-size}
+
+Controls the size of word definitions in em units (% of subtitle font size).
 
 ### Pitch accent size {#pitch-accent-size}
 
