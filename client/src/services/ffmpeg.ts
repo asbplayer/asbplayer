@@ -10,13 +10,13 @@ export const createWebFfmpegSession = ({ signal }: { signal?: AbortSignal } = {}
         ...ffmpegMetadata.runtimeArchive,
         url: new URL(ffmpegMetadata.runtimeArchive.url, window.location.href).href,
     };
-    return createFfmpegSession({
+    const session = createFfmpegSession({
         signal,
         onDiagnostics: ({ messages, omittedMessages }, context) => {
             for (const { source, level, message, occurrences } of messages) {
-                if (!context.failed && source === 'ffmpeg') continue;
-                const log = level === 'error' ? asbError : level === 'warning' ? asbWarn : asbTrace;
-                log('ffmpeg/native', message, { ...context, source, occurrences });
+                const logLevel = !context.failed && source === 'ffmpeg' ? 'trace' : level; // Individual packets can fail while conversion succeeds; retain that detail at trace.
+                const log = logLevel === 'error' ? asbError : logLevel === 'warning' ? asbWarn : asbTrace;
+                log('ffmpeg/native', message, { ...context, source, nativeLevel: level, occurrences });
             }
             if (omittedMessages > 0) {
                 asbTrace('ffmpeg/native', 'Earlier native diagnostics omitted', { ...context, omittedMessages });
@@ -24,11 +24,13 @@ export const createWebFfmpegSession = ({ signal }: { signal?: AbortSignal } = {}
         },
         workerFactory: (workerUrl) => {
             asbTrace('ffmpeg/session', 'Starting worker from verified runtime', {
+                sessionId: session.id,
                 runtimeVersion: ffmpegMetadata.runtimeVersion,
             });
             const worker = new Worker(workerUrl, { type: 'module', name: project.releases.ffmpeg.package });
             worker.addEventListener('error', (event) => {
                 asbError('ffmpeg/session', 'Worker failed', {
+                    sessionId: session.id,
                     message: event.message,
                     filename: event.filename,
                     lineno: event.lineno,
@@ -37,7 +39,7 @@ export const createWebFfmpegSession = ({ signal }: { signal?: AbortSignal } = {}
                 });
             });
             worker.addEventListener('messageerror', () => {
-                asbError('ffmpeg/session', 'Could not deserialize worker reply');
+                asbError('ffmpeg/session', 'Could not deserialize worker reply', { sessionId: session.id });
             });
             return worker;
         },
@@ -46,20 +48,29 @@ export const createWebFfmpegSession = ({ signal }: { signal?: AbortSignal } = {}
                 runtimeArchive,
                 typeof caches === 'undefined' ? undefined : caches,
                 signal,
-                fetch
+                fetch,
+                session.id
             );
             const start = performance.now();
             const executables = await unpackFfmpegRuntime(archive, ffmpegMetadata.runtimeVersion);
             signal.throwIfAborted();
-            asbTrace('ffmpeg/session', 'Unpacked runtime archive', { elapsedMs: performance.now() - start });
+            asbTrace('ffmpeg/session', 'Unpacked runtime archive', {
+                sessionId: session.id,
+                elapsedMs: performance.now() - start,
+            });
             // Execute the bytes we verified, including on uncontrolled pages or when storage is unavailable.
             return createFfmpegObjectUrls(executables);
         },
     });
+    return session;
 };
 
 export const webAudioTranscodeHost: AudioTranscodeHost = {
     // Completion always switches to a Blob, including on browsers that can stream earlier with MSE.
-    supportsAudioPlayback: () => document.createElement('audio').canPlayType(webmOpusMimeType) !== '',
+    supportsAudioPlayback: () => {
+        const result = document.createElement('audio').canPlayType(webmOpusMimeType);
+        asbTrace('audio/transcode', 'Browser converted audio capability check', { mimeType: webmOpusMimeType, result });
+        return result !== '';
+    },
     createSession: createWebFfmpegSession,
 };

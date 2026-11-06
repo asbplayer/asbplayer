@@ -110,7 +110,9 @@ let probeElement: HTMLVideoElement | undefined;
 
 const canPlayType = (mimeType: string) => {
     probeElement = probeElement ?? document.createElement('video');
-    return probeElement.canPlayType(mimeType) !== '';
+    const result = probeElement.canPlayType(mimeType);
+    asbTrace('media/probe', 'Browser media capability check', { mimeType, result });
+    return result !== '';
 };
 
 /**
@@ -136,6 +138,8 @@ export const audioCodecDisplayName = (codec: string) => displayNamesByCodec[code
  * container that could not be parsed.
  */
 export const audioTrackRequiringTranscode = async (blob: Blob): Promise<ProbedAudioTrack | undefined> => {
+    const startedAt = performance.now();
+    asbTrace('media/probe', 'Probing source audio', { inputBytes: blob.size, inputType: blob.type });
     let container: ProbedContainer | undefined;
 
     try {
@@ -157,6 +161,7 @@ export const audioTrackRequiringTranscode = async (blob: Blob): Promise<ProbedAu
         container: container.mimeType,
         codecs: container.audioCodecs,
         inputBytes: blob.size,
+        elapsedMs: performance.now() - startedAt,
     });
 
     if (!canPlayType(container.mimeType)) {

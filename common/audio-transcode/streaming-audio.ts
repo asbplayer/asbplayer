@@ -10,8 +10,17 @@ const appendChunkBytes = 64 * 1024;
 const pumpIntervalMs = 250;
 const opusFrameDurationMs = 20;
 
-export const supportsStreamingAudio = () =>
-    typeof MediaSource !== 'undefined' && MediaSource.isTypeSupported(webmOpusMimeType);
+export const supportsStreamingAudio = () => {
+    const mediaSourceAvailable = typeof MediaSource !== 'undefined';
+    const supported = mediaSourceAvailable && MediaSource.isTypeSupported(webmOpusMimeType);
+    asbTrace('audio/streaming', 'Browser progressive audio capability check', {
+        mimeType: webmOpusMimeType,
+        mediaSourceAvailable,
+        managedMediaSourceAvailable: typeof window !== 'undefined' && 'ManagedMediaSource' in window,
+        supported,
+    });
+    return supported;
+};
 
 /** Accepted audio bounds, in milliseconds, matching PlaybackEngine timestamps. */
 export type AudioSeekableRange = { readonly start: number; readonly end: number };

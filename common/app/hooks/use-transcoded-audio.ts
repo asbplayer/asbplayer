@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { transcodeAudioTrack } from '@project/common/audio-transcode';
+import { FfmpegError } from '@project/ffmpeg/session';
 import type { AudioTranscodeHost } from '@project/common/audio-transcode';
 import type { FileWithId } from '@project/common/file-selector';
 import { audioCodecDisplayName, audioTrackRequiringTranscode } from '@project/common/media-probe';
@@ -47,6 +48,7 @@ export const useTranscodedAudio = (
         try {
             const blob = await transcodeAudioTrack({
                 file: videoFile.file,
+                fileId: videoFile.id,
                 trackIndex,
                 host,
                 onAudio: (audio) => {
@@ -64,7 +66,12 @@ export const useTranscodedAudio = (
             });
         } catch (error) {
             if (signal.aborted) return;
-            asbError('audio/transcode', 'Failed to transcode audio', { fileId: videoFile.id, trackIndex, error });
+            asbError('audio/transcode', 'Failed to transcode audio', {
+                fileId: videoFile.id,
+                trackIndex,
+                errorCode: error instanceof FfmpegError ? error.code : undefined,
+                error,
+            });
             setConversion({ state: 'failed', error });
         }
     }, []);
@@ -83,7 +90,13 @@ export const useTranscodedAudio = (
                 track = await audioTrackRequiringTranscode(videoFile.file);
                 if (cancelled || track === undefined) return;
                 setTrack(track); // Mining must avoid the original track even when conversion cannot start.
-                if (!host.supportsAudioPlayback()) return;
+                if (!host.supportsAudioPlayback()) {
+                    asbWarn('audio/transcode', 'Skipping audio conversion: converted audio playback is unsupported', {
+                        fileId: videoFile.id,
+                        codec: track.codec,
+                    });
+                    return;
+                }
             } catch (error) {
                 if (!cancelled) {
                     asbWarn('audio/transcode', 'Could not determine whether audio needs conversion', {

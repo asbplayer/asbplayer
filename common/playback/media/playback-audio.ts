@@ -1,4 +1,5 @@
 import { audioBufferedRange } from '@project/common/audio-transcode/streaming-audio';
+import { asbTrace } from '@project/common/util/log';
 import type {
     AudioPlaybackEvent,
     AudioPlaybackSettings,
@@ -29,6 +30,12 @@ export default class PlaybackAudio {
     sourceChanged(source: PlaybackAudioSource): void {
         if (this.source?.element === source.element && this.source?.source === source.source) return;
         this.detach();
+        asbTrace('audio/playback', 'External audio source changed', {
+            generation: this.generation,
+            hasSource: source.source !== undefined,
+            elementChanged: this.source?.element !== source.element,
+            bound: this.bound,
+        });
         this.source = source;
         if (this.bound) this.attach();
     }
@@ -67,6 +74,13 @@ export default class PlaybackAudio {
             await element.play();
             return generation === this.generation;
         } catch (error) {
+            asbTrace('audio/playback', 'Converted audio play rejected', {
+                generation,
+                currentGeneration: this.generation,
+                readyState: element.readyState,
+                currentTimeMs: element.currentTime * 1000,
+                error,
+            });
             if (generation !== this.generation || (error instanceof Error && error.name === 'AbortError')) return false;
             throw error;
         }

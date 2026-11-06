@@ -6,16 +6,19 @@ export const ffmpegRuntimeCacheKey = 'https://ffmpeg.asbplayer.invalid/ffmpeg/ru
 const verificationHeader = 'X-Asbplayer-FFmpeg-SHA256';
 const archiveType = 'application/gzip';
 
-const openRuntimeCache = async (cacheStorage: CacheStorage | undefined): Promise<Cache | undefined> => {
-    const cacheName = ffmpegRuntimeCacheName;
+const openRuntimeCache = async (
+    cacheStorage: CacheStorage | undefined,
+    context: { sessionId?: string; cacheName: string }
+): Promise<Cache | undefined> => {
+    const { cacheName } = context;
     if (cacheStorage === undefined) {
-        asbTrace('ffmpeg/cache', 'Cache storage is unsupported; using a downloaded archive', { cacheName });
+        asbTrace('ffmpeg/cache', 'Cache storage is unsupported; using a downloaded archive', context);
         return;
     }
     try {
         return await cacheStorage.open(cacheName);
     } catch (error) {
-        asbWarn('ffmpeg/cache', 'Could not open runtime cache; using a downloaded archive', { cacheName, error });
+        asbWarn('ffmpeg/cache', 'Could not open runtime cache; using a downloaded archive', { ...context, error });
         return;
     }
 };
@@ -73,29 +76,35 @@ export const prepareFfmpegRuntimeArchive = async (
     archive: FfmpegRuntimeArchive,
     cacheStorage: CacheStorage | undefined,
     signal: AbortSignal,
-    fetcher: typeof fetch
+    fetcher: typeof fetch,
+    sessionId?: string
 ): Promise<Blob> => {
     signal.throwIfAborted();
     if (!/^[a-f0-9]{64}$/.test(archive.sha256) || !Number.isSafeInteger(archive.bytes) || archive.bytes <= 0) {
         throw new Error('Missing FFmpeg runtime archive hash or size');
     }
     const cacheName = ffmpegRuntimeCacheName;
-    const cache = await openRuntimeCache(cacheStorage);
+    const context = { sessionId, cacheName };
+    const cache = await openRuntimeCache(cacheStorage, context);
     const cached = await cache?.match(ffmpegRuntimeCacheKey).catch((error: unknown): undefined => {
-        asbWarn('ffmpeg/cache', 'Could not read runtime cache; downloading the archive', { cacheName, error });
+        asbWarn('ffmpeg/cache', 'Could not read runtime cache; downloading the archive', { ...context, error });
         return;
     });
     signal.throwIfAborted();
     if (isVerified(cached, archive.sha256)) {
-        asbTrace('ffmpeg/cache', 'Reusing verified runtime archive', { cacheName, bytes: archive.bytes });
+        asbTrace('ffmpeg/cache', 'Reusing verified runtime archive', { ...context, bytes: archive.bytes });
         return cached.blob();
     }
     if (cached !== undefined) {
-        asbTrace('ffmpeg/cache', 'Replacing a cached runtime archive for a different selection', { cacheName });
+        asbTrace('ffmpeg/cache', 'Replacing a cached runtime archive for a different selection', context);
     }
 
     const start = performance.now();
-    asbTrace('ffmpeg/download', 'Downloading runtime archive', { url: archive.url, expectedBytes: archive.bytes });
+    asbTrace('ffmpeg/download', 'Downloading runtime archive', {
+        ...context,
+        url: archive.url,
+        expectedBytes: archive.bytes,
+    });
     try {
         const bytes = await download(archive, fetcher, signal);
         signal.throwIfAborted();
@@ -104,22 +113,22 @@ export const prepareFfmpegRuntimeArchive = async (
         });
         await cache?.put(ffmpegRuntimeCacheKey, verified).catch((error: unknown) => {
             asbWarn('ffmpeg/cache', 'Could not persist runtime archive; offline use may be unavailable', {
-                cacheName,
+                ...context,
                 error,
             });
         });
         signal.throwIfAborted();
         asbTrace('ffmpeg/download', 'Verified runtime archive', {
-            cacheName,
+            ...context,
             bytes: bytes.byteLength,
             elapsedMs: performance.now() - start,
         });
         return new Blob([bytes], { type: archiveType });
     } catch (error) {
         if (signal.aborted) {
-            asbTrace('ffmpeg/download', 'Runtime download cancelled', { cacheName });
+            asbTrace('ffmpeg/download', 'Runtime download cancelled', context);
         } else {
-            asbError('ffmpeg/download', 'Runtime download failed', { cacheName, error });
+            asbError('ffmpeg/download', 'Runtime download failed', { ...context, error });
         }
         throw error;
     }

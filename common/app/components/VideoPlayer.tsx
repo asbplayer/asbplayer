@@ -464,6 +464,14 @@ export default function VideoPlayer({
         streaming: !convertedAudio.complete,
         onError: () => playerChannel.audioConversionFailed(),
     };
+    useEffect(() => {
+        if (!video) return;
+        asbTrace('playback/video-player', 'Playback environment', {
+            userAgent: navigator.userAgent,
+            standalone: (navigator as Navigator & { standalone?: boolean }).standalone,
+            inFrame: window !== window.top,
+        });
+    }, [video]);
     const [playerChannelSubscribed, setPlayerChannelSubscribed] = useState<boolean>(false);
     const { fullscreen, requestFullscreen } = useFullscreen();
     const playing = () => !videoRef.current?.paused || false;
@@ -835,6 +843,13 @@ export default function VideoPlayer({
                     clock.setTime(actualTimestampMs, { paused: video.paused });
                 },
                 setMuted: (muted) => {
+                    if (video.muted !== muted) {
+                        asbTrace('playback/video-player', 'Changing original video muting', {
+                            from: video.muted,
+                            to: muted,
+                            conversionActive: convertedAudioRef.current.active,
+                        });
+                    }
                     video.muted = muted;
                 },
                 setPlaybackRate: (playbackRate) => {
@@ -1033,6 +1048,21 @@ export default function VideoPlayer({
         });
 
         playerChannel.onTranscodedAudio((audio) => {
+            const previous = convertedAudioRef.current;
+            if (
+                previous.required !== audio.required ||
+                previous.active !== audio.active ||
+                previous.complete !== audio.complete ||
+                Boolean(previous.audio) !== Boolean(audio.audio)
+            ) {
+                asbTrace('playback/video-player', 'Received converted audio state', {
+                    required: audio.required,
+                    active: audio.active,
+                    complete: audio.complete,
+                    codecName: audio.codecName,
+                    bytes: audio.audio?.size ?? 0,
+                });
+            }
             // A mining command can arrive before React renders the latest encoded prefix.
             convertedAudioRef.current = audio;
             setConvertedAudio(audio);

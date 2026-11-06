@@ -55,6 +55,7 @@ export type CreateFfmpegSessionOptions = {
 export type FfmpegSessionState = 'new' | 'loading' | 'ready' | 'failed' | 'disposed';
 
 export type FfmpegSession = {
+    readonly id: string;
     /** Aborting a load call cancels only that caller's wait; use dispose() to stop shared initialization. */
     load(options?: { signal?: AbortSignal }): Promise<FfmpegRuntime>;
     dispose(): void;
@@ -347,6 +348,7 @@ export const createFfmpegSession = ({
     if (lifetimeSignal?.aborted) onLifetimeAbort();
 
     return {
+        id: sessionId,
         load,
         dispose: () => terminate('disposed', new FfmpegError('disposed', 'The FFmpeg session was disposed')),
         get state() {
