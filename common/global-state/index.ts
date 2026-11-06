@@ -31,11 +31,20 @@ export interface GenericSubtitleParserState {
     };
 }
 
+export interface ExternalMethodUsage {
+    count: number;
+    lastUsedAt: number;
+}
+
 export interface ExternalConnection {
     name?: string;
-    requestedAt: number;
+    requestedAt?: number;
     approvedAt?: number;
     deniedAt?: number;
+    lastConnectedAt?: number;
+    lastDisconnectedAt?: number;
+    lastUsedAt?: number;
+    methods: Record<string, ExternalMethodUsage>;
 }
 
 // Pending requests expire after this long so that unapproved requests cannot accumulate
@@ -43,9 +52,7 @@ export interface ExternalConnection {
 export const pendingRequestExpirationMs = 24 * 60 * 60 * 1000;
 export const deniedRequestCooldownMs = 24 * 60 * 60 * 1000;
 
-export interface ExternalConnectionsState {
-    connections: { [extensionId: string]: ExternalConnection };
-}
+export type ExternalConnectionsState = { [extensionId: string]: ExternalConnection };
 
 /**
  * Pending requests that have not yet expired. Callers rendering pending requests (or counting
@@ -53,22 +60,35 @@ export interface ExternalConnectionsState {
  * before they have been pruned from the underlying state.
  */
 export const activePendingExternalConnections = (
-    connections: ExternalConnectionsState['connections'],
+    connections: ExternalConnectionsState,
     now: number
-): ExternalConnectionsState['connections'] =>
+): ExternalConnectionsState =>
     Object.fromEntries(
         Object.entries(connections).filter(
             ([, c]) =>
                 c.approvedAt === undefined &&
                 c.deniedAt === undefined &&
-                now - (c?.requestedAt ?? 0) <= pendingRequestExpirationMs
+                c.requestedAt !== undefined &&
+                now - c.requestedAt <= pendingRequestExpirationMs
         )
     );
 
-export const approvedExternalConnections = (
-    connections: ExternalConnectionsState['connections']
-): ExternalConnectionsState['connections'] =>
+export const approvedExternalConnections = (connections: ExternalConnectionsState): ExternalConnectionsState =>
     Object.fromEntries(Object.entries(connections).filter(([, c]) => c.approvedAt !== undefined));
+
+/**
+ * Stable representation of the fields that affect approval UI, badges, and port revocation.
+ * Usage and connection timestamps are excluded so their frequent updates can be ignored.
+ */
+export const externalConnectionsPermissionSignature = (connections: ExternalConnectionsState): string =>
+    JSON.stringify(
+        Object.keys(connections)
+            .sort()
+            .map((extensionId) => {
+                const c = connections[extensionId];
+                return [extensionId, c.name ?? null, c.requestedAt ?? null, c.approvedAt ?? null, c.deniedAt ?? null];
+            })
+    );
 
 export const initialGlobalState: GlobalState = {
     ftueHasSeenAnkiDialogQuickSelectV2: false,
@@ -82,9 +102,7 @@ export const initialGlobalState: GlobalState = {
         jimakuSearchCategory: 'anime',
         jimakuRecentWorks: [],
     },
-    externalConnections: {
-        connections: {},
-    },
+    externalConnections: {},
 };
 
 export interface GlobalState {
@@ -109,8 +127,7 @@ export interface GlobalStateProvider {
 
 /**
  * Locked read-modify-write of the `externalConnections` global state key. Skips the write
- * when the mutator reports no change. Throws when the lock is already held, or when the
- * provider does not support locked updates.
+ * when the mutator reports no change. Waits for the lock when another context holds it.
  */
 export const mutateExternalConnections = async (
     provider: GlobalStateProvider,
@@ -125,7 +142,7 @@ export const approveExternalConnection = async (
     now: number
 ): Promise<void> => {
     await mutateExternalConnections(provider, (externalConnections) => {
-        const connection = externalConnections.connections[extensionId];
+        const connection = externalConnections[extensionId];
         if (connection === undefined || connection.approvedAt !== undefined || connection.deniedAt !== undefined) {
             // Pending expiration check is intentionally skipped here, and kept purely visual to avoid complexity
             // managing time vs expiration.
@@ -143,7 +160,7 @@ export const denyExternalConnection = async (
     now: number
 ): Promise<void> => {
     await mutateExternalConnections(provider, (externalConnections) => {
-        const connection = externalConnections.connections[extensionId];
+        const connection = externalConnections[extensionId];
         if (connection === undefined || connection.approvedAt !== undefined || connection.deniedAt !== undefined) {
             return false;
         }
@@ -154,10 +171,10 @@ export const denyExternalConnection = async (
 
 export const removeExternalConnection = async (provider: GlobalStateProvider, extensionId: string): Promise<void> => {
     await mutateExternalConnections(provider, (externalConnections) => {
-        if (!(extensionId in externalConnections.connections)) {
+        if (!(extensionId in externalConnections)) {
             return false;
         }
-        delete externalConnections.connections[extensionId];
+        delete externalConnections[extensionId];
         return true;
     });
 };

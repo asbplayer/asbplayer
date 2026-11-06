@@ -50,20 +50,18 @@ export class ExtensionGlobalStateProvider implements GlobalStateProvider {
     }
 
     /**
-     * Exclusive read-modify-write of a global state key. Throws when the lock is already held
-     * (including re-entrant requests from the same context, which fail rather than deadlock).
+     * Exclusive read-modify-write of a global state key. Waits for the lock when another
+     * context holds it rather than failing immediately.
      *
      * The lock only excludes writers that also go through this method; writes made directly
-     * via set() bypass it.
+     * via set() bypass it. A re-entrant update for the same key awaited from inside `mutate`
+     * would deadlock, so mutators must not do that.
      */
     async updateWithLocking<K extends keyof GlobalState>(
         key: K,
         mutate: (state: GlobalState[K]) => boolean
     ): Promise<void> {
-        await this._locks.request(`asbplayer-global-state:${key}`, { ifAvailable: true }, async (lock) => {
-            if (lock === null) {
-                throw new Error(`Concurrent update when writing key ${key}`);
-            }
+        await this._locks.request(`asbplayer-global-state:${key}`, async () => {
             // Clone before mutating: get() may return the module-level initial state object
             // by reference, which must never be modified in place.
             const state = JSON.parse(JSON.stringify((await this.get([key]))[key]));

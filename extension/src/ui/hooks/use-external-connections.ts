@@ -6,13 +6,17 @@ import {
     removeExternalConnection,
 } from '@project/common/global-state';
 import type { ExternalConnectionsState } from '@project/common/global-state';
+import { asbError } from '@project/common/util/log';
 
 export const useExternalConnections = () => {
     const provider = useMemo(() => new ExtensionGlobalStateProvider(), []);
-    const [externalConnections, setExternalConnections] = useState<ExternalConnectionsState>();
+    const [externalConnections, setExternalConnections] = useState<ExternalConnectionsState>({});
 
     useEffect(() => {
-        void provider.get(['externalConnections']).then((s) => setExternalConnections(s.externalConnections));
+        void provider
+            .get(['externalConnections'])
+            .then((s) => setExternalConnections(s.externalConnections))
+            .catch((error) => asbError('external-connection', 'Failed to load external connections:', error));
         return provider.onUpdated((s) => {
             if (s['externalConnections'] !== undefined) setExternalConnections(s['externalConnections']);
         });
