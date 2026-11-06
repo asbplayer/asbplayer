@@ -27,3 +27,8 @@ npm-debug.log*
 
 .direnv
 
+# FFmpeg build products and downloaded source
+/ffmpeg/.cache/
+/ffmpeg/dist/
+/ffmpeg/release/
+/ffmpeg/node_modules/

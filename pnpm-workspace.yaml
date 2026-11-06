@@ -4,6 +4,7 @@ packages:
     - 'client'
     - 'common'
     - 'extension'
+    - 'ffmpeg'
     - 'docs'
     - 'scripts/loc'
 

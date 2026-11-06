@@ -9,6 +9,7 @@
         "@mui/styles": "^6.4.8",
         "@plausible-analytics/tracker": "^0.4.5",
         "@project/common": "workspace:^",
+        "@project/ffmpeg": "workspace:^",
         "@qgustavor/srt-parser": "^2.0.0",
         "@types/semver": "^7.3.9",
         "@uiw/color-convert": "^2.10.3",

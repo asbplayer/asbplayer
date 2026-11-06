@@ -12,6 +12,7 @@
         "@mui/styles": "^6.4.8",
         "@project/client": "workspace:^",
         "@project/common": "workspace:^",
+        "@project/ffmpeg": "workspace:^",
         "@types/node": "^24.13.3",
         "@types/react": "^19.1.8",
         "@types/react-dom": "^19.1.6",

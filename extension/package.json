@@ -16,7 +16,7 @@
         "zip:firefox-android": "pnpm check && wxt zip -b firefox-android --mv2 --sources",
         "compile": "tsc --noEmit",
         "postinstall": "wxt prepare",
-        "check": "pnpm --workspace-root run verify && pnpm compile",
+        "check": "pnpm --workspace-root run verify:app && pnpm compile",
         "test": "jest"
     },
     "dependencies": {
