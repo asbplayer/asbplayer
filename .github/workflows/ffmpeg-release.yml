@@ -42,7 +42,7 @@ jobs:
               env:
                   GH_TOKEN: ${{ github.token }}
                   FFMPEG_VERSION_BUMP: ${{ inputs.bump }}
-              run: node ffmpeg/scripts/release-info.mjs --bump "$FFMPEG_VERSION_BUMP" >> "$GITHUB_OUTPUT"
+              run: node ffmpeg/scripts/release/release-info.mjs --bump "$FFMPEG_VERSION_BUMP" >> "$GITHUB_OUTPUT"
 
     build:
         needs: version
@@ -98,4 +98,4 @@ jobs:
             - name: Create or update draft runtime release
               env:
                   GH_TOKEN: ${{ github.token }}
-              run: node ffmpeg/scripts/publish-release.mjs
+              run: node ffmpeg/scripts/release/publish-release.mjs

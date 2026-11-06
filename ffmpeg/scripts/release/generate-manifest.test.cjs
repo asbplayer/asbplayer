@@ -3,7 +3,7 @@ const { execFile } = require('node:child_process');
 const { createHash } = require('node:crypto');
 const { copyFile, cp, mkdir, mkdtemp, readFile, rm, symlink, writeFile } = require('node:fs/promises');
 const { tmpdir } = require('node:os');
-const { resolve } = require('node:path');
+const { dirname, resolve } = require('node:path');
 const { promisify } = require('node:util');
 
 const exec = promisify(execFile);
@@ -40,19 +40,21 @@ beforeEach(async () => {
         await mkdir(resolve(root, directory), { recursive: true });
     }
     for (const script of [
-        'generate-manifest.mjs',
-        'inspect-runtime.mjs',
+        'release/generate-manifest.mjs',
+        'release/inspect-runtime.mjs',
         'lib.mjs',
         'runtime-manifest.mjs',
         'runtime-version.mjs',
         'release-names.mjs',
-        'verify-artifacts.mjs',
+        'verify/verify-artifacts.mjs',
         'runtime-archive-validator.cjs',
         'sources-archive.mjs',
     ]) {
-        await copyFile(resolve(__dirname, script), resolve(root, 'scripts', script));
+        const destination = resolve(root, 'scripts', script);
+        await mkdir(dirname(destination), { recursive: true });
+        await copyFile(resolve(__dirname, '..', script), destination);
     }
-    await symlink(resolve(__dirname, '../node_modules/rolldown'), resolve(root, 'node_modules/rolldown'), 'dir');
+    await symlink(resolve(__dirname, '../../node_modules/rolldown'), resolve(root, 'node_modules/rolldown'), 'dir');
     await writeFile(resolve(root, 'package.json'), JSON.stringify({ type: 'module' }));
     await writeFile(resolve(root, 'artifact-lock.json'), JSON.stringify({ runtimeVersion: version }));
     await writeFile(
@@ -69,7 +71,7 @@ beforeEach(async () => {
         })
     );
 
-    const config = JSON.parse(await readFile(resolve(__dirname, '../build-config.json'), 'utf8'));
+    const config = JSON.parse(await readFile(resolve(__dirname, '../../build-config.json'), 'utf8'));
     config.limits.initialMemoryBytes = 65536;
     const sourcesRoot = resolve(root, 'sources', `${stem}-sources`);
     await mkdir(sourcesRoot, { recursive: true });
@@ -90,7 +92,7 @@ beforeEach(async () => {
         `${stem}-sources`,
     ]);
 
-    const inventory = JSON.parse(await readFile(resolve(__dirname, '../runtime-assets.json'), 'utf8'));
+    const inventory = JSON.parse(await readFile(resolve(__dirname, '../../runtime-assets.json'), 'utf8'));
     await writeFile(resolve(root, 'runtime-assets.json'), JSON.stringify(inventory));
     for (const filename of inventory.notices) {
         await writeFile(resolve(runtime, 'notices', filename), `Example notice: ${filename}`);
@@ -130,7 +132,7 @@ beforeEach(async () => {
     `
     );
     await writeFile(resolve(runtime, 'ffmpeg-worker.js'), 'export {};');
-    await run('generate-manifest.mjs');
+    await run('release/generate-manifest.mjs');
     await packageRuntime();
 });
 
@@ -146,11 +148,11 @@ it('records the installed bundler and rejects candidates built with a different 
         { cwd: root }
     );
     expect(manifest.toolchain.bundler).toEqual({ name: 'rolldown', version: stdout.trim() });
-    expect((await run('verify-artifacts.mjs', ['--candidate'])).stdout).toContain('candidate');
+    expect((await run('verify/verify-artifacts.mjs', ['--candidate'])).stdout).toContain('candidate');
 
     manifest.toolchain.bundler.version = '0.0.0';
     await writeManifest(manifest);
-    await expect(run('verify-artifacts.mjs', ['--candidate'])).rejects.toThrow(
+    await expect(run('verify/verify-artifacts.mjs', ['--candidate'])).rejects.toThrow(
         'Manifest bundler does not match the installed rolldown version'
     );
 });
@@ -161,7 +163,7 @@ it('accepts equivalent build inputs with reordered object properties', async () 
     manifest.sources = manifest.sources.map((source) => Object.fromEntries(Object.entries(source).reverse()));
     await writeManifest(manifest);
     await packageRuntime();
-    expect((await run('verify-artifacts.mjs', ['--candidate'])).stdout).toContain('candidate');
+    expect((await run('verify/verify-artifacts.mjs', ['--candidate'])).stdout).toContain('candidate');
 });
 
 it('packages and verifies a release version override while leaving the selected runtime unchanged', async () => {
@@ -169,10 +171,10 @@ it('packages and verifies a release version override while leaving the selected 
     const lock = JSON.stringify({ runtimeVersion: '0.0.0' });
     await writeFile(lockPath, lock);
     const env = { ASB_FFMPEG_RUNTIME_VERSION: version };
-    await run('generate-manifest.mjs', [], env);
+    await run('release/generate-manifest.mjs', [], env);
     await packageRuntime();
     expect((await readManifest()).runtimeVersion).toBe(version);
-    expect((await run('verify-artifacts.mjs', ['--candidate'], env)).stdout).toContain('candidate');
+    expect((await run('verify/verify-artifacts.mjs', ['--candidate'], env)).stdout).toContain('candidate');
     expect(await readFile(lockPath, 'utf8')).toBe(lock);
 });
 
@@ -188,7 +190,7 @@ it('verifies the selected LGPLv3 runtime without requiring an installed bundler'
         })
     );
     await rm(resolve(root, 'node_modules'), { recursive: true, force: true });
-    expect((await run('verify-artifacts.mjs')).stdout).toContain('frozen runtime');
+    expect((await run('verify/verify-artifacts.mjs')).stdout).toContain('frozen runtime');
 });
 
 it.each([
@@ -211,7 +213,7 @@ it.each([
             runtimeArchive: { filename: `${stem}-runtime.tar.gz`, bytes: body.byteLength, sha256: digest(body) },
         })
     );
-    await expect(run('verify-artifacts.mjs')).rejects.toThrow(message);
+    await expect(run('verify/verify-artifacts.mjs')).rejects.toThrow(message);
 });
 
 it.each([
@@ -222,12 +224,12 @@ it.each([
     const manifest = await readManifest();
     manifest.ffmpeg[field] = value;
     await writeManifest(manifest);
-    await expect(run('verify-artifacts.mjs', ['--candidate'])).rejects.toThrow(message);
+    await expect(run('verify/verify-artifacts.mjs', ['--candidate'])).rejects.toThrow(message);
 });
 
 it('rejects a version 3 candidate that omits the accompanying GPL 3 license text', async () => {
     const manifest = await readManifest();
     manifest.license.notices = manifest.license.notices.filter((filename) => filename !== 'notices/FFmpeg-GPL-3.0.txt');
     await writeManifest(manifest);
-    await expect(run('verify-artifacts.mjs', ['--candidate'])).rejects.toThrow('LGPL 3 and GPL 3 license texts');
+    await expect(run('verify/verify-artifacts.mjs', ['--candidate'])).rejects.toThrow('LGPL 3 and GPL 3 license texts');
 });

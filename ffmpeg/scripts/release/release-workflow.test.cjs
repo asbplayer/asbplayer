@@ -3,7 +3,7 @@ const { execFile } = require('node:child_process');
 const { createHash } = require('node:crypto');
 const { chmod, copyFile, mkdir, mkdtemp, readFile, readdir, rm, writeFile } = require('node:fs/promises');
 const { tmpdir } = require('node:os');
-const { resolve } = require('node:path');
+const { dirname, resolve } = require('node:path');
 const { promisify } = require('node:util');
 
 const exec = promisify(execFile);
@@ -28,11 +28,13 @@ beforeEach(async () => {
         'github-release.mjs',
         'runtime-version.mjs',
         'release-names.mjs',
-        'release-info.mjs',
-        'publish-release.mjs',
-        'prepare-runtime.mjs',
+        'release/release-info.mjs',
+        'release/publish-release.mjs',
+        'build/prepare-runtime.mjs',
     ]) {
-        await copyFile(resolve(__dirname, name), resolve(directory, 'scripts', name));
+        const destination = resolve(directory, 'scripts', name);
+        await mkdir(dirname(destination), { recursive: true });
+        await copyFile(resolve(__dirname, '..', name), destination);
     }
     await writeFile(
         resolve(root, 'project.json'),
@@ -157,7 +159,7 @@ const prepare = async (overrides = {}) => {
             '--input-type=module',
             '-e',
             `
-        import { prepareRuntime } from ${JSON.stringify(resolve(directory, 'scripts/prepare-runtime.mjs'))};
+        import { prepareRuntime } from ${JSON.stringify(resolve(directory, 'scripts/build/prepare-runtime.mjs'))};
         console.log(await prepareRuntime(${JSON.stringify(lock)}, ${JSON.stringify(resolve(directory, '.cache/runtimes'))}));
     `,
         ],
@@ -178,7 +180,9 @@ it('resolves the pending draft independently of the selected runtime and build o
     lock.runtimeVersion = '0.1.5';
     options.pagesBeforeMatch = 1;
     options.releases.push({ id: 43, tag_name: 'extension-v0.9.0', draft: true });
-    const result = await run('release-info.mjs', ['--bump', 'current'], { ASB_FFMPEG_RUNTIME_VERSION: '0.9.0' });
+    const result = await run('release/release-info.mjs', ['--bump', 'current'], {
+        ASB_FFMPEG_RUNTIME_VERSION: '0.9.0',
+    });
     expect(result.stdout).toContain('version=0.2.0\n');
     expect(result.stdout).toContain('releaseId=42\n');
     expect(await readFile(resolve(directory, 'artifact-lock.json'), 'utf8')).toBe(JSON.stringify(lock));
@@ -197,14 +201,14 @@ it.each(
     ].map((releases) => [releases])
 )('refuses current without exactly one canonical FFmpeg draft (%j)', async (releases) => {
     options.releases = releases;
-    await expect(run('release-info.mjs', ['--bump', 'current'])).rejects.toThrow(
+    await expect(run('release/release-info.mjs', ['--bump', 'current'])).rejects.toThrow(
         'requires exactly one existing FFmpeg draft'
     );
     expect(await mutations()).toEqual([]);
 });
 
 it('replaces draft assets and updates their exact source commit without replacing release notes', async () => {
-    await run('publish-release.mjs');
+    await run('release/publish-release.mjs');
     const commands = await mutations();
     expect(commands).toHaveLength(2);
     expect(commands[0]).toEqual([
@@ -227,20 +231,20 @@ it.each(['published', 'missing', 'replaced', 'published before upload'])(
         if (state === 'missing') options.releases = [];
         if (state === 'replaced') options.releases[0].id = 43;
         if (state === 'published before upload') options.publishBeforeUpload = true;
-        await expect(run('publish-release.mjs')).rejects.toThrow('draft only');
+        await expect(run('release/publish-release.mjs')).rejects.toThrow('draft only');
         expect(await mutations()).toEqual([]);
     }
 );
 
 it('rechecks draft state before updating the target commit', async () => {
     options.publishAfterUpload = true;
-    await expect(run('publish-release.mjs')).rejects.toThrow('draft only');
+    await expect(run('release/publish-release.mjs')).rejects.toThrow('draft only');
     expect((await mutations()).map((args) => args[1])).toEqual(['upload']);
 });
 
 it.each(['patch', 'minor'])('creates a new draft for %s with the built commit as its source', async (bump) => {
     options.releases = [];
-    await run('publish-release.mjs', [], { FFMPEG_VERSION_BUMP: bump, RELEASE_ID: '' });
+    await run('release/publish-release.mjs', [], { FFMPEG_VERSION_BUMP: bump, RELEASE_ID: '' });
     const [command] = await mutations();
     expect(command.slice(0, 3)).toEqual(['release', 'create', tag]);
     expect(command).toContain('--draft');
@@ -250,13 +254,15 @@ it.each(['patch', 'minor'])('creates a new draft for %s with the built commit as
 
 it.each([true, false])('does not replace an existing release using a bump (draft=%s)', async (draft) => {
     options.releases[0].draft = draft;
-    await expect(run('publish-release.mjs', [], { FFMPEG_VERSION_BUMP: 'minor' })).rejects.toThrow('already exists');
+    await expect(run('release/publish-release.mjs', [], { FFMPEG_VERSION_BUMP: 'minor' })).rejects.toThrow(
+        'already exists'
+    );
     expect(await mutations()).toEqual([]);
 });
 
 it.each([200, 403])('fails closed if the tag exists or cannot be checked (HTTP %s)', async (status) => {
     options.tagStatus = status;
-    await expect(run('publish-release.mjs')).rejects.toThrow(
+    await expect(run('release/publish-release.mjs')).rejects.toThrow(
         status === 200 ? 'tag ffmpeg-v0.2.0 already exists' : 'Could not check'
     );
     expect(await mutations()).toEqual([]);

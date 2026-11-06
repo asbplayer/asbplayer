@@ -2,9 +2,9 @@
 const { execFile } = require('node:child_process');
 const { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } = require('node:fs/promises');
 const { tmpdir } = require('node:os');
-const { join } = require('node:path');
+const { dirname, join } = require('node:path');
 const { promisify } = require('node:util');
-const config = require('../build-config.json');
+const config = require('../../build-config.json');
 
 const exec = promisify(execFile);
 let repositoryRoot;
@@ -14,8 +14,10 @@ beforeEach(async () => {
     repositoryRoot = await mkdtemp(join(tmpdir(), 'asbplayer-build-inputs-'));
     temporary = join(repositoryRoot, 'ffmpeg');
     await mkdir(join(temporary, 'scripts'), { recursive: true });
-    for (const script of ['lib.mjs', 'runtime-version.mjs', 'release-names.mjs', 'generate-build-inputs.mjs']) {
-        await copyFile(join(__dirname, script), join(temporary, 'scripts', script));
+    for (const script of ['lib.mjs', 'runtime-version.mjs', 'release-names.mjs', 'build/generate-build-inputs.mjs']) {
+        const destination = join(temporary, 'scripts', script);
+        await mkdir(dirname(destination), { recursive: true });
+        await copyFile(join(__dirname, '..', script), destination);
     }
     configuration = structuredClone(config);
     await writeFile(join(temporary, 'package.json'), JSON.stringify({ version: '9.9.9' }));
@@ -40,7 +42,7 @@ afterEach(async () => {
 });
 const generate = async (env = {}) => {
     await writeFile(join(temporary, 'build-config.json'), JSON.stringify(configuration));
-    return exec(process.execPath, [join(temporary, 'scripts/generate-build-inputs.mjs')], {
+    return exec(process.execPath, [join(temporary, 'scripts/build/generate-build-inputs.mjs')], {
         env: { ...process.env, ASB_FFMPEG_RUNTIME_VERSION: undefined, ...env },
     });
 };

@@ -3,7 +3,7 @@ const { execFile } = require('node:child_process');
 const { createHash } = require('node:crypto');
 const { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } = require('node:fs/promises');
 const { tmpdir } = require('node:os');
-const { join } = require('node:path');
+const { dirname, join } = require('node:path');
 const { promisify } = require('node:util');
 
 const exec = promisify(execFile);
@@ -14,8 +14,10 @@ beforeEach(async () => {
     temporary = await mkdtemp(join(tmpdir(), 'asbplayer-upstream-source-'));
     source = join(temporary, '.cache/sources/ffmpeg');
     await mkdir(join(temporary, 'scripts'));
-    for (const script of ['lib.mjs', 'prepare-sources.mjs']) {
-        await copyFile(join(__dirname, script), join(temporary, 'scripts', script));
+    for (const script of ['lib.mjs', 'build/prepare-sources.mjs']) {
+        const destination = join(temporary, 'scripts', script);
+        await mkdir(dirname(destination), { recursive: true });
+        await copyFile(join(__dirname, '..', script), destination);
     }
     // Fake only HTTP: every test stays offline, using a cached archive.
     await writeFile(
@@ -32,7 +34,7 @@ const prepare = async () => {
     return exec(process.execPath, [
         '--import',
         join(temporary, 'offline.mjs'),
-        join(temporary, 'scripts/prepare-sources.mjs'),
+        join(temporary, 'scripts/build/prepare-sources.mjs'),
     ]);
 };
 

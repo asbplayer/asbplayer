@@ -3,13 +3,13 @@ import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { execFile } from 'node:child_process';
 import { isDeepStrictEqual, parseArgs, promisify } from 'node:util';
-import { packageRoot, readJson } from './lib.mjs';
-import { verifyRuntimeArchive as verifyRuntimeArchiveContents } from './runtime-archive-validator.cjs';
-import { extractSourcesArchive } from './sources-archive.mjs';
-import { releaseNames } from './release-names.mjs';
-import { verifyRuntimeDirectory, verifyRuntimeManifest } from './runtime-manifest.mjs';
-import { parseRuntimeVersion } from './runtime-version.mjs';
-import { githubHeaders, findRelease, fetchAsset } from './github-release.mjs';
+import { packageRoot, readJson } from '../lib.mjs';
+import { verifyRuntimeArchive as verifyRuntimeArchiveContents } from '../runtime-archive-validator.cjs';
+import { extractSourcesArchive } from '../sources-archive.mjs';
+import { releaseNames } from '../release-names.mjs';
+import { verifyRuntimeDirectory, verifyRuntimeManifest } from '../runtime-manifest.mjs';
+import { parseRuntimeVersion } from '../runtime-version.mjs';
+import { githubHeaders, findRelease, fetchAsset } from '../github-release.mjs';
 
 const execFileAsync = promisify(execFile);
 

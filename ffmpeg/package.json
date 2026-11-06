@@ -11,18 +11,18 @@
         "./runtime-assets.json": "./runtime-assets.json",
         "./project": "./src/project/index.ts",
         "./release-names": "./scripts/release-names.mjs",
-        "./prepare-runtime": "./scripts/prepare-runtime.mjs"
+        "./prepare-runtime": "./scripts/build/prepare-runtime.mjs"
     },
     "scripts": {
-        "build:runtime": "bash scripts/build.sh",
+        "build:runtime": "bash scripts/build/build.sh",
         "build:candidate": "pnpm run build:runtime && pnpm run package:candidate && pnpm run verify:candidate",
-        "package:candidate": "bash scripts/package-candidate.sh",
-        "verify:candidate": "node scripts/verify-artifacts.mjs --candidate",
-        "test:native-wasm": "bash scripts/test-native-wasm.sh",
-        "select:runtime": "node scripts/select-runtime.mjs",
-        "verify:reproducible": "bash scripts/verify-reproducible.sh",
+        "package:candidate": "bash scripts/release/package-candidate.sh",
+        "verify:candidate": "node scripts/verify/verify-artifacts.mjs --candidate",
+        "test:native-wasm": "bash scripts/verify/test-native-wasm.sh",
+        "select:runtime": "node scripts/release/select-runtime.mjs",
+        "verify:reproducible": "bash scripts/verify/verify-reproducible.sh",
         "verify:code": "pnpm run test && pnpm run compile && pnpm --workspace-root exec eslint ffmpeg/src ffmpeg/scripts && pnpm --workspace-root exec prettier --check './ffmpeg/**/*.(js|mjs|cjs|ts|tsx|css)'",
-        "verify:release": "bash scripts/release-check.sh",
+        "verify:release": "bash scripts/verify/release-check.sh",
         "compile": "tsc --noEmit",
         "test": "jest --config jest.config.cjs"
     },

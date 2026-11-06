@@ -2,7 +2,7 @@
 const { execFile } = require('node:child_process');
 const { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } = require('node:fs/promises');
 const { tmpdir } = require('node:os');
-const { resolve } = require('node:path');
+const { dirname, resolve } = require('node:path');
 const { promisify } = require('node:util');
 
 const exec = promisify(execFile);
@@ -17,7 +17,7 @@ const releaseConfig = {
 };
 const writeVersion = (runtimeVersion) => writeFile(lockPath, JSON.stringify({ runtimeVersion }));
 const run = (args = [], env = {}) =>
-    exec(process.execPath, [resolve(root, 'scripts/release-info.mjs'), ...args], {
+    exec(process.execPath, [resolve(root, 'scripts/release/release-info.mjs'), ...args], {
         env: { ...process.env, ASB_FFMPEG_RUNTIME_VERSION: undefined, ...env },
     });
 
@@ -31,9 +31,11 @@ beforeEach(async () => {
         'github-release.mjs',
         'runtime-version.mjs',
         'release-names.mjs',
-        'release-info.mjs',
+        'release/release-info.mjs',
     ]) {
-        await copyFile(resolve(__dirname, script), resolve(root, 'scripts', script));
+        const destination = resolve(root, 'scripts', script);
+        await mkdir(dirname(destination), { recursive: true });
+        await copyFile(resolve(__dirname, '..', script), destination);
     }
     await writeFile(resolve(repositoryRoot, 'project.json'), JSON.stringify({ releases: { ffmpeg: releaseConfig } }));
     await writeFile(resolve(root, 'package.json'), JSON.stringify({ type: 'module', version: '9.9.9' }));

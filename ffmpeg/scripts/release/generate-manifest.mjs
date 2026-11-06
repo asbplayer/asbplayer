@@ -2,8 +2,8 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { VERSION as rolldownVersion } from 'rolldown';
 import { inspectRuntime } from './inspect-runtime.mjs';
-import { fileInfo, packageRoot, readJson, runtimeFiles, upstreamSources } from './lib.mjs';
-import { runtimeVersion as version } from './release-names.mjs';
+import { fileInfo, packageRoot, readJson, runtimeFiles, upstreamSources } from '../lib.mjs';
+import { runtimeVersion as version } from '../release-names.mjs';
 
 const config = await readJson(resolve(packageRoot, 'build-config.json'));
 const destination = resolve(packageRoot, 'dist', version);

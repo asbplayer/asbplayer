@@ -3,11 +3,11 @@ import { mkdtemp, readFile, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { basename, resolve } from 'node:path';
 import { isDeepStrictEqual, promisify } from 'node:util';
-import { packageRoot, readJson, sha256, upstreamSources, verifyFile } from './lib.mjs';
-import { verifyRuntimeArchive } from './runtime-archive-validator.cjs';
-import { extractSourcesArchive } from './sources-archive.mjs';
-import { releaseNames, runtimeVersion } from './release-names.mjs';
-import { verifyRuntimeDirectory, verifyRuntimeManifest } from './runtime-manifest.mjs';
+import { packageRoot, readJson, sha256, upstreamSources, verifyFile } from '../lib.mjs';
+import { verifyRuntimeArchive } from '../runtime-archive-validator.cjs';
+import { extractSourcesArchive } from '../sources-archive.mjs';
+import { releaseNames, runtimeVersion } from '../release-names.mjs';
+import { verifyRuntimeDirectory, verifyRuntimeManifest } from '../runtime-manifest.mjs';
 
 const execFileAsync = promisify(execFile);
 

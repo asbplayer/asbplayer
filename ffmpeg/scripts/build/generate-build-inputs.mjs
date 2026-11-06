@@ -1,7 +1,7 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { packageRoot, readJson } from './lib.mjs';
-import { runtimeVersion } from './release-names.mjs';
+import { packageRoot, readJson } from '../lib.mjs';
+import { runtimeVersion } from '../release-names.mjs';
 
 const config = await readJson(resolve(packageRoot, 'build-config.json'));
 const buildDirectory = resolve(packageRoot, '.cache', 'build');

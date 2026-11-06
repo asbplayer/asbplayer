@@ -6,8 +6,7 @@ if [[ "$#" -ne 3 ]]; then
     exit 2
 fi
 
-package_root="$(cd "$(dirname "$0")/.." && pwd)"
-repository_root="$(cd "$package_root/.." && pwd)"
+source "$(dirname "$0")/../paths.sh"
 archive="$1"
 directory="$2"
 entry="$3"

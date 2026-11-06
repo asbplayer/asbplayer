@@ -22,6 +22,8 @@ Client startup and production builds download the prebuilt runtime selected by [
 
 Run `pnpm run verify` from the repository root for app, script, and FFmpeg code checks without Docker. Native builds and full release verification are covered in the [build documentation](docs/build.md#verification).
 
+Scripts are organized under [`scripts/`](scripts/) by workflow: `build/` prepares sources and runtime assets, `release/` packages, publishes, and selects releases, `verify/` runs verification, and helpers used across workflows live directly in `scripts/`. Tests live beside the scripts they exercise. Use the package commands documented above and in the linked guides as entry points.
+
 ## Licensing
 
 See [corresponding source and licensing](docs/release.md#corresponding-source-and-licensing) for license notices, source distribution, and rebuild instructions.

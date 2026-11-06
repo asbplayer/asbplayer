@@ -2,7 +2,7 @@
 const { execFile } = require('node:child_process');
 const { copyFile, cp, mkdir, mkdtemp, rename, rm, symlink, writeFile } = require('node:fs/promises');
 const { tmpdir } = require('node:os');
-const { join } = require('node:path');
+const { dirname, join } = require('node:path');
 const { promisify } = require('node:util');
 
 const exec = promisify(execFile);
@@ -23,14 +23,17 @@ beforeEach(async () => {
     await mkdir(join(reference, 'release'), { recursive: true });
     await mkdir(bin);
     for (const script of [
+        'paths.sh',
         'lib.mjs',
         'github-release.mjs',
-        'verify-reproducible.sh',
-        'release-info.mjs',
+        'verify/verify-reproducible.sh',
+        'release/release-info.mjs',
         'release-names.mjs',
         'runtime-version.mjs',
     ]) {
-        await copyFile(join(__dirname, script), join(root, 'ffmpeg/scripts', script));
+        const destination = join(root, 'ffmpeg/scripts', script);
+        await mkdir(dirname(destination), { recursive: true });
+        await copyFile(join(__dirname, '..', script), destination);
     }
     await writeFile(
         join(root, 'project.json'),
@@ -116,7 +119,7 @@ const updateSources = async () => {
 };
 
 const reproduce = (env = {}) =>
-    exec('bash', [join(root, 'ffmpeg/scripts/verify-reproducible.sh')], {
+    exec('bash', [join(root, 'ffmpeg/scripts/verify/verify-reproducible.sh')], {
         env: {
             ...process.env,
             PATH: `${bin}:${process.env.PATH}`,

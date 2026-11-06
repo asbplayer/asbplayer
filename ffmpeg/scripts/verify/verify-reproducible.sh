@@ -1,14 +1,13 @@
 #!/bin/bash
 set -euo pipefail
 
-package_root="$(cd "$(dirname "$0")/.." && pwd)"
-repository_root="$(cd "$package_root/.." && pwd)"
+source "$(dirname "$0")/../paths.sh"
 rebuilt="$(mktemp -d)"
 trap 'rm -rf "$rebuilt"' EXIT
 
-runtime_version="$(node "$package_root/scripts/release-info.mjs" version)"
-runtime_name="$(node "$package_root/scripts/release-info.mjs" runtimeArchive)"
-sources_name="$(node "$package_root/scripts/release-info.mjs" sourcesArchive)"
+runtime_version="$(node "$package_root/scripts/release/release-info.mjs" version)"
+runtime_name="$(node "$package_root/scripts/release/release-info.mjs" runtimeArchive)"
+sources_name="$(node "$package_root/scripts/release/release-info.mjs" sourcesArchive)"
 test -f "$package_root/release/$runtime_name"
 test -f "$package_root/release/$sources_name"
 
