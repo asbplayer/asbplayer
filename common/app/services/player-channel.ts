@@ -529,7 +529,7 @@ export default class PlayerChannel {
         subtitleFileName: string,
         mediaTimestamp: number,
         postMineAction: PostMineAction,
-        miningAudioSnapshot?: CopyMessage['miningAudioSnapshot']
+        miningAudio?: CopyMessage['miningAudio']
     ) {
         const message: CopyMessage = {
             command: 'copy',
@@ -539,7 +539,7 @@ export default class PlayerChannel {
             subtitleFileName,
             postMineAction,
             mediaTimestamp,
-            ...(miningAudioSnapshot === undefined ? {} : { miningAudioSnapshot }),
+            ...(miningAudio === undefined ? {} : { miningAudio }),
         };
 
         this.channel?.postMessage(message);

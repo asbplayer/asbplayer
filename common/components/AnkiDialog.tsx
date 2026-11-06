@@ -262,14 +262,6 @@ const AnkiDialog = ({
     const [track2, setTrack2] = useState<string>('');
     const [track3, setTrack3] = useState<string>('');
     const [customFieldValues, setCustomFieldValues] = useState<{ [key: string]: string }>({});
-    const snapshotDuration = card.file?.transcodedAudioDurationMs;
-    const boundTimestampInterval = useCallback(
-        (interval: number[]) =>
-            snapshotDuration !== undefined && snapshotDuration > card.subtitle.start
-                ? interval.map((timestamp) => Math.max(0, Math.min(snapshotDuration, timestamp)))
-                : interval,
-        [snapshotDuration, card.subtitle.start]
-    );
     const [timestampInterval, setTimestampInterval] = useState<number[]>();
     const [selectedSubtitles, setSelectedSubtitles] = useState<SubtitleModel[]>([]);
     const [initialTimestampInterval, setInitialTimestampInterval] = useState<number[]>();
@@ -389,11 +381,9 @@ const AnkiDialog = ({
     }, [settings.tags]);
 
     useEffect(() => {
-        const timestampInterval = boundTimestampInterval(
-            initialSelectedTimestampInterval || [card.subtitle.start, card.subtitle.end]
-        );
-        const boundaryInterval = boundaryIntervalFromCard(card.subtitle, card.surroundingSubtitles);
-        const timestampBoundaryInterval = boundaryInterval ? boundTimestampInterval(boundaryInterval) : undefined;
+        const timestampInterval = initialSelectedTimestampInterval || [card.subtitle.start, card.subtitle.end];
+        const timestampBoundaryInterval =
+            boundaryIntervalFromCard(card.subtitle, card.surroundingSubtitles) || undefined;
         const timestampMarks = sliderMarksFromCard(card.surroundingSubtitles, timestampBoundaryInterval);
         const selectedSubtitles =
             timestampInterval === undefined
@@ -406,14 +396,10 @@ const AnkiDialog = ({
         setTrack3(trackText(2));
         setTimestampInterval(timestampInterval);
         setSelectedSubtitles(selectedSubtitles);
-        setInitialTimestampInterval(boundTimestampInterval(forceInitialTimestampInterval || timestampInterval));
+        setInitialTimestampInterval(forceInitialTimestampInterval || timestampInterval);
         setLastAppliedTimestampIntervalToText(initialLastAppliedTimestampIntervalToText || timestampInterval);
         setLastAppliedTimestampIntervalToAudio(initialLastAppliedTimestampIntervalToAudio || timestampInterval);
-        setTimestampBoundaryInterval(
-            forceTimestampBoundaryInterval
-                ? boundTimestampInterval(forceTimestampBoundaryInterval)
-                : timestampBoundaryInterval
-        );
+        setTimestampBoundaryInterval(forceTimestampBoundaryInterval || timestampBoundaryInterval);
         setInitialTimestampBoundaryInterval(timestampBoundaryInterval);
         setTimestampMarks(timestampMarks);
     }, [
@@ -425,7 +411,6 @@ const AnkiDialog = ({
         forceTimestampBoundaryInterval,
         initialLastAppliedTimestampIntervalToText,
         initialLastAppliedTimestampIntervalToAudio,
-        boundTimestampInterval,
     ]);
 
     const initialAudioClip = useMemo(
@@ -627,7 +612,7 @@ const AnkiDialog = ({
 
     const handleTimestampIntervalChange = useCallback(
         (_: unknown, newValue: number | number[]) => {
-            const newTimestampInterval = boundTimestampInterval(newValue as number[]);
+            const newTimestampInterval = newValue as number[];
             setTimestampInterval(newTimestampInterval);
             const selectedSubtitles = card.surroundingSubtitles.filter((s) =>
                 subtitleIntersectsTimeInterval(s, newTimestampInterval)
@@ -640,7 +625,7 @@ const AnkiDialog = ({
                 setLastAppliedTimestampIntervalToAudio(newTimestampInterval);
             }
         },
-        [card.surroundingSubtitles, audioClip, onRerecord, applyTimestampIntervalToAllTracks, boundTimestampInterval]
+        [card.surroundingSubtitles, audioClip, onRerecord, applyTimestampIntervalToAllTracks]
     );
 
     const handleResetTimestampInterval = useCallback(() => {
@@ -675,10 +660,10 @@ const AnkiDialog = ({
 
         const newMin = (timestampBoundaryInterval[0] + timestampInterval[0]) / 2;
         const newMax = (timestampBoundaryInterval[1] + timestampInterval[1]) / 2;
-        const newTimestampBoundaryInterval = boundTimestampInterval([newMin, newMax]);
+        const newTimestampBoundaryInterval = [newMin, newMax];
         setTimestampBoundaryInterval(newTimestampBoundaryInterval);
         setTimestampMarks(sliderMarksFromCard(card.surroundingSubtitles, newTimestampBoundaryInterval));
-    }, [timestampBoundaryInterval, timestampInterval, card.surroundingSubtitles, boundTimestampInterval]);
+    }, [timestampBoundaryInterval, timestampInterval, card.surroundingSubtitles]);
 
     const handleZoomOutTimestampInterval = useCallback(() => {
         if (!timestampBoundaryInterval || !timestampInterval) {
@@ -698,10 +683,10 @@ const AnkiDialog = ({
             timestampBoundaryInterval[1] + minimumChange,
             2 * timestampBoundaryInterval[1] - timestampInterval[1]
         );
-        const newTimestampBoundaryInterval = boundTimestampInterval([newMin, newMax]);
+        const newTimestampBoundaryInterval = [newMin, newMax];
         setTimestampBoundaryInterval(newTimestampBoundaryInterval);
         setTimestampMarks(sliderMarksFromCard(card.surroundingSubtitles, newTimestampBoundaryInterval));
-    }, [timestampBoundaryInterval, timestampInterval, card.surroundingSubtitles, boundTimestampInterval]);
+    }, [timestampBoundaryInterval, timestampInterval, card.surroundingSubtitles]);
 
     const handleCopyImageToClipboard = useCallback(
         async (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {

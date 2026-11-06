@@ -2,15 +2,21 @@ import { asbError } from '@project/common/util/log';
 import { download } from '@project/common/util';
 import Mp3Encoder from '@project/common/audio-clip/mp3-encoder';
 
-import type { CardModel, FileModel } from '@project/common';
+import type { CardModel, FileModel, TranscodedAudioState } from '@project/common';
 import { AudioErrorCode } from '@project/common';
-import { isActiveBlobUrl } from '@project/common/blob-url';
+import { snapshotMiningAudio } from '@project/common/audio-transcode/mining-audio';
+import { createBlobUrl, isActiveBlobUrl } from '@project/common/blob-url';
 import { base64ToBlob, blobToBase64 } from '@project/common/base64';
 import { isFirefox } from '@project/common/browser-detection';
 
 const maxPrefixLength = 24;
 
-const audioSourceBlobUrl = (file: FileModel) => file.transcodedAudioBlobUrl ?? file.blobUrl;
+/** Recording input after format-specific source and track selection have been resolved. */
+interface AudioSource {
+    readonly name: string;
+    readonly audio: string | Blob;
+    readonly trackId?: string;
+}
 
 const makeFileName = (prefix: string, start: number) => {
     return `${prefix.replaceAll(' ', '_').substring(0, Math.min(prefix.length, maxPrefixLength))}_${Math.floor(start)}`;
@@ -22,14 +28,13 @@ interface ExperimentalAudioElement extends HTMLAudioElement {
     mozCaptureStream?: () => MediaStream;
 }
 
-export type AudioClipEvent = 'play' | 'pause';
+export type AudioClipEvent = 'play' | 'pause' | 'error';
 type AudioClipEventCallbacks = { [name in AudioClipEvent]: (() => void)[] };
 
 interface AudioData {
     name: string;
     extension: string;
     start: number;
-    end: number;
     play: () => Promise<void>;
     stop: () => void;
     blob: () => Promise<Blob>;
@@ -74,7 +79,7 @@ class Base64AudioData implements AudioData {
     private readonly _base64: string;
     private readonly _extension: string;
     private readonly _error?: AudioErrorCode;
-    private readonly _callbacks: AudioClipEventCallbacks = { play: [], pause: [] };
+    private readonly _callbacks: AudioClipEventCallbacks = { play: [], pause: [], error: [] };
     private playingAudio?: HTMLAudioElement;
     private stopAudioTimeout?: ReturnType<typeof setTimeout>;
     private cachedBlob?: Blob;
@@ -107,10 +112,6 @@ class Base64AudioData implements AudioData {
 
     get start(): number {
         return this._start;
-    }
-
-    get end(): number {
-        return this._end;
     }
 
     async base64() {
@@ -203,8 +204,20 @@ class Base64AudioData implements AudioData {
 
 class ClippingCancelledError extends Error {}
 
+class AudioUnavailableError extends Error {}
+
+/** Empty audio is omitted by exporters; other media failures still reject. */
+const audioDataToBase64 = async (data: AudioData) => {
+    try {
+        return await blobToBase64(await data.blob());
+    } catch (error) {
+        if (error instanceof AudioUnavailableError) return '';
+        throw error;
+    }
+};
+
 class FileAudioClipper {
-    private readonly _file: FileModel;
+    private readonly _source: string | Blob;
     private readonly _start: number;
     private readonly _end: number;
     private readonly _playbackRate: number;
@@ -222,7 +235,7 @@ class FileAudioClipper {
     private _callbacks: AudioClipEventCallbacks;
 
     constructor(
-        file: FileModel,
+        source: string | Blob,
         start: number,
         end: number,
         playbackRate: number,
@@ -230,18 +243,13 @@ class FileAudioClipper {
         callbacks: AudioClipEventCallbacks,
         trackId?: string
     ) {
-        this._file = file;
+        this._source = source;
         this._start = start;
         this._end = end;
         this._playbackRate = playbackRate;
         this._recorderMimeType = recorderMimeType;
         this._callbacks = callbacks;
         this._trackId = trackId;
-    }
-
-    /** Transcoded audio has a single track, so there is nothing to select. */
-    private get _selectTrack() {
-        return this._file.transcodedAudioBlobUrl === undefined;
     }
 
     latestBlobPromise(): Promise<Blob> | undefined {
@@ -272,13 +280,16 @@ class FileAudioClipper {
         }
 
         if (this._blob) {
-            const audio = await this._audioElement(URL.createObjectURL(this._blob), false);
+            const audio = await this._audioElement(URL.createObjectURL(this._blob));
             audio.currentTime = 0;
             await audio.play();
             invokeCallbacks('play', this._callbacks);
             this._playingAudioElement = audio;
         } else {
-            const audio = await this._audioElement(audioSourceBlobUrl(this._file), this._selectTrack);
+            const audio = await this._audioElement(
+                typeof this._source === 'string' ? this._source : URL.createObjectURL(this._source),
+                this._trackId
+            );
             const ready = () => {
                 audio.oncanplay = null;
                 void audio.play();
@@ -292,7 +303,7 @@ class FileAudioClipper {
         this._stopAudioTimeout = setTimeout(
             () => {
                 if (this._playingAudioElement !== undefined) {
-                    this._stopAudio(this._playingAudioElement, true);
+                    this._stopAudio(this._playingAudioElement);
                     invokeCallbacks('pause', this._callbacks);
                     this._playingAudioElement = undefined;
                 }
@@ -309,7 +320,10 @@ class FileAudioClipper {
         this._clippingAudibly = audible;
         this._blobPromise = new Promise((resolve, reject) => {
             void (async () => {
-                const audio = await this._audioElement(audioSourceBlobUrl(this._file), this._selectTrack);
+                const audio = await this._audioElement(
+                    typeof this._source === 'string' ? this._source : URL.createObjectURL(this._source),
+                    this._trackId
+                );
                 const ready = () => {
                     audio.oncanplay = null;
 
@@ -353,7 +367,7 @@ class FileAudioClipper {
                             // Natural recorder completion is just as valid as a timed stop.
                             clearTimeout(this._stopClippingTimeout);
                             audio.onended = null;
-                            this._stopAudio(audio, false);
+                            this._stopAudio(audio);
                             void this._clippingAudioContext?.close();
                             this._clippingAudioContext = undefined;
                             this._clippingAudioElement = undefined;
@@ -403,7 +417,7 @@ class FileAudioClipper {
             return;
         }
 
-        this._stopAudio(this._clippingAudioElement, false);
+        this._stopAudio(this._clippingAudioElement);
         void this._clippingAudioContext?.close();
         this._clippingAudioContext = undefined;
         clearTimeout(this._stopClippingTimeout);
@@ -419,13 +433,13 @@ class FileAudioClipper {
             return;
         }
 
-        this._stopAudio(this._playingAudioElement, true);
+        this._stopAudio(this._playingAudioElement);
         clearTimeout(this._stopAudioTimeout);
         this._playingAudioElement = undefined;
         this._stopAudioTimeout = undefined;
     }
 
-    private _audioElement(blobUrl: string, selectTrack: boolean): Promise<ExperimentalAudioElement> {
+    private _audioElement(blobUrl: string, trackId?: string): Promise<ExperimentalAudioElement> {
         const audio = new Audio() as ExperimentalAudioElement;
         audio.preload = 'auto';
         audio.src = blobUrl;
@@ -437,9 +451,9 @@ class FileAudioClipper {
                     (audio.seekable.length > 0 && audio.seekable.end(0) === audio.duration) ||
                     Date.now() - t0 >= 5_000
                 ) {
-                    if (selectTrack && this._trackId && audio.audioTracks && audio.audioTracks.length > 0) {
+                    if (trackId && audio.audioTracks && audio.audioTracks.length > 0) {
                         for (const t of audio.audioTracks) {
-                            t.enabled = this._trackId === t.id;
+                            t.enabled = trackId === t.id;
                         }
                     }
                     audio.onerror = () => {
@@ -454,14 +468,14 @@ class FileAudioClipper {
         });
     }
 
-    private _stopAudio(audio: HTMLAudioElement, revokeBlobUrl: boolean) {
+    private _stopAudio(audio: HTMLAudioElement) {
         audio.pause();
         const src = audio.src;
         audio.removeAttribute('src');
         audio.load();
 
         // A card owns its source URL; only revoke temporary playback URLs created by this clipper.
-        if (revokeBlobUrl && src !== audioSourceBlobUrl(this._file)) {
+        if (src !== this._source) {
             URL.revokeObjectURL(src);
         }
     }
@@ -497,13 +511,12 @@ class FileAudioClipper {
     }
 }
 class FileAudioData implements AudioData {
-    private readonly _file: FileModel;
+    private readonly _source: AudioSource;
     private readonly _name: string;
     private readonly _start: number;
     private readonly _end: number;
     private readonly _playbackRate: number;
     private readonly _recordAudibly: boolean;
-    private readonly _trackId?: string;
     private readonly _extension: string;
     private readonly _recorderMimeType: string;
     private _callbacks: AudioClipEventCallbacks;
@@ -512,36 +525,33 @@ class FileAudioData implements AudioData {
     private _playClipper?: FileAudioClipper;
 
     constructor(
-        file: FileModel,
+        source: AudioSource,
         start: number,
         end: number,
         playbackRate: number,
         recordAudibly: boolean,
-        trackId?: string,
         callbacks?: AudioClipEventCallbacks
     ) {
-        const maximum = file.transcodedAudioDurationMs ?? Infinity;
-        start = Math.min(maximum, Math.max(0, start));
-        end = Math.max(start, Math.min(maximum, end));
+        start = Math.max(0, start);
+        end = Math.max(start, end);
         const [recorderMimeType, recorderExtension] = recorderConfiguration();
         this._recorderMimeType = recorderMimeType;
-        this._file = file;
-        this._name = makeFileName(file.name, start);
+        this._source = source;
+        this._name = makeFileName(source.name, start);
         this._start = start;
         this._end = end;
         this._playbackRate = playbackRate;
         this._recordAudibly = recordAudibly;
-        this._trackId = trackId;
-        this._callbacks = callbacks ?? { play: [], pause: [] };
+        this._callbacks = callbacks ?? { play: [], pause: [], error: [] };
         this._extension = recorderExtension;
         this._blobClipper = new FileAudioClipper(
-            file,
+            source.audio,
             start,
             end,
             playbackRate,
             recorderMimeType,
             this._callbacks,
-            trackId
+            source.trackId
         );
     }
 
@@ -557,12 +567,8 @@ class FileAudioData implements AudioData {
         return this._start;
     }
 
-    get end() {
-        return this._end;
-    }
-
     async base64() {
-        return blobToBase64(await this.blob());
+        return audioDataToBase64(this);
     }
 
     get playing() {
@@ -588,13 +594,13 @@ class FileAudioData implements AudioData {
             this._playClipper =
                 this._playClipper ??
                 new FileAudioClipper(
-                    this._file,
+                    this._source.audio,
                     this._start,
                     this._end,
                     this._playbackRate,
                     this._recorderMimeType,
                     this._callbacks,
-                    this._trackId
+                    this._source.trackId
                 );
             void this._playClipper.play();
             invokeCallbacks('play', this._callbacks);
@@ -628,7 +634,7 @@ class FileAudioData implements AudioData {
     }
 
     slice(start: number, end: number) {
-        return new FileAudioData(this._file, start, end, this._playbackRate, this._recordAudibly, this._trackId);
+        return new FileAudioData(this._source, start, end, this._playbackRate, this._recordAudibly);
     }
 
     isSliceable() {
@@ -636,14 +642,122 @@ class FileAudioData implements AudioData {
     }
 
     get error() {
-        // Whichever blob the clip will actually be recorded from is the one that has to still be alive
-        const blobUrl = audioSourceBlobUrl(this._file);
-
-        if (blobUrl) {
-            return isActiveBlobUrl(blobUrl) ? undefined : AudioErrorCode.fileLinkLost;
+        const audio = this._source.audio;
+        if (typeof audio === 'string' && audio) {
+            return isActiveBlobUrl(audio) ? undefined : AudioErrorCode.fileLinkLost;
         }
 
         return undefined;
+    }
+}
+
+class TranscodedAudioData implements AudioData {
+    private readonly _callbacks: AudioClipEventCallbacks = { play: [], pause: [], error: [] };
+    private readonly _snapshot: () => ReturnType<typeof snapshotMiningAudio>;
+    private _dataPromise?: Promise<FileAudioData>;
+    private _data?: FileAudioData;
+    private _playRequest = 0;
+    private _preparationError?: AudioErrorCode;
+
+    constructor(
+        private readonly _file: FileModel,
+        readonly start: number,
+        private readonly _end: number,
+        private readonly _playbackRate: number,
+        private readonly _recordAudibly: boolean,
+        snapshot?: () => ReturnType<typeof snapshotMiningAudio>
+    ) {
+        let promise: ReturnType<typeof snapshotMiningAudio> | undefined;
+        this._snapshot = snapshot ?? (() => (promise ??= this._readSnapshot()));
+    }
+
+    get name() {
+        return makeFileName(this._file.name, this.start);
+    }
+
+    get extension() {
+        return recorderConfiguration()[1];
+    }
+
+    get playing() {
+        return this._data?.playing ?? false;
+    }
+
+    get error() {
+        const source = this._file.transcodedAudio?.blobUrl;
+        if (this._preparationError !== undefined) return this._preparationError;
+        if (source === undefined) return AudioErrorCode.captureFailed;
+        return isActiveBlobUrl(source) ? undefined : AudioErrorCode.fileLinkLost;
+    }
+
+    onEvent(event: AudioClipEvent, callback: () => void) {
+        this._callbacks[event].push(callback);
+        return () => removeCallback(this._callbacks[event], callback);
+    }
+
+    async play() {
+        const request = ++this._playRequest;
+        const data = await this._audioData();
+        if (request === this._playRequest) await data.play();
+    }
+
+    stop() {
+        ++this._playRequest;
+        this._data?.stop();
+    }
+
+    async blob() {
+        return (await this._audioData()).blob();
+    }
+
+    async base64() {
+        return audioDataToBase64(this);
+    }
+
+    slice(start: number, end: number) {
+        return new TranscodedAudioData(
+            this._file,
+            Math.max(0, start),
+            end,
+            this._playbackRate,
+            this._recordAudibly,
+            this._snapshot
+        );
+    }
+
+    isSliceable() {
+        return true;
+    }
+
+    private async _readSnapshot() {
+        const source = this._file.transcodedAudio!;
+        if (source.blobUrl === undefined) return { durationMs: 0 };
+        const audio = await (await fetch(source.blobUrl)).blob();
+        return snapshotMiningAudio({ audio, required: true, complete: source.complete });
+    }
+
+    private _audioData() {
+        return (this._dataPromise ??= this._snapshot()
+            .then(({ audio, durationMs = 0 }) => {
+                const start = Math.min(durationMs, Math.max(0, this.start));
+                const end = Math.max(start, Math.min(durationMs, this._end));
+                if (audio === undefined || end <= start) {
+                    throw new AudioUnavailableError('Requested audio is outside the converted portion');
+                }
+                return (this._data = new FileAudioData(
+                    { name: this._file.name, audio },
+                    start,
+                    end,
+                    this._playbackRate,
+                    this._recordAudibly,
+                    this._callbacks
+                ));
+            })
+            .catch((error) => {
+                this._preparationError = this.error ?? AudioErrorCode.captureFailed;
+                invokeCallbacks('error', this._callbacks);
+                throw error;
+            }));
     }
 }
 
@@ -669,12 +783,8 @@ class Mp3AudioData implements AudioData {
         return this.data.start;
     }
 
-    get end() {
-        return this.data.end;
-    }
-
     async base64() {
-        return blobToBase64(await this.blob());
+        return audioDataToBase64(this);
     }
 
     async play() {
@@ -686,7 +796,7 @@ class Mp3AudioData implements AudioData {
     }
 
     onEvent(name: AudioClipEvent, callback: () => void): () => void {
-        return this.onEvent(name, callback);
+        return this.data.onEvent(name, callback);
     }
 
     stop() {
@@ -738,12 +848,8 @@ class EncodedAudioData implements AudioData {
         return this._data.start;
     }
 
-    get end() {
-        return this._data.end;
-    }
-
     async base64() {
-        return blobToBase64(await this.blob());
+        return audioDataToBase64(this);
     }
 
     async play() {
@@ -790,6 +896,16 @@ export default class AudioClip {
         this.data = data;
     }
 
+    /** Capture the immutable prefix now; parse and seal it only when an audio clip is used. */
+    static createTranscodedAudioSource({
+        audio,
+        required,
+        complete,
+    }: TranscodedAudioState): FileModel['transcodedAudio'] {
+        if (!required) return undefined;
+        return { blobUrl: audio === undefined ? undefined : createBlobUrl(audio), complete };
+    }
+
     static fromCard(card: CardModel, paddingStart: number, paddingEnd: number, recordAudibly: boolean) {
         if (card.audio) {
             const start = card.audio.start ?? card.subtitle.start;
@@ -807,7 +923,7 @@ export default class AudioClip {
         }
 
         if (card.file) {
-            if (card.subtitle.start >= (card.file.transcodedAudioDurationMs ?? Infinity)) return;
+            if (card.file.transcodedAudio !== undefined && card.file.transcodedAudio.blobUrl === undefined) return;
             return AudioClip.fromFile(
                 card.file,
                 Math.max(0, card.subtitle.start - paddingStart),
@@ -851,15 +967,21 @@ export default class AudioClip {
         recordAudibly: boolean,
         trackId?: string
     ) {
-        return new AudioClip(new FileAudioData(file, start, end, playbackRate, recordAudibly, trackId));
+        return new AudioClip(
+            file.transcodedAudio === undefined
+                ? new FileAudioData(
+                      { name: file.name, audio: file.blobUrl, trackId },
+                      start,
+                      end,
+                      playbackRate,
+                      recordAudibly
+                  )
+                : new TranscodedAudioData(file, Math.max(0, start), end, playbackRate, recordAudibly)
+        );
     }
 
     get start() {
         return this.data.start;
-    }
-
-    get end() {
-        return this.data.end;
     }
 
     get name() {

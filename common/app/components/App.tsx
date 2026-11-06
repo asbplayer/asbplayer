@@ -1,5 +1,4 @@
 import project from '@project/common/project';
-import type { MiningAudioSource } from '@project/common/audio-transcode/mining-audio';
 import { asbError, asbWarn } from '@project/common/util/log';
 import type { AudioTranscodeHost } from '@project/common/audio-transcode';
 import { humanReadableTime, download, extractText, timeDurationDisplay } from '@project/common/util';
@@ -11,6 +10,7 @@ import ThemeProvider from '@mui/material/styles/ThemeProvider';
 import { useWindowSize } from '@project/common/app/hooks/use-window-size';
 import { useLocationHash } from '@project/common/hooks/use-location-hash';
 import type {
+    FileModel,
     OpenStatisticsOverlayMessage,
     RequestLocalSubtitlesMessage,
     SubtitleModel,
@@ -235,7 +235,7 @@ interface RenderVideoProps {
     onAnkiDialogRequest: (
         videoFileUrl: string,
         videoFileName: string,
-        miningAudioSource: MiningAudioSource,
+        transcodedAudio: FileModel['transcodedAudio'],
         selectedAudioTrack: string | undefined,
         playbackRate: number,
         subtitle: SubtitleModel,
@@ -542,10 +542,10 @@ function App({
     );
 
     const handleAnkiDialogRequestFromVideoPlayer = useCallback(
-        async (
+        (
             videoFileUrl: string,
             videoFileName: string,
-            miningAudioSource: MiningAudioSource,
+            transcodedAudio: FileModel['transcodedAudio'],
             audioTrack: string | undefined,
             playbackRate: number,
             subtitle: SubtitleModel,
@@ -566,7 +566,7 @@ function App({
                     blobUrl: videoFileUrl,
                     audioTrack,
                     playbackRate,
-                    ...miningAudioSource,
+                    transcodedAudio,
                 },
             };
             handleAnkiDialogRequest(item);

@@ -81,7 +81,7 @@ export default class VideoChannel {
         postMineAction: PostMineAction,
         id: string | undefined,
         mediaTimestamp: number | undefined,
-        miningAudioSnapshot: CopyMessage['miningAudioSnapshot']
+        miningAudio: CopyMessage['miningAudio']
     ) => void)[];
     private hideSubtitlePlayerToggleCallbacks: (() => void)[];
     private appBarToggleCallbacks: (() => void)[];
@@ -278,7 +278,7 @@ export default class VideoChannel {
                             copyMessage.postMineAction ?? PostMineAction.none,
                             copyMessage.id,
                             copyMessage.mediaTimestamp,
-                            copyMessage.miningAudioSnapshot
+                            copyMessage.miningAudio
                         );
                     }
                     break;
@@ -460,7 +460,7 @@ export default class VideoChannel {
             postMineAction: PostMineAction,
             id: string | undefined,
             mediaTimestamp: number | undefined,
-            miningAudioSnapshot: CopyMessage['miningAudioSnapshot']
+            miningAudio: CopyMessage['miningAudio']
         ) => void
     ) {
         this.copyCallbacks.push(callback);

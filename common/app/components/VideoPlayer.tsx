@@ -1,5 +1,4 @@
-import { createMiningAudioSource, snapshotMiningAudio } from '@project/common/audio-transcode/mining-audio';
-import type { MiningAudioSource } from '@project/common/audio-transcode/mining-audio';
+import { AudioClip } from '@project/common/audio-clip';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { MutableRefObject } from 'react';
 
@@ -8,6 +7,7 @@ import { makeStyles } from '@mui/styles';
 import { useWindowSize } from '@project/common/app/hooks/use-window-size';
 import { PostMineAction, PlayMode, PostMinePlayback } from '@project/common';
 import type {
+    FileModel,
     SubtitleModel,
     AudioTrackModel,
     OffscreenDomCache,
@@ -339,7 +339,7 @@ interface Props {
     onAnkiDialogRequest: (
         videoFileUrl: string,
         videoFileName: string,
-        miningAudioSource: MiningAudioSource,
+        transcodedAudio: FileModel['transcodedAudio'],
         selectedAudioTrack: string | undefined,
         playbackRate: number,
         subtitle: SubtitleModel,
@@ -1637,32 +1637,33 @@ export default function VideoPlayer({
                 if (wasPlaying) playerChannel.pause();
                 setWasPlayingOnAnkiDialogRequest(wasPlaying);
             }
-            void snapshotMiningAudio(convertedAudioRef.current)
-                .then((snapshot) => {
-                    playerChannel.copy(
+            try {
+                const miningAudio = convertedAudioRef.current;
+                playerChannel.copy(
+                    subtitle,
+                    surroundingSubtitles,
+                    cardTextFieldValues,
+                    videoFileName ?? '',
+                    timestamp,
+                    showAnkiDialog ? PostMineAction.none : postMineAction,
+                    miningAudio
+                );
+                if (showAnkiDialog) {
+                    onAnkiDialogRequest(
+                        videoFileUrl,
+                        videoFileName ?? '',
+                        AudioClip.createTranscodedAudioSource(miningAudio),
+                        selectedAudioTrack,
+                        playbackRate,
                         subtitle,
                         surroundingSubtitles,
                         cardTextFieldValues,
-                        videoFileName ?? '',
-                        timestamp,
-                        showAnkiDialog ? PostMineAction.none : postMineAction,
-                        snapshot
+                        timestamp
                     );
-                    if (showAnkiDialog) {
-                        return onAnkiDialogRequest(
-                            videoFileUrl,
-                            videoFileName ?? '',
-                            createMiningAudioSource(snapshot),
-                            selectedAudioTrack,
-                            playbackRate,
-                            subtitle,
-                            surroundingSubtitles,
-                            cardTextFieldValues,
-                            timestamp
-                        );
-                    }
-                })
-                .catch((error) => onErrorRef.current?.(String(error)));
+                }
+            } catch (error) {
+                onErrorRef.current?.(String(error));
+            }
 
             setLastMinedRecord({
                 videoFileUrl,

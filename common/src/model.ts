@@ -110,13 +110,22 @@ export interface FileModel {
     readonly blobUrl: string;
     readonly playbackRate?: number;
     readonly audioTrack?: string;
-    /**
-     * Audio transcoded from a track this browser cannot decode, used in place of the file's own
-     * audio when recording. Session-scoped, like {@link blobUrl}.
-     */
-    readonly transcodedAudioBlobUrl?: string;
-    /** Available audio in an immutable partial or completed snapshot, in milliseconds. */
-    readonly transcodedAudioDurationMs?: number;
+    /** Session-scoped converted prefix captured when this card was mined. */
+    readonly transcodedAudio?: TranscodedAudioModel;
+}
+
+/** Immutable converted prefix and its state at the time an audio source is captured. */
+export interface TranscodedAudioState {
+    /** The original track cannot be recorded, including before conversion emits audio. */
+    readonly required: boolean;
+    readonly audio?: Blob;
+    readonly complete: boolean;
+}
+
+export interface TranscodedAudioModel {
+    /** Absent before any converted audio has been emitted; the original track must not be used. */
+    readonly blobUrl?: string;
+    readonly complete: boolean;
 }
 
 export interface CopyHistoryItem extends CardModel {

@@ -1,13 +1,7 @@
 /** @jest-environment node */
-import {
-    createMiningAudioSource,
-    snapshotMiningAudio,
-    snapshotWebmAudio,
-} from '@project/common/audio-transcode/mining-audio';
+import { snapshotMiningAudio, snapshotWebmAudio } from '@project/common/audio-transcode/mining-audio';
 import { webmHeader } from '@project/common/audio-transcode/test-host';
-import { isActiveBlobUrl, revokeBlobUrl } from '@project/common/blob-url';
 import { finalizeWebmAudio } from '@project/common/audio-transcode/webm-audio';
-import AudioClip from '@project/common/audio-clip/audio-clip';
 
 const concat = (...parts: Uint8Array[]) => {
     const bytes = new Uint8Array(parts.reduce((n, part) => n + part.length, 0));
@@ -77,78 +71,26 @@ it('walks large payloads with bounded reads and keeps the encoded payload unchan
     ).toBe(true);
 });
 
-it('owns a seekable source for an incomplete card and leaves the original prefix unchanged', async () => {
+it('keeps an incomplete mining snapshot seekable without changing the original prefix', async () => {
     const audio = prefix(cluster(1000), cluster(2000).slice(0, -3));
-    const source = createMiningAudioSource(await snapshotMiningAudio({ audio, required: true, complete: false }));
-    expect(source.transcodedAudioDurationMs).toBe(1040);
-    expect(isActiveBlobUrl(source.transcodedAudioBlobUrl!)).toBe(true);
-    const bytes = new Uint8Array(await (await fetch(source.transcodedAudioBlobUrl!)).arrayBuffer());
-    expect(new DataView(bytes.buffer).getFloat64(25)).toBe(1040);
-    revokeBlobUrl(source.transcodedAudioBlobUrl!);
+    const snapshot = await snapshotMiningAudio({ audio, required: true, complete: false });
+    expect(snapshot.durationMs).toBe(1040);
+    const bytes = await snapshot.audio!.arrayBuffer();
+    expect(new DataView(bytes).getFloat64(25)).toBe(1040);
+    expect(new Uint8Array(await audio.slice(0, webmHeader.length).arrayBuffer())).toEqual(webmHeader);
 });
 
-it('keeps text and screenshots usable before any audio has been emitted without falling back to Dolby', async () => {
-    expect(createMiningAudioSource(await snapshotMiningAudio({ required: false, complete: false }))).toEqual({});
-    expect(createMiningAudioSource(await snapshotMiningAudio({ required: true, complete: false }))).toEqual({
-        transcodedAudioDurationMs: 0,
-    });
-    expect(
-        createMiningAudioSource(await snapshotMiningAudio({ audio: prefix(), required: true, complete: false }))
-    ).toEqual({
-        transcodedAudioDurationMs: 0,
+it('does not fall back to the original audio before conversion emits a complete cluster', async () => {
+    await expect(snapshotMiningAudio({ required: false, complete: false })).resolves.toEqual({});
+    await expect(snapshotMiningAudio({ required: true, complete: false })).resolves.toEqual({ durationMs: 0 });
+    await expect(snapshotMiningAudio({ audio: prefix(), required: true, complete: false })).resolves.toEqual({
+        durationMs: 0,
     });
 });
 
 it('uses the exact completed duration rather than the conservative partial boundary', async () => {
     const audio = await finalizeWebmAudio([prefix(cluster(1000))], 3.002);
-    const source = createMiningAudioSource(await snapshotMiningAudio({ audio, required: true, complete: true }));
-    expect(source.transcodedAudioDurationMs).toBeCloseTo(3002);
-    expect(isActiveBlobUrl(source.transcodedAudioBlobUrl!)).toBe(true);
-    const subtitle = { text: 'tail', start: 5000, end: 5500, originalStart: 5000, originalEnd: 5500, track: 0 };
-    expect(
-        AudioClip.fromCard(
-            {
-                file: { name: 'video.mp4', blobUrl: 'blob:video', ...source },
-                subtitle,
-                surroundingSubtitles: [],
-                subtitleFileName: 'video.srt',
-                mediaTimestamp: 5000,
-            },
-            0,
-            0,
-            false
-        )
-    ).toBeUndefined();
-    expect(new Uint8Array(await (await fetch(source.transcodedAudioBlobUrl!)).arrayBuffer())).toEqual(
-        new Uint8Array(await audio.arrayBuffer())
-    );
-    revokeBlobUrl(source.transcodedAudioBlobUrl!);
-});
-
-it('shares a fixed mining boundary while each document owns an independent source URL', async () => {
-    const audio = prefix(cluster(1000), cluster(2000).slice(0, -3));
-    const snapshot = await snapshotMiningAudio({ audio, required: true, complete: false });
-    const dialog = createMiningAudioSource(snapshot);
-    // History receives the captured snapshot even if more audio is converted before it handles the message.
-    const newer = await snapshotMiningAudio({
-        audio: prefix(cluster(1000), cluster(2000)),
-        required: true,
-        complete: false,
-    });
-    const history = createMiningAudioSource(structuredClone(snapshot));
-    try {
-        expect(newer.durationMs).toBe(2040);
-        expect(dialog.transcodedAudioDurationMs).toBe(1040);
-        expect(history.transcodedAudioDurationMs).toBe(dialog.transcodedAudioDurationMs);
-        expect(history.transcodedAudioBlobUrl).not.toBe(dialog.transcodedAudioBlobUrl);
-        const dialogBytes = await (await fetch(dialog.transcodedAudioBlobUrl!)).arrayBuffer();
-        const historyBytes = await (await fetch(history.transcodedAudioBlobUrl!)).arrayBuffer();
-        expect(new Uint8Array(historyBytes)).toEqual(new Uint8Array(dialogBytes));
-        revokeBlobUrl(dialog.transcodedAudioBlobUrl!);
-        expect(isActiveBlobUrl(history.transcodedAudioBlobUrl!)).toBe(true);
-        await expect(fetch(history.transcodedAudioBlobUrl!)).resolves.toMatchObject({ ok: true });
-    } finally {
-        revokeBlobUrl(dialog.transcodedAudioBlobUrl!);
-        revokeBlobUrl(history.transcodedAudioBlobUrl!);
-    }
+    const snapshot = await snapshotMiningAudio({ audio, required: true, complete: true });
+    expect(snapshot.durationMs).toBeCloseTo(3002);
+    expect(snapshot.audio).toBe(audio);
 });

@@ -30,10 +30,10 @@ import type {
     BrowserFeatures,
     IndexedSubtitleModel,
     AudioErrorCode,
+    TranscodedAudioState,
 } from '@project/common/src/model';
 import type { AsbPlayerToVideoCommandV2 } from '@project/common/src/command';
 import type { LogLine, LogSnapshot } from '@project/common/util/log-utils';
-import type { MiningAudioSnapshot } from '@project/common/audio-transcode/mining-audio';
 import type {
     Response as WebSocketResponse,
     WebSocketCommand,
@@ -201,7 +201,7 @@ export interface CopyMessage extends Message, CardModel {
     readonly command: 'copy';
     readonly postMineAction?: PostMineAction;
     /** Reuse the video document's mining boundary when creating the history card. */
-    readonly miningAudioSnapshot?: MiningAudioSnapshot;
+    readonly miningAudio?: TranscodedAudioState;
 }
 
 export interface PublishCardMessage extends Message, CardModel {
@@ -445,12 +445,8 @@ export interface AudioTrackSelectedToVideoMessage extends Message {
 }
 
 /** Immutable encoded prefix while conversion runs; mining can snapshot its complete clusters. */
-export interface TranscodedAudioPayload {
-    /** The original audio cannot be recorded by this browser, even before conversion starts. */
-    readonly required: boolean;
-    readonly audio?: Blob;
+export interface TranscodedAudioPayload extends TranscodedAudioState {
     readonly active: boolean;
-    readonly complete: boolean;
     readonly codecName?: string;
 }
 

@@ -1,8 +1,7 @@
+import type { TranscodedAudioState } from '@project/common';
 import { readEbmlElement, readEbmlVarInt } from '@project/common/media-probe/ebml';
 import type { EbmlElement } from '@project/common/media-probe/ebml';
-import type { FileModel } from '@project/common';
 import ByteReader from '@project/common/media-probe/byte-reader';
-import { createBlobUrl } from '@project/common/blob-url';
 import {
     finalizeWebmAudio,
     readWebmAudioDuration,
@@ -16,15 +15,6 @@ const relativeBlockTimestampBytes = 2;
 const blockFlagsBytes = 1;
 const blockHeaderBytesAfterTrack = relativeBlockTimestampBytes + blockFlagsBytes;
 const millisecondsPerSecond = 1000;
-
-/** Session-scoped audio URL and available duration for a card or dialog. */
-export type MiningAudioSource = Pick<FileModel, 'transcodedAudioBlobUrl' | 'transcodedAudioDurationMs'>;
-
-/** Shared across documents; each document gives the immutable audio its own URL. */
-export type MiningAudioSnapshot = {
-    readonly audio?: Blob;
-    readonly durationMs?: number;
-};
 
 /** Snapshot the single-track WebM our muxer produces, excluding an unfinished cluster. */
 export const snapshotWebmAudio = async (audio: Blob): Promise<{ blob: Blob; durationMs: number } | undefined> => {
@@ -115,11 +105,7 @@ export const snapshotMiningAudio = async ({
     audio,
     required,
     complete,
-}: {
-    audio?: Blob;
-    required: boolean;
-    complete: boolean;
-}): Promise<MiningAudioSnapshot> => {
+}: TranscodedAudioState): Promise<{ audio?: Blob; durationMs?: number }> => {
     if (!required) return {};
     if (audio !== undefined && complete) {
         return { audio, durationMs: (await readWebmAudioDuration(audio)) * millisecondsPerSecond };
@@ -127,12 +113,4 @@ export const snapshotMiningAudio = async ({
     const snapshot = audio === undefined ? undefined : await snapshotWebmAudio(audio);
     if (snapshot === undefined) return { durationMs: 0 };
     return { audio: snapshot.blob, durationMs: snapshot.durationMs };
-};
-
-/** Each card owns a document-local source URL, independent of the playback MSE URL. */
-export const createMiningAudioSource = ({ audio, durationMs }: MiningAudioSnapshot): MiningAudioSource => {
-    return {
-        ...(audio === undefined ? {} : { transcodedAudioBlobUrl: createBlobUrl(audio) }),
-        ...(durationMs === undefined ? {} : { transcodedAudioDurationMs: durationMs }),
-    };
 };

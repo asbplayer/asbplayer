@@ -1,5 +1,5 @@
 import { effectiveSettings } from '@project/common/settings/settings-recipes';
-import { createMiningAudioSource, snapshotMiningAudio } from '@project/common/audio-transcode/mining-audio';
+import { AudioClip } from '@project/common/audio-clip';
 import React, { useEffect, useState, useMemo, useCallback, useRef, useImperativeHandle } from 'react';
 import type { MutableRefObject } from 'react';
 
@@ -289,17 +289,6 @@ function PlayerComponent(
     const audioConversionActive = transcodedAudio.state === 'transcoding' || transcodedAudio.state === 'ready';
     const transcodedAudioRef = useRef(transcodedAudio);
     transcodedAudioRef.current = transcodedAudio;
-    const captureMiningAudioSource = useCallback(
-        async () =>
-            createMiningAudioSource(
-                await snapshotMiningAudio({
-                    audio: transcodedAudioRef.current.blob,
-                    required: transcodedAudioRef.current.required,
-                    complete: transcodedAudioRef.current.complete,
-                })
-            ),
-        []
-    );
     const syntheticPlayback = videoFileUrl === undefined && tab === undefined;
     const playModeEnabled = subtitles && subtitles.length > 0 && Boolean(videoFileUrl);
     const [subtitlePlayerResizing, setSubtitlePlayerResizing] = useState<boolean>(false);
@@ -1172,13 +1161,17 @@ function PlayerComponent(
                     postMineAction,
                     id,
                     mediaTimestamp,
-                    miningAudioSnapshot
+                    miningAudio
                 ) => {
-                    void (async () => {
-                        const audioSource =
-                            miningAudioSnapshot === undefined
-                                ? await captureMiningAudioSource()
-                                : createMiningAudioSource(miningAudioSnapshot);
+                    try {
+                        const currentAudio = transcodedAudioRef.current;
+                        const transcodedAudioSource = AudioClip.createTranscodedAudioSource(
+                            miningAudio ?? {
+                                audio: currentAudio.blob,
+                                required: currentAudio.required,
+                                complete: currentAudio.complete,
+                            }
+                        );
                         onCopy(
                             {
                                 subtitle,
@@ -1192,7 +1185,7 @@ function PlayerComponent(
                                           blobUrl: createBlobUrl(videoFile.file),
                                           audioTrack: channel?.selectedAudioTrack,
                                           playbackRate: channel?.playbackRate,
-                                          ...audioSource,
+                                          transcodedAudio: transcodedAudioSource,
                                       }
                                     : undefined,
                                 audio,
@@ -1202,10 +1195,12 @@ function PlayerComponent(
                             postMineAction,
                             id
                         );
-                    })().catch(onError);
+                    } catch (error) {
+                        onError(error);
+                    }
                 }
             ),
-        [channel, onCopy, videoFile, subtitleFiles, captureMiningAudioSource, onError]
+        [channel, onCopy, videoFile, subtitleFiles, onError]
     );
     useEffect(() => {
         if (channel === undefined) return;
@@ -1334,7 +1329,7 @@ function PlayerComponent(
     );
 
     const handleCopyFromSubtitlePlayer = useCallback(
-        async (
+        (
             subtitle: SubtitleModel,
             surroundingSubtitles: SubtitleModel[],
             postMineAction: PostMineAction,
@@ -1363,7 +1358,11 @@ function PlayerComponent(
                                       audioTrack: selectedAudioTrack,
                                       playbackRate,
                                       blobUrl: createBlobUrl(videoFile.file),
-                                      ...(await captureMiningAudioSource()),
+                                      transcodedAudio: AudioClip.createTranscodedAudioSource({
+                                          audio: transcodedAudioRef.current.blob,
+                                          required: transcodedAudioRef.current.required,
+                                          complete: transcodedAudioRef.current.complete,
+                                      }),
                                   },
                         ...cardTextFieldValues,
                     },
@@ -1372,17 +1371,7 @@ function PlayerComponent(
                 );
             }
         },
-        [
-            channel,
-            onCopy,
-            clock,
-            videoFile,
-            videoFileUrl,
-            subtitleFiles,
-            selectedAudioTrack,
-            playbackRate,
-            captureMiningAudioSource,
-        ]
+        [channel, onCopy, clock, videoFile, videoFileUrl, subtitleFiles, selectedAudioTrack, playbackRate]
     );
 
     const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
