@@ -15,7 +15,6 @@ import type {
     CardModel,
     CardTextFieldValues,
     IndexedSubtitleModel,
-    LoadableSubtitleTrack,
     PlaybackState,
     PostMineAction,
     SubtitleModel,
@@ -71,7 +70,7 @@ import {
     resolveVideoSubtitleSplitLayout,
     useVideoAspectRatio,
 } from '@project/common/app/components/video-subtitle-split';
-import type { FileWithId } from '@project/common/file-selector';
+import type { MediaSources } from '@project/common/app/services/media-sources';
 import AnimationFrameTimingDriver from '@project/common/playback/media/animation-frame-timing-driver';
 
 import {
@@ -144,12 +143,6 @@ function pause(clock: Clock, mediaAdapter: MediaAdapter, forwardToMedia: boolean
     if (forwardToMedia) {
         mediaAdapter.pause();
     }
-}
-
-export interface MediaSources {
-    subtitleTracks: LoadableSubtitleTrack<FileWithId>[];
-    videoFile?: FileWithId;
-    videoFileUrl?: string;
 }
 
 interface PlayerProps {
