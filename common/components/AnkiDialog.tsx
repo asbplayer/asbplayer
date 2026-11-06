@@ -10,7 +10,8 @@ import type { RefObject } from 'react';
 import React, { useCallback, useState, useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import makeStyles from '@mui/styles/makeStyles';
-import type { SubtitleModel, CardModel, AnkiExportMode, TranscodedAudioModel } from '@project/common';
+import type { SubtitleModel, CardModel, AnkiExportMode } from '@project/common';
+import { useClampTimestampInterval } from '@project/common/hooks/use-clamp-timestamp-interval';
 import { MediaFragment } from '@project/common';
 import type { AnkiSettings, Profile } from '@project/common/settings';
 import { sortedAnkiFieldModels } from '@project/common/settings';
@@ -424,36 +425,11 @@ const AnkiDialog = ({
         [card, settings.audioPaddingStart, settings.audioPaddingEnd, settings.recordWithAudioPlayback]
     );
 
-    const snapshotSource = card.audio ? undefined : card.file?.transcodedAudio;
-    const [snapshotDuration, setSnapshotDuration] = useState<{ source: TranscodedAudioModel; durationMs: number }>();
-    useEffect(() => {
-        if (!open || !initialAudioClip || !snapshotSource) return;
-        let cancelled = false;
-        void initialAudioClip
-            .sourceDurationMs()
-            .then((durationMs) => {
-                if (!cancelled) {
-                    setSnapshotDuration({ source: snapshotSource, durationMs: Math.floor(durationMs ?? 0) });
-                }
-            })
-            .catch((error) => asbInfo('anki/ui', error));
-        return () => {
-            cancelled = true;
-        };
-    }, [open, initialAudioClip, snapshotSource]);
-    const snapshotEnd =
-        snapshotSource === undefined
-            ? undefined
-            : snapshotDuration?.source === snapshotSource
-              ? snapshotDuration.durationMs
-              : 0;
-    const clampTimestampInterval = useCallback(
-        (interval: number[]) =>
-            snapshotEnd === undefined
-                ? interval
-                : interval.map((timestamp) => Math.max(0, Math.min(snapshotEnd, timestamp))),
-        [snapshotEnd]
-    );
+    const clampTimestampInterval = useClampTimestampInterval({
+        open,
+        audioClip: initialAudioClip,
+        source: card.audio ? undefined : card.file?.transcodedAudio,
+    });
     const boundedInterval = timestampBoundaryInterval && clampTimestampInterval(timestampBoundaryInterval);
     const sliderBoundaryInterval =
         boundedInterval && boundedInterval[0] < boundedInterval[1] ? boundedInterval : undefined;
