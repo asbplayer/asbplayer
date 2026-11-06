@@ -142,8 +142,9 @@ export class AppExtensionDictionaryStorage implements DictionaryStorage {
                 if (event.type !== 'message') return;
                 const data: DictionaryDBCommand<CardUpdatedDialogMessage | CardExportedDialogMessage> = event.data;
                 if (data.sender !== 'asbplayer-dictionary') return;
-                if (data.message.command !== 'card-updated-dialog' && data.message.command !== 'card-exported-dialog')
+                if (data.message.command !== 'card-updated-dialog' && data.message.command !== 'card-exported-dialog') {
                     return;
+                }
                 this.ankiCardModifiedCallbacks.forEach((c) => c());
             };
             window.parent.addEventListener('message', this.ankiCardModified);

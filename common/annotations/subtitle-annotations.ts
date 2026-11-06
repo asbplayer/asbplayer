@@ -211,8 +211,9 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
             this.removeAnkiCardModifiedCB,
             this.removeRequestStatisticsSnapshotCB,
             this.removeRequestStatisticsGenerationCB,
-        ])
+        ]) {
             remove?.();
+        }
         this.removeBuildAnkiCacheStateChangeCB = undefined;
         this.removeBuildWaniKaniCacheStateChangeCB = undefined;
         this.removeAnkiCardModifiedCB = undefined;

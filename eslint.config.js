@@ -23,6 +23,7 @@ module.exports = [
         rules: {
             ...reactRecommended.rules,
             ...reactHooks.configs.recommended.rules,
+            curly: ['error', 'multi-line', 'consistent'],
             'react/jsx-uses-react': 'off',
             'react/react-in-jsx-scope': 'off',
             'react/prop-types': 'off',

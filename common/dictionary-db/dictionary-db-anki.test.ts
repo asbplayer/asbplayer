@@ -196,8 +196,9 @@ describe('DictionaryDB Anki cache', () => {
                 (state.type === DictionaryBuildAnkiCacheStateType.stats &&
                     state.body !== undefined &&
                     'orphanedCards' in state.body)
-            )
+            ) {
                 finish();
+            }
         });
         await finished;
         return statusUpdates;

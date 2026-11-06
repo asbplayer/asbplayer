@@ -202,8 +202,9 @@ it.each(['file change', 'unmount'])('terminates a native conversion on %s', asyn
     host.autoComplete = false;
     await render(file('a'), host);
     await waitForWorker(host);
-    if (action === 'file change') await render(file('b'), host);
-    else {
+    if (action === 'file change') {
+        await render(file('b'), host);
+    } else {
         await act(async () => root.unmount());
         root = createRoot(container);
     }

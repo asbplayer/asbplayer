@@ -14,8 +14,9 @@ export function ankiReleaseInfo({
         tag: releaseTag.replaceAll('{{version}}', version),
         title: releaseTitle.replaceAll('{{version}}', version),
     };
-    if (/[\/\\\0]/.test(info.filename))
+    if (/[\/\\\0]/.test(info.filename)) {
         throw new Error('Anki release filename must not contain path separators or NUL');
+    }
     if (Object.values(info).some((value) => /[\r\n]/.test(value))) {
         throw new Error('Release metadata must not contain newlines');
     }

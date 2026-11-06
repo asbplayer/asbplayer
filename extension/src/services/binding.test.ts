@@ -877,10 +877,12 @@ describe('Binding playback mode integration', () => {
                 if (message.url.endsWith('/termEntries')) return { dictionaryEntries: [] };
                 throw new Error(`Unexpected annotation request: ${message.url}`);
             }
-            if (message.command === 'dictionary-get-bulk' || message.command === 'dictionary-get-by-lemma-bulk')
+            if (message.command === 'dictionary-get-bulk' || message.command === 'dictionary-get-by-lemma-bulk') {
                 return {};
-            if (message.command === 'dictionary-get-records')
+            }
+            if (message.command === 'dictionary-get-records') {
                 return { tokenRecords: [], ankiCardRecords: {}, waniKaniSubjectRecords: {} };
+            }
         });
         const video = createVideo();
         const binding = new Binding(video, bindingOptions(false, false));
@@ -944,10 +946,12 @@ describe('Binding playback mode integration', () => {
                     if (message.url.endsWith('/termEntries')) return { dictionaryEntries: [] };
                     throw new Error(`Unexpected annotation request: ${message.url}`);
                 }
-                if (message.command === 'dictionary-get-bulk' || message.command === 'dictionary-get-by-lemma-bulk')
+                if (message.command === 'dictionary-get-bulk' || message.command === 'dictionary-get-by-lemma-bulk') {
                     return {};
-                if (message.command === 'dictionary-get-records')
+                }
+                if (message.command === 'dictionary-get-records') {
                     return { tokenRecords: [], ankiCardRecords: {}, waniKaniSubjectRecords: {} };
+                }
             });
             const video = createVideo();
             jest.spyOn(video, 'pause').mockImplementation(() => {
@@ -970,7 +974,9 @@ describe('Binding playback mode integration', () => {
                 if (automatic) {
                     binding.togglePlayMode(PlayMode.autoPause);
                     video.presentFrame(1999);
-                } else video.pause();
+                } else {
+                    video.pause();
+                }
                 await jest.advanceTimersByTimeAsync(200);
                 expect(binding.subtitleController.currentTokenSelectionLocation()).toEqual({
                     subtitleIndex: 0,
