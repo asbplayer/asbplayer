@@ -279,7 +279,11 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
             playAudio: () => this.playbackAudio.play(),
             pauseAudio: () => this.playbackAudio.pause(),
             seekAudio: (timestampMs) => this.playbackAudio.seek(timestampMs),
-            audioSettingsChanged: (settings) => this.playbackAudio.settingsChanged(settings),
+            audioSettingsChanged: (settings) =>
+                this.playbackAudio.settingsChanged({
+                    ...settings,
+                    muted: this.originalMuted ?? settings.muted,
+                }),
             onError: (error) => this.externalAudioError(error),
         });
         this.plan = this.buildPlan();

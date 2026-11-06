@@ -51,7 +51,7 @@ it('attaches audio, exposes millisecond state and applies media operations', asy
     playbackAudio.sourceChanged({ element: audio, source: 'blob:audio' });
     playbackAudio.bind();
     playbackAudio.seek(5_000);
-    playbackAudio.settingsChanged({ playbackRate: 1.5, preservesPitch: false, volume: 0.4 });
+    playbackAudio.settingsChanged({ playbackRate: 1.5, preservesPitch: false, volume: 0.4, muted: true });
     expect(audio.getAttribute('src')).toBe('blob:audio');
     expect(playbackAudio.state()).toMatchObject({
         attached: true,
@@ -61,7 +61,9 @@ it('attaches audio, exposes millisecond state and applies media operations', asy
         hasMetadata: true,
         buffered: { start: 2_000, end: 10_000 },
     });
-    expect([audio.playbackRate, audio.preservesPitch, audio.volume]).toEqual([1.5, false, 0.4]);
+    expect([audio.playbackRate, audio.preservesPitch, audio.volume, audio.muted]).toEqual([1.5, false, 0.4, true]);
+    playbackAudio.settingsChanged({ playbackRate: 1.5, preservesPitch: false, volume: 0.4, muted: false });
+    expect(audio.muted).toBe(false);
     expect(await playbackAudio.play()).toBe(true);
     expect(playbackAudio.state().paused).toBe(false);
     playbackAudio.pause();

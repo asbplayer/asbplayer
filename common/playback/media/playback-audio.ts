@@ -94,12 +94,13 @@ export default class PlaybackAudio {
         if (this.source?.element) this.source.element.currentTime = timestampMs / 1000;
     }
 
-    settingsChanged({ playbackRate, preservesPitch, volume }: AudioPlaybackSettings): void {
+    settingsChanged({ playbackRate, preservesPitch, volume, muted }: AudioPlaybackSettings): void {
         const element = this.source?.element;
         if (!element) return;
         if (element.playbackRate !== playbackRate) element.playbackRate = playbackRate;
         if (element.preservesPitch !== preservesPitch) element.preservesPitch = preservesPitch;
         if (element.volume !== volume) element.volume = volume;
+        if (element.muted !== muted) element.muted = muted;
     }
 
     private attach(): void {

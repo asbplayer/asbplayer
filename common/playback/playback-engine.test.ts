@@ -4032,10 +4032,28 @@ describe('external audio playback', () => {
         expect([audio.volume, audio.playbackRate, audio.preservesPitch]).toEqual([0.4, 1.5, false]);
     });
 
-    it('restores the previous mute state on detach', async () => {
-        video.muted = true;
-        await render();
-        await render({ active: false });
-        expect(video.muted).toBe(true);
-    });
+    it.each([false, true])(
+        'preserves the original muted=%s state through converted audio playback, source changes and detach',
+        async (muted) => {
+            video.muted = muted;
+            video.volume = 0.6;
+            await render();
+            expect(video.muted).toBe(true);
+            expect([audio.muted, audio.volume]).toEqual([muted, 0.6]);
+            await available(10);
+
+            video.volume = 0.4;
+            await settle(() => video.dispatchEvent(new Event('volumechange')));
+            expect([audio.muted, audio.volume]).toEqual([muted, 0.4]);
+
+            await render({ source: 'blob:finished', streaming: false });
+            await available(180);
+            expect(audioPaused).toBe(false);
+            expect([audio.muted, audio.volume]).toEqual([muted, 0.4]);
+
+            await render({ active: false });
+            expect(video.muted).toBe(muted);
+            expect(audioPaused).toBe(true);
+        }
+    );
 });

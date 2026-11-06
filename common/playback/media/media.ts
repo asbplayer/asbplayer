@@ -11,7 +11,7 @@ export interface VideoPlaybackState {
     readonly muted: boolean;
 }
 
-export type AudioPlaybackSettings = Pick<VideoPlaybackState, 'playbackRate' | 'preservesPitch' | 'volume'>;
+export type AudioPlaybackSettings = Pick<VideoPlaybackState, 'playbackRate' | 'preservesPitch' | 'volume' | 'muted'>;
 
 export interface AudioPlaybackState {
     readonly attached: boolean;
