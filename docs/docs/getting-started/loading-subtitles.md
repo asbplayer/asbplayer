@@ -19,7 +19,7 @@ The first step to using asbplayer is to load subtitles onto a video source.
 ### Firefox {#firefox}
 
 :::warning
-asbplayer is missing some features on Firefox. See the [Compatibility](../compatibility#extension) section.  
+asbplayer is missing some features on Firefox. See the [Compatibility](../compatibility.md#extension) section.  
 :::
 
 1. Install the the Firefox addon from the Mozilla <a href={project.extension.firefox.storeUrl}>addon store</a> or from the <a href={`${project.urls.repo}/releases/latest`}>GitHub release</a>.
@@ -28,7 +28,7 @@ asbplayer is missing some features on Firefox. See the [Compatibility](../compat
 
 ### Android {#android}
 
-See the [Android guide](../guides/android).
+See the [Android guide](../guides/android.md).
 
 ## Video files {#video-files}
 
