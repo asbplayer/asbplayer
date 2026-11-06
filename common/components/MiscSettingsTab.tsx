@@ -25,7 +25,7 @@ import {
 import { exportSettings, mergeImportedSettings, validateSettings } from '@project/common/settings/import-export';
 import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { SubtitleHtml } from '@project/common';
+import { MiningHistoryItemAction, SubtitleHtml } from '@project/common';
 import { WebSocketClient } from '@project/common/web-socket-client';
 import InputAdornment from '@mui/material/InputAdornment';
 import IconButton from '@mui/material/IconButton';
@@ -94,6 +94,7 @@ const MiscSettingTab: React.FC<Props> = ({
         autoCopyCurrentSubtitle,
         autoCopyableTracks,
         miningHistoryStorageLimit,
+        miningHistoryItemAction,
         subtitleRegexFilter,
         tabName,
         subtitleRegexFilterTextReplacement,
@@ -535,6 +536,23 @@ const MiscSettingTab: React.FC<Props> = ({
                         },
                     }}
                 />
+                <SettingsTextField
+                    select
+                    label={t('settings.miningHistoryItemAction')}
+                    value={miningHistoryItemAction}
+                    color="primary"
+                    onChange={(event) => onSettingChanged('miningHistoryItemAction', Number(event.target.value))}
+                >
+                    <MenuItem value={MiningHistoryItemAction.none}>
+                        {t('settings.miningHistoryItemActionNone')}
+                    </MenuItem>
+                    <MenuItem value={MiningHistoryItemAction.singleClick}>
+                        {t('settings.miningHistoryItemActionSingleClick')}
+                    </MenuItem>
+                    <MenuItem value={MiningHistoryItemAction.doubleClick}>
+                        {t('settings.miningHistoryItemActionDoubleClick')}
+                    </MenuItem>
+                </SettingsTextField>
                 {insideApp && (
                     <SettingsTextField
                         label={t('settings.tabName')}

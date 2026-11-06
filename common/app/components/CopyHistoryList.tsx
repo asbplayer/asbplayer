@@ -20,9 +20,9 @@ import SaveAltIcon from '@mui/icons-material/SaveAlt';
 import Tooltip from '@project/common/components/Tooltip';
 import Typography from '@mui/material/Typography';
 import type { Theme } from '@mui/material';
+import { MediaFragment, MiningHistoryItemAction } from '@project/common';
 import type { CopyHistoryItem } from '@project/common';
 import { AudioClip } from '@project/common/audio-clip';
-import { MediaFragment } from '@project/common';
 
 interface CopyHistoryListProps {
     open: boolean;
@@ -33,6 +33,7 @@ interface CopyHistoryListProps {
     onDeleteAll: () => void;
     onAnki: (item: CopyHistoryItem) => void;
     onSelect?: (item: CopyHistoryItem) => void;
+    itemAction?: MiningHistoryItemAction;
     onClipAudio: (item: CopyHistoryItem) => void;
     onDownloadImage: (item: CopyHistoryItem) => void;
     onDownloadSectionAsSrt?: (name: string, items: CopyHistoryItem[]) => void;
@@ -61,6 +62,10 @@ const useStyles = makeStyles<Theme>((theme) => ({
     listItemGutters: {
         paddingLeft: 5,
         paddingRight: 5,
+    },
+    clickableListItem: {
+        cursor: 'pointer',
+        userSelect: 'none',
     },
     listItemIconRoot: {
         minWidth: 20,
@@ -239,6 +244,7 @@ export default function CopyHistoryList({
     items,
     forceShowDownloadOptions,
     onSelect,
+    itemAction,
     onClipAudio,
     onDownloadImage,
     onDelete,
@@ -347,22 +353,46 @@ export default function CopyHistoryList({
             itemsBySection[currentKey!].push(item);
             const ref = i === items.length - 1 ? scrollToBottomRefCallback : null;
 
+            const isActionActive =
+                onSelect !== undefined && itemAction !== undefined && itemAction !== MiningHistoryItemAction.none;
             elements.push(
                 <ListItem
                     ref={ref}
                     key={item.id}
-                    className={classes.listItem}
+                    className={`${classes.listItem}${isActionActive ? ` ${classes.clickableListItem}` : ''}`}
                     classes={{ gutters: classes.listItemGutters }}
+                    onClick={
+                        isActionActive && itemAction === MiningHistoryItemAction.singleClick
+                            ? () => onSelect?.(item)
+                            : undefined
+                    }
+                    onDoubleClick={
+                        isActionActive && itemAction === MiningHistoryItemAction.doubleClick
+                            ? () => onSelect?.(item)
+                            : undefined
+                    }
                 >
                     <ListItemIcon classes={{ root: classes.listItemIconRoot }}>
                         <Tooltip title={t('copyHistory.exportToAnki')}>
-                            <IconButton onClick={() => onAnki(item)}>
+                            <IconButton
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onAnki(item);
+                                }}
+                                onDoubleClick={(e) => e.stopPropagation()}
+                            >
                                 <NoteAddIcon fontSize="small" />
                             </IconButton>
                         </Tooltip>
                     </ListItemIcon>
                     <ListItemIcon classes={{ root: classes.listItemIconRoot }}>
-                        <IconButton onClick={(e) => handleMenu(e, item)}>
+                        <IconButton
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                handleMenu(e, item);
+                            }}
+                            onDoubleClick={(e) => e.stopPropagation()}
+                        >
                             <MoreVertIcon fontSize="small" />
                         </IconButton>
                     </ListItemIcon>

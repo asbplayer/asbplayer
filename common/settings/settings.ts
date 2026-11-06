@@ -1,5 +1,6 @@
 import type {
     AnkiExportMode,
+    MiningHistoryItemAction,
     PlayMode,
     PostMineAction,
     PostMinePlayback,
@@ -130,6 +131,7 @@ export interface MiscSettings {
     readonly subtitleRegexFilterTextReplacement: string;
     readonly convertNetflixRuby: boolean;
     readonly miningHistoryStorageLimit: number;
+    readonly miningHistoryItemAction: MiningHistoryItemAction;
     readonly language: string;
     readonly clickToMineDefaultAction: PostMineAction;
     readonly postMiningPlaybackState: PostMinePlayback;
