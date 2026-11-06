@@ -712,6 +712,7 @@ const AnkiDialog = ({
         if (!open) {
             audioClip?.stop();
         }
+        return () => audioClip?.stop();
     }, [open, audioClip]);
 
     const handleSentenceTextChange = useCallback((text: string) => {

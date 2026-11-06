@@ -59,6 +59,8 @@ import { addBlobUrl, createBlobUrl, revokeBlobUrl } from '@project/common/blob-u
 import { useTranslation } from 'react-i18next';
 import { LocalizedError } from '@project/common/app/components/localized-error';
 import { useCopyHistory } from '@project/common/app/hooks/use-copy-history';
+import { useCopyHistoryRemoval } from '@project/common/app/hooks/use-copy-history-removal';
+import { useCardAudioSources } from '@project/common/app/hooks/use-card-audio-sources';
 import { useFileSession } from '@project/common/app/hooks/use-file-session';
 import { useI18n } from '@project/common/app/hooks/use-i18n';
 import { useAppKeyBinder } from '@project/common/app/hooks/use-app-key-binder';
@@ -417,11 +419,14 @@ function App({
     }, [extension, settings.miningHistoryStorageLimit]);
     const {
         copyHistoryItems,
+        rememberCopyHistoryItem,
+        removeCopyHistoryItems,
         refreshCopyHistory,
         deleteCopyHistoryItem,
         saveCopyHistoryItem,
         deleteAllCopyHistoryItems,
     } = useCopyHistory(settings.miningHistoryStorageLimit, copyHistoryRepository);
+    useCopyHistoryRemoval(extension, removeCopyHistoryItems);
     const copyHistoryItemsRef = useRef<CopyHistoryItem[]>([]);
     copyHistoryItemsRef.current = copyHistoryItems;
     const [copyHistoryOpen, setCopyHistoryOpen] = useState<boolean>(false);
@@ -458,6 +463,12 @@ function App({
     const [ankiDialogOpen, setAnkiDialogOpen] = useState<boolean>(false);
     const [ankiDialogDisabled, setAnkiDialogDisabled] = useState<boolean>(false);
     const [ankiDialogCard, setAnkiDialogCard] = useState<CardModel>();
+    const [exportingCards, setExportingCards] = useState<CardModel[]>([]);
+    useCardAudioSources([
+        ...copyHistoryItems,
+        ...exportingCards,
+        ...(ankiDialogOpen && ankiDialogCard ? [ankiDialogCard] : []),
+    ]);
     const miningContext = useMemo(() => new MiningContext(), []);
     const [settingsDialogOpen, setSettingsDialogOpen] = useState<boolean>(false);
     const [settingsDialogScrollToId, setSettingsDialogScrollToId] = useState<string>();
@@ -639,6 +650,7 @@ function App({
             };
 
             if (extension.supportsSidePanel) {
+                rememberCopyHistoryItem(newCard);
                 extension.publishCard(newCard);
             } else {
                 void saveCopyHistoryItem(newCard);
@@ -674,6 +686,7 @@ function App({
                         audioClip = audioClip.toMp3(() => new mp3WorkerFactory());
                     }
 
+                    setExportingCards((cards) => [...cards, newCard]);
                     void handleAnkiDialogProceed({
                         text: extractText(card.subtitle, card.surroundingSubtitles),
                         track1: extractText(card.subtitle, card.surroundingSubtitles, 0),
@@ -697,14 +710,22 @@ function App({
                         customFieldValues: newCard.customFieldValues ?? {},
                         tags: settingsRef.current.tags,
                         mode: postMineAction === PostMineAction.updateLastCard ? 'updateLast' : 'default',
-                    });
+                    }).finally(() => setExportingCards((cards) => cards.filter((card) => card !== newCard)));
                     break;
                 }
                 default:
                     throw new Error('Unknown post mine action: ' + postMineAction);
             }
         },
-        [extension, miningContext, saveCopyHistoryItem, handleAnkiDialogProceed, handleAnkiDialogRequest, t]
+        [
+            extension,
+            miningContext,
+            rememberCopyHistoryItem,
+            saveCopyHistoryItem,
+            handleAnkiDialogProceed,
+            handleAnkiDialogRequest,
+            t,
+        ]
     );
 
     const handleOpenCopyHistory = useCallback(async () => {

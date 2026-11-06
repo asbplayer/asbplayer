@@ -1647,8 +1647,7 @@ export default function VideoPlayer({
                     cardTextFieldValues,
                     videoFileName ?? '',
                     timestamp,
-                    showAnkiDialog ? PostMineAction.none : postMineAction,
-                    miningAudio
+                    showAnkiDialog ? PostMineAction.none : postMineAction
                 );
                 if (showAnkiDialog) {
                     onAnkiDialogRequest(
@@ -1663,19 +1662,18 @@ export default function VideoPlayer({
                         timestamp
                     );
                 }
+                setLastMinedRecord({
+                    videoFileUrl,
+                    videoFileName: videoFileName ?? '',
+                    selectedAudioTrack,
+                    playbackRate,
+                    subtitle,
+                    surroundingSubtitles,
+                    timestamp,
+                });
             } catch (error) {
                 onErrorRef.current?.(String(error));
             }
-
-            setLastMinedRecord({
-                videoFileUrl,
-                videoFileName: videoFileName ?? '',
-                selectedAudioTrack,
-                playbackRate,
-                subtitle,
-                surroundingSubtitles,
-                timestamp,
-            });
         },
         [onAnkiDialogRequest, playerChannel]
     );
@@ -2378,28 +2376,28 @@ export default function VideoPlayer({
             className={`${classes.root} ${ASB_TOKEN_CONTAINER_CLASS}`}
             tabIndex={-1}
         >
-            <Alert
-                open={resumePlaybackSnackbar.open}
-                onClose={resumePlaybackSnackbar.close}
-                onMouseEnter={resumePlaybackSnackbar.onMouseEnter}
-                onMouseLeave={resumePlaybackSnackbar.onMouseLeave}
-                autoHideDuration={0}
-                disableAutoHide={true}
-                useAppLogo={false}
-                severity="info"
-                anchor="bottom"
-            >
-                {resumePlaybackPrompt}
-            </Alert>
-            <Alert
-                open={alert.open}
-                disableAutoHide={alertDisableAutoHide}
-                onClose={handleAlertClosed}
-                notifications={alert.notifications}
-                anchor={alertAnchor}
-                useAppLogo={false}
-            />
-            <AlertStack anchor="top">
+            <AlertStack anchor={alertAnchor}>
+                <Alert
+                    inline
+                    open={resumePlaybackSnackbar.open}
+                    onClose={resumePlaybackSnackbar.close}
+                    onMouseEnter={resumePlaybackSnackbar.onMouseEnter}
+                    onMouseLeave={resumePlaybackSnackbar.onMouseLeave}
+                    autoHideDuration={0}
+                    disableAutoHide={true}
+                    useAppLogo={false}
+                    severity="info"
+                >
+                    {resumePlaybackPrompt}
+                </Alert>
+                <Alert
+                    inline
+                    open={alert.open}
+                    disableAutoHide={alertDisableAutoHide}
+                    onClose={handleAlertClosed}
+                    notifications={alert.notifications}
+                    useAppLogo={false}
+                />
                 {videoLoadNotifications.conversion && (
                     <MuiAlert severity="info">
                         {t('info.audioConversionStarted', {

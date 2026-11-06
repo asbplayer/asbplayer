@@ -49,6 +49,8 @@ export function AlertStack({ anchor, children }: AlertStackProps) {
 }
 
 interface Props {
+    /** Render inside a shared AlertStack instead of positioning a separate stack. */
+    inline?: boolean;
     open: boolean;
     autoHideDuration?: number;
     useAppLogo: boolean;
@@ -306,22 +308,19 @@ export default function Alert(props: Props) {
         previousPropsRef.current = currentNotifications;
     }, [props.open, props.notifications, props.children, props.severity, props.disableAutoHide, notifications, t]);
 
-    return (
-        <AlertStack anchor={props.anchor}>
-            {notifications.map((notification) => (
-                <AlertItem
-                    {...notification.value}
-                    key={notification.id}
-                    id={notification.id}
-                    autoHideDuration={notification.value.autoHideDuration ?? defaultDuration}
-                    useAppLogo={props.useAppLogo}
-                    onClose={closeNotification}
-                    onExitedAnimation={removeNotification}
-                    onMouseEnter={props.onMouseEnter}
-                    onMouseLeave={props.onMouseLeave}
-                    open={notification.value.open && props.open}
-                />
-            ))}
-        </AlertStack>
-    );
+    const items = notifications.map((notification) => (
+        <AlertItem
+            {...notification.value}
+            key={notification.id}
+            id={notification.id}
+            autoHideDuration={notification.value.autoHideDuration ?? defaultDuration}
+            useAppLogo={props.useAppLogo}
+            onClose={closeNotification}
+            onExitedAnimation={removeNotification}
+            onMouseEnter={props.onMouseEnter}
+            onMouseLeave={props.onMouseLeave}
+            open={notification.value.open && props.open}
+        />
+    ));
+    return props.inline ? <>{items}</> : <AlertStack anchor={props.anchor}>{items}</AlertStack>;
 }

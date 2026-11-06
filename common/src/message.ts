@@ -200,8 +200,6 @@ export interface StopRecordingMediaMessage extends Message, ImageCaptureParams {
 export interface CopyMessage extends Message, CardModel {
     readonly command: 'copy';
     readonly postMineAction?: PostMineAction;
-    /** Reuse the video document's mining boundary when creating the history card. */
-    readonly miningAudio?: TranscodedAudioState;
 }
 
 export interface PublishCardMessage extends Message, CardModel {
@@ -976,6 +974,12 @@ export interface DeleteCopyHistoryMessage extends MessageWithId {
 
 export interface ClearCopyHistoryMessage extends MessageWithId {
     readonly command: 'clear-copy-history';
+}
+
+export interface CopyHistoryRemovedMessage extends Message {
+    readonly command: 'copy-history-removed';
+    /** Omitted when all history was cleared. An empty array removes nothing. */
+    readonly ids?: string[];
 }
 
 export interface DictionaryGetBulkMessage extends MessageWithId {

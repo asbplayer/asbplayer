@@ -2,7 +2,7 @@ import { asbError } from '@project/common/util/log';
 import { download } from '@project/common/util';
 import Mp3Encoder from '@project/common/audio-clip/mp3-encoder';
 
-import type { CardModel, FileModel, TranscodedAudioState } from '@project/common';
+import type { CardModel, FileModel, TranscodedAudioModel, TranscodedAudioState } from '@project/common';
 import { AudioErrorCode } from '@project/common';
 import { snapshotMiningAudio } from '@project/common/audio-transcode/mining-audio';
 import { createBlobUrl, isActiveBlobUrl } from '@project/common/blob-url';
@@ -66,9 +66,9 @@ function recorderConfiguration() {
         'audio/ogg;codecs=opus': 'ogg',
         'audio/webm;codecs=opus': 'webm',
     };
-    return Object.keys(AUDIO_TYPES)
-        .filter(MediaRecorder.isTypeSupported)
-        .map((t) => [t, AUDIO_TYPES[t]])[0];
+    const mimeType = Object.keys(AUDIO_TYPES).find((type) => MediaRecorder.isTypeSupported(type));
+    if (mimeType === undefined) throw new Error('No supported audio recording format');
+    return { mimeType, extension: AUDIO_TYPES[mimeType] };
 }
 
 class Base64AudioData implements AudioData {
@@ -534,7 +534,7 @@ class FileAudioData implements AudioData {
     ) {
         start = Math.max(0, start);
         end = Math.max(start, end);
-        const [recorderMimeType, recorderExtension] = recorderConfiguration();
+        const { mimeType: recorderMimeType, extension: recorderExtension } = recorderConfiguration();
         this._recorderMimeType = recorderMimeType;
         this._source = source;
         this._name = makeFileName(source.name, start);
@@ -660,7 +660,8 @@ class TranscodedAudioData implements AudioData {
     private _preparationError?: AudioErrorCode;
 
     constructor(
-        private readonly _file: FileModel,
+        private readonly _name: string,
+        private readonly _source: TranscodedAudioModel,
         readonly start: number,
         private readonly _end: number,
         private readonly _playbackRate: number,
@@ -672,11 +673,11 @@ class TranscodedAudioData implements AudioData {
     }
 
     get name() {
-        return makeFileName(this._file.name, this.start);
+        return makeFileName(this._name, this.start);
     }
 
     get extension() {
-        return recorderConfiguration()[1];
+        return recorderConfiguration().extension;
     }
 
     get playing() {
@@ -684,7 +685,7 @@ class TranscodedAudioData implements AudioData {
     }
 
     get error() {
-        const source = this._file.transcodedAudio?.blobUrl;
+        const source = this._source.blobUrl;
         if (this._preparationError !== undefined) return this._preparationError;
         if (source === undefined) return AudioErrorCode.captureFailed;
         return isActiveBlobUrl(source) ? undefined : AudioErrorCode.fileLinkLost;
@@ -716,7 +717,8 @@ class TranscodedAudioData implements AudioData {
 
     slice(start: number, end: number) {
         return new TranscodedAudioData(
-            this._file,
+            this._name,
+            this._source,
             Math.max(0, start),
             end,
             this._playbackRate,
@@ -730,7 +732,7 @@ class TranscodedAudioData implements AudioData {
     }
 
     private async _readSnapshot() {
-        const source = this._file.transcodedAudio!;
+        const source = this._source;
         if (source.blobUrl === undefined) return { durationMs: 0 };
         const audio = await (await fetch(source.blobUrl)).blob();
         return snapshotMiningAudio({ audio, required: true, complete: source.complete });
@@ -745,7 +747,7 @@ class TranscodedAudioData implements AudioData {
                     throw new AudioUnavailableError('Requested audio is outside the converted portion');
                 }
                 return (this._data = new FileAudioData(
-                    { name: this._file.name, audio },
+                    { name: this._name, audio },
                     start,
                     end,
                     this._playbackRate,
@@ -976,7 +978,14 @@ export default class AudioClip {
                       playbackRate,
                       recordAudibly
                   )
-                : new TranscodedAudioData(file, Math.max(0, start), end, playbackRate, recordAudibly)
+                : new TranscodedAudioData(
+                      file.name,
+                      file.transcodedAudio,
+                      Math.max(0, start),
+                      end,
+                      playbackRate,
+                      recordAudibly
+                  )
         );
     }
 

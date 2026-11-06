@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from '@jest/globals';
 import { PlayMode, PostMineAction } from '@project/common';
-import type { CopyMessage, Message, SubtitleModel } from '@project/common';
+import type { Message, SubtitleModel } from '@project/common';
 import PlayerChannel from '@project/common/app/services/player-channel';
 import { defaultSettings } from '@project/common/settings';
 import type { MiscSettings } from '@project/common/settings';
@@ -93,14 +93,14 @@ describe('PlayerChannel playback state', () => {
         channel.close();
     });
 
-    it('delivers the captured mining source to history through the player channel', () => {
+    it('delivers the mined subtitle and timestamp through the player channel', () => {
         const player = new PlayerChannel('test-channel');
         const broadcastChannel = TestBroadcastChannel.instance!;
         const protocol: VideoProtocol = { postMessage() {}, close() {} };
         const video = new VideoChannel(protocol);
-        const received: CopyMessage['miningAudio'][] = [];
-        video.onCopy((_subtitle, _surrounding, _fields, _audio, _image, _url, _action, _id, _timestamp, snapshot) => {
-            received.push(snapshot);
+        const received: { subtitle: SubtitleModel; timestamp: number | undefined }[] = [];
+        video.onCopy((subtitle, _surrounding, _fields, _audio, _image, _url, _action, _id, timestamp) => {
+            received.push({ subtitle, timestamp });
         });
         const subtitle: SubtitleModel = {
             text: '',
@@ -110,12 +110,9 @@ describe('PlayerChannel playback state', () => {
             originalEnd: 1000,
             track: 0,
         };
-        const snapshot = { audio: new Blob(['encoded prefix']), required: true, complete: false };
-        player.copy(subtitle, [], {}, 'video.mp4', 1000, PostMineAction.none, snapshot);
-        protocol.onMessage?.({ data: broadcastChannel.sent[0] });
         player.copy(subtitle, [], {}, 'video.mp4', 1000, PostMineAction.none);
-        protocol.onMessage?.({ data: broadcastChannel.sent[1] });
-        expect(received).toEqual([snapshot, undefined]);
+        protocol.onMessage?.({ data: broadcastChannel.sent[0] });
+        expect(received).toEqual([{ subtitle, timestamp: 1000 }]);
         player.close();
         video.close();
     });

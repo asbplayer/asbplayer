@@ -81,7 +81,7 @@ import type {
 } from '@project/common/playback/timeline/playback-timeline-html';
 
 import { createTheme } from '@project/common/theme/theme';
-import Alert from '@project/common/app/components/Alert';
+import Alert, { AlertStack } from '@project/common/app/components/Alert';
 import type { AlertNotification } from '@project/common/app/components/Alert';
 import { useTranscodedAudio } from '@project/common/app/hooks/use-transcoded-audio';
 import { clampAudioSeekMs } from '@project/common/audio-transcode/streaming-audio';
@@ -1160,18 +1160,15 @@ function PlayerComponent(
                     url,
                     postMineAction,
                     id,
-                    mediaTimestamp,
-                    miningAudio
+                    mediaTimestamp
                 ) => {
                     try {
                         const currentAudio = transcodedAudioRef.current;
-                        const transcodedAudioSource = AudioClip.createTranscodedAudioSource(
-                            miningAudio ?? {
-                                audio: currentAudio.blob,
-                                required: currentAudio.required,
-                                complete: currentAudio.complete,
-                            }
-                        );
+                        const transcodedAudioSource = AudioClip.createTranscodedAudioSource({
+                            audio: currentAudio.blob,
+                            required: currentAudio.required,
+                            complete: currentAudio.complete,
+                        });
                         onCopy(
                             {
                                 subtitle,
@@ -1672,47 +1669,49 @@ function PlayerComponent(
 
     return (
         <div onMouseMove={handleMouseMove} className={classes.root}>
-            <Alert
-                open={resumePlaybackSnackbar.open}
-                useAppLogo={false}
-                onClose={resumePlaybackSnackbar.close}
-                onMouseEnter={resumePlaybackSnackbar.onMouseEnter}
-                onMouseLeave={resumePlaybackSnackbar.onMouseLeave}
-                autoHideDuration={0}
-                disableAutoHide={true}
-                severity="info"
-                anchor="top"
-            >
-                {t('info.resumePlaybackPrompt', {
-                    time: timeDurationDisplay(pendingPlaybackPosition ?? 0, pendingPlaybackPosition ?? 0, false),
-                })}
-                <Button
-                    size="small"
-                    color="inherit"
-                    style={{ pointerEvents: 'auto', marginLeft: 12 }}
-                    onClick={() => void syntheticPlaybackEngineRef.current?.resumePlaybackPosition()}
+            <AlertStack anchor="top">
+                <Alert
+                    inline
+                    open={resumePlaybackSnackbar.open}
+                    useAppLogo={false}
+                    onClose={resumePlaybackSnackbar.close}
+                    onMouseEnter={resumePlaybackSnackbar.onMouseEnter}
+                    onMouseLeave={resumePlaybackSnackbar.onMouseLeave}
+                    autoHideDuration={0}
+                    disableAutoHide={true}
+                    severity="info"
                 >
-                    {t('info.resumePlaybackButton')}
-                </Button>
-            </Alert>
-            <Alert
-                open={alert.open}
-                onClose={handleAlertClosed}
-                notifications={alert.notifications}
-                useAppLogo={false}
-                anchor="top"
-            />
-            <Alert
-                open={transcodedAudio.state === 'failed'}
-                useAppLogo={false}
-                onClose={transcodedAudio.clearFailure}
-                autoHideDuration={0}
-                disableAutoHide={true}
-                severity="error"
-                anchor="top"
-            >
-                {t('error.audioConversionFailed', { codec: transcodedAudio.codecName })}
-            </Alert>
+                    {t('info.resumePlaybackPrompt', {
+                        time: timeDurationDisplay(pendingPlaybackPosition ?? 0, pendingPlaybackPosition ?? 0, false),
+                    })}
+                    <Button
+                        size="small"
+                        color="inherit"
+                        style={{ pointerEvents: 'auto', marginLeft: 12 }}
+                        onClick={() => void syntheticPlaybackEngineRef.current?.resumePlaybackPosition()}
+                    >
+                        {t('info.resumePlaybackButton')}
+                    </Button>
+                </Alert>
+                <Alert
+                    inline
+                    open={alert.open}
+                    onClose={handleAlertClosed}
+                    notifications={alert.notifications}
+                    useAppLogo={false}
+                />
+                <Alert
+                    inline
+                    open={transcodedAudio.state === 'failed'}
+                    useAppLogo={false}
+                    onClose={transcodedAudio.clearFailure}
+                    autoHideDuration={0}
+                    disableAutoHide={true}
+                    severity="error"
+                >
+                    {t('error.audioConversionFailed', { codec: transcodedAudio.codecName })}
+                </Alert>
+            </AlertStack>
             {!videoInWindow && statisticsOverlay}
             <Grid container direction="row" wrap="nowrap" className={classes.container}>
                 {videoInWindow && (

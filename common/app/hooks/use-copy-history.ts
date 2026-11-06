@@ -1,9 +1,10 @@
-import { useEffect, useCallback, useState } from 'react';
+import { useEffect, useCallback, useRef, useState } from 'react';
 import type { CopyHistoryItem } from '@project/common';
 import type { CopyHistoryRepository } from '@project/common/copy-history';
 
 export const useCopyHistory = (miningHistoryStorageLimit: number, copyHistoryRepository: CopyHistoryRepository) => {
     const [copyHistoryItems, setCopyHistoryItems] = useState<CopyHistoryItem[]>([]);
+    const removalVersion = useRef(0);
     const updateCopyHistoryItems = useCallback((items: CopyHistoryItem[]) => {
         setCopyHistoryItems((existing: CopyHistoryItem[]) => {
             const newItems = [...existing];
@@ -19,27 +20,33 @@ export const useCopyHistory = (miningHistoryStorageLimit: number, copyHistoryRep
     }, []);
 
     const refreshCopyHistory = useCallback(async () => {
-        updateCopyHistoryItems(await copyHistoryRepository.fetch(miningHistoryStorageLimit));
+        const version = removalVersion.current;
+        const items = await copyHistoryRepository.fetch(miningHistoryStorageLimit);
+        if (version === removalVersion.current) updateCopyHistoryItems(items);
     }, [miningHistoryStorageLimit, updateCopyHistoryItems, copyHistoryRepository]);
+
+    const rememberCopyHistoryItem = useCallback(
+        (item: CopyHistoryItem) => updateCopyHistoryItems([item]),
+        [updateCopyHistoryItems]
+    );
 
     useEffect(() => {
         return copyHistoryRepository.liveFetch(miningHistoryStorageLimit, updateCopyHistoryItems);
     }, [copyHistoryRepository, miningHistoryStorageLimit, updateCopyHistoryItems]);
 
+    const removeCopyHistoryItems = useCallback((ids?: readonly string[]) => {
+        if (ids?.length === 0) return;
+        ++removalVersion.current;
+        const removed = ids === undefined ? undefined : new Set(ids);
+        setCopyHistoryItems((items) => (removed ? items.filter((item) => !removed.has(item.id)) : []));
+    }, []);
+
     const deleteCopyHistoryItem = useCallback(
         async (item: CopyHistoryItem) => {
-            const newCopyHistoryItems: CopyHistoryItem[] = [];
-
-            for (const i of copyHistoryItems) {
-                if (item.id !== i.id) {
-                    newCopyHistoryItems.push(i);
-                }
-            }
-
-            setCopyHistoryItems(newCopyHistoryItems);
             await copyHistoryRepository.delete(item.id);
+            removeCopyHistoryItems([item.id]);
         },
-        [copyHistoryItems, copyHistoryRepository]
+        [copyHistoryRepository, removeCopyHistoryItems]
     );
 
     const saveCopyHistoryItem = useCallback(
@@ -51,12 +58,14 @@ export const useCopyHistory = (miningHistoryStorageLimit: number, copyHistoryRep
     );
 
     const deleteAllCopyHistoryItems = useCallback(async () => {
-        setCopyHistoryItems([]);
         await copyHistoryRepository.clear();
-    }, [copyHistoryRepository]);
+        removeCopyHistoryItems();
+    }, [copyHistoryRepository, removeCopyHistoryItems]);
 
     return {
         copyHistoryItems,
+        rememberCopyHistoryItem,
+        removeCopyHistoryItems,
         refreshCopyHistory,
         deleteCopyHistoryItem,
         deleteAllCopyHistoryItems,
