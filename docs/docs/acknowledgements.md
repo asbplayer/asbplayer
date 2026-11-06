@@ -71,6 +71,7 @@ We epecially acknowledge the wonderful humans below.
 ## Translators {#translators}
 
 **Mana Tsutsumi** (Japanese, initial translation),
+**kasader** (Japanese),
 **Kai Böse** (German),
 **Triline**, **[@nekorushi](https://github.com/nekorushi)** (Polish),
 **NeverWinterSwor** (Simplified Chinese),
