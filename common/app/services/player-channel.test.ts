@@ -51,20 +51,23 @@ describe('PlayerChannel playback state', () => {
         const audio = new Blob(['converted audio']);
 
         // Conversion can start and finish before the playback frame attaches its listener.
-        owner.transcodedAudio({ active: true, complete: false, required: true, codecName: 'E-AC-3' });
-        owner.transcodedAudio({ audio, active: true, complete: true, required: true, codecName: 'E-AC-3' });
+        owner.transcodedAudio({ state: 'transcoding', required: true, codecName: 'E-AC-3' });
+        owner.transcodedAudio({ audio, state: 'ready', required: true, codecName: 'E-AC-3' });
         player.onTranscodedAudio((message) => received.push(message));
         player.requestTranscodedAudio();
         protocol.onMessage?.({ data: broadcastChannel.sent[0] });
 
-        expect(received).toEqual([{ required: true, audio, active: true, complete: true, codecName: 'E-AC-3' }]);
+        expect(received).toEqual([{ required: true, audio, state: 'ready', codecName: 'E-AC-3' }]);
 
-        owner.transcodedAudio({ active: false, complete: false, required: false });
+        owner.transcodedAudio({ state: 'failed', required: true, codecName: 'E-AC-3' });
+        expect(received.at(-1)).toEqual({ required: true, state: 'failed', codecName: 'E-AC-3' });
+
+        owner.transcodedAudio({ state: 'idle', required: false });
         player.requestTranscodedAudio();
         protocol.onMessage?.({ data: broadcastChannel.sent[1] });
-        expect(received.slice(1)).toEqual([
-            { required: false, active: false, complete: false },
-            { required: false, active: false, complete: false },
+        expect(received.slice(2)).toEqual([
+            { required: false, state: 'idle' },
+            { required: false, state: 'idle' },
         ]);
         player.close();
         owner.close();
@@ -285,8 +288,7 @@ describe('PlayerChannel playback state', () => {
                     command: 'transcodedAudio',
                     required: true,
                     audio,
-                    active: true,
-                    complete: false,
+                    state: 'transcoding',
                     codecName: 'E-AC-3',
                 },
             })
@@ -296,15 +298,14 @@ describe('PlayerChannel playback state', () => {
                 data: {
                     command: 'transcodedAudio',
                     required: false,
-                    active: false,
-                    complete: false,
+                    state: 'idle',
                 },
             })
         );
 
         expect(received).toEqual([
-            { required: true, audio, active: true, complete: false, codecName: 'E-AC-3' },
-            { required: false, active: false, complete: false },
+            { required: true, audio, state: 'transcoding', codecName: 'E-AC-3' },
+            { required: false, state: 'idle' },
         ]);
         channel.close();
     });

@@ -4,6 +4,9 @@ import type { Root } from 'react-dom/client';
 import type { FileWithId } from '@project/common/file-selector';
 import { TestHost, webmHeader } from '@project/common/audio-transcode/test-host';
 import { useTranscodedAudio } from '@project/common/app/hooks/use-transcoded-audio';
+import Alert from '@project/common/app/components/Alert';
+
+jest.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -14,14 +17,24 @@ const Harness = ({ file, host }: { file?: FileWithId; host: TestHost }) => {
             <output
                 data-state={conversion.state}
                 data-bytes={conversion.blob?.size}
-                data-complete={conversion.complete}
+                data-complete={conversion.state === 'ready'}
                 data-required={conversion.required}
                 data-error={conversion.error === undefined ? undefined : String(conversion.error)}
             >
                 {conversion.codecName}
             </output>
-            <button onClick={conversion.clearFailure}>Close</button>
-            <button onClick={() => conversion.fail(new Error('Playback failed'))}>Fail</button>
+            <Alert
+                open={conversion.state === 'failed'}
+                useAppLogo={false}
+                dismissible
+                disableAutoHide
+                onClose={() => {}}
+            >
+                Conversion failed
+            </Alert>
+            <button data-fail onClick={() => conversion.fail(new Error('Playback failed'))}>
+                Fail
+            </button>
         </>
     );
 };
@@ -63,8 +76,8 @@ const state = () => container.querySelector('output')!.getAttribute('data-state'
 const render = async (file: FileWithId | undefined, host: TestHost) => {
     await act(async () => root.render(<Harness file={file} host={host} />));
 };
-const click = async (index: number) => {
-    await act(async () => container.querySelectorAll('button')[index].click());
+const click = async (selector: string) => {
+    await act(async () => container.querySelector<HTMLButtonElement>(selector)!.click());
 };
 const waitForState = async (expected: string) => {
     const deadline = Date.now() + 2000;
@@ -229,22 +242,31 @@ it('terminates conversion when streamed playback fails and retains the failure',
     host.autoComplete = false;
     await render(file('a'), host);
     await waitForWorker(host);
-    await click(1);
+    await click('[data-fail]');
     expect(state()).toBe('failed');
     expect(host.workers[0].active).toBe(false);
     expect(container.querySelector('output')!.getAttribute('data-bytes')).toBeNull();
     expect(container.querySelector('output')!.getAttribute('data-error')).toContain('Playback failed');
 });
 
-it('closes a failure notice without restarting conversion', async () => {
+it('dismisses the notice without clearing the failure and shows a new failure for the next file', async () => {
     jest.spyOn(console, 'error').mockImplementation(() => {});
     const host = new TestHost();
     host.error = 'Invalid media';
     await render(file('a'), host);
     await waitForState('failed');
     expect(container.querySelector('output')!.getAttribute('data-error')).toContain('Invalid media');
-    await click(0);
-    expect(state()).toBe('idle');
+    await click('[aria-label="Close"]');
+    await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 350));
+    });
+    expect(container.querySelector('[role="alert"]')).toBeNull();
+    expect(state()).toBe('failed');
+    expect(container.querySelector('output')!.getAttribute('data-error')).toContain('Invalid media');
     expect(container.querySelector('output')!.getAttribute('data-required')).toBe('true');
     expect(host.workers).toHaveLength(1);
+    await render(file('b'), host);
+    await waitForWorker(host, 1);
+    await waitForState('failed');
+    expect(container.querySelector('[role="alert"]')).not.toBeNull();
 });

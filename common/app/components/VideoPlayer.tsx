@@ -1,5 +1,6 @@
 import { AudioClip } from '@project/common/audio-clip';
 import { canMineWithAudio } from '@project/common/audio-transcode/mining-audio';
+import { usesConvertedAudio } from '@project/common/audio-transcode';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { MutableRefObject } from 'react';
 
@@ -415,15 +416,15 @@ export default function VideoPlayer({
     const [hiddenVideoReady, setHiddenVideoReady] = useState(false);
     const [convertedAudio, setConvertedAudio] = useState<TranscodedAudioPayload>({
         required: false,
-        active: false,
-        complete: false,
+        state: 'idle',
     });
+    const convertedAudioInUse = usesConvertedAudio(convertedAudio.state);
     const convertedAudioRef = useRef(convertedAudio);
     convertedAudioRef.current = convertedAudio;
     const videoLoadNotifications = useVideoLoadNotifications({
         video,
         source: videoFile,
-        conversionActive: convertedAudio.active,
+        conversionState: convertedAudio.state,
     });
     const [audioSeekableRange, setAudioSeekableRange] = useState<AudioSeekableRange>();
     const [externalAudio, setExternalAudio] = useState<HTMLAudioElement | null>(null);
@@ -440,9 +441,7 @@ export default function VideoPlayer({
         return new PlayerChannel(channel);
     }, [channel]);
     const audioFile = useStreamingAudio({
-        audio: convertedAudio.audio,
-        active: convertedAudio.active,
-        complete: convertedAudio.complete,
+        conversion: convertedAudio,
         video,
         onBuffered: (range) => {
             setAudioSeekableRange(range);
@@ -453,15 +452,15 @@ export default function VideoPlayer({
     const externalAudioStateRef = useRef({
         element: externalAudio,
         source: audioFile,
-        active: convertedAudio.active,
-        streaming: !convertedAudio.complete,
+        active: convertedAudioInUse,
+        streaming: convertedAudio.state === 'transcoding',
         onError: () => playerChannel.audioConversionFailed(),
     });
     externalAudioStateRef.current = {
         element: externalAudio,
         source: audioFile,
-        active: convertedAudio.active,
-        streaming: !convertedAudio.complete,
+        active: convertedAudioInUse,
+        streaming: convertedAudio.state === 'transcoding',
         onError: () => playerChannel.audioConversionFailed(),
     };
     useEffect(() => {
@@ -550,9 +549,7 @@ export default function VideoPlayer({
     const resumePlaybackSnackbar = useResumePlaybackSnackbar({
         position: pendingPlaybackPosition,
         source: videoFile,
-        audio: convertedAudio.audio,
-        required: convertedAudio.required,
-        complete: convertedAudio.complete,
+        conversion: convertedAudio,
         onDismiss: () => playbackEngineRef.current?.dismissPlaybackPosition(),
     });
     const [lastMinedRecord, setLastMinedRecord] = useState<MinedRecord>();
@@ -847,7 +844,7 @@ export default function VideoPlayer({
                         asbTrace('playback/video-player', 'Changing original video muting', {
                             from: video.muted,
                             to: muted,
-                            conversionActive: convertedAudioRef.current.active,
+                            conversionState: convertedAudioRef.current.state,
                         });
                     }
                     video.muted = muted;
@@ -976,7 +973,7 @@ export default function VideoPlayer({
 
     useEffect(() => {
         if (video) playbackEngineRef.current?.externalAudioChanged(externalAudioStateRef.current);
-    }, [audioFile, convertedAudio.active, convertedAudio.complete, externalAudio, playerChannel, video]);
+    }, [audioFile, convertedAudio.state, externalAudio, playerChannel, video]);
 
     useEffect(() => {
         if (profileRef.current === profile) return;
@@ -1051,14 +1048,12 @@ export default function VideoPlayer({
             const previous = convertedAudioRef.current;
             if (
                 previous.required !== audio.required ||
-                previous.active !== audio.active ||
-                previous.complete !== audio.complete ||
+                previous.state !== audio.state ||
                 Boolean(previous.audio) !== Boolean(audio.audio)
             ) {
                 asbTrace('playback/video-player', 'Received converted audio state', {
                     required: audio.required,
-                    active: audio.active,
-                    complete: audio.complete,
+                    state: audio.state,
                     codecName: audio.codecName,
                     bytes: audio.audio?.size ?? 0,
                 });
@@ -1693,7 +1688,10 @@ export default function VideoPlayer({
                     onAnkiDialogRequest(
                         videoFileUrl,
                         videoFileName ?? '',
-                        AudioClip.createTranscodedAudioSource(miningAudio),
+                        AudioClip.createTranscodedAudioSource({
+                            ...miningAudio,
+                            complete: miningAudio.state === 'ready',
+                        }),
                         selectedAudioTrack,
                         playbackRate,
                         subtitle,
@@ -2483,9 +2481,7 @@ export default function VideoPlayer({
                 onMouseOver={handleVideoMouseOver}
             />
             {/* this audio replaces the video's own audio track when the browser can't decode it */}
-            {convertedAudio.active && (
-                <audio preload="auto" style={{ display: 'none' }} ref={externalAudioRefCallback} />
-            )}
+            {convertedAudioInUse && <audio preload="auto" style={{ display: 'none' }} ref={externalAudioRefCallback} />}
             {/* Optional blur mask overlay; constrained to the video bounds within the player container */}
             {blurOverlayVisible && <BlurOverlay anchorRef={containerRef} containerRef={videoRef} />}
             {/* this video is for getting the seek preview below */}
@@ -2531,9 +2527,7 @@ export default function VideoPlayer({
                 mousePositionRef={mousePositionRef}
                 clock={clock}
                 length={lengthMs}
-                bufferedMs={
-                    convertedAudio.active && !convertedAudio.complete ? (audioSeekableRange?.end ?? 0) : undefined
-                }
+                bufferedMs={convertedAudio.state === 'transcoding' ? (audioSeekableRange?.end ?? 0) : undefined}
                 audioTracks={audioTracks}
                 selectedAudioTrack={selectedAudioTrack}
                 subtitlesToggle={subtitles && subtitles.length > 0}

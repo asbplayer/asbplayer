@@ -1,6 +1,7 @@
 import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import type { Root } from 'react-dom/client';
+import type { AudioConversionState } from '@project/common/audio-transcode';
 import { useVideoLoadNotifications } from '@project/common/app/hooks/use-video-load-notifications';
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -12,8 +13,14 @@ let readyState: number;
 let networkState: number;
 let error: MediaError | null;
 
-const Harness = ({ source = 'blob:video', conversionActive = false }) => {
-    const notices = useVideoLoadNotifications({ video, source, conversionActive });
+const Harness = ({
+    source = 'blob:video',
+    conversionState = 'idle',
+}: {
+    source?: string;
+    conversionState?: AudioConversionState;
+}) => {
+    const notices = useVideoLoadNotifications({ video, source, conversionState });
     return <output data-loading={notices.loading} data-conversion={notices.conversion} />;
 };
 const render = async (props = {}) => {
@@ -70,7 +77,7 @@ it('detects slow video without audio conversion after three seconds and waits fo
 it.each([false, true])(
     'keeps delayed notices until t=10s when the video is ready at t=4s (conversion: %s)',
     async (conversionActive) => {
-        await render({ conversionActive });
+        await render({ conversionState: conversionActive ? 'transcoding' : 'idle' });
         await advance(3_000);
         expect(notices()).toEqual({ loading: true, conversion: conversionActive });
         await advance(1_000);
@@ -83,7 +90,7 @@ it.each([false, true])(
 );
 
 it('hides conversion at t=10s even when the video remains unready until t=15s', async () => {
-    await render({ conversionActive: true });
+    await render({ conversionState: 'transcoding' });
     await advance(9_999);
     expect(notices()).toEqual({ loading: true, conversion: true });
     await advance(1);
@@ -94,7 +101,7 @@ it('hides conversion at t=10s even when the video remains unready until t=15s', 
 });
 
 it.each([0, 2_999])('hides conversion at t=5s without a delayed notice when video is ready after %s ms', async (ms) => {
-    await render({ conversionActive: true });
+    await render({ conversionState: 'transcoding' });
     expect(notices()).toEqual({ loading: false, conversion: true });
     await advance(ms);
     await ready();
@@ -104,21 +111,22 @@ it.each([0, 2_999])('hides conversion at t=5s without a delayed notice when vide
     expect(notices()).toEqual({ loading: false, conversion: false });
 });
 
-it('does not reset the video load deadline when audio conversion starts or updates', async () => {
+it('does not reset notification deadlines when conversion starts or finishes', async () => {
     await render();
     await advance(2_000);
-    await render({ conversionActive: true });
+    await render({ conversionState: 'transcoding' });
     await advance(1_000);
     expect(notices()).toEqual({ loading: true, conversion: true });
-    await render({ conversionActive: true });
+    await render({ conversionState: 'ready' });
+    expect(notices()).toEqual({ loading: true, conversion: true });
     await advance(7_000);
     expect(notices()).toEqual({ loading: true, conversion: false });
 });
 
 it('can remove a failed conversion notice without hiding the delayed video notice', async () => {
-    await render({ conversionActive: true });
+    await render({ conversionState: 'transcoding' });
     await advance(3_000);
-    await render({ conversionActive: false });
+    await render({ conversionState: 'failed' });
     expect(notices()).toEqual({ loading: true, conversion: false });
     await ready();
     await advance(7_000);
@@ -126,7 +134,7 @@ it('can remove a failed conversion notice without hiding the delayed video notic
 });
 
 it('gives a new file its own deadlines and cancels the previous file timers', async () => {
-    await render({ conversionActive: true });
+    await render({ conversionState: 'transcoding' });
     await advance(4_000);
     await render({ source: 'blob:next-video' });
     expect(notices()).toEqual({ loading: false, conversion: false });
@@ -143,7 +151,7 @@ it('gives a new file its own deadlines and cancels the previous file timers', as
 });
 
 it.each([0, 3_000, 10_000])('clears notices on a video error after %s ms', async (ms) => {
-    await render({ conversionActive: true });
+    await render({ conversionState: 'transcoding' });
     await advance(ms);
     error = { code: 4, message: 'Unsupported video' } as MediaError;
     await event('error');
@@ -154,7 +162,7 @@ it.each([0, 3_000, 10_000])('clears notices on a video error after %s ms', async
 
 it('times a new video load without reviving an expired conversion notice', async () => {
     readyState = HTMLMediaElement.HAVE_ENOUGH_DATA;
-    await render({ conversionActive: true });
+    await render({ conversionState: 'transcoding' });
     await advance(5_000);
     expect(notices()).toEqual({ loading: false, conversion: false });
     readyState = HTMLMediaElement.HAVE_NOTHING;
@@ -165,7 +173,7 @@ it('times a new video load without reviving an expired conversion notice', async
 });
 
 it('checks current readiness when a browser has already decoded a frame without delivering its event', async () => {
-    await render({ conversionActive: true });
+    await render({ conversionState: 'transcoding' });
     readyState = HTMLMediaElement.HAVE_CURRENT_DATA;
     await advance(3_000);
     expect(notices()).toEqual({ loading: false, conversion: true });
@@ -186,18 +194,18 @@ it('does not treat later buffering as an initial load delay', async () => {
 it('waits for a video element before starting either notice', async () => {
     const element = video;
     video = undefined;
-    await render({ conversionActive: true });
+    await render({ conversionState: 'transcoding' });
     await advance(10_000);
     expect(notices()).toEqual({ loading: false, conversion: false });
     video = element;
-    await render({ conversionActive: true });
+    await render({ conversionState: 'transcoding' });
     await advance(3_000);
     expect(notices()).toEqual({ loading: true, conversion: true });
 });
 
 it('waits for actual loading before detecting a delay and does not restart conversion feedback on delayed Play', async () => {
     networkState = HTMLMediaElement.NETWORK_EMPTY;
-    await render({ conversionActive: true });
+    await render({ conversionState: 'transcoding' });
     expect(notices()).toEqual({ loading: false, conversion: true });
     await advance(4_999);
     expect(notices()).toEqual({ loading: false, conversion: true });
@@ -217,7 +225,7 @@ it('waits for actual loading before detecting a delay and does not restart conve
 
 it('still detects a genuinely slow load that starts after the conversion notice expires', async () => {
     networkState = HTMLMediaElement.NETWORK_EMPTY;
-    await render({ conversionActive: true });
+    await render({ conversionState: 'transcoding' });
     await advance(20_000);
     networkState = HTMLMediaElement.NETWORK_LOADING;
     await event('loadstart');
@@ -233,7 +241,7 @@ it('still detects a genuinely slow load that starts after the conversion notice 
 
 it('detects an already-started idle load with no metadata instead of treating it as deferred playback', async () => {
     networkState = HTMLMediaElement.NETWORK_IDLE;
-    await render({ conversionActive: true });
+    await render({ conversionState: 'transcoding' });
     await advance(3_000);
     expect(notices()).toEqual({ loading: true, conversion: true });
     await advance(7_000);

@@ -46,9 +46,9 @@ describe('VideoChannel playback intents', () => {
         const protocol = new TestVideoProtocol();
         const channel = new VideoChannel(protocol);
         const audio = new Blob(['prefix']);
-        channel.transcodedAudio({ audio, active: true, complete: false, required: true, codecName: 'E-AC-3' });
+        channel.transcodedAudio({ audio, state: 'transcoding', required: true, codecName: 'E-AC-3' });
         expect(protocol.sent).toEqual([
-            { command: 'transcodedAudio', required: true, audio, active: true, complete: false, codecName: 'E-AC-3' },
+            { command: 'transcodedAudio', required: true, audio, state: 'transcoding', codecName: 'E-AC-3' },
         ]);
         protocol.receive({ command: 'audioBuffered', range: { start: 0, end: 12_000 } });
         expect(channel.audioSeekableRange).toEqual({ start: 0, end: 12_000 });

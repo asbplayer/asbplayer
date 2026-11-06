@@ -21,6 +21,7 @@ import type {
     DisplaySubtitleModel,
     TokenizedSubtitleModel,
     VideoTabModel,
+    TranscodedAudioPayload,
 } from '@project/common';
 
 import { ApplyStrategy, isTrackAutoCopyable, TokenState, VideoSubtitleSplitBehavior } from '@project/common/settings';
@@ -209,6 +210,20 @@ export interface PlayerRef {
 
 const Player = React.memo(React.forwardRef<PlayerRef, PlayerProps>(PlayerComponent));
 
+/** Send only playback data across documents, preserving the relationship between state and audio. */
+function toTranscodedAudioPayload(conversion: ReturnType<typeof useTranscodedAudio>): TranscodedAudioPayload {
+    const { required, codecName } = conversion;
+    switch (conversion.state) {
+        case 'idle':
+        case 'failed':
+            return { state: conversion.state, required, codecName };
+        case 'transcoding':
+            return { state: 'transcoding', audio: conversion.blob, required, codecName };
+        case 'ready':
+            return { state: 'ready', audio: conversion.blob, required, codecName };
+    }
+}
+
 function PlayerComponent(
     {
         sources,
@@ -287,7 +302,6 @@ function PlayerComponent(
     const playbackPositionKey = videoFile?.file.name;
     const transcodedAudio = useTranscodedAudio(videoFile, audioTranscodeHost);
     const failAudioConversion = transcodedAudio.fail;
-    const audioConversionActive = transcodedAudio.state === 'transcoding' || transcodedAudio.state === 'ready';
     const transcodedAudioRef = useRef(transcodedAudio);
     transcodedAudioRef.current = transcodedAudio;
     const syntheticPlayback = videoFileUrl === undefined && tab === undefined;
@@ -1063,21 +1077,8 @@ function PlayerComponent(
         if (channel === undefined) return;
 
         // The channel caches this state so a newly subscribed frame can request it before video readiness.
-        channel.transcodedAudio({
-            audio: transcodedAudio.blob,
-            active: audioConversionActive,
-            complete: transcodedAudio.complete,
-            required: transcodedAudio.required,
-            codecName: transcodedAudio.codecName,
-        });
-    }, [
-        channel,
-        transcodedAudio.blob,
-        transcodedAudio.complete,
-        transcodedAudio.required,
-        transcodedAudio.codecName,
-        audioConversionActive,
-    ]);
+        channel.transcodedAudio(toTranscodedAudioPayload(transcodedAudio));
+    }, [channel, transcodedAudio]);
     useEffect(
         () => channel?.onAudioConversionFailed(() => failAudioConversion(new Error('Opus playback failed'))),
         [channel, failAudioConversion]
@@ -1168,7 +1169,7 @@ function PlayerComponent(
                         const transcodedAudioSource = AudioClip.createTranscodedAudioSource({
                             audio: currentAudio.blob,
                             required: currentAudio.required,
-                            complete: currentAudio.complete,
+                            complete: currentAudio.state === 'ready',
                         });
                         onCopy(
                             {
@@ -1344,11 +1345,7 @@ function PlayerComponent(
             } else {
                 try {
                     const miningAudio = transcodedAudioRef.current;
-                    const audioSource = {
-                        audio: miningAudio.blob,
-                        required: miningAudio.required,
-                        complete: miningAudio.complete,
-                    };
+                    const audioSource = toTranscodedAudioPayload(miningAudio);
                     if (!(await canMineWithAudio(audioSource, subtitle.end))) {
                         setAlert({
                             open: true,
@@ -1375,7 +1372,10 @@ function PlayerComponent(
                                           audioTrack: selectedAudioTrack,
                                           playbackRate,
                                           blobUrl: createBlobUrl(videoFile.file),
-                                          transcodedAudio: AudioClip.createTranscodedAudioSource(audioSource),
+                                          transcodedAudio: AudioClip.createTranscodedAudioSource({
+                                              ...audioSource,
+                                              complete: miningAudio.state === 'ready',
+                                          }),
                                       },
                             ...cardTextFieldValues,
                         },
@@ -1723,7 +1723,8 @@ function PlayerComponent(
                     inline
                     open={transcodedAudio.state === 'failed'}
                     useAppLogo={false}
-                    onClose={transcodedAudio.clearFailure}
+                    dismissible
+                    onClose={() => {}} // Alert owns dismissal; closing it must not change the conversion result.
                     autoHideDuration={0}
                     disableAutoHide={true}
                     severity="error"
@@ -1770,7 +1771,7 @@ function PlayerComponent(
                             length={calculateLengthMs(videoDurationRef)}
                             displayLength={calculateLengthMs(videoDurationRef, subtitles)}
                             bufferedMs={
-                                audioConversionActive && !transcodedAudio.complete
+                                transcodedAudio.state === 'transcoding'
                                     ? (channel?.audioSeekableRange?.end ?? 0)
                                     : undefined
                             }

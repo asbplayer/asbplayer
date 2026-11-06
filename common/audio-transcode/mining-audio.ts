@@ -1,4 +1,4 @@
-import type { TranscodedAudioState } from '@project/common';
+import type { TranscodedAudioPayload, TranscodedAudioState } from '@project/common';
 import { readEbmlElement, readEbmlVarInt } from '@project/common/media-probe/ebml';
 import type { EbmlElement } from '@project/common/media-probe/ebml';
 import ByteReader from '@project/common/media-probe/byte-reader';
@@ -115,11 +115,19 @@ export const snapshotMiningAudio = async ({
     return { audio: snapshot.blob, durationMs: snapshot.durationMs };
 };
 
-/** Leave a second of converted audio after the subtitle before freezing its mining source. */
-export const canMineWithAudio = async (source: TranscodedAudioState, subtitleEndMs: number): Promise<boolean> => {
+/** Wait for a converted prefix while conversion is active; otherwise allow text-only mining. */
+export const canMineWithAudio = async (source: TranscodedAudioPayload, subtitleEndMs: number): Promise<boolean> => {
     if (!source.required) return true;
-    if (source.audio === undefined) return false;
-    if (source.complete) return true;
-    const { durationMs } = await snapshotMiningAudio(source);
-    return durationMs >= subtitleEndMs + millisecondsPerSecond;
+    switch (source.state) {
+        case 'ready':
+            return true;
+        case 'idle':
+        case 'failed':
+            return true; // Keep the required marker on the card: text-only mining must not record the original track.
+        case 'transcoding': {
+            if (source.audio === undefined) return false;
+            const snapshot = await snapshotWebmAudio(source.audio);
+            return snapshot !== undefined && snapshot.durationMs >= subtitleEndMs + millisecondsPerSecond; // Leave a second after the subtitle before freezing its mining source.
+        }
+    }
 };

@@ -160,9 +160,9 @@ export default class PlayerChannel {
                     break;
                 }
                 case 'transcodedAudio': {
-                    const { required, audio, active, complete, codecName } =
-                        event.data as TranscodedAudioToVideoMessage;
-                    const payload: TranscodedAudioPayload = { required, audio, active, complete, codecName };
+                    // Strip the wire command without flattening the state/audio union.
+                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                    const { command, ...payload } = event.data as TranscodedAudioToVideoMessage;
 
                     for (const callback of this.transcodedAudioCallbacks) {
                         callback(payload);

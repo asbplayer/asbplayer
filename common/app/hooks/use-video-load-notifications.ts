@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { asbTrace } from '@project/common/util/log';
+import { usesConvertedAudio } from '@project/common/audio-transcode';
+import type { AudioConversionState } from '@project/common/audio-transcode';
 
 const videoLoadNoticeDelayMs = 3_000;
 const conversionNoticeDurationMs = 5_000;
@@ -13,12 +15,11 @@ const delayedNoticeMinimumDurationMs = 7_000;
 export const useVideoLoadNotifications = ({
     video,
     source,
-    conversionActive,
+    conversionState,
 }: {
     video: HTMLVideoElement | undefined;
     source: string;
-    /** Includes completed conversion so its notice can keep the same display deadline. */
-    conversionActive: boolean;
+    conversionState: AudioConversionState;
 }) => {
     const [load, setLoad] = useState<{
         video: HTMLVideoElement;
@@ -114,6 +115,6 @@ export const useVideoLoadNotifications = ({
     const current = load?.video === video && load?.source === source && !load?.failed;
     return {
         loading: Boolean(current && load?.delayed && (!load.ready || !load.loadNoticeMinimumElapsed)),
-        conversion: Boolean(current && conversionActive && !load?.conversionNoticeExpired),
+        conversion: Boolean(current && usesConvertedAudio(conversionState) && !load?.conversionNoticeExpired),
     };
 };

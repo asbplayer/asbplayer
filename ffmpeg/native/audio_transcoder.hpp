@@ -497,6 +497,9 @@ struct AudioTranscoder {
         // The first audio packet was retained while resolving the media origin.
         do {
             if (this->packet->stream_index == this->input_stream->index) {
+                // The decoder starts empty, and receive_frames() drains it after each packet.
+                // Once receive returns EAGAIN, FFmpeg guarantees send will not return EAGAIN.
+                // Preserve this invariant if packet processing changes.
                 result = avcodec_send_packet(this->decoder, this->packet);
                 if (result < 0) result = tolerate_decode_error(result);
                 if (result >= 0) result = receive_frames();

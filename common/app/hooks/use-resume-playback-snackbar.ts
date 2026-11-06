@@ -2,29 +2,28 @@ import { useEffect, useRef, useState } from 'react';
 import useSnackbar from '@project/common/hooks/use-snackbar';
 import { snapshotWebmAudio } from '@project/common/audio-transcode/mining-audio';
 import { asbWarn } from '@project/common/util/log';
+import type { TranscodedAudioPayload } from '@project/common';
 
 /** Retain a timed-out resume offer until conversion makes its saved position available. */
 export const useResumePlaybackSnackbar = ({
     position,
     source,
-    audio,
-    required,
-    complete,
+    conversion,
     onDismiss,
 }: {
     position: number | undefined;
     source: string;
-    audio: Blob | undefined;
-    required: boolean;
-    complete: boolean;
+    conversion: TranscodedAudioPayload;
     onDismiss: () => void;
 }) => {
     const [available, setAvailable] = useState<{ source: string; position: number }>();
-    const latestAudio = useRef(audio);
-    latestAudio.current = audio;
-    const hasAudio = audio !== undefined;
-    // Completion also permits resuming into a video's silent tail after audio EOF.
-    const ready = !required || complete || (available?.source === source && available.position === position);
+    const latestAudio = useRef(conversion.audio);
+    latestAudio.current = conversion.audio;
+    const hasAudio = conversion.audio !== undefined;
+    // Only ongoing conversion restricts resuming. Failure/unavailability permits video-only playback;
+    // completion also permits resuming into the video's silent tail after audio EOF.
+    const ready =
+        conversion.state !== 'transcoding' || (available?.source === source && available.position === position);
     const snackbar = useSnackbar({
         open: position !== undefined,
         refreshKey: ready,
@@ -35,7 +34,7 @@ export const useResumePlaybackSnackbar = ({
     });
 
     useEffect(() => {
-        if (position === undefined || !required) {
+        if (position === undefined || conversion.state !== 'transcoding') {
             setAvailable(undefined);
             return;
         }
@@ -67,7 +66,7 @@ export const useResumePlaybackSnackbar = ({
             cancelled = true;
             clearInterval(interval);
         };
-    }, [position, source, hasAudio, required, ready]);
+    }, [position, source, hasAudio, conversion.state, ready]);
 
     return snackbar;
 };

@@ -3,37 +3,36 @@ import { createBlobUrl, revokeBlobUrl } from '@project/common/blob-url';
 import { createStreamingAudio, supportsStreamingAudio } from '@project/common/audio-transcode/streaming-audio';
 import type { AudioSeekableRange, StreamingAudioSource } from '@project/common/audio-transcode/streaming-audio';
 import { asbTrace } from '@project/common/util/log';
+import { usesConvertedAudio } from '@project/common/audio-transcode';
+import type { TranscodedAudioPayload } from '@project/common';
 
 /** MSE stays in the document that owns the audio element, so moving to a pop-out can replay the prefix. */
 export const useStreamingAudio = ({
-    audio,
-    complete,
-    active,
+    conversion,
     video,
     onBuffered,
     onError,
 }: {
-    audio: Blob | undefined;
-    complete: boolean;
-    active: boolean;
+    conversion: TranscodedAudioPayload;
     video: HTMLVideoElement | undefined;
     onBuffered: (range: AudioSeekableRange | undefined) => void;
     onError: (error: unknown) => void;
 }) => {
     const [url, setUrl] = useState<string>();
     const stream = useRef<StreamingAudioSource>(undefined);
-    const latest = useRef({ audio, video, onBuffered, onError });
-    latest.current = { audio, video, onBuffered, onError };
+    const latest = useRef({ conversion, video, onBuffered, onError });
+    latest.current = { conversion, video, onBuffered, onError };
+    const { state, audio } = conversion;
 
     useEffect(() => {
-        if (!active) {
+        const conversion = latest.current.conversion;
+        if (!usesConvertedAudio(conversion.state)) {
             setUrl(undefined);
             latest.current.onBuffered(undefined);
             return;
         }
-        if (complete) {
-            const blob = latest.current.audio;
-            if (blob === undefined) return;
+        if (conversion.state === 'ready') {
+            const blob = conversion.audio;
             const url = createBlobUrl(blob);
             asbTrace('audio/streaming', 'Using completed audio Blob', { url, bytes: blob.size, type: blob.type });
             setUrl(url);
@@ -56,16 +55,16 @@ export const useStreamingAudio = ({
         asbTrace('audio/streaming', 'Using progressive MediaSource audio', { url: source.url });
         setUrl(source.url);
         latest.current.onBuffered({ start: 0, end: 0 });
-        if (latest.current.audio !== undefined) source.append(latest.current.audio);
+        if (conversion.audio !== undefined) source.append(conversion.audio);
         return () => {
             source.dispose();
             stream.current = undefined;
         };
-    }, [active, complete]);
+    }, [state]);
 
     useEffect(() => {
-        if (audio !== undefined && !complete) stream.current?.append(audio);
-    }, [audio, complete]);
+        if (audio !== undefined && state === 'transcoding') stream.current?.append(audio);
+    }, [audio, state]);
 
     return url;
 };

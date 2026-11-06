@@ -1,25 +1,15 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import type { AudioTranscodeHost } from '@project/common/audio-transcode';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { AudioTranscodeHost, AudioConversion } from '@project/common/audio-transcode';
 import type { FileWithId } from '@project/common/file-selector';
 import { audioCodecDisplayName, audioTrackRequiringTranscode } from '@project/common/media-probe';
 import type { ProbedAudioTrack } from '@project/common/media-probe';
 import { asbError, asbTrace, asbWarn } from '@project/common/util/log';
 
-/** Conversion data is carried only by the state that can use it. */
-type TranscodedAudioState =
-    | { readonly state: 'idle'; readonly blob?: never; readonly error?: never }
-    | { readonly state: 'transcoding'; readonly blob?: Blob; readonly error?: never }
-    | { readonly state: 'ready'; readonly blob: Blob; readonly error?: never }
-    | { readonly state: 'failed'; readonly blob?: never; readonly error: unknown };
-
-type TranscodedAudio = TranscodedAudioState & {
+type TranscodedAudio = AudioConversion & {
     /** The original audio cannot be recorded, even if conversion is unavailable or fails. */
     readonly required: boolean;
     /** Display name of the codec the browser cannot decode, e.g. "E-AC-3". */
     readonly codecName?: string;
-    /** True once every encoded chunk has arrived. Playback may start earlier. */
-    readonly complete: boolean;
-    readonly clearFailure: () => void;
     readonly fail: (error: unknown) => void;
 };
 
@@ -31,7 +21,7 @@ export const useTranscodedAudio = (
     videoFile: FileWithId | undefined,
     host: AudioTranscodeHost | undefined
 ): TranscodedAudio => {
-    const [conversion, setConversion] = useState<TranscodedAudioState>({ state: 'idle' });
+    const [conversion, setConversion] = useState<AudioConversion>({ state: 'idle' });
     const [track, setTrack] = useState<ProbedAudioTrack>();
     const abortControllerRef = useRef<AbortController>(undefined);
 
@@ -124,16 +114,13 @@ export const useTranscodedAudio = (
         setConversion({ state: 'failed', error });
     }, []);
 
-    const clearFailure = useCallback(() => {
-        setConversion((conversion) => (conversion.state === 'failed' ? { state: 'idle' } : conversion));
-    }, []);
-
-    return {
-        ...conversion,
-        required: track !== undefined,
-        codecName: track === undefined ? undefined : audioCodecDisplayName(track.codec),
-        complete: conversion.state === 'ready',
-        clearFailure,
-        fail,
-    };
+    return useMemo(
+        () => ({
+            ...conversion,
+            required: track !== undefined,
+            codecName: track === undefined ? undefined : audioCodecDisplayName(track.codec),
+            fail,
+        }),
+        [conversion, track, fail]
+    );
 };

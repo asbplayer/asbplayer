@@ -30,7 +30,6 @@ import type {
     BrowserFeatures,
     IndexedSubtitleModel,
     AudioErrorCode,
-    TranscodedAudioState,
 } from '@project/common/src/model';
 import type { AsbPlayerToVideoCommandV2 } from '@project/common/src/command';
 import type { LogLine, LogSnapshot } from '@project/common/util/log-utils';
@@ -442,15 +441,21 @@ export interface AudioTrackSelectedToVideoMessage extends Message {
     readonly id: string;
 }
 
-/** Immutable encoded prefix while conversion runs; mining can snapshot its complete clusters. */
-export interface TranscodedAudioPayload extends TranscodedAudioState {
-    readonly active: boolean;
+/** Live conversion lifecycle and latest immutable encoded prefix shared with the playback document. */
+export type TranscodedAudioPayload = {
+    /** The original track must not be recorded, even if conversion is unavailable or fails. */
+    readonly required: boolean;
     readonly codecName?: string;
-}
+} & (
+    | { readonly state: 'idle' | 'failed'; readonly audio?: never }
+    | { readonly state: 'transcoding'; readonly audio?: Blob }
+    | { readonly state: 'ready'; readonly audio: Blob }
+);
 
-export interface TranscodedAudioToVideoMessage extends Message, TranscodedAudioPayload {
-    readonly command: 'transcodedAudio';
-}
+export type TranscodedAudioToVideoMessage = Message &
+    TranscodedAudioPayload & {
+        readonly command: 'transcodedAudio';
+    };
 
 export interface AudioBufferedFromVideoMessage extends Message {
     readonly command: 'audioBuffered';
