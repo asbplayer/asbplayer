@@ -76,6 +76,6 @@ asbplayer does not have a built-in dictionary. We recommend installing a diction
 
 ## Mine subtitles {#mine-subtitles}
 
-1. [Load subtitles](loading-subtitles) onto any video source.
+1. [Load subtitles](./loading-subtitles.md) onto any video source.
 2. Click the **Mine Subtitle** <NoteAddIcon /> button .
 3. Fill out the dialog that appears and click **Export**.

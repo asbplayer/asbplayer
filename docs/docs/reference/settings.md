@@ -78,7 +78,7 @@ If enabled, copies the target subtitle to clipboard anytime mining action is tri
 
 ### Always use subtitle text for sentence field {#always-use-subtitle-text-for-sentence-field}
 
-When enabled, fills the Sentence field with the mined subtitle text from all tracks, even if an external application supplies different sentence text. This is useful when [mining with Yomitan](../guides/one-click-mining).
+When enabled, fills the Sentence field with the mined subtitle text from all tracks, even if an external application supplies different sentence text. This is useful when [mining with Yomitan](../guides/one-click-mining.md).
 
 ### When updating last card, also update image/audio for cards that have the same subtitle text" {#update-all-cards-with-the-same-subtitle-text}
 
@@ -933,7 +933,7 @@ Enables the WebSocket client. Allows asbplayer to be controlled using the WebSoc
 
 ### WebSocket Server URL {#websocket-server-url}
 
-The URL of the WebSocket server to connect to when enabling the WebSocket client. Usually this would be a locally-running instance of the [pre-packaged WebSocket server](../guides/web-socket-server).
+The URL of the WebSocket server to connect to when enabling the WebSocket client. Usually this would be a locally-running instance of the [pre-packaged WebSocket server](../guides/web-socket-server.md).
 
 ### Mining history storage limit {#mining-history-storage-limit}
 
