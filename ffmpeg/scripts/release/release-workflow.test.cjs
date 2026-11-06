@@ -2,7 +2,7 @@
 const { afterEach, beforeEach, expect, it } = require('@jest/globals');
 const { execFile } = require('node:child_process');
 const { createHash } = require('node:crypto');
-const { chmod, copyFile, mkdir, mkdtemp, readFile, readdir, rm, writeFile } = require('node:fs/promises');
+const { chmod, copyFile, mkdir, mkdtemp, readFile, readdir, realpath, rm, writeFile } = require('node:fs/promises');
 const { tmpdir } = require('node:os');
 const { dirname, resolve } = require('node:path');
 const { promisify } = require('node:util');
@@ -19,7 +19,8 @@ let options;
 let lock;
 
 beforeEach(async () => {
-    root = await mkdtemp(resolve(tmpdir(), 'asbplayer-release-workflow-'));
+    // Node canonicalizes ESM module paths, so scripts resolve packageRoot under /private/var on macOS.
+    root = await realpath(await mkdtemp(resolve(tmpdir(), 'asbplayer-release-workflow-')));
     directory = resolve(root, 'ffmpeg');
     await mkdir(resolve(directory, 'scripts'), { recursive: true });
     await mkdir(resolve(directory, 'release'));
