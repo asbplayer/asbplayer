@@ -7,7 +7,7 @@ import type {
     VideoPlaybackEvent,
     VideoPlaybackState,
 } from '@project/common/playback/media/media';
-import { asbError, asbWarn } from '@project/common/util/log';
+import { asbError, asbTrace, asbWarn } from '@project/common/util/log';
 
 const driftToleranceMs = 150;
 const resyncThresholdMs = 500;
@@ -41,14 +41,32 @@ export default class ExternalAudioController {
     private pendingPositionMs?: number;
     private videoWaiting = false;
     private playbackFailureLogged = false;
+    private initialAudioSeekPending = true;
     private generation = 0;
     private interval?: ReturnType<typeof setInterval>;
 
     constructor(private readonly callbacks: ExternalAudioControllerCallbacks) {}
 
+    private trace(message: string, details?: unknown): void {
+        asbTrace('audio/controller', message, {
+            track: { active: this.track.active, streaming: this.track.streaming },
+            bound: this.bound,
+            generation: this.generation,
+            video: this.callbacks.videoState(),
+            audio: this.callbacks.audioState(),
+            resumeAfterBuffering: this.resumeAfterBuffering,
+            internallyPausing: this.internallyPausing,
+            pendingPositionMs: this.pendingPositionMs,
+            videoWaiting: this.videoWaiting,
+            initialAudioSeekPending: this.initialAudioSeekPending,
+            details,
+        });
+    }
+
     bind(): void {
         if (this.bound) return;
         this.bound = true;
+        this.initialAudioSeekPending = true;
         this.attach();
     }
 
@@ -65,6 +83,8 @@ export default class ExternalAudioController {
     trackChanged(track: ExternalAudioTrack): void {
         ++this.generation;
         this.track = track;
+        this.initialAudioSeekPending = true;
+        this.trace('Converted audio track changed');
         this.playbackFailureLogged = false;
         this.videoWaiting = false;
         clearInterval(this.interval);
@@ -189,7 +209,8 @@ export default class ExternalAudioController {
 
     private synchronizeTime(): void {
         const audio = this.callbacks.audioState();
-        const timestampMs = this.callbacks.videoState().currentTimeMs;
+        const video = this.callbacks.videoState();
+        const timestampMs = video.currentTimeMs;
         if (this.audioFinished()) {
             this.callbacks.pauseAudio();
             return;
@@ -198,13 +219,20 @@ export default class ExternalAudioController {
             if (audio.buffered.start > timestampMs || audio.buffered.end <= timestampMs) return;
             this.pendingPositionMs = undefined;
         }
-        if (audio.hasMetadata && Math.abs(audio.currentTimeMs - timestampMs) > driftToleranceMs) {
+        // iOS can advance a completed Blob's audio clock without audible output until its first seek.
+        // Initialize it once at an advancing video position, independently of the drift tolerance.
+        const initialSeek =
+            this.initialAudioSeekPending && !this.track.streaming && video.ready && !video.paused && timestampMs > 0;
+        if (audio.hasMetadata && (Math.abs(audio.currentTimeMs - timestampMs) > driftToleranceMs || initialSeek)) {
+            if (initialSeek) this.trace('Initializing completed audio playback with a seek', { timestampMs });
             this.callbacks.seekAudio(timestampMs);
+            this.initialAudioSeekPending = false;
         }
     }
 
     private pauseForAudio(): void {
         if (!this.callbacks.videoState().paused) {
+            this.trace('Holding video for converted audio');
             this.resumeAfterBuffering = true;
             this.internallyPausing = true;
             this.callbacks.pause();
@@ -246,6 +274,7 @@ export default class ExternalAudioController {
         if (this.callbacks.videoState().ready) this.videoWaiting = false;
         this.synchronizeTime();
         if (this.resumeAfterBuffering && this.playable() && !this.videoWaiting) {
+            this.trace('Converted audio available; resuming video');
             this.resumeAfterBuffering = false;
             void this.callbacks
                 .play()
@@ -267,7 +296,9 @@ export default class ExternalAudioController {
             return;
         }
         const driftMs = Math.abs(this.callbacks.audioState().currentTimeMs - this.callbacks.videoState().currentTimeMs);
-        if (driftMs > driftToleranceMs) this.synchronizeTime();
+        if (driftMs > driftToleranceMs || (!this.track.streaming && this.initialAudioSeekPending)) {
+            this.synchronizeTime();
+        }
         if (driftMs > resyncThresholdMs || this.callbacks.audioState().paused) this.playAudio();
     }
 }

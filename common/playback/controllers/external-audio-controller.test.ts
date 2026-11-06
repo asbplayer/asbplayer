@@ -27,6 +27,7 @@ const harness = ({ positionMs = 0, streaming = true, active = true } = {}) => {
     };
     const errors: unknown[] = [];
     const seeks: number[] = [];
+    const audioSeeks: number[] = [];
     let playbackFailure: Error | undefined;
     const controller = new ExternalAudioController({
         videoState: () => video,
@@ -52,6 +53,7 @@ const harness = ({ positionMs = 0, streaming = true, active = true } = {}) => {
             return true;
         },
         seekAudio: (timestampMs) => {
+            audioSeeks.push(timestampMs);
             audio.currentTimeMs = timestampMs;
         },
         audioSettingsChanged: () => {},
@@ -72,6 +74,7 @@ const harness = ({ positionMs = 0, streaming = true, active = true } = {}) => {
         audio,
         errors,
         seeks,
+        audioSeeks,
         available,
         rejectPlayback: (error: Error) => {
             playbackFailure = error;
@@ -193,6 +196,44 @@ it('corrects drift and restarts stopped audio on the explicit polling interval',
     jest.advanceTimersByTime(1);
     expect(h.audio.currentTimeMs).toBe(5_000);
     expect(h.audio.paused).toBe(false);
+});
+
+it('initializes completed audio with one seek after playback advances even when the clocks are close', () => {
+    const h = harness({ streaming: false });
+    h.available(20_000);
+    jest.advanceTimersByTime(250);
+    expect(h.audioSeeks).toEqual([]); // Wait for an advancing clock instead of seeking zero during startup.
+
+    h.video.currentTimeMs = 200;
+    h.audio.currentTimeMs = 220;
+    jest.advanceTimersByTime(250);
+    expect(h.audio.currentTimeMs).toBe(200);
+    expect(h.audioSeeks).toEqual([200]);
+    expect(h.video.paused).toBe(false);
+    expect(h.audio.paused).toBe(false);
+
+    h.video.currentTimeMs = 450;
+    h.audio.currentTimeMs = 470;
+    jest.advanceTimersByTime(250);
+    expect(h.audioSeeks).toEqual([200]);
+    expect(h.audio.currentTimeMs).toBe(470);
+});
+
+it('defers the initial completed-audio seek while paused and initializes each replacement track', () => {
+    const h = harness({ streaming: false });
+    h.available(20_000);
+    h.video.paused = true;
+    h.controller.videoEvent('pause');
+    h.video.currentTimeMs = 100;
+    h.audio.currentTimeMs = 120;
+    jest.advanceTimersByTime(250);
+    expect(h.audioSeeks).toEqual([]);
+
+    h.video.paused = false;
+    h.controller.videoEvent('play');
+    expect(h.audioSeeks).toEqual([100]);
+    h.controller.trackChanged({ active: true, streaming: false });
+    expect(h.audioSeeks).toEqual([100, 100]);
 });
 
 it('reports playback rejection once and does not resume silent video', async () => {
