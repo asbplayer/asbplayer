@@ -51,7 +51,6 @@ RUN em++ -std=c++23 -O3 -fno-exceptions -fno-rtti \
     && em++ --version > /output/compiler-version.txt
 
 COPY native/*_test.cpp /src/asbplayer/tests/native/
-COPY scripts/runtime-smoke.mjs /src/asbplayer/scripts/
 
 FROM builder AS cpp-test
 RUN set -eux; \
@@ -65,7 +64,7 @@ RUN set -eux; \
 
 FROM cpp-test AS wasm-test
 RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg && rm -rf /var/lib/apt/lists/*
-COPY scripts/runtime-audio.mjs /src/asbplayer/scripts/
+COPY scripts/runtime-smoke.mjs scripts/runtime-audio.mjs /src/asbplayer/scripts/
 ARG ASB_RUNTIME_VERSION
 ARG ASB_FFMPEG_VERSION
 RUN ASB_RUNTIME_VERSION="$ASB_RUNTIME_VERSION" ASB_FFMPEG_VERSION="$ASB_FFMPEG_VERSION" \

@@ -1,6 +1,6 @@
 # Using the FFmpeg runtime
 
-The runtime exposes inspection and `transcodeAudio`, using `libavutil`, `libavcodec`, `libavformat`, `libswresample`, and Opus for audio conversion. See [building and verifying FFmpeg](build.md) for developing a candidate, and [releasing and selecting a runtime](release.md) for choosing the app's published version.
+The runtime executes media operations in a dedicated browser worker through a small JavaScript/WASM bridge. Its compiled capabilities are recorded in the runtime manifest and exposed by `inspect()`. See [building and verifying FFmpeg](build.md) for developing a candidate, and [releasing and selecting a runtime](release.md) for choosing the app's published version.
 
 ## Version compatibility
 
@@ -10,18 +10,25 @@ The worker and its request/reply protocol are shipped together in that selected 
 
 ## Browser integration
 
-Use `createWebFfmpegSession` from [`client/src/services/ffmpeg.ts`](../../client/src/services/ffmpeg.ts). Create a session for the lifetime of the feature that owns it:
+Shared UI receives a host interface for each operation. FFmpeg imports, runtime metadata, and session creation belong in website-loaded adapters, keeping shared UI usable in the extension without loading the runtime. The website adapter in [`client/src/services/ffmpeg.ts`](../../client/src/services/ffmpeg.ts) composes the worker factory, verified asset preparation, and diagnostic logging.
+
+An adapter creates a session with `createFfmpegSession` from `@project/ffmpeg`. Supply `workerFactory`, `prepareAssets`, and `onDiagnostics` callbacks as defined by [`CreateFfmpegSessionOptions`](../src/session.ts), and dispose the session when its work completes or fails:
 
 ```ts
+import { createFfmpegSession } from '@project/ffmpeg';
+
 const owner = new AbortController();
-const session = createWebFfmpegSession({
+// Wire the feature's Cancel action to owner.abort().
+const session = createFfmpegSession({
+    workerFactory,
+    prepareAssets,
+    onDiagnostics,
     signal: owner.signal,
 });
-// Wire the feature's Cancel action to owner.abort().
 try {
     const runtime = await session.load();
     const info = await runtime.inspect();
-    // Use the runtime within this feature's lifetime.
+    // Invoke the required runtime operations within this lifetime.
 } finally {
     session.dispose();
 }
@@ -33,11 +40,11 @@ A session obtains a verified compressed archive through the [download and cache 
 
 This works before service-worker control and when persistent storage is unavailable. Unpacking takes milliseconds compared to WASM compilation and media work. A Content Security Policy must allow Blob workers, module imports, and WASM fetches.
 
-The owner's signal or `dispose()` stops shared downloads and terminates the worker, including synchronous native work. Disposal/failure releases executable URLs. Create a fresh session to retry. A signal passed to `load({ signal })` or `inspect({ signal })` cancels only that caller's wait. Initialization has no timeout.
+The owner's signal or `dispose()` stops shared downloads and terminates the worker, including synchronous native work. Disposal/failure releases executable URLs. Create a fresh session to retry. A signal passed to an individual `load()` or runtime operation cancels only that caller's wait. Initialization has no timeout.
 
 ## Reading input files
 
-[`createInputReader(fileOrBlob, readSlice)`](../src/input-reader.ts) provides synchronous worker-side random access through bounded slices, with a fixed 64 KiB maximum per read and 4 MiB read-ahead. The worker supplies synchronous slice reads through `FileReaderSync`. It preserves safe integer offsets above 4 GiB, clips reads at EOF, and rejects invalid ranges without copying the entire file into WASM. The audio transcoder connects this reader to FFmpeg through the AVIO adapters in `host_io.hpp` and streams encoded WebM/Opus chunks back to the host.
+[`createInputReader(fileOrBlob, readSlice)`](../src/input-reader.ts) provides synchronous worker-side random access through bounded slices, with a fixed 64 KiB maximum per read and 4 MiB read-ahead. The worker supplies synchronous slice reads through `FileReaderSync`. It preserves safe integer offsets above 4 GiB, clips reads at EOF, and rejects invalid ranges without copying the entire file into WASM. Native operations connect this reader to FFmpeg through the AVIO adapters in [`host_io.hpp`](../native/host_io.hpp). Operations can transfer output chunks back to the host while processing continues.
 
 ## From feature requests to native FFmpeg
 
@@ -46,4 +53,4 @@ The owner's signal or `dispose()` stops shared downloads and terminates the work
 3. **Dispatch operations.** Feature requests pass through the session using message types from [protocol.ts](../src/protocol.ts). The worker validates session identity and dispatches operations. Substantial operations get handler functions in `worker.ts`; request validation, replies, and error handling remain centralized.
 4. **Call native code and reply.** [native.ts](../src/native.ts) owns JavaScript/WASM interop and calls the C API declared in [asb_ffmpeg.h](../native/asb_ffmpeg.h), implemented by [runtime.cpp](../native/runtime.cpp). The worker sends the result or error back, and the session resolves or rejects the feature's pending Promise.
 
-The native build compiles only `runtime.cpp`, which contains the three C exports called by TypeScript and the JavaScript I/O bindings. Private implementation headers keep runtime inspection in `runtime_info.hpp`, error storage and formatting in `error.hpp`, AVIO adapters in `host_io.hpp`, and audio conversion in `audio_transcoder.hpp`. The transcoder owns its FFmpeg resources and processing stages together.
+The native build compiles `runtime.cpp`, which contains the C exports called by TypeScript and the JavaScript I/O bindings. Private implementation headers separate runtime inspection (`runtime_info.hpp`), error storage and formatting (`error.hpp`), and AVIO adapters (`host_io.hpp`) from individual operations. Each operation owns its FFmpeg resources and processing stages together.
