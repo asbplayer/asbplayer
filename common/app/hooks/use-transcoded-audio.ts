@@ -1,6 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { transcodeAudioTrack } from '@project/common/audio-transcode';
-import { FfmpegError } from '@project/ffmpeg/session';
 import type { AudioTranscodeHost } from '@project/common/audio-transcode';
 import type { FileWithId } from '@project/common/file-selector';
 import { audioCodecDisplayName, audioTrackRequiringTranscode } from '@project/common/media-probe';
@@ -8,13 +6,13 @@ import type { ProbedAudioTrack } from '@project/common/media-probe';
 import { asbError, asbTrace, asbWarn } from '@project/common/util/log';
 
 /** Conversion data is carried only by the state that can use it. */
-export type TranscodedAudioState =
+type TranscodedAudioState =
     | { readonly state: 'idle'; readonly blob?: never; readonly error?: never }
     | { readonly state: 'transcoding'; readonly blob?: Blob; readonly error?: never }
     | { readonly state: 'ready'; readonly blob: Blob; readonly error?: never }
     | { readonly state: 'failed'; readonly blob?: never; readonly error: unknown };
 
-export type TranscodedAudio = TranscodedAudioState & {
+type TranscodedAudio = TranscodedAudioState & {
     /** The original audio cannot be recorded, even if conversion is unavailable or fails. */
     readonly required: boolean;
     /** Display name of the codec the browser cannot decode, e.g. "E-AC-3". */
@@ -46,11 +44,10 @@ export const useTranscodedAudio = (
         setConversion({ state: 'transcoding' });
 
         try {
-            const blob = await transcodeAudioTrack({
+            const blob = await host.transcodeAudio({
                 file: videoFile.file,
                 fileId: videoFile.id,
                 trackIndex,
-                host,
                 onAudio: (audio) => {
                     if (signal.aborted) return;
                     setConversion({ state: 'transcoding', blob: audio });
@@ -69,7 +66,7 @@ export const useTranscodedAudio = (
             asbError('audio/transcode', 'Failed to transcode audio', {
                 fileId: videoFile.id,
                 trackIndex,
-                errorCode: error instanceof FfmpegError ? error.code : undefined,
+                errorCode: error instanceof Error && 'code' in error ? error.code : undefined,
                 error,
             });
             setConversion({ state: 'failed', error });

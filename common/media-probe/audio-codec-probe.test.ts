@@ -1,9 +1,5 @@
 import { beforeAll, describe, expect, it, jest } from '@jest/globals';
-import {
-    audioCodecDisplayName,
-    audioTrackRequiringTranscode,
-    browserCanDecodeAudioCodec,
-} from '@project/common/media-probe/audio-codec-probe';
+import { audioCodecDisplayName, audioTrackRequiringTranscode } from '@project/common/media-probe/audio-codec-probe';
 import ByteReader from '@project/common/media-probe/byte-reader';
 import { matroskaAudioCodecIds } from '@project/common/media-probe/matroska';
 import { isoBmffAudioSampleFormats } from '@project/common/media-probe/iso-bmff';
@@ -220,31 +216,34 @@ describe('audio container parsing', () => {
     });
 });
 
-describe('browserCanDecodeAudioCodec', () => {
-    const mockCanPlayType = (result: string) =>
-        jest.spyOn(HTMLMediaElement.prototype, 'canPlayType').mockReturnValue(result as CanPlayTypeResult);
-
-    it('reports codecs outside the patent-encumbered set as decodable', () => {
-        mockCanPlayType('');
-        expect(browserCanDecodeAudioCodec('aac')).toBe(true);
-        expect(browserCanDecodeAudioCodec('opus')).toBe(true);
-    });
-
-    it('defers to the browser for Dolby codecs', () => {
-        mockCanPlayType('');
-        expect(browserCanDecodeAudioCodec('eac3')).toBe(false);
-
-        mockCanPlayType('probably');
-        expect(browserCanDecodeAudioCodec('eac3')).toBe(true);
-    });
-});
-
 describe('audioTrackRequiringTranscode', () => {
     // Like Chrome: opens the containers, decodes nothing patent-encumbered.
     const playsContainersButNoDolby = (playableContainers = ['video/x-matroska', 'video/mp4']) =>
         jest
             .spyOn(HTMLMediaElement.prototype, 'canPlayType')
             .mockImplementation((type) => (playableContainers.includes(type) ? 'maybe' : ''));
+
+    it.each(['A_AAC', 'A_OPUS'])(
+        'leaves %s audio alone without requiring advertised codec support',
+        async (codecId) => {
+            playsContainersButNoDolby();
+            expect(
+                await audioTrackRequiringTranscode(blobOf(matroskaFile({ audioCodecIds: [codecId] })))
+            ).toBeUndefined();
+        }
+    );
+
+    it.each(['maybe', 'probably'] as const)(
+        'leaves Dolby audio alone when the browser reports %s support',
+        async (support) => {
+            jest.spyOn(HTMLMediaElement.prototype, 'canPlayType').mockImplementation((type) =>
+                type === 'video/mp4' ? 'maybe' : type === 'audio/mp4; codecs="ec-3"' ? support : ''
+            );
+            expect(
+                await audioTrackRequiringTranscode(blobOf(isoBmffFile({ audioSampleFormats: ['ec-3'] })))
+            ).toBeUndefined();
+        }
+    );
 
     it('detects Matroska audio after more than 4096 padding elements', async () => {
         playsContainersButNoDolby();

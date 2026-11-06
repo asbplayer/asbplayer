@@ -733,7 +733,7 @@ class TranscodedAudioData implements AudioData {
     }
 
     async sourceDurationMs() {
-        return (await this._snapshot()).durationMs ?? 0;
+        return (await this._snapshot()).durationMs;
     }
 
     private async _readSnapshot() {
@@ -745,7 +745,7 @@ class TranscodedAudioData implements AudioData {
 
     private _audioData() {
         return (this._dataPromise ??= this._snapshot()
-            .then(({ audio, durationMs = 0 }) => {
+            .then(({ audio, durationMs }) => {
                 const start = Math.min(durationMs, Math.max(0, this.start));
                 const end = Math.max(start, Math.min(durationMs, this._end));
                 if (audio === undefined || end <= start) {

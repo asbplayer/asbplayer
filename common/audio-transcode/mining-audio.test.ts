@@ -81,7 +81,7 @@ it('keeps an incomplete mining snapshot seekable without changing the original p
 });
 
 it('does not fall back to the original audio before conversion emits a complete cluster', async () => {
-    await expect(snapshotMiningAudio({ required: false, complete: false })).resolves.toEqual({});
+    await expect(snapshotMiningAudio({ required: false, complete: false })).resolves.toEqual({ durationMs: 0 });
     await expect(snapshotMiningAudio({ required: true, complete: false })).resolves.toEqual({ durationMs: 0 });
     await expect(snapshotMiningAudio({ audio: prefix(), required: true, complete: false })).resolves.toEqual({
         durationMs: 0,

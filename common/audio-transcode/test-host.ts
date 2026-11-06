@@ -2,7 +2,8 @@ import { createFfmpegSession } from '@project/ffmpeg/session';
 import type { FfmpegWorker } from '@project/ffmpeg/session';
 import { ffmpegMetadata } from '@project/ffmpeg/metadata';
 import type { WorkerReply, WorkerRequest } from '@project/ffmpeg/protocol';
-import type { AudioTranscodeHost } from '@project/common/audio-transcode/audio-transcoder';
+import type { AudioTranscodeHost, AudioTranscodeOptions } from '@project/common/audio-transcode';
+import { transcodeAudioTrack } from '@project/common/audio-transcode/ffmpeg-audio-transcoder';
 
 export const webmHeader = new Uint8Array([
     0x1a, 0x45, 0xdf, 0xa3, 0x80, 0x18, 0x53, 0x80, 0x67, 0xff, 0x15, 0x49, 0xa9, 0x66, 0x92, 0x2a, 0xd7, 0xb1, 0x83,
@@ -100,7 +101,9 @@ export class TestHost implements AudioTranscodeHost {
     error?: string;
     prepareError?: Error;
     readonly workers: TestWorker[] = [];
-    createSession: AudioTranscodeHost['createSession'] = ({ signal }) =>
+    transcodeAudio = (options: AudioTranscodeOptions) =>
+        transcodeAudioTrack({ ...options, createSession: this.createSession });
+    createSession = ({ signal }: { signal: AbortSignal }) =>
         createFfmpegSession({
             signal,
             onDiagnostics: () => {},

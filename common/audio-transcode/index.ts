@@ -1,1 +1,1 @@
-export * from './audio-transcoder';
+export type * from './audio-transcoder';

@@ -105,8 +105,8 @@ export const snapshotMiningAudio = async ({
     audio,
     required,
     complete,
-}: TranscodedAudioState): Promise<{ audio?: Blob; durationMs?: number }> => {
-    if (!required) return {};
+}: TranscodedAudioState): Promise<{ audio?: Blob; durationMs: number }> => {
+    if (!required) return { durationMs: 0 };
     if (audio !== undefined && complete) {
         return { audio, durationMs: (await readWebmAudioDuration(audio)) * millisecondsPerSecond };
     }
@@ -120,6 +120,6 @@ export const canMineWithAudio = async (source: TranscodedAudioState, subtitleEnd
     if (!source.required) return true;
     if (source.audio === undefined) return false;
     if (source.complete) return true;
-    const { durationMs = 0 } = await snapshotMiningAudio(source);
+    const { durationMs } = await snapshotMiningAudio(source);
     return durationMs >= subtitleEndMs + millisecondsPerSecond;
 };

@@ -1,10 +1,18 @@
 /** @jest-environment node */
-import { transcodeAudioTrack } from '@project/common/audio-transcode/audio-transcoder';
+import { transcodeAudioTrack } from '@project/common/audio-transcode/ffmpeg-audio-transcoder';
 import { TestHost, webmHeader } from '@project/common/audio-transcode/test-host';
 
 const file = new File(['media'], 'video.mp4');
+const fileId = 'video-file';
 const run = (host: TestHost, owner = new AbortController()) =>
-    transcodeAudioTrack({ file, trackIndex: 0, host, signal: owner.signal, onAudio: () => {} });
+    transcodeAudioTrack({
+        file,
+        fileId,
+        trackIndex: 0,
+        createSession: host.createSession,
+        signal: owner.signal,
+        onAudio: () => {},
+    });
 
 it('passes the File without reading the whole input and releases the worker', async () => {
     const host = new TestHost();
@@ -60,21 +68,15 @@ it('releases a failed conversion and retries with a fresh session', async () => 
     expect(host.workers).toHaveLength(2);
 });
 
-it('fails without starting a worker when WebM Opus playback is unsupported', async () => {
-    const host = new TestHost();
-    host.supportsAudioPlayback = () => false;
-    await expect(run(host)).rejects.toThrow('WebM Opus playback is not supported');
-    expect(host.workers).toHaveLength(0);
-});
-
 it('delivers audio before completion and never retries a failed Opus conversion with another codec', async () => {
     const host = new TestHost();
     host.autoComplete = false;
     const prefixes: Blob[] = [];
     const pending = transcodeAudioTrack({
         file,
+        fileId,
         trackIndex: 0,
-        host,
+        createSession: host.createSession,
         signal: new AbortController().signal,
         onAudio: (audio) => prefixes.push(audio),
     });

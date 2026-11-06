@@ -131,7 +131,7 @@ export interface PlaybackSeekOptions {
     readonly restorePlaybackPosition?: boolean;
 }
 
-export interface ExternalAudioSource extends ExternalAudioTrack, PlaybackAudioSource {
+interface ExternalAudioSource extends ExternalAudioTrack, PlaybackAudioSource {
     readonly onError: (error: unknown) => void;
 }
 

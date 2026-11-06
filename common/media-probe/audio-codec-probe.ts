@@ -119,7 +119,7 @@ const canPlayType = (mimeType: string) => {
  * @returns whether the browser is able to decode the given codec. Codecs outside the set of
  * patent-encumbered formats that browsers commonly omit are always reported as decodable.
  */
-export const browserCanDecodeAudioCodec = (codec: string) => {
+const browserCanDecodeAudioCodec = (codec: string) => {
     const mimeType = mimeTypesByCodec[codec];
     return mimeType === undefined || canPlayType(mimeType);
 };

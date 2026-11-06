@@ -7,7 +7,7 @@ const maximumElementIdBytes = 4;
 const unknownSizeContinuationByte = 0xff;
 const byteRadix = 256;
 
-export interface EbmlVarInt {
+interface EbmlVarInt {
     value: number;
     length: number;
     unknown: boolean;

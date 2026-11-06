@@ -8,7 +8,7 @@ const archiveType = 'application/gzip';
 
 const openRuntimeCache = async (
     cacheStorage: CacheStorage | undefined,
-    context: { sessionId?: string; cacheName: string }
+    context: { sessionId: string; cacheName: string }
 ): Promise<Cache | undefined> => {
     const { cacheName } = context;
     if (cacheStorage === undefined) {
@@ -77,7 +77,7 @@ export const prepareFfmpegRuntimeArchive = async (
     cacheStorage: CacheStorage | undefined,
     signal: AbortSignal,
     fetcher: typeof fetch,
-    sessionId?: string
+    sessionId: string
 ): Promise<Blob> => {
     signal.throwIfAborted();
     if (!/^[a-f0-9]{64}$/.test(archive.sha256) || !Number.isSafeInteger(archive.bytes) || archive.bytes <= 0) {

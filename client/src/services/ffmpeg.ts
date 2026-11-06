@@ -1,11 +1,12 @@
 import project from '@project/common/project';
 import { webmOpusMimeType } from '@project/common/audio-transcode/webm-audio';
 import type { AudioTranscodeHost } from '@project/common/audio-transcode';
+import { transcodeAudioTrack } from '@project/common/audio-transcode/ffmpeg-audio-transcoder';
 import { createFfmpegObjectUrls, createFfmpegSession, ffmpegMetadata, unpackFfmpegRuntime } from '@project/ffmpeg';
 import { prepareFfmpegRuntimeArchive } from '@project/client/src/services/ffmpeg-cache';
 import { asbError, asbTrace, asbWarn } from '@project/common/util/log';
 
-export const createWebFfmpegSession = ({ signal }: { signal?: AbortSignal } = {}) => {
+const createSession = ({ signal }: { signal: AbortSignal }) => {
     const runtimeArchive = {
         ...ffmpegMetadata.runtimeArchive,
         url: new URL(ffmpegMetadata.runtimeArchive.url, window.location.href).href,
@@ -72,5 +73,5 @@ export const webAudioTranscodeHost: AudioTranscodeHost = {
         asbTrace('audio/transcode', 'Browser converted audio capability check', { mimeType: webmOpusMimeType, result });
         return result !== '';
     },
-    createSession: createWebFfmpegSession,
+    transcodeAudio: (options) => transcodeAudioTrack({ ...options, createSession }),
 };

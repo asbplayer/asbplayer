@@ -31,7 +31,6 @@ export default class ByteReader {
             const end = Math.min(this._blob.size, offset + Math.max(length, this._windowSize));
             this._window = new Uint8Array(await this._blob.slice(offset, end).arrayBuffer());
             this._windowOffset = offset;
-            if (this._window.length < length) return;
         }
         const start = offset - this._windowOffset;
         return this._window.subarray(start, start + length);
