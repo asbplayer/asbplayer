@@ -32,7 +32,7 @@ const prepare = (
     storage: CacheStorage | undefined,
     fetcher: typeof fetch,
     abortSignal = signal()
-) => prepareFfmpegRuntimeArchive(selected, storage, abortSignal, { fetcher });
+) => prepareFfmpegRuntimeArchive(selected, storage, abortSignal, fetcher);
 // CacheStorage is a browser boundary; retain its public read and write behavior.
 const memoryCaches = () => {
     const caches = new Map<string, Cache>();

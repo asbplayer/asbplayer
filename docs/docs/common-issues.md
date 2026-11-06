@@ -38,7 +38,7 @@ Make sure Anki's card browser is closed when using "update last card." There is 
 
 ### When loading a local file asbplayer either shows a black screen, or doesn't play audio. {#local-video-playback-issues}
 
-Browsers have varying ability to decode certain video and audio formats. See the [compatibility section](./compatibility).
+Browsers have varying ability to decode certain video and audio formats. See the [compatibility section](./compatibility#browsers-and-media-formats).
 
 ### My popup dictionary extension (e.g. Yomitan) doesn't work on the side panel {#popup-dictionary-in-side-panel}
 

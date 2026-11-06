@@ -1,5 +1,6 @@
 import { asbError, asbTrace } from '@project/common/util/log';
 import type { PlaybackTimelineTransitionCause } from '@project/common/playback/plan/playback-plan-executor';
+import type { VideoPlaybackEvent, VideoPlaybackState } from '@project/common/playback/media/media';
 
 export interface TimingDriverCallbacks {
     onTime(timestampMs: number, options: { lookaheadTimestampMs?: number }): Promise<void>;
@@ -40,6 +41,10 @@ export interface TimingDriver {
     durationMs(): number;
     onDurationChange: () => void;
     paused(): boolean;
+    /** Browser media observation stays active independently of subtitle timing. */
+    bindMedia(onEvent: (event: VideoPlaybackEvent) => void): void;
+    unbindMedia(): void;
+    mediaState(): VideoPlaybackState;
 }
 
 type TimingUpdate = {

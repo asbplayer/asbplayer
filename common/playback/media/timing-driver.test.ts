@@ -1,6 +1,6 @@
 import { describe, expect, it, jest } from '@jest/globals';
 import { emptyTimingDriverCallbacks } from '@project/common/playback/playback-test-utils';
-import TimingUpdateQueue from '@project/common/playback/timing/timing-driver';
+import TimingUpdateQueue from '@project/common/playback/media/timing-driver';
 
 const flush = async () => {
     for (let i = 0; i < 10; ++i) await Promise.resolve();

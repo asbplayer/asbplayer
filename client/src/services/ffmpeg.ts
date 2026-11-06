@@ -1,7 +1,9 @@
 import project from '@project/common/project';
+import { webmOpusMimeType } from '@project/common/audio-transcode/webm-audio';
+import type { AudioTranscodeHost } from '@project/common/audio-transcode';
 import { createFfmpegObjectUrls, createFfmpegSession, ffmpegMetadata, unpackFfmpegRuntime } from '@project/ffmpeg';
 import { prepareFfmpegRuntimeArchive } from '@project/client/src/services/ffmpeg-cache';
-import { asbError, asbTrace } from '@project/common/util/log';
+import { asbError, asbTrace, asbWarn } from '@project/common/util/log';
 
 export const createWebFfmpegSession = ({ signal }: { signal?: AbortSignal } = {}) => {
     const runtimeArchive = {
@@ -10,6 +12,16 @@ export const createWebFfmpegSession = ({ signal }: { signal?: AbortSignal } = {}
     };
     return createFfmpegSession({
         signal,
+        onDiagnostics: ({ messages, omittedMessages }, context) => {
+            for (const { source, level, message, occurrences } of messages) {
+                if (!context.failed && source === 'ffmpeg') continue;
+                const log = level === 'error' ? asbError : level === 'warning' ? asbWarn : asbTrace;
+                log('ffmpeg/native', message, { ...context, source, occurrences });
+            }
+            if (omittedMessages > 0) {
+                asbTrace('ffmpeg/native', 'Earlier native diagnostics omitted', { ...context, omittedMessages });
+            }
+        },
         workerFactory: (workerUrl) => {
             asbTrace('ffmpeg/session', 'Starting worker from verified runtime', {
                 runtimeVersion: ffmpegMetadata.runtimeVersion,
@@ -33,7 +45,8 @@ export const createWebFfmpegSession = ({ signal }: { signal?: AbortSignal } = {}
             const archive = await prepareFfmpegRuntimeArchive(
                 runtimeArchive,
                 typeof caches === 'undefined' ? undefined : caches,
-                signal
+                signal,
+                fetch
             );
             const start = performance.now();
             const executables = await unpackFfmpegRuntime(archive, ffmpegMetadata.runtimeVersion);
@@ -43,4 +56,10 @@ export const createWebFfmpegSession = ({ signal }: { signal?: AbortSignal } = {}
             return createFfmpegObjectUrls(executables);
         },
     });
+};
+
+export const webAudioTranscodeHost: AudioTranscodeHost = {
+    // Completion always switches to a Blob, including on browsers that can stream earlier with MSE.
+    supportsAudioPlayback: () => document.createElement('audio').canPlayType(webmOpusMimeType) !== '',
+    createSession: createWebFfmpegSession,
 };

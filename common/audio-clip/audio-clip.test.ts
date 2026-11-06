@@ -1,5 +1,7 @@
 import AudioClip from '@project/common/audio-clip/audio-clip';
 import { AudioErrorCode } from '@project/common';
+import type { FileModel } from '@project/common';
+import { addBlobUrl } from '@project/common/blob-url';
 import { expect, it, jest } from '@jest/globals';
 
 // Mock the download utility so tests don't touch the DOM
@@ -46,4 +48,72 @@ it('download calls download once per invocation', async () => {
     await clip.download();
 
     expect(mockDownload).toHaveBeenCalledTimes(2);
+});
+
+describe('audio clips from a file', () => {
+    beforeAll(() => {
+        // jsdom has no MediaRecorder, which AudioClip consults to pick a recording format
+        (globalThis as any).MediaRecorder = { isTypeSupported: () => true };
+    });
+
+    const clipFor = (file: FileModel) => AudioClip.fromFile(file, 0, 1000, 1, false, undefined);
+
+    it('reports no error while the file blob is alive', () => {
+        const blobUrl = 'blob:live-video';
+        addBlobUrl(blobUrl);
+        expect(clipFor({ name: 'a.mkv', blobUrl }).error).toBeUndefined();
+    });
+
+    it('reports a lost link once the file blob is gone', () => {
+        expect(clipFor({ name: 'a.mkv', blobUrl: 'blob:never-registered' }).error).toBe(AudioErrorCode.fileLinkLost);
+    });
+
+    // Audio is recorded from the transcoded track when there is one, so that is the blob whose
+    // lifetime matters - the file's own audio track can't be decoded by this browser at all.
+    it('depends on the transcoded audio blob when one is present', () => {
+        const blobUrl = 'blob:live-video-2';
+        addBlobUrl(blobUrl);
+        expect(clipFor({ name: 'a.mkv', blobUrl, transcodedAudioBlobUrl: 'blob:gone-transcoded' }).error).toBe(
+            AudioErrorCode.fileLinkLost
+        );
+    });
+
+    it('does not depend on the file blob when transcoded audio is present', () => {
+        const transcodedAudioBlobUrl = 'blob:live-transcoded';
+        addBlobUrl(transcodedAudioBlobUrl);
+        expect(clipFor({ name: 'a.mkv', blobUrl: 'blob:gone-video', transcodedAudioBlobUrl }).error).toBeUndefined();
+    });
+
+    it('limits padding and subsequent boundary edits to the audio snapshot', () => {
+        const file = { name: 'a.mkv', blobUrl: 'blob:video', transcodedAudioDurationMs: 2500 };
+        const card = {
+            file,
+            subtitle: { text: 'line', start: 1000, end: 2400, originalStart: 1000, originalEnd: 2400, track: 0 },
+            surroundingSubtitles: [],
+            subtitleFileName: 'a.srt',
+            mediaTimestamp: 1000,
+        };
+        const clip = AudioClip.fromCard(card, 1500, 1000, false)!;
+        expect([clip.start, clip.end]).toEqual([0, 2500]);
+        expect([clip.slice(2000, 5000).start, clip.slice(2000, 5000).end]).toEqual([2000, 2500]);
+        expect(
+            AudioClip.fromCard({ ...card, file: { ...file, transcodedAudioDurationMs: 0 } }, 0, 0, false)
+        ).toBeUndefined();
+        expect(
+            AudioClip.fromCard({ ...card, subtitle: { ...card.subtitle, start: 3000 } }, 0, 0, false)
+        ).toBeUndefined();
+    });
+
+    it('rejects recording outside a snapshot instead of recording silence from the original Dolby track', async () => {
+        const clip = AudioClip.fromFile(
+            { name: 'a.mkv', blobUrl: 'blob:video', transcodedAudioDurationMs: 2500 },
+            3000,
+            5000,
+            1,
+            false
+        );
+        expect([clip.start, clip.end]).toEqual([2500, 2500]);
+        await expect(clip.blob()).rejects.toThrow('outside the converted portion');
+        await expect(clip.play()).rejects.toThrow('outside the converted portion');
+    });
 });

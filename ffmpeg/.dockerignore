@@ -12,3 +12,5 @@
 !native/**
 !scripts/
 !scripts/runtime-smoke.mjs
+!scripts/runtime-audio.mjs
+!scripts/opus-pkg-config.sh

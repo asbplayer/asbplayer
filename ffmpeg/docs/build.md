@@ -1,6 +1,6 @@
 # Building and verifying FFmpeg
 
-This workspace builds the native FFmpeg bridge and its browser worker as an independently versioned runtime. The current build links only `libavutil` and exposes runtime inspection. Ordinary app and extension development can use the selected release without building FFmpeg; see the [README](../README.md).
+This workspace builds the native FFmpeg bridge and its browser worker as an independently versioned runtime. The current build exposes inspection and `transcodeAudio`, linking `libavutil`, `libavcodec`, `libavformat`, `libswresample`, and Opus to convert unsupported audio into WebM/Opus. Ordinary app and extension development can use the selected release without building FFmpeg; see the [README](../README.md).
 
 Ordinary client startup and builds acquire the pinned GitHub release with Node and copy only its runtime archive into the app. [Uploaded drafts can be tested locally](release.md#test-an-uploaded-draft-locally) using an existing `gh` login, without compiling a candidate. This is also the Cloudflare path: it needs no Docker or native toolchain. Downloads and cached build inputs are verified against the lock's hash and size.
 
@@ -39,7 +39,7 @@ Candidate client startup/builds verify the local candidate and serve its archive
 | `pnpm --filter @project/ffmpeg run verify:code`    | FFmpeg tests, TypeScript, lint, and formatting                                                                                              |
 | `pnpm --filter @project/ffmpeg run verify:release` | Code checks, candidate verification, native/WASM tests, and a clean rebuild from the published source with byte-for-byte release comparison |
 
-The FFmpeg package's `build:candidate` command validates the generated candidate. For native C++ tests and a real-WASM smoke test, run `pnpm run test:native-wasm` from `ffmpeg/`. The full release check requires a candidate to exist and is separate so normal development does not repeat the clean reproduction build.
+The FFmpeg package's `build:candidate` command validates the generated candidate. For native C++ tests, a real-WASM smoke test, and audio regressions, run `pnpm run test:native-wasm` from `ffmpeg/`. The test container installs the FFmpeg CLI to generate media and check decoded output for MP4 preroll, delayed Matroska audio, and AC3 layout/sample-rate changes; no host FFmpeg installation is needed. Exact sample counts also cover DTS/TrueHD timestamp rounding, resampler draining, and partial final Opus frames. The full release check requires a candidate to exist and is separate so normal development does not repeat the clean reproduction build.
 
 Pull-request CI checks the host code and runs native tests when native build inputs change. The manual **Release FFmpeg** workflow runs the full release check before publishing.
 

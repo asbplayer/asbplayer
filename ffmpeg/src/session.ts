@@ -1,8 +1,14 @@
-import project from '@project/ffmpeg/project';
 import type { PreparedFfmpegAssets } from '@project/ffmpeg/assets';
 import { ffmpegMetadata } from '@project/ffmpeg/metadata';
 import { isWorkerReply } from '@project/ffmpeg/protocol';
-import type { FfmpegErrorCode, FfmpegRuntimeInfo, WorkerRequest, WorkerRequestBody } from '@project/ffmpeg/protocol';
+import type {
+    FfmpegErrorCode,
+    FfmpegDiagnostics,
+    FfmpegRuntimeInfo,
+    WorkerReply,
+    WorkerRequest,
+    WorkerRequestBody,
+} from '@project/ffmpeg/protocol';
 import { v4 as uuidv4 } from 'uuid';
 
 export type FfmpegWorker = {
@@ -25,14 +31,25 @@ export class FfmpegError extends Error {
 export type FfmpegRuntime = {
     /** Aborting inspection cancels only that inspection; use session.dispose() to stop the shared worker. */
     inspect(options?: { signal?: AbortSignal }): Promise<FfmpegRuntimeInfo>;
+    transcodeAudio(options: {
+        input: Blob;
+        trackIndex: number;
+        signal?: AbortSignal;
+        onChunk: (chunk: ArrayBuffer) => void;
+    }): Promise<number>;
 };
 
 export type CreateFfmpegSessionOptions = {
-    workerFactory?: (workerURL: string) => FfmpegWorker;
+    workerFactory: (workerURL: string) => FfmpegWorker;
     /** Aborting the owner's signal disposes the entire session, including downloads and running work. */
     signal?: AbortSignal;
     /** Provide verified executable URLs before starting the worker. The signal ends shared initialization. */
     prepareAssets: (signal: AbortSignal) => Promise<PreparedFfmpegAssets>;
+    /** Delivered once with a completed request; exceptions do not affect its result. */
+    onDiagnostics: (
+        diagnostics: FfmpegDiagnostics,
+        context: { sessionId: string; requestId: number; operation: WorkerRequest['operation']; failed: boolean }
+    ) => void;
 };
 
 export type FfmpegSessionState = 'new' | 'loading' | 'ready' | 'failed' | 'disposed';
@@ -44,15 +61,30 @@ export type FfmpegSession = {
     readonly state: FfmpegSessionState;
 };
 
-type Pending = { resolve(value: unknown): void; reject(error: unknown): void; cleanup(): void };
+type Pending = {
+    resolve(value: unknown): void;
+    reject(error: unknown): void;
+    cleanup(): void;
+} & (
+    | {
+          operation: 'transcodeAudio';
+          onChunk: (chunk: ArrayBuffer) => void;
+      }
+    | { operation: 'initialize' | 'inspect' }
+);
+type ChunkReply = Extract<WorkerReply, { type: 'chunk' }>;
+type SessionRequest =
+    | Exclude<WorkerRequestBody, { operation: 'transcodeAudio' }>
+    | (Extract<WorkerRequestBody, { operation: 'transcodeAudio' }> & {
+          onChunk: (chunk: ArrayBuffer) => void;
+      });
 const abortError = () => new FfmpegError('aborted', 'The FFmpeg session was aborted');
-const defaultWorkerFactory = (url: string): FfmpegWorker =>
-    new Worker(url, { type: 'module', name: project.releases.ffmpeg.package });
 
 export const createFfmpegSession = ({
-    workerFactory = defaultWorkerFactory,
+    workerFactory,
     signal: lifetimeSignal,
     prepareAssets,
+    onDiagnostics,
 }: CreateFfmpegSessionOptions): FfmpegSession => {
     const sessionId = uuidv4();
     const pending = new Map<number, Pending>();
@@ -102,6 +134,24 @@ export const createFfmpegSession = ({
         );
     }
 
+    /** Delivers output chunks for a running conversion; a throwing callback rejects only that request. */
+    function onChunkReply(reply: ChunkReply, pendingRequest: Pending) {
+        if (pendingRequest.operation !== 'transcodeAudio') {
+            terminate(
+                'failed',
+                new FfmpegError('protocol', `Unexpected FFmpeg ${reply.type} reply for a non-transcode request`)
+            );
+            return;
+        }
+        try {
+            pendingRequest.onChunk(reply.chunk);
+        } catch (error) {
+            pending.delete(reply.requestId);
+            pendingRequest.cleanup();
+            pendingRequest.reject(error);
+        }
+    }
+
     function onMessage(event: MessageEvent<unknown>) {
         if (!isWorkerReply(event.data)) {
             terminate('failed', new FfmpegError('protocol', 'The FFmpeg worker sent a malformed reply'));
@@ -115,19 +165,43 @@ export const createFfmpegSession = ({
         const pendingRequest = pending.get(reply.requestId);
         if (pendingRequest === undefined) return; // Replies to aborted requests can arrive after the request was removed from pending.
 
+        if ('type' in reply) {
+            onChunkReply(reply, pendingRequest);
+            return;
+        }
         pending.delete(reply.requestId);
         pendingRequest.cleanup();
+        try {
+            onDiagnostics(reply.diagnostics, {
+                sessionId,
+                requestId: reply.requestId,
+                operation: pendingRequest.operation,
+                failed: !reply.ok,
+            });
+        } catch {
+            // Host logging must not change the operation's result.
+        }
         if (reply.ok) pendingRequest.resolve(reply.result);
         else pendingRequest.reject(new FfmpegError(reply.error.code, reply.error.message));
     }
 
-    const request = <T>(operation: WorkerRequestBody, signal?: AbortSignal): Promise<T> => {
+    const request = <T>(operation: SessionRequest, signal?: AbortSignal): Promise<T> => {
         if (worker === undefined || isTerminal()) {
             return Promise.reject(new FfmpegError('disposed', 'The FFmpeg session is not available'));
         }
         if (signal?.aborted) return Promise.reject(abortError());
         const id = ++requestId;
-        const message: WorkerRequest = { sessionId, requestId: id, ...operation };
+        // Chunk callbacks stay on the caller; only cloneable request data crosses the worker boundary.
+        const message: WorkerRequest =
+            operation.operation === 'transcodeAudio'
+                ? {
+                      sessionId,
+                      requestId: id,
+                      operation: 'transcodeAudio',
+                      input: operation.input,
+                      trackIndex: operation.trackIndex,
+                  }
+                : { sessionId, requestId: id, ...operation };
         return new Promise<T>((resolve, reject) => {
             const cancel = () => {
                 if (!pending.has(id)) return;
@@ -140,6 +214,9 @@ export const createFfmpegSession = ({
                 resolve: (value) => resolve(value as T),
                 reject,
                 cleanup,
+                ...(operation.operation === 'transcodeAudio'
+                    ? { operation: operation.operation, onChunk: operation.onChunk }
+                    : { operation: operation.operation }),
             });
             signal?.addEventListener('abort', cancel, { once: true });
             if (signal?.aborted) cancel();
@@ -191,6 +268,12 @@ export const createFfmpegSession = ({
                 return Promise.reject(new FfmpegError('disposed', 'The FFmpeg session is not ready'));
             }
             return request({ operation: 'inspect' }, signal);
+        },
+        transcodeAudio: ({ input, trackIndex, signal, onChunk }) => {
+            if (state !== 'ready') {
+                return Promise.reject(new FfmpegError('disposed', 'The FFmpeg session is not ready'));
+            }
+            return request<number>({ operation: 'transcodeAudio', input, trackIndex, onChunk }, signal);
         },
     };
 

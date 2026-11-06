@@ -1,3 +1,5 @@
+import { createMiningAudioSource, snapshotMiningAudio } from '@project/common/audio-transcode/mining-audio';
+import type { MiningAudioSource } from '@project/common/audio-transcode/mining-audio';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { MutableRefObject } from 'react';
 
@@ -40,9 +42,9 @@ import {
     adjacentSubtitle,
     arrayEquals,
     compareSubtitlesForDisplay,
+    seekWithNudge,
     surroundingSubtitles,
     mockSurroundingSubtitles,
-    seekWithNudge,
     surroundingSubtitlesAroundInterval,
     ensureStoragePersisted,
     subtitleTimestampWithDelay,
@@ -74,17 +76,21 @@ import {
     ASB_TOKEN_CONTAINER_CLASS,
 } from '@project/common/annotations';
 import type { TokenJumpMatch } from '@project/common/annotations/token-navigation';
-import Clock from '@project/common/playback/timing/clock';
+import Clock from '@project/common/playback/media/clock';
 
-import VideoFrameTimingDriver from '@project/common/playback/timing/video-frame-timing-driver';
+import VideoFrameTimingDriver from '@project/common/playback/media/video-frame-timing-driver';
 import Controls from '@project/common/app/components/Controls';
 import type { Point } from '@project/common/app/components/Controls';
 
 import PlayerChannel from '@project/common/app/services/player-channel';
 import type ChromeExtension from '@project/common/app/services/chrome-extension';
-import Alert from '@project/common/app/components/Alert';
+import Alert, { AlertStack } from '@project/common/app/components/Alert';
+import MuiAlert from '@mui/material/Alert';
 import type { AlertNotification } from '@project/common/app/components/Alert';
-
+import { useStreamingAudio } from '@project/common/app/hooks/use-streaming-audio';
+import { useVideoLoadNotifications } from '@project/common/app/hooks/use-video-load-notifications';
+import type { AudioSeekableRange } from '@project/common/audio-transcode/streaming-audio';
+import type { TranscodedAudioPayload } from '@project/common/src/message';
 import Button from '@mui/material/Button';
 import { useSubtitleDomCache } from '@project/common/app/hooks/use-subtitle-dom-cache';
 import { useAppKeyBinder } from '@project/common/app/hooks/use-app-key-binder';
@@ -99,7 +105,7 @@ import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { usePlaybackPreferences } from '@project/common/app/hooks/use-playback-preferences';
 import type { MiningContext } from '@project/common/app/services/mining-context';
-import useSnackbar from '@project/common/hooks/use-snackbar';
+import { useResumePlaybackSnackbar } from '@project/common/app/hooks/use-resume-playback-snackbar';
 import { useStableDictionaryTracks, useSubtitleStyles } from '@project/common/app/hooks/use-subtitle-styles';
 import { useTokenSelection } from '@project/common/app/hooks/use-token-selection';
 import { useFullscreen } from '@project/common/app/hooks/use-fullscreen';
@@ -333,6 +339,7 @@ interface Props {
     onAnkiDialogRequest: (
         videoFileUrl: string,
         videoFileName: string,
+        miningAudioSource: MiningAudioSource,
         selectedAudioTrack: string | undefined,
         playbackRate: number,
         subtitle: SubtitleModel,
@@ -405,6 +412,23 @@ export default function VideoPlayer({
     const profileRef = useRef(profile);
     const hiddenVideoRef = useRef<HTMLVideoElement | null>(null); // seek preview thumbnail
     const [hiddenVideoReady, setHiddenVideoReady] = useState(false);
+    const [convertedAudio, setConvertedAudio] = useState<TranscodedAudioPayload>({
+        required: false,
+        active: false,
+        complete: false,
+    });
+    const convertedAudioRef = useRef(convertedAudio);
+    convertedAudioRef.current = convertedAudio;
+    const videoLoadNotifications = useVideoLoadNotifications({
+        video,
+        source: videoFile,
+        conversionActive: convertedAudio.active,
+    });
+    const [audioSeekableRange, setAudioSeekableRange] = useState<AudioSeekableRange>();
+    const [externalAudio, setExternalAudio] = useState<HTMLAudioElement | null>(null);
+    const externalAudioRefCallback = useCallback((element: HTMLAudioElement | null) => {
+        setExternalAudio(element);
+    }, []);
     const [windowWidth, windowHeight] = useWindowSize(true);
     if (videoRef.current) {
         videoRef.current.width = windowWidth;
@@ -414,6 +438,31 @@ export default function VideoPlayer({
         asbTrace('playback/video-player', 'Creating player channel');
         return new PlayerChannel(channel);
     }, [channel]);
+    const audioFile = useStreamingAudio({
+        audio: convertedAudio.audio,
+        active: convertedAudio.active,
+        complete: convertedAudio.complete,
+        video,
+        onBuffered: (range) => {
+            setAudioSeekableRange(range);
+            playerChannel.audioBuffered(range);
+        },
+        onError: () => playerChannel.audioConversionFailed(),
+    });
+    const externalAudioStateRef = useRef({
+        element: externalAudio,
+        source: audioFile,
+        active: convertedAudio.active,
+        streaming: !convertedAudio.complete,
+        onError: () => playerChannel.audioConversionFailed(),
+    });
+    externalAudioStateRef.current = {
+        element: externalAudio,
+        source: audioFile,
+        active: convertedAudio.active,
+        streaming: !convertedAudio.complete,
+        onError: () => playerChannel.audioConversionFailed(),
+    };
     const [playerChannelSubscribed, setPlayerChannelSubscribed] = useState<boolean>(false);
     const { fullscreen, requestFullscreen } = useFullscreen();
     const playing = () => !videoRef.current?.paused || false;
@@ -489,9 +538,13 @@ export default function VideoPlayer({
     });
     const [alertDisableAutoHide, setAlertDisableAutoHide] = useState<boolean>(false);
     const [pendingPlaybackPosition, setPendingPlaybackPosition] = useState<number>();
-    const resumePlaybackSnackbar = useSnackbar({
-        open: pendingPlaybackPosition !== undefined,
-        onClose: () => playbackEngineRef.current?.dismissPlaybackPosition(),
+    const resumePlaybackSnackbar = useResumePlaybackSnackbar({
+        position: pendingPlaybackPosition,
+        source: videoFile,
+        audio: convertedAudio.audio,
+        required: convertedAudio.required,
+        complete: convertedAudio.complete,
+        onDismiss: () => playbackEngineRef.current?.dismissPlaybackPosition(),
     });
     const [lastMinedRecord, setLastMinedRecord] = useState<MinedRecord>();
     const [trackCount, setTrackCount] = useState<number>(0);
@@ -715,6 +768,18 @@ export default function VideoPlayer({
                     playbackRate: () => video.playbackRate,
                     durationMs: () => video.duration * 1000,
                     currentTimeMs: () => video.currentTime * 1000,
+                    ready: () => video.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA,
+                    preservesPitch: () => video.preservesPitch,
+                    volume: () => video.volume,
+                    muted: () => video.muted,
+                    subscribePlaybackRequests: (onRequest) => {
+                        const unbindPlay = playerChannel.onPlay(() => onRequest(false));
+                        const unbindPause = playerChannel.onPause(() => onRequest(true));
+                        return () => {
+                            unbindPlay();
+                            unbindPause();
+                        };
+                    },
                     hasVideoTrack: () =>
                         video.readyState >= HTMLMediaElement.HAVE_METADATA &&
                         video.videoWidth > 0 &&
@@ -765,8 +830,11 @@ export default function VideoPlayer({
                     clock.start();
                 },
                 seek: async (timestampMs) => {
-                    video.currentTime = timestampMs / 1000;
-                    clock.setTime(timestampMs, { paused: video.paused });
+                    const actualTimestampMs = seekWithNudge(video, timestampMs / 1000) * 1000;
+                    clock.setTime(actualTimestampMs, { paused: video.paused });
+                },
+                setMuted: (muted) => {
+                    video.muted = muted;
                 },
                 setPlaybackRate: (playbackRate) => {
                     if (video.playbackRate !== playbackRate) video.playbackRate = playbackRate;
@@ -866,6 +934,7 @@ export default function VideoPlayer({
         });
 
         playbackEngineRef.current = playbackEngine;
+        playbackEngine.externalAudioChanged(externalAudioStateRef.current);
         asbTrace('playback/video-player', 'Binding video playback owner');
         playbackEngine.bind();
 
@@ -888,6 +957,10 @@ export default function VideoPlayer({
         updateSubtitlesWithOffset,
         video,
     ]);
+
+    useEffect(() => {
+        if (video) playbackEngineRef.current?.externalAudioChanged(externalAudioStateRef.current);
+    }, [audioFile, convertedAudio.active, convertedAudio.complete, externalAudio, playerChannel, video]);
 
     useEffect(() => {
         if (profileRef.current === profile) return;
@@ -932,7 +1005,7 @@ export default function VideoPlayer({
         asbTrace('playback/video-player', 'Subscribing to player channel');
         playerChannel.onReady((duration, videoFileName) => {
             asbTrace('playback/video-player', 'Received player-channel ready event', {
-                durationMs: duration * 1000,
+                durationMs: duration,
                 hasVideoFileName: videoFileName !== undefined,
             });
             setLengthMs(duration);
@@ -943,36 +1016,23 @@ export default function VideoPlayer({
             });
         });
 
-        playerChannel.onPlay(() => {
-            void (async () => {
-                await videoRef.current?.play();
-                clock.start();
-            })();
-        });
-
-        playerChannel.onPause(() => {
-            videoRef.current?.pause();
-            clock.stop();
-        });
-
         playerChannel.onCurrentTime((currentTime) => {
-            let actualCurrentTime = currentTime;
-
-            if (videoRef.current) {
-                actualCurrentTime = seekWithNudge(videoRef.current, currentTime);
-            }
-
-            if (videoRef.current?.readyState === 4) {
-                playerChannel.readyState(4);
-            }
-
-            clock.setTime(actualCurrentTime * 1000, { paused: true });
+            void playbackEngineRef.current?.seek(currentTime * 1000).catch((error: unknown) => {
+                onErrorRef.current?.(String(error));
+            });
+            if (videoRef.current?.readyState === 4) playerChannel.readyState(4);
         });
 
         playerChannel.onAudioTrackSelected((id) => {
             selectAudioTrack(id);
             setSelectedAudioTrack(id);
             playerChannel.audioTrackSelected(id);
+        });
+
+        playerChannel.onTranscodedAudio((audio) => {
+            // A mining command can arrive before React renders the latest encoded prefix.
+            convertedAudioRef.current = audio;
+            setConvertedAudio(audio);
         });
 
         playerChannel.onClose(() => {
@@ -1069,6 +1129,7 @@ export default function VideoPlayer({
         window.addEventListener('pagehide', handlePageHide);
 
         setPlayerChannelSubscribed(true);
+        playerChannel.requestTranscodedAudio(); // Initial conversion updates can precede this frame's listener, even before video metadata exists.
         playerChannel.playModes(playbackEngineRef.current?.playbackModes ?? new Set([PlayMode.normal]));
         asbTrace('playback/video-player', 'Player channel subscribed');
         return () => {
@@ -1570,44 +1631,38 @@ export default function VideoPlayer({
             cardTextFieldValues: CardTextFieldValues,
             timestamp: number
         ) => {
-            switch (postMineAction) {
-                case PostMineAction.showAnkiDialog:
-                    playerChannel.copy(
-                        subtitle,
-                        surroundingSubtitles,
-                        cardTextFieldValues,
-                        videoFileName ?? '',
-                        timestamp,
-                        PostMineAction.none
-                    );
-                    onAnkiDialogRequest(
-                        videoFileUrl,
-                        videoFileName ?? '',
-                        selectedAudioTrack,
-                        playbackRate,
-                        subtitle,
-                        surroundingSubtitles,
-                        cardTextFieldValues,
-                        timestamp
-                    );
-
-                    if (playing()) {
-                        playerChannel.pause();
-                        setWasPlayingOnAnkiDialogRequest(true);
-                    } else {
-                        setWasPlayingOnAnkiDialogRequest(false);
-                    }
-                    break;
-                default:
-                    playerChannel.copy(
-                        subtitle,
-                        surroundingSubtitles,
-                        cardTextFieldValues,
-                        videoFileName ?? '',
-                        timestamp,
-                        postMineAction
-                    );
+            const showAnkiDialog = postMineAction === PostMineAction.showAnkiDialog;
+            if (showAnkiDialog) {
+                const wasPlaying = playing();
+                if (wasPlaying) playerChannel.pause();
+                setWasPlayingOnAnkiDialogRequest(wasPlaying);
             }
+            void snapshotMiningAudio(convertedAudioRef.current)
+                .then((snapshot) => {
+                    playerChannel.copy(
+                        subtitle,
+                        surroundingSubtitles,
+                        cardTextFieldValues,
+                        videoFileName ?? '',
+                        timestamp,
+                        showAnkiDialog ? PostMineAction.none : postMineAction,
+                        snapshot
+                    );
+                    if (showAnkiDialog) {
+                        return onAnkiDialogRequest(
+                            videoFileUrl,
+                            videoFileName ?? '',
+                            createMiningAudioSource(snapshot),
+                            selectedAudioTrack,
+                            playbackRate,
+                            subtitle,
+                            surroundingSubtitles,
+                            cardTextFieldValues,
+                            timestamp
+                        );
+                    }
+                })
+                .catch((error) => onErrorRef.current?.(String(error)));
 
             setLastMinedRecord({
                 videoFileUrl,
@@ -2341,6 +2396,16 @@ export default function VideoPlayer({
                 anchor={alertAnchor}
                 useAppLogo={false}
             />
+            <AlertStack anchor="top">
+                {videoLoadNotifications.conversion && (
+                    <MuiAlert severity="info">
+                        {t('info.audioConversionStarted', {
+                            codec: convertedAudio.codecName,
+                        })}
+                    </MuiAlert>
+                )}
+                {videoLoadNotifications.loading && <MuiAlert severity="info">{t('info.videoLoadingDelayed')}</MuiAlert>}
+            </AlertStack>
             <MobileVideoOverlay
                 ref={mobileOverlayRef}
                 model={mobileOverlayModel()}
@@ -2370,6 +2435,10 @@ export default function VideoPlayer({
                 src={videoFile}
                 onMouseOver={handleVideoMouseOver}
             />
+            {/* this audio replaces the video's own audio track when the browser can't decode it */}
+            {convertedAudio.active && (
+                <audio preload="auto" style={{ display: 'none' }} ref={externalAudioRefCallback} />
+            )}
             {/* Optional blur mask overlay; constrained to the video bounds within the player container */}
             {blurOverlayVisible && <BlurOverlay anchorRef={containerRef} containerRef={videoRef} />}
             {/* this video is for getting the seek preview below */}
@@ -2415,6 +2484,9 @@ export default function VideoPlayer({
                 mousePositionRef={mousePositionRef}
                 clock={clock}
                 length={lengthMs}
+                bufferedMs={
+                    convertedAudio.active && !convertedAudio.complete ? (audioSeekableRange?.end ?? 0) : undefined
+                }
                 audioTracks={audioTracks}
                 selectedAudioTrack={selectedAudioTrack}
                 subtitlesToggle={subtitles && subtitles.length > 0}
