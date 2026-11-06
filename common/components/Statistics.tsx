@@ -1923,7 +1923,12 @@ export default function Statistics({
         const unsubscribeGeneration = dictionaryProvider.onRequestStatisticsGeneration(() => {
             setGenerationRequested(true);
         });
-        if (mediaId !== undefined) {
+        if (mediaId === undefined) {
+            setMediaInfo(undefined);
+            setStatisticsSnapshot(undefined);
+            setStatisticsSnapshotLoaded(true);
+            setGenerationRequested(false);
+        } else {
             void dictionaryProvider
                 .requestStatisticsSnapshot(mediaId)
                 .catch((error) => asbError('dictionary/statistics', 'Failed to request a statistics snapshot:', error));
@@ -2072,7 +2077,7 @@ export default function Statistics({
                             sx={{
                                 display: 'flex',
                                 flexDirection: 'row',
-                                alignItems: 'center',
+                                alignItems: 'start',
                                 gap: 0.5,
                             }}
                         >

@@ -37,7 +37,10 @@
         "userGuide": "Panduan Pengguna",
         "search": "Search",
         "reload": "Reload",
-        "findPlaceholder": "Search by text or /regex/"
+        "findPlaceholder": "Search by text or /regex/",
+        "approve": "Approve",
+        "deny": "Deny",
+        "remove": "Remove"
     },
     "about": {
         "title": "Tentang asbplayer",
@@ -854,6 +857,14 @@
         "importUrl": "Import URL",
         "introduction": "Recipes combine playback modes and settings for different learning activities. <docs>Learn about recipes and importing presets</docs>.",
         "notification": "Recipe: {{name}}",
-        "settingLocked": "{{setting}} can't be changed while a Recipe is active"
+        "settingLocked": "{{setting}} can't be changed while a Recipe is active",
+        "confirmDelete": "Delete \"{{name}}\"?"
+    },
+    "externalConnections": {
+        "title": "External extensions",
+        "empty": "No external extensions to display.",
+        "help": "Learn about external extensions <docs>here</docs>.",
+        "incomingRequest": "An external extension is requesting to connect to asbplayer.",
+        "unknownName": "Unnamed extension"
     }
 }

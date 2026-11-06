@@ -52,4 +52,38 @@ To always use asbplayer's subtitle text for the Sentence field, enable [**Always
 
 ## API reference {#api-reference}
 
-See the [technical reference](../reference/external-api#http-based-api) for a description of the API.
+See the [technical reference](../reference/external-api#http-based-api) for a description of supported commands that can be sent to asbplayer over the WebSocket connection.
+
+## HTTP-based API {#http-based-api}
+
+The WebSocket server implements an HTTP-based API which triggers the commands documented above.
+
+- `POST asbplayer/load-subtitles` (optional `mediaId` in the request body) (<a href={`${project.urls.repo}/blob/main/scripts/web-socket-server/cli/load-subtitles`}>script</a>)
+- `POST asbplayer/seek` (optional `mediaId` in the request body) (<a href={`${project.urls.repo}/blob/main/scripts/web-socket-server/cli/seek`}>script</a>)
+- `GET asbplayer/bound-media` (<a href={`${project.urls.repo}/blob/main/scripts/web-socket-server/cli/bound-media`}>script</a>)
+- `GET asbplayer/subtitles` (optional `?mediaId=...&trackNumbers=0,1`) (<a href={`${project.urls.repo}/blob/main/scripts/web-socket-server/cli/subtitles`}>script</a>)
+
+## AnkiConnect proxy {#ankiconnect-proxy}
+
+The WebSocket server also functions as an AnkiConnect proxy that allows `addNote` requests to be enriched with asbplayer-provided context, such as audio and screenshots.
+
+The proxy passes through all AnkiConnect requests as-is except for `addNote`. The proxy's specific behavior in the case of `addNote` depends on the value of `POST_MINE_ACTION` in the configuration documented below.
+
+## Server configuration {#server-configuration}
+
+The server is configured with an `.env` file placed next to it in the same directory. Below is an example file with explanation.
+
+```
+# Port that the proxy will listen on
+PORT=8766
+
+# AnkiConnect URL
+ANKI_CONNECT_URL=http://127.0.0.1:8765
+
+# Action for asbplayer to take when the proxy receives an addNote request
+# 0 = 'None'
+# 1 = 'Open Anki dialog'
+# 2 = 'Update last card' (updates last card with asbplayer media AFTER passing through original addNote request)
+# 3 = 'Export card'
+POST_MINE_ACTION=2
+```

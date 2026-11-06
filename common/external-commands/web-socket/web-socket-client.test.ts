@@ -1,7 +1,7 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, jest } from '@jest/globals';
-import { WebSocketClient } from '@project/common/web-socket-client';
-import type { SeekTimestampCommand, WebSocketClientOptions } from '@project/common/web-socket-client';
-import { FakeWebSocket } from '@project/common/web-socket-client/fake-web-socket';
+import { WebSocketClient } from '@project/common/external-commands';
+import type { SeekTimestampCommand, WebSocketClientOptions } from '@project/common/external-commands';
+import { FakeWebSocket } from '@project/common/external-commands/web-socket/fake-web-socket';
 
 const url = 'ws://example.com:1234/socket';
 

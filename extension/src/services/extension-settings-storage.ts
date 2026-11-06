@@ -15,6 +15,10 @@ export interface StorageArea {
     get(keys?: string | string[] | { [key: string]: any } | null): Promise<{ [key: string]: any }>;
 
     clear(): Promise<void>;
+
+    onChanged: Browser.events.Event<
+        (changes: { [key: string]: Browser.storage.StorageChange }, areaName: Browser.storage.AreaName) => void
+    >;
 }
 
 export class ExtensionSettingsStorage implements SettingsStorage {
@@ -104,9 +108,5 @@ export class ExtensionSettingsStorage implements SettingsStorage {
         const prefixedKeys = Object.keys(prefixedSettings(defaultSettings, name));
         await this._storage.remove(prefixedKeys);
         await this._storage.set({ [profilesKey]: newProfiles });
-    }
-
-    async clear() {
-        await this._storage.clear();
     }
 }

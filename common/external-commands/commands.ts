@@ -87,14 +87,29 @@ export interface GetSubtitlesResponseBody {
     subtitles: SubtitleCue[];
 }
 
-export type WebSocketCommand =
+// Frames sent over the external connection port. Commands reuse the same `{command, messageId, body}`
+// wire format as the WebSocket server integration.
+
+export interface ExternalHelloMessage {
+    readonly type: 'asbplayer-external-hello';
+    // Self-reported, untrusted display name shown next to the (trusted) extension ID in the approval UI.
+    readonly name?: string;
+    readonly version?: string;
+}
+
+export interface ExternalApprovalMessage {
+    readonly type: 'asbplayer-external-approval';
+    readonly approved: boolean;
+}
+
+export type ExternalCommand =
     | MineSubtitleCommand
     | LoadSubtitlesCommand
     | SeekTimestampCommand
     | GetBoundMediaCommand
     | GetSubtitlesCommand;
 
-export interface WebSocketCommandHandlers {
+export interface ExternalCommandHandlers {
     onMineSubtitle: (command: MineSubtitleCommand) => Promise<boolean>;
     onLoadSubtitles: (command: LoadSubtitlesCommand) => Promise<void>;
     onSeekTimestamp: (command: SeekTimestampCommand) => Promise<void>;

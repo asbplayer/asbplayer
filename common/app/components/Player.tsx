@@ -63,8 +63,8 @@ import { useWindowSize } from '@project/common/app/hooks/use-window-size';
 import { useAppBarHeight } from '@project/common/hooks/use-app-bar-height';
 import { createBlobUrl } from '@project/common/blob-url';
 import type { MiningContext } from '@project/common/app/services/mining-context';
-import type { SeekTimestampCommand, WebSocketCommandDispatcher } from '@project/common/web-socket-client';
-import { localMediaId } from '@project/common/web-socket-client/web-socket-media';
+import type { SeekTimestampCommand, ExternalCommandDispatcher } from '@project/common/external-commands';
+import { localMediaId } from '@project/common/external-commands/media';
 import {
     resolveVideoSubtitleSplitLayout,
     useVideoAspectRatio,
@@ -198,7 +198,7 @@ interface PlayerProps {
     rewindSubtitle?: SubtitleModel;
     hideControls?: boolean;
     forceCompressedMode?: boolean;
-    webSocketCommands?: WebSocketCommandDispatcher;
+    externalCommands?: ExternalCommandDispatcher;
     playbackTimelineFileName?: string;
     playbackTimelineModeLabels: PlaybackTimelineModeLabels;
     playbackTimelineOptionLabels: PlaybackTimelineOptionLabels;
@@ -271,7 +271,7 @@ function PlayerComponent(
         rewindSubtitle,
         hideControls,
         forceCompressedMode,
-        webSocketCommands,
+        externalCommands,
         playbackTimelineFileName,
         playbackTimelineModeLabels,
         playbackTimelineOptionLabels,
@@ -1649,7 +1649,7 @@ function PlayerComponent(
 
     useEffect(
         () =>
-            webSocketCommands?.setHandlers({
+            externalCommands?.setHandlers({
                 onSeekTimestamp: async ({ body: { timestamp, mediaId } }: SeekTimestampCommand) => {
                     if (mediaId !== undefined && mediaId !== localMediaId(extension.id)) {
                         return;
@@ -1658,7 +1658,7 @@ function PlayerComponent(
                     void seek(timestamp * 1000, clock, true, { paused: !clock.running });
                 },
             }),
-        [webSocketCommands, extension, seek, clock]
+        [externalCommands, extension, seek, clock]
     );
 
     const [windowWidth, windowHeight] = useWindowSize(true);
@@ -1839,7 +1839,7 @@ function PlayerComponent(
                         maxResizeWidth={subtitlePlayerMaxResizeWidth}
                         settings={settings}
                         keyBinder={keyBinder}
-                        webSocketCommands={webSocketCommands}
+                        externalCommands={externalCommands}
                         initialWidth={subtitlePlayerInitialWidth}
                     />
                 </Grid>
