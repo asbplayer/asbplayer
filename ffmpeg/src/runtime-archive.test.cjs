@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-require-imports, no-undef */
+const { afterEach, beforeEach, expect, it } = require('@jest/globals');
 const { execFileSync } = require('node:child_process');
 const { mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, symlinkSync, writeFileSync } = require('node:fs');
 const { tmpdir } = require('node:os');

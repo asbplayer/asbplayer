@@ -2,8 +2,8 @@ import { execFile } from 'node:child_process';
 import { readdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { promisify } from 'node:util';
-import { packageRoot } from './lib.mjs';
-import { findRelease, githubHeaders } from './github-release.mjs';
+import { packageRoot } from '../lib.mjs';
+import { findRelease, githubHeaders } from '../github-release.mjs';
 
 const exec = promisify(execFile);
 const repository = process.env.GH_REPO || process.env.GITHUB_REPOSITORY;

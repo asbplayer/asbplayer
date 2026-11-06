@@ -4,8 +4,8 @@ set -euo pipefail
 # Prepare the inputs and Docker arguments shared by runtime builds and native/WASM tests.
 prepare_build() {
     local ffmpeg_package_root="$1"
-    node "$ffmpeg_package_root/scripts/prepare-sources.mjs"
-    node "$ffmpeg_package_root/scripts/generate-build-inputs.mjs"
+    node "$ffmpeg_package_root/scripts/build/prepare-sources.mjs"
+    node "$ffmpeg_package_root/scripts/build/generate-build-inputs.mjs"
 
     docker_arguments=()
     while IFS= read -r argument; do

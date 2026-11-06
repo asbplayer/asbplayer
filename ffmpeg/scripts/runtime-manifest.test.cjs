@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-require-imports, no-undef */
+const { afterEach, beforeEach, expect, it } = require('@jest/globals');
 const { execFile } = require('node:child_process');
 const { createHash } = require('node:crypto');
 const { mkdtemp, rm, symlink, writeFile } = require('node:fs/promises');

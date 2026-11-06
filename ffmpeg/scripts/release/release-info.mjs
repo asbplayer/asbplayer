@@ -1,8 +1,8 @@
 import { parseArgs } from 'node:util';
-import artifactLock from '../artifact-lock.json' with { type: 'json' };
-import { releaseNames, runtimeVersion } from './release-names.mjs';
-import { parseRuntimeVersion } from './runtime-version.mjs';
-import { githubHeaders, listReleases } from './github-release.mjs';
+import artifactLock from '../../artifact-lock.json' with { type: 'json' };
+import { releaseNames, runtimeVersion } from '../release-names.mjs';
+import { parseRuntimeVersion } from '../runtime-version.mjs';
+import { githubHeaders, listReleases } from '../github-release.mjs';
 
 const { values, positionals } = parseArgs({ options: { bump: { type: 'string' } }, allowPositionals: true });
 let version = runtimeVersion;

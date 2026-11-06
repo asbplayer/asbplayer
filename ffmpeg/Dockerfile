@@ -19,7 +19,7 @@ RUN emconfigure ./configure --host=wasm32-unknown-emscripten --prefix=/build/opu
     && emmake make install
 
 ENV PKG_CONFIG_PATH=/build/opus/lib/pkgconfig
-COPY scripts/opus-pkg-config.sh /src/asbplayer/opus-pkg-config.sh
+COPY scripts/build/opus-pkg-config.sh /src/asbplayer/opus-pkg-config.sh
 WORKDIR /src/ffmpeg
 RUN mkdir -p /build/ffmpeg /output \
     && cd /build/ffmpeg \
@@ -64,12 +64,12 @@ RUN set -eux; \
 
 FROM cpp-test AS wasm-test
 RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg && rm -rf /var/lib/apt/lists/*
-COPY scripts/runtime-smoke.mjs scripts/runtime-audio.mjs /src/asbplayer/scripts/
+COPY scripts/verify/runtime-smoke.mjs scripts/verify/runtime-audio.mjs /src/asbplayer/scripts/verify/
 ARG ASB_RUNTIME_VERSION
 ARG ASB_FFMPEG_VERSION
 RUN ASB_RUNTIME_VERSION="$ASB_RUNTIME_VERSION" ASB_FFMPEG_VERSION="$ASB_FFMPEG_VERSION" \
-    node /src/asbplayer/scripts/runtime-smoke.mjs /output \
-    && timeout 120s node /src/asbplayer/scripts/runtime-audio.mjs /output
+    node /src/asbplayer/scripts/verify/runtime-smoke.mjs /output \
+    && timeout 120s node /src/asbplayer/scripts/verify/runtime-audio.mjs /output
 
 FROM scratch AS runtime
 COPY --from=builder /output /

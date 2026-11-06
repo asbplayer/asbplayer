@@ -1,4 +1,5 @@
 /** @jest-environment node */
+import { expect, it } from '@jest/globals';
 import { finalizeWebmAudio, readWebmAudioDuration } from '@project/common/audio-transcode/webm-audio';
 import { webmHeader } from '@project/common/audio-transcode/test-host';
 

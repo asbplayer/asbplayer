@@ -1,4 +1,5 @@
 /** @jest-environment node */
+import { expect, it, jest } from '@jest/globals';
 import { canMineWithAudio, snapshotMiningAudio, snapshotWebmAudio } from '@project/common/audio-transcode/mining-audio';
 import type { TranscodedAudioPayload } from '@project/common';
 import { webmHeader } from '@project/common/audio-transcode/test-host';

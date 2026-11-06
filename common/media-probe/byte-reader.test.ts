@@ -1,4 +1,5 @@
 /** @jest-environment node */
+import { expect, it, jest } from '@jest/globals';
 import ByteReader from '@project/common/media-probe/byte-reader';
 
 it('reads unsigned integers wider than 32 bits without truncating them', async () => {

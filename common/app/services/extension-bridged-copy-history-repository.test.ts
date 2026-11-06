@@ -1,3 +1,4 @@
+import { expect, it } from '@jest/globals';
 import type { CopyHistoryItem, RequestCopyHistoryResponse } from '@project/common';
 import type { ExtensionMessage } from '@project/common/app/services/chrome-extension';
 import { ExtensionBridgedCopyHistoryRepository } from '@project/common/app/services/extension-bridged-copy-history-repository';

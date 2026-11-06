@@ -1,3 +1,4 @@
+import { expect, it } from '@jest/globals';
 import { NativeBridge } from '@project/ffmpeg/native';
 import type { NativeModule } from '@project/ffmpeg/native';
 import type { FfmpegDiagnostics } from '@project/ffmpeg/protocol';

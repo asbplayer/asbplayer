@@ -1,4 +1,5 @@
 /** @jest-environment node */
+import { afterEach, beforeEach, expect, it, jest } from '@jest/globals';
 import {
     audioBufferedRange,
     clampAudioSeekMs,

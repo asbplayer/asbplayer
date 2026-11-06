@@ -1,7 +1,7 @@
 import { mkdtemp, rename, rm, stat } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { download } from './lib.mjs';
-import { fetchAsset, findRelease, githubHeaders } from './github-release.mjs';
+import { download } from '../lib.mjs';
+import { fetchAsset, findRelease, githubHeaders } from '../github-release.mjs';
 
 /** Acquire the selected release for app hosting, without a native toolchain or source downloads. */
 export const prepareRuntime = async (lock, cacheDirectory) => {

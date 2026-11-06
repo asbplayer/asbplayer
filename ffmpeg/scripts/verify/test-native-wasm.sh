@@ -1,12 +1,12 @@
 #!/bin/bash
 set -euo pipefail
 
-package_root="$(cd "$(dirname "$0")/.." && pwd)"
+source "$(dirname "$0")/../paths.sh"
 cd "$package_root/.."
 
-source "$package_root/scripts/build-common.sh"
+source "$package_root/scripts/build/build-common.sh"
 prepare_build "$package_root"
-runtime_version="$(node "$package_root/scripts/release-info.mjs" version)"
+runtime_version="$(node "$package_root/scripts/release/release-info.mjs" version)"
 ffmpeg_version="$(node -p "require('$package_root/build-config.json').ffmpeg.version")"
 
 docker buildx build \

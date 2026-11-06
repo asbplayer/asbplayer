@@ -9,7 +9,7 @@
         "strict": true,
         "isolatedModules": true,
         "noEmit": true,
-        "types": ["@types/jest"]
+        "types": ["@types/jest", "node"]
     },
     "include": ["src"]
 }

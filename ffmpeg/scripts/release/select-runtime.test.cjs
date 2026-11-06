@@ -1,9 +1,10 @@
 /* eslint-disable @typescript-eslint/no-require-imports, no-undef */
+const { afterEach, beforeEach, expect, it } = require('@jest/globals');
 const { execFile } = require('node:child_process');
 const { createHash } = require('node:crypto');
 const { chmod, copyFile, cp, mkdir, mkdtemp, readFile, rename, rm, writeFile } = require('node:fs/promises');
 const { tmpdir } = require('node:os');
-const { resolve } = require('node:path');
+const { dirname, resolve } = require('node:path');
 const { promisify } = require('node:util');
 
 const exec = promisify(execFile);
@@ -66,16 +67,18 @@ beforeEach(async () => {
         'runtime-manifest.mjs',
         'runtime-version.mjs',
         'release-names.mjs',
-        'release-info.mjs',
-        'select-runtime.mjs',
+        'release/release-info.mjs',
+        'release/select-runtime.mjs',
         'github-release.mjs',
-        'verify-artifacts.mjs',
+        'verify/verify-artifacts.mjs',
         'runtime-archive-validator.cjs',
         'sources-archive.mjs',
     ]) {
-        await copyFile(resolve(__dirname, script), resolve(root, 'scripts', script));
+        const destination = resolve(root, 'scripts', script);
+        await mkdir(dirname(destination), { recursive: true });
+        await copyFile(resolve(__dirname, '..', script), destination);
     }
-    const inventory = JSON.parse(await readFile(resolve(__dirname, '../runtime-assets.json'), 'utf8'));
+    const inventory = JSON.parse(await readFile(resolve(__dirname, '../../runtime-assets.json'), 'utf8'));
     await writeFile(resolve(root, 'package.json'), JSON.stringify({ version: '9.9.9', type: 'module' }));
     await writeFile(resolve(root, 'artifact-lock.json'), initialLock);
     const bodies = {
@@ -171,7 +174,7 @@ const run = (script, args = [], env = {}) =>
     exec(process.execPath, ['--import', resolve(root, 'http.mjs'), resolve(root, 'scripts', script), ...args], {
         env: { ...process.env, ASB_FFMPEG_RUNTIME_VERSION: undefined, ...env },
     });
-const select = (args = [], env = {}) => run('select-runtime.mjs', ['--version', version, ...args], env);
+const select = (args = [], env = {}) => run('release/select-runtime.mjs', ['--version', version, ...args], env);
 const readLock = async () => readFile(resolve(root, 'artifact-lock.json'), 'utf8');
 
 it('selects a fork release, records the runtime archive, and accepts identical reselection', async () => {
@@ -196,7 +199,9 @@ it('selects a fork release, records the runtime archive, and accepts identical r
 });
 
 it('requires an explicit selection version without contacting GitHub or changing the lock', async () => {
-    await expect(run('select-runtime.mjs', ['--repo', 'example/fork'])).rejects.toThrow('Pass a runtime version');
+    await expect(run('release/select-runtime.mjs', ['--repo', 'example/fork'])).rejects.toThrow(
+        'Pass a runtime version'
+    );
     expect(await readLock()).toBe(initialLock);
     await expect(readFile(resolve(root, 'requests'))).rejects.toMatchObject({ code: 'ENOENT' });
 });
@@ -204,9 +209,9 @@ it('requires an explicit selection version without contacting GitHub or changing
 it.each(['0.01.0', '1.0.0', '0.1.0-rc.1'])(
     'rejects noncanonical selection version %s before contacting GitHub or changing the lock',
     async (invalid) => {
-        await expect(run('select-runtime.mjs', ['--repo', 'example/fork', '--version', invalid])).rejects.toThrow(
-            'FFmpeg runtime version must be 0.X.Y'
-        );
+        await expect(
+            run('release/select-runtime.mjs', ['--repo', 'example/fork', '--version', invalid])
+        ).rejects.toThrow('FFmpeg runtime version must be 0.X.Y');
         expect(await readLock()).toBe(initialLock);
         await expect(readFile(resolve(root, 'requests'))).rejects.toMatchObject({ code: 'ENOENT' });
     }
@@ -332,10 +337,12 @@ it('keeps the selected runtime pinned during a build for a new release version',
     const lock = await readLock();
     await prepareRuntime();
     const env = { ASB_FFMPEG_RUNTIME_VERSION: '0.2.0' };
-    await run('verify-artifacts.mjs', [], env);
+    await run('verify/verify-artifacts.mjs', [], env);
     expect(await readLock()).toBe(lock);
-    await copyFile(resolve(__dirname, '../build-config.json'), resolve(root, 'build-config.json'));
-    await expect(run('verify-artifacts.mjs', ['--candidate'], env)).rejects.toThrow('FFmpeg 0.2.0 is not prepared');
+    await copyFile(resolve(__dirname, '../../build-config.json'), resolve(root, 'build-config.json'));
+    await expect(run('verify/verify-artifacts.mjs', ['--candidate'], env)).rejects.toThrow(
+        'FFmpeg 0.2.0 is not prepared'
+    );
 });
 
 it('keeps the frozen archive pinned when the project release naming changes', async () => {
@@ -356,10 +363,10 @@ it('keeps the frozen archive pinned when the project release naming changes', as
             },
         })
     );
-    expect((await run('release-info.mjs', ['runtimeArchive'])).stdout).toBe(
+    expect((await run('release/release-info.mjs', ['runtimeArchive'])).stdout).toBe(
         `renamed-ffmpeg-${version}-runtime.tar.gz\n`
     );
-    expect((await run('verify-artifacts.mjs')).stdout).toContain(`Verified FFmpeg ${version} frozen runtime`);
+    expect((await run('verify/verify-artifacts.mjs')).stdout).toContain(`Verified FFmpeg ${version} frozen runtime`);
     expect(await readLock()).toBe(lock);
 });
 
@@ -412,7 +419,7 @@ it('verifies a minimal configuration without requiring redundant disable flags',
     await writeRuntimeArchive();
     await select(['--repo', 'example/fork']);
     await prepareRuntime();
-    expect((await run('verify-artifacts.mjs')).stdout).toContain(`Verified FFmpeg ${version}`);
+    expect((await run('verify/verify-artifacts.mjs')).stdout).toContain(`Verified FFmpeg ${version}`);
 });
 
 it.each([
@@ -429,5 +436,7 @@ it.each([
     await writeRuntimeArchive();
     await select(['--repo', 'example/fork']);
     await prepareRuntime();
-    await expect(run('verify-artifacts.mjs')).rejects.toThrow(`FFmpeg configuration unexpectedly contains ${argument}`);
+    await expect(run('verify/verify-artifacts.mjs')).rejects.toThrow(
+        `FFmpeg configuration unexpectedly contains ${argument}`
+    );
 });

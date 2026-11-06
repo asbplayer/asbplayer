@@ -11,6 +11,8 @@
 !native/
 !native/**
 !scripts/
-!scripts/runtime-smoke.mjs
-!scripts/runtime-audio.mjs
-!scripts/opus-pkg-config.sh
+!scripts/build/
+!scripts/verify/
+!scripts/verify/runtime-smoke.mjs
+!scripts/verify/runtime-audio.mjs
+!scripts/build/opus-pkg-config.sh

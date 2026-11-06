@@ -1,4 +1,5 @@
 /** @jest-environment node */
+import { expect, it, jest } from '@jest/globals';
 import { transcodeAudioTrack } from '@project/common/audio-transcode/ffmpeg-audio-transcoder';
 import { TestHost, webmHeader } from '@project/common/audio-transcode/test-host';
 

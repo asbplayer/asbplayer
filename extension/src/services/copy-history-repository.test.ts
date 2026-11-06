@@ -1,3 +1,4 @@
+import { beforeEach, expect, it } from '@jest/globals';
 import '@project/common/copy-history/test-database';
 import type { CopyHistoryItem } from '@project/common';
 import { IndexedDBCopyHistoryRepository } from '@project/common/copy-history';
@@ -32,5 +33,12 @@ it('announces committed additions, updates, automatic pruning, deletions and cle
     await repository.save(third);
     await repository.delete(second.id);
     await repository.clear();
-    expect(snapshots).toMatchObject([[first], [updated], [updated, second], [second, third], [third], []]);
+    expect(snapshots).toEqual([
+        [expect.objectContaining({ ...first })],
+        [expect.objectContaining(updated)],
+        [expect.objectContaining(updated), expect.objectContaining(second)],
+        [expect.objectContaining(second), expect.objectContaining(third)],
+        [expect.objectContaining(third)],
+        [],
+    ]);
 });

@@ -2,7 +2,7 @@ import { mkdir, rename, rm } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { download, packageRoot, readJson, upstreamSourceArchive, upstreamSources } from './lib.mjs';
+import { download, packageRoot, readJson, upstreamSourceArchive, upstreamSources } from '../lib.mjs';
 
 const execFileAsync = promisify(execFile);
 const config = await readJson(resolve(packageRoot, 'build-config.json'));

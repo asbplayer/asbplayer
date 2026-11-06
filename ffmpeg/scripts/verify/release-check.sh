@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-package_root="$(cd "$(dirname "$0")/.." && pwd)"
+source "$(dirname "$0")/../paths.sh"
 cd "$package_root"
 
 pnpm run verify:code

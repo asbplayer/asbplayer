@@ -1,7 +1,7 @@
 import { copyFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { packageRoot, readJson } from './lib.mjs';
-import { runtimeVersion as version } from './release-names.mjs';
+import { packageRoot, readJson } from '../lib.mjs';
+import { runtimeVersion as version } from '../release-names.mjs';
 
 const { notices } = await readJson(resolve(packageRoot, 'runtime-assets.json'));
 for (const filename of notices) {

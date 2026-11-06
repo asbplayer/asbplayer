@@ -9,15 +9,15 @@ import {
     upstreamSources,
     upstreamTarballName,
     verifyFile,
-} from './lib.mjs';
-import { releaseNames, runtimeVersion as version } from './release-names.mjs';
+} from '../lib.mjs';
+import { releaseNames, runtimeVersion as version } from '../release-names.mjs';
 
 const execFileAsync = promisify(execFile);
 const names = releaseNames(version);
 const config = await readJson(resolve(packageRoot, 'build-config.json'));
 const release = resolve(packageRoot, 'release');
 const packageArchive = (archive, directory, entry) =>
-    execFileAsync('bash', [resolve(packageRoot, 'scripts/package-archive.sh'), archive, directory, entry]);
+    execFileAsync('bash', [resolve(packageRoot, 'scripts/release/package-archive.sh'), archive, directory, entry]);
 
 // The workflow publishes every file in this directory; keep only this candidate's assets.
 await rm(release, { recursive: true, force: true });

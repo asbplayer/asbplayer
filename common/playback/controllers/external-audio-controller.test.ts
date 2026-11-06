@@ -1,4 +1,5 @@
 /** @jest-environment node */
+import { afterEach, beforeEach, expect, it, jest } from '@jest/globals';
 import ExternalAudioController from '@project/common/playback/controllers/external-audio-controller';
 
 const controllers: ExternalAudioController[] = [];
@@ -81,7 +82,9 @@ const harness = ({ positionMs = 0, streaming = true, active = true } = {}) => {
         },
     };
 };
-beforeEach(() => jest.useFakeTimers());
+beforeEach(() => {
+    jest.useFakeTimers();
+});
 afterEach(() => {
     for (const controller of controllers.splice(0)) controller.unbind();
     jest.useRealTimers();

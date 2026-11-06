@@ -44,7 +44,7 @@ export const createFfmpegBuildConfig = async ({
         archivePath = fileURLToPath(new URL(`../ffmpeg/release/${filename}`, import.meta.url));
         execFileSync(
             process.execPath,
-            [fileURLToPath(new URL('../ffmpeg/scripts/verify-artifacts.mjs', import.meta.url)), '--candidate'],
+            [fileURLToPath(new URL('../ffmpeg/scripts/verify/verify-artifacts.mjs', import.meta.url)), '--candidate'],
             { stdio: 'inherit' }
         );
         const bytes = readFileSync(archivePath);
