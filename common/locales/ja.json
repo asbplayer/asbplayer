@@ -1,7 +1,7 @@
 {
     "action": {
         "cancel": "キャンセル",
-        "confirm": "Confirm",
+        "confirm": "確定",
         "close": "閉じる",
         "copy": "コピー",
         "delete": "削除",
@@ -10,7 +10,7 @@
         "downloadAudio": "音声をダウンロード",
         "downloadImage": "画像をダウンロード",
         "downloadSubtitlesAsSrt": "SRT 形式字幕をダウンロード",
-        "downloadSubtitleTimelineAsHtml": "Download subtitle timeline as HTML",
+        "downloadSubtitleTimelineAsHtml": "字幕タイムラインをHTML形式でダウンロード",
         "bulkExportSubtitles": "Ankiに字幕を一括エクスポート",
         "jumpTo": "ジャンプ",
         "ok": "OK",
@@ -38,9 +38,9 @@
         "search": "検索",
         "reload": "再読み込み",
         "findPlaceholder": "テキストまたは /regex/ で検索",
-        "approve": "Approve",
-        "deny": "Deny",
-        "remove": "Remove"
+        "approve": "承認",
+        "deny": "拒否",
+        "remove": "削除"
     },
     "about": {
         "title": "asbplayerについて",
@@ -55,7 +55,7 @@
         "none": "何もしない",
         "showAnkiDialog": "Anki のエクスポートウィンドウを開く",
         "updateLastCard": "最後のカードを更新する",
-        "showUpdateCardDialog": "Select cards to update",
+        "showUpdateCardDialog": "更新対象のカードを選択",
         "exportCard": "カードをエクスポート"
     },
     "postMinePlayback": {
@@ -69,9 +69,9 @@
         "inAndOut": "有効。マウスカーソルを外すと自動再生。"
     },
     "subtitleListTimestampDisplay": {
-        "hidden": "Hidden",
-        "start": "Start",
-        "startAndEnd": "Start and end"
+        "hidden": "非表示",
+        "start": "冒頭",
+        "startAndEnd": "冒頭と末尾"
     },
     "videoSubtitleSplitBehavior": {
         "autoMaximizeVideo": "ローカルビデオの自動拡大表示"
@@ -80,7 +80,7 @@
         "applySelection": "選択範囲を適用する",
         "audio": "音声",
         "audioFileLinkLost": "ブラウザページを更新したため、音声ファイルの参照先が失われました",
-        "audioCaptureFailed": "Audio capture failed",
+        "audioCaptureFailed": "音声キャプチャに失敗しました",
         "cannotUpdateAudio": "事前に録音されたため、音声クリップを更新できません",
         "copyToClipboard": "クリップボードにコピー",
         "definition": "詳細",
@@ -171,7 +171,7 @@
         "exportCard": "直接カードをAnkiにエクスポート。",
         "toggleSidePanel": "サイドパネルを開く/閉じる",
         "toggleRepeat": "リピートプレイバックオン/オフ",
-        "cycleAutoPauseResumeMode": "Cycle auto-pause resume mode",
+        "cycleAutoPauseResumeMode": "自動一時停止モードを切り替える",
         "toggleSubtitleVisibility": "Toggle when subtitles are shown",
         "moveBottomSubtitlesUp": "下の字幕を上へ移動",
         "moveBottomSubtitlesDown": "下の字幕を下へ移動",
