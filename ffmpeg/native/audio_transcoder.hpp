@@ -167,22 +167,32 @@ struct AudioTranscoder {
     }
 
     int append_converted(int samples, int64_t target) {
-        // Reconcile packet timestamps with the media timeline. Allow one timestamp tick of
-        // rounding (e.g. Matroska milliseconds), while retaining real offsets and gaps.
-        const int64_t tolerance = std::max<int64_t>(1, av_rescale_q(1, input_stream->time_base, encoder->time_base));
+        // Millisecond rounding can survive a remux into MP4's finer timestamp clock.
+        // Allow at least that much jitter, while retaining real offsets and gaps.
+        const int64_t tolerance = std::max<int64_t>(encoder->sample_rate / 1000,
+            av_rescale_q(1, input_stream->time_base, encoder->time_base));
         // Keep the sample clock through container timestamp rounding, including
         // DTS's 512-sample frames at 48 kHz and TrueHD/MLP's shorter frames.
-        if (source_position_known && std::abs(target - source_position) <= tolerance) target = source_position;
-        source_position = target + samples;
+        if (source_position_known) {
+            int64_t delta;
+            if (__builtin_sub_overflow(target, source_position, &delta)) return AVERROR_INVALIDDATA;
+            if (delta >= -tolerance && delta <= tolerance) target = source_position;
+        }
+        int64_t difference;
+        if (__builtin_add_overflow(target, static_cast<int64_t>(samples), &source_position) ||
+            __builtin_sub_overflow(target, written_samples, &difference)) {
+            return AVERROR_INVALIDDATA;
+        }
         source_position_known = true;
-        const int64_t difference = target - written_samples;
         if (difference > tolerance) {
             const int result = append_silence(difference);
             if (result < 0) return result;
         }
         // Trim samples preceding the media origin, even within one timestamp tick.
-        const int skip = target < 0 || difference < -tolerance
-            ? static_cast<int>(std::min<int64_t>(-difference, samples)) : 0;
+        int skip = 0;
+        if (target < 0 || difference < -tolerance) {
+            skip = difference <= -static_cast<int64_t>(samples) ? samples : static_cast<int>(-difference);
+        }
         trimmed_samples += skip;
         return append_samples(converted, skip, samples - skip);
     }
@@ -244,8 +254,15 @@ struct AudioTranscoder {
 
         int64_t target = source_position_known ? source_position : written_samples;
         if (decoded->best_effort_timestamp != AV_NOPTS_VALUE) {
-            target = av_rescale_q(decoded->best_effort_timestamp, input_stream->time_base, encoder->time_base) - origin
-                - av_rescale_q(delay, AVRational{1, resampler_sample_rate}, encoder->time_base);
+            const int64_t timestamp = av_rescale_q(decoded->best_effort_timestamp,
+                input_stream->time_base, encoder->time_base);
+            const int64_t delay_samples = av_rescale_q(delay, AVRational{1, resampler_sample_rate}, encoder->time_base);
+            // av_rescale_q returns INT64_MIN when the input cannot fit the output clock.
+            if (timestamp == AV_NOPTS_VALUE || delay_samples == AV_NOPTS_VALUE ||
+                __builtin_sub_overflow(timestamp, origin, &target) ||
+                __builtin_sub_overflow(target, delay_samples, &target)) {
+                return AVERROR_INVALIDDATA;
+            }
         }
         return append_converted(samples, target);
     }
@@ -369,10 +386,14 @@ struct AudioTranscoder {
     }
 
     int read_first_audio_packet() {
-        // Browser video retains positive presentation timestamps. Keep the origin at
-        // zero in that case so the audio includes the corresponding leading silence.
-        if (input->start_time != AV_NOPTS_VALUE) {
+        // Browser video keeps positive presentation timestamps and clips negative
+        // preroll. FFmpeg's container/stream start may instead be inferred from audio.
+        const bool has_video = std::any_of(input->streams, input->streams + input->nb_streams,
+            [](const AVStream* stream) { return stream->codecpar->codec_type == AVMEDIA_TYPE_VIDEO; });
+        // Audio-only inputs retain their existing normalization.
+        if (!has_video && input->start_time != AV_NOPTS_VALUE) {
             origin = std::min<int64_t>(0, av_rescale_q(input->start_time, AV_TIME_BASE_Q, encoder->time_base));
+            if (origin == AV_NOPTS_VALUE) return fail("Invalid audio timeline", AVERROR_INVALIDDATA);
         }
 
         int result;
@@ -383,15 +404,6 @@ struct AudioTranscoder {
                     if (stream != input_stream) stream->discard = AVDISCARD_ALL;
                 }
                 return 0;
-            }
-            const auto* stream = input->streams[packet->stream_index];
-            // Without video parsers, FFmpeg can leave a video's start time unset.
-            // Its leading packet timestamps still anchor delayed audio to the video timeline.
-            // A known start time already accounts for MP4 edits. Earlier discarded
-            // video packets are decode preroll and must not move that playback origin.
-            if (stream->codecpar->codec_type == AVMEDIA_TYPE_VIDEO && stream->start_time == AV_NOPTS_VALUE &&
-                !(packet->flags & AV_PKT_FLAG_DISCARD) && packet->pts != AV_NOPTS_VALUE) {
-                origin = std::min(origin, av_rescale_q(packet->pts, stream->time_base, encoder->time_base));
             }
             av_packet_unref(packet);
         }

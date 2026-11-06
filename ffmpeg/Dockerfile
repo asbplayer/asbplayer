@@ -70,7 +70,7 @@ ARG ASB_RUNTIME_VERSION
 ARG ASB_FFMPEG_VERSION
 RUN ASB_RUNTIME_VERSION="$ASB_RUNTIME_VERSION" ASB_FFMPEG_VERSION="$ASB_FFMPEG_VERSION" \
     node /src/asbplayer/scripts/runtime-smoke.mjs /output \
-    && node /src/asbplayer/scripts/runtime-audio.mjs /output
+    && timeout 120s node /src/asbplayer/scripts/runtime-audio.mjs /output
 
 FROM scratch AS runtime
 COPY --from=builder /output /

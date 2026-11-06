@@ -121,8 +121,9 @@ export const snapshotMiningAudio = async ({
     complete: boolean;
 }): Promise<MiningAudioSnapshot> => {
     if (!required) return {};
-    if (audio !== undefined && complete)
+    if (audio !== undefined && complete) {
         return { audio, durationMs: (await readWebmAudioDuration(audio)) * millisecondsPerSecond };
+    }
     const snapshot = audio === undefined ? undefined : await snapshotWebmAudio(audio);
     if (snapshot === undefined) return { durationMs: 0 };
     return { audio: snapshot.blob, durationMs: snapshot.durationMs };

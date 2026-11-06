@@ -11,9 +11,6 @@ const idCodecId = 0x86;
 
 const trackTypeAudio = 2;
 
-// Guards against walking forever through a file that isn't shaped the way we expect.
-const maxElements = 4096;
-
 const readCodecId = async (reader: ByteReader, element: EbmlElement) => {
     const codecId = await reader.ascii(element.dataOffset, element.dataSize);
     return codecId?.replace(/\0+$/, ''); // CodecIDs are zero-padded in some muxers' output.
@@ -60,8 +57,7 @@ const readTracks = async (reader: ByteReader, tracks: EbmlElement) => {
 export const matroskaAudioCodecIds = async (reader: ByteReader): Promise<string[] | undefined> => {
     let offset = 0;
     let limit = reader.size;
-    let elements = 0;
-    while (offset < limit && ++elements <= maxElements) {
+    while (offset < limit) {
         const element = await readEbmlElement(reader, offset, limit);
         if (element === undefined) return;
         if (element.id === idTracks) return readTracks(reader, element);

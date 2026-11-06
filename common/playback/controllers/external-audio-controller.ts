@@ -12,6 +12,7 @@ import { asbError, asbWarn } from '@project/common/util/log';
 const driftToleranceMs = 150;
 const resyncThresholdMs = 500;
 const driftCheckIntervalMs = 250;
+const seekToleranceMs = 25;
 
 export interface ExternalAudioTrack {
     readonly active: boolean;
@@ -106,9 +107,13 @@ export default class ExternalAudioController {
                 break;
             case 'seeking': {
                 const timestampMs = this.callbacks.videoState().currentTimeMs;
-                if (this.track.streaming && this.pendingPositionMs !== timestampMs) {
+                // Media clocks round timestamps, and seekWithNudge can advance the requested position slightly.
+                const restoringPosition =
+                    this.pendingPositionMs !== undefined &&
+                    Math.abs(this.pendingPositionMs - timestampMs) <= seekToleranceMs;
+                if (this.track.streaming && !restoringPosition) {
                     const targetMs = clampAudioSeekMs(timestampMs, this.callbacks.audioState().buffered);
-                    if (Math.abs(targetMs - timestampMs) > 25) {
+                    if (Math.abs(targetMs - timestampMs) > seekToleranceMs) {
                         void this.callbacks.seek(targetMs).catch((error: unknown) => this.callbacks.onError(error));
                     }
                     this.pendingPositionMs = undefined;

@@ -47,6 +47,14 @@ const checkTone = (audio, start, end, label) => {
     assert.ok(Math.abs(frequency - toneHz) < 5, `${label}: expected ${toneHz} Hz, got ${frequency} Hz`);
 };
 
+const maximumSampleStep = (audio, start, end) => {
+    let maximum = 0;
+    for (let index = Math.round(start * sampleRate) + 1; index < Math.round(end * sampleRate); ++index) {
+        maximum = Math.max(maximum, Math.abs(audio[index * channels] - audio[(index - 1) * channels]));
+    }
+    return maximum;
+};
+
 try {
     const wasmBytes = await readFile(join(runtimeRoot, 'ffmpeg-core.wasm'));
     const { default: createRuntime } = await import(pathToFileURL(join(runtimeRoot, 'ffmpeg-core.js')).href);
@@ -142,7 +150,102 @@ try {
     const offsetDuration = offsetReference.length / Float32Array.BYTES_PER_ELEMENT / channels / sampleRate;
     assert.ok(Math.abs(offsetAudio.duration - offsetDuration) < 0.001, 'positive MP4 start: timeline duration');
 
-    // The packet-origin fallback is still needed for delayed Matroska audio.
+    // H.264 probing can infer a negative video start from audio. Neither that nor
+    // actual negative video preroll may rebase the browser's clock: the beep is at 0.5 s.
+    for (const [name, videoFilter] of [
+        ['negative-audio', 'null'],
+        ['negative-audio-and-video', 'setpts=PTS-0.5/TB'],
+    ]) {
+        const negativeAudio = join(root, `${name}.mkv`);
+        ffmpeg(
+            '-f',
+            'lavfi',
+            '-i',
+            'color=c=black:s=32x32:r=25:d=4',
+            '-f',
+            'lavfi',
+            '-i',
+            `aevalsrc='if(between(t,1,1.5),0.1*sin(2*PI*${toneHz}*t),0)':s=${sampleRate}:d=4`,
+            '-af',
+            'asetpts=PTS-0.5/TB',
+            '-vf',
+            videoFilter,
+            '-c:v',
+            'libx264',
+            '-c:a',
+            'ac3',
+            '-avoid_negative_ts',
+            'disabled',
+            negativeAudio
+        );
+        const negativeResult = await transcode(negativeAudio);
+        assert.ok(
+            negativeResult.audio.subarray(0, 0.4 * sampleRate * channels).every((sample) => Math.abs(sample) < 0.001)
+        );
+        checkTone(negativeResult.audio, 0.6, 0.85, `${name}: beep on video clock`);
+        const negativeReference = ffmpeg(
+            '-copyts',
+            '-i',
+            negativeAudio,
+            '-map',
+            '0:a:0',
+            '-af',
+            'aresample=async=1:first_pts=0',
+            '-ac',
+            `${channels}`,
+            '-ar',
+            `${sampleRate}`,
+            '-f',
+            'f32le',
+            '-'
+        );
+        const negativeDuration = negativeReference.length / Float32Array.BYTES_PER_ELEMENT / channels / sampleRate;
+        assert.ok(
+            Math.abs(negativeResult.duration - negativeDuration) < 0.001,
+            `${name}: trimmed duration within the millisecond timestamp precision`
+        );
+    }
+
+    // A lossless remux preserves Matroska's rounded timestamps even when MP4 uses
+    // a finer time base. A steady tone must not acquire repeated silence/trim splices.
+    const rounded = join(root, 'rounded-eac3.mkv');
+    ffmpeg(
+        '-f',
+        'lavfi',
+        '-i',
+        'color=c=black:s=32x32:r=25:d=6',
+        '-itsoffset',
+        '0.7',
+        '-f',
+        'lavfi',
+        '-i',
+        `sine=frequency=${toneHz}:sample_rate=44100:duration=6`,
+        '-c:v',
+        'mpeg4',
+        '-c:a',
+        'eac3',
+        rounded
+    );
+    const remuxed = join(root, 'rounded-eac3.mp4');
+    ffmpeg('-i', rounded, '-c', 'copy', remuxed);
+    assert.deepEqual(
+        ffmpeg('-i', rounded, '-map', '0:a:0', '-c:a', 'copy', '-f', 'eac3', '-'),
+        ffmpeg('-i', remuxed, '-map', '0:a:0', '-c:a', 'copy', '-f', 'eac3', '-'),
+        'remux fixture preserves encoded audio packets'
+    );
+    const roundedResult = await transcode(rounded);
+    const remuxedResult = await transcode(remuxed);
+    checkTone(remuxedResult.audio, 1, 5, 'remuxed timestamp rounding');
+    assert.ok(
+        maximumSampleStep(remuxedResult.audio, 1, 5) < 2 * maximumSampleStep(roundedResult.audio, 1, 5),
+        'remuxed timestamps must not introduce discontinuities into a steady tone'
+    );
+    assert.ok(
+        remuxedResult.audio.subarray(0, 0.6 * sampleRate * channels).every((sample) => Math.abs(sample) < 0.001),
+        'remuxed timestamp rounding retains the real leading offset'
+    );
+
+    // Delayed Matroska audio still needs its leading silence on the video clock.
     const delayed = join(root, 'delayed.mkv');
     ffmpeg(
         '-f',
@@ -287,6 +390,31 @@ try {
     checkTone(damaged.audio, 0.5, 2, 'before corrupt frames');
     checkTone(damaged.audio, 4.5, 5.5, 'after corrupt frames');
 
+    // A corrupt cluster clock used to overflow the sample timestamp and loop
+    // inserting silence. Keep the EBML sizes unchanged so demuxing reaches it.
+    const invalidClock = await readFile(intact);
+    const scale = invalidClock.indexOf(Buffer.from([0x2a, 0xd7, 0xb1, 0x83, 0x0f, 0x42, 0x40]));
+    assert.ok(scale >= 0, 'fixture has the default millisecond TimestampScale');
+    invalidClock.set([0x3d, 0x09, 0x00], scale + 4); // Four milliseconds per tick.
+    const cluster = invalidClock.indexOf(Buffer.from([0x1f, 0x43, 0xb6, 0x75]));
+    assert.ok(cluster >= 0, 'fixture has a Cluster');
+    let sizeBytes = 1;
+    while (sizeBytes <= 8 && !(invalidClock[cluster + 4] & (0x80 >> (sizeBytes - 1)))) ++sizeBytes;
+    assert.ok(sizeBytes <= 8, 'fixture has a valid Cluster size');
+    const clock = cluster + 4 + sizeBytes;
+    assert.deepEqual([...invalidClock.subarray(clock, clock + 2)], [0xbf, 0x84], 'fixture Cluster starts with CRC-32');
+    assert.deepEqual([...invalidClock.subarray(clock + 6, clock + 9)], [0xe7, 0x81, 0], 'fixture starts at zero');
+    invalidClock.set([0xe7, 0x87, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff], clock);
+    module.asbReadInput = (offset, pointer, length) => {
+        const bytes = invalidClock.subarray(offset, offset + length);
+        module.HEAPU8.set(bytes, pointer);
+        return bytes.length;
+    };
+    module.asbWriteOutput = (_pointer, length) => length;
+    assert.equal(module._asb_transcode_audio(invalidClock.length, 0), -1, 'unrepresentable sample clock is rejected');
+    assert.match(module.UTF8ToString(module._asb_last_error()), /Invalid data/, 'invalid clock reports a native error');
+    checkSampleCount(await transcode(intact), undamaged.audio.length / channels, 'recovery after invalid timestamps');
+
     // This short 44.1 kHz stream requires both resampler draining and a partial
     // final Opus frame. Millisecond tolerances would hide the lost resampler tail.
     const tailRaw = join(root, 'resampler-tail.ac3');
@@ -317,7 +445,7 @@ try {
     );
 
     process.stdout.write(
-        'WASM audio regressions passed: MP4 preroll/positive start, Matroska offset, AC3 layout/rate changes, DTS/TrueHD timestamp rounding, corrupt frames, resampler/Opus finalization\n'
+        'WASM audio regressions passed: MP4 preroll/positive start, negative audio preroll, remuxed timestamp rounding, Matroska offset, AC3 layout/rate changes, DTS/TrueHD timestamp rounding, corrupt frames/timestamps, resampler/Opus finalization\n'
     );
 } finally {
     await rm(root, { recursive: true, force: true });

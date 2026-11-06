@@ -55,8 +55,9 @@ const download = async (archive: FfmpegRuntimeArchive, fetcher: typeof fetch, si
             bytes.set(value, received);
             received += value.byteLength;
         }
-        if (received !== bytes.byteLength)
+        if (received !== bytes.byteLength) {
             throw new Error('FFmpeg runtime archive size check failed. Update or reload asbplayer and retry.');
+        }
     } finally {
         signal.removeEventListener('abort', cancelRead);
         await reader.cancel().catch(() => {});

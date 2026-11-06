@@ -150,6 +150,21 @@ it('retains the current position while a reconstructed stream catches up', () =>
     expect(h.video.paused).toBe(false);
 });
 
+it.each([0, 10])('retains a restored position with media clock rounding and a %i ms seek nudge', (nudgeMs) => {
+    const h = harness();
+    h.available(10_000);
+    const restoredMs = 64_001;
+    h.controller.clampSeekMs(restoredMs, { restorePlaybackPosition: true });
+    h.video.currentTimeMs = (restoredMs / 1000) * 1000 + nudgeMs;
+    h.controller.videoEvent('seeking');
+    h.controller.videoEvent('seeked');
+    expect(h.seeks).toEqual([]);
+    expect(h.video.paused).toBe(true);
+    h.available(70_000);
+    expect(h.audio.currentTimeMs).toBeCloseTo(restoredMs + nudgeMs);
+    expect(h.video.paused).toBe(false);
+});
+
 it('continues video after completed audio EOF and restarts audio on a backward seek', () => {
     const h = harness({ streaming: false });
     h.audio.durationMs = 3_000;
