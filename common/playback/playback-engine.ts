@@ -227,6 +227,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
     private autoPauseTimestampMs?: number;
     private readonly settingsProvider: SettingsProvider;
     private unbindOperationId = 0;
+    private pauseOperationId = 0;
     private settingsChangedOperationId = 0;
     private lastProfile?: string;
     private settingsInitialization?: {
@@ -1262,11 +1263,21 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
 
     private pause({ forBuffering = false }: { readonly forBuffering?: boolean } = {}): void {
         if (!forBuffering) this.externalAudioController.pauseRequested();
+        ++this.pauseOperationId;
         this.callbacks.pause();
     }
 
-    private play(): Promise<void> {
-        return this.callbacks.play();
+    private async play(): Promise<void> {
+        const pauseOperationId = this.pauseOperationId;
+        try {
+            await this.callbacks.play();
+        } catch (error) {
+            if (error instanceof Error && error.name === 'AbortError' && pauseOperationId !== this.pauseOperationId) {
+                asbTrace('playback/player', 'Video play interrupted by a requested pause', { error });
+                return;
+            }
+            throw error;
+        }
     }
 
     async seek(timestampMs: number, options?: PlaybackSeekOptions): Promise<void> {

@@ -3398,8 +3398,7 @@ describe('PlaybackEngine', () => {
                 hiddenSubtitleIndexes: [0],
             });
 
-            jest.advanceTimersByTime(300);
-            await Promise.resolve();
+            await jest.advanceTimersByTimeAsync(300);
 
             expect(harness.driver.paused()).toBe(true);
             expect(harness.playbackStates.at(-1)?.showingSubtitleIndexes).toEqual([]);
@@ -3733,6 +3732,7 @@ describe('external audio playback', () => {
     let engine: PlaybackEngine<IndexedSubtitleModel>;
     let initialSubtitles: IndexedSubtitleModel[];
     let initialized: boolean;
+    let onPlaybackError: jest.Mock<(error: unknown) => void>;
     let requestPlayback: ((paused: boolean) => void) | undefined;
     const createEngine = () =>
         new PlaybackEngine<IndexedSubtitleModel>({
@@ -3811,7 +3811,7 @@ describe('external audio playback', () => {
                 playbackModesChanged: () => {},
                 initialPlaybackSettingsChanged: () => {},
                 onError: (error) => {
-                    throw error;
+                    onPlaybackError(error);
                 },
             },
         });
@@ -3821,6 +3821,9 @@ describe('external audio playback', () => {
     };
     beforeEach(() => {
         initialized = false;
+        onPlaybackError = jest.fn((error) => {
+            throw error;
+        });
         video = document.createElement('video');
         audio = document.createElement('audio');
         videoPaused = false;
@@ -3900,6 +3903,41 @@ describe('external audio playback', () => {
         expect(videoPaused).toBe(true);
         expect(audioPaused).toBe(true);
     });
+
+    it('resumes after an internal audio hold without reporting the interrupted video play as an error', async () => {
+        await render();
+        onPlaybackError.mockImplementation(() => {});
+        let rejectPlay!: (error: unknown) => void;
+        jest.mocked(video.play).mockImplementationOnce(() => {
+            const pending = new Promise<void>((_resolve, reject) => {
+                rejectPlay = reject;
+            });
+            videoPaused = false;
+            video.dispatchEvent(new Event('play'));
+            return pending;
+        });
+        await settle(() => requestPlayback!(false));
+        expect(videoPaused).toBe(true);
+
+        // The browser may deliver the old rejection after the controller has already resumed playback.
+        await available(10);
+        await settle(() => rejectPlay(new DOMException('Interrupted by pause', 'AbortError')));
+        expect(onPlaybackError).not.toHaveBeenCalled();
+        expect(videoPaused).toBe(false);
+        expect(audioPaused).toBe(false);
+    });
+
+    it.each(['AbortError', 'NotAllowedError', 'NotSupportedError'])(
+        'still reports a video %s when no engine pause interrupted the play request',
+        async (name) => {
+            await render({ active: false });
+            onPlaybackError.mockImplementation(() => {});
+            const error = new DOMException('Playback failed', name);
+            jest.mocked(video.play).mockRejectedValueOnce(error);
+            await settle(() => requestPlayback!(false));
+            expect(onPlaybackError).toHaveBeenCalledWith(error);
+        }
+    );
 
     it('keeps converted audio active when subtitle playback is disabled', async () => {
         initialSubtitles = [makeSubtitle(0, 120_000, 0)];

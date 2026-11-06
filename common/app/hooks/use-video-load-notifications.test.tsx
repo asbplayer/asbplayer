@@ -9,6 +9,7 @@ let root: Root;
 let container: HTMLDivElement;
 let video: HTMLVideoElement | undefined;
 let readyState: number;
+let networkState: number;
 let error: MediaError | null;
 
 const Harness = ({ source = 'blob:video', conversionActive = false }) => {
@@ -39,9 +40,11 @@ beforeEach(() => {
     root = createRoot(container);
     video = document.createElement('video');
     readyState = HTMLMediaElement.HAVE_NOTHING;
+    networkState = HTMLMediaElement.NETWORK_LOADING;
     error = null;
     Object.defineProperties(video, {
         readyState: { get: () => readyState },
+        networkState: { get: () => networkState },
         error: { get: () => error },
     });
 });
@@ -149,16 +152,16 @@ it.each([0, 3_000, 10_000])('clears notices on a video error after %s ms', async
     expect(notices()).toEqual({ loading: false, conversion: false });
 });
 
-it('starts timing a new load even when the element initially has the previous file ready', async () => {
+it('times a new video load without reviving an expired conversion notice', async () => {
     readyState = HTMLMediaElement.HAVE_ENOUGH_DATA;
     await render({ conversionActive: true });
     await advance(5_000);
     expect(notices()).toEqual({ loading: false, conversion: false });
     readyState = HTMLMediaElement.HAVE_NOTHING;
     await event('loadstart');
-    expect(notices()).toEqual({ loading: false, conversion: true });
+    expect(notices()).toEqual({ loading: false, conversion: false });
     await advance(3_000);
-    expect(notices()).toEqual({ loading: true, conversion: true });
+    expect(notices()).toEqual({ loading: true, conversion: false });
 });
 
 it('checks current readiness when a browser has already decoded a frame without delivering its event', async () => {
@@ -190,4 +193,53 @@ it('waits for a video element before starting either notice', async () => {
     await render({ conversionActive: true });
     await advance(3_000);
     expect(notices()).toEqual({ loading: true, conversion: true });
+});
+
+it('waits for actual loading before detecting a delay and does not restart conversion feedback on delayed Play', async () => {
+    networkState = HTMLMediaElement.NETWORK_EMPTY;
+    await render({ conversionActive: true });
+    expect(notices()).toEqual({ loading: false, conversion: true });
+    await advance(4_999);
+    expect(notices()).toEqual({ loading: false, conversion: true });
+    await advance(1);
+    expect(notices()).toEqual({ loading: false, conversion: false });
+    await advance(15_000);
+    expect(notices()).toEqual({ loading: false, conversion: false });
+
+    networkState = HTMLMediaElement.NETWORK_LOADING;
+    await event('loadstart');
+    expect(notices()).toEqual({ loading: false, conversion: false });
+    await advance(200);
+    await ready();
+    await advance(10_000);
+    expect(notices()).toEqual({ loading: false, conversion: false });
+});
+
+it('still detects a genuinely slow load that starts after the conversion notice expires', async () => {
+    networkState = HTMLMediaElement.NETWORK_EMPTY;
+    await render({ conversionActive: true });
+    await advance(20_000);
+    networkState = HTMLMediaElement.NETWORK_LOADING;
+    await event('loadstart');
+    await advance(2_999);
+    expect(notices()).toEqual({ loading: false, conversion: false });
+    await advance(1);
+    expect(notices()).toEqual({ loading: true, conversion: false });
+    await advance(20_000);
+    expect(notices()).toEqual({ loading: true, conversion: false });
+    await ready();
+    expect(notices()).toEqual({ loading: false, conversion: false });
+});
+
+it('detects an already-started idle load with no metadata instead of treating it as deferred playback', async () => {
+    networkState = HTMLMediaElement.NETWORK_IDLE;
+    await render({ conversionActive: true });
+    await advance(3_000);
+    expect(notices()).toEqual({ loading: true, conversion: true });
+    await advance(7_000);
+    expect(notices()).toEqual({ loading: true, conversion: false });
+    await advance(54_000);
+    expect(notices().loading).toBe(true);
+    await ready();
+    expect(notices().loading).toBe(false);
 });
