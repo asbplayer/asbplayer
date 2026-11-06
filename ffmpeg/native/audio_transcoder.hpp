@@ -9,6 +9,7 @@
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
+#include <string>
 
 extern "C" {
 #include <libavcodec/avcodec.h>
@@ -67,65 +68,67 @@ struct AudioTranscoder {
 
     ~AudioTranscoder() {
         char message[256] = {};
-        if (decoder_errors > 0) {
+        if (this->decoder_errors > 0) {
             std::snprintf(message, sizeof(message), "Tolerated %lld audio decoder errors",
-                          static_cast<long long>(decoder_errors));
+                          static_cast<long long>(this->decoder_errors));
             runtime_diagnostic(DiagnosticLevel::warning, message);
         }
-        if (silence_samples > 0 || trimmed_samples > 0) {
+        if (this->silence_samples > 0 || this->trimmed_samples > 0) {
             std::snprintf(message, sizeof(message),
                           "Audio timeline at 48000 Hz: inserted %lld silence samples, trimmed %lld samples",
-                          static_cast<long long>(silence_samples), static_cast<long long>(trimmed_samples));
+                          static_cast<long long>(this->silence_samples), static_cast<long long>(this->trimmed_samples));
             runtime_diagnostic(DiagnosticLevel::trace, message);
         }
-        if (output != nullptr && output->pb != nullptr) {
-            av_freep(&output->pb->buffer);
-            avio_context_free(&output->pb);
+        if (this->output != nullptr && this->output->pb != nullptr) {
+            av_freep(&this->output->pb->buffer);
+            avio_context_free(&this->output->pb);
         }
-        av_packet_free(&encoded_packet);
-        av_packet_free(&packet);
-        av_frame_free(&encoded);
-        av_frame_free(&converted);
-        av_frame_free(&decoded);
-        av_audio_fifo_free(fifo);
-        swr_free(&resampler);
-        av_channel_layout_uninit(&resampler_layout);
-        avcodec_free_context(&encoder);
-        avcodec_free_context(&decoder);
-        avformat_free_context(output);
-        if (input != nullptr) {
-            input->pb = nullptr;
-            avformat_close_input(&input);
+        av_packet_free(&this->encoded_packet);
+        av_packet_free(&this->packet);
+        av_frame_free(&this->encoded);
+        av_frame_free(&this->converted);
+        av_frame_free(&this->decoded);
+        av_audio_fifo_free(this->fifo);
+        swr_free(&this->resampler);
+        av_channel_layout_uninit(&this->resampler_layout);
+        avcodec_free_context(&this->encoder);
+        avcodec_free_context(&this->decoder);
+        avformat_free_context(this->output);
+        if (this->input != nullptr) {
+            this->input->pb = nullptr;
+            avformat_close_input(&this->input);
         }
-        if (input_io != nullptr) {
-            av_freep(&input_io->buffer);
-            avio_context_free(&input_io);
+        if (this->input_io != nullptr) {
+            av_freep(&this->input_io->buffer);
+            avio_context_free(&this->input_io);
         }
     }
 
     int drain_encoder() {
         int result;
-        while ((result = avcodec_receive_packet(encoder, encoded_packet)) >= 0) {
-            av_packet_rescale_ts(encoded_packet, encoder->time_base, output->streams[0]->time_base);
-            encoded_packet->stream_index = 0;
-            result = av_interleaved_write_frame(output, encoded_packet);
-            av_packet_unref(encoded_packet);
+        while ((result = avcodec_receive_packet(this->encoder, this->encoded_packet)) >= 0) {
+            av_packet_rescale_ts(this->encoded_packet, this->encoder->time_base, this->output->streams[0]->time_base);
+            this->encoded_packet->stream_index = 0;
+            result = av_interleaved_write_frame(this->output, this->encoded_packet);
+            av_packet_unref(this->encoded_packet);
             if (result < 0) return result;
         }
         return result == AVERROR(EAGAIN) || result == AVERROR_EOF ? 0 : result;
     }
 
     int encode_pending(bool final = false) {
-        while (av_audio_fifo_size(fifo) >= encoder->frame_size || (final && av_audio_fifo_size(fifo) > 0)) {
-            const int samples = std::min(av_audio_fifo_size(fifo), encoder->frame_size);
-            int result = prepare_frame(encoded, encoder, samples);
+        while (av_audio_fifo_size(this->fifo) >= this->encoder->frame_size ||
+               (final && av_audio_fifo_size(this->fifo) > 0)) {
+            const int samples = std::min(av_audio_fifo_size(this->fifo), this->encoder->frame_size);
+            int result = prepare_frame(this->encoded, this->encoder, samples);
             if (result < 0) return result;
-            if (av_audio_fifo_read(fifo, reinterpret_cast<void**>(encoded->extended_data), samples) != samples) {
+            if (av_audio_fifo_read(this->fifo, reinterpret_cast<void**>(this->encoded->extended_data), samples) !=
+                samples) {
                 return AVERROR(EIO);
             }
-            encoded->pts = next_pts;
-            next_pts += samples;
-            result = avcodec_send_frame(encoder, encoded);
+            this->encoded->pts = this->next_pts;
+            this->next_pts += samples;
+            result = avcodec_send_frame(this->encoder, this->encoded);
             if (result < 0) return result;
             result = drain_encoder();
             if (result < 0) return result;
@@ -135,31 +138,31 @@ struct AudioTranscoder {
 
     int append_samples(AVFrame* frame, int offset, int count) {
         if (count == 0) return 0;
-        const int channels = encoder->ch_layout.nb_channels;
-        const bool planar = av_sample_fmt_is_planar(encoder->sample_fmt);
-        const int stride = av_get_bytes_per_sample(encoder->sample_fmt) * (planar ? 1 : channels);
+        const int channels = this->encoder->ch_layout.nb_channels;
+        const bool planar = av_sample_fmt_is_planar(this->encoder->sample_fmt);
+        const int stride = av_get_bytes_per_sample(this->encoder->sample_fmt) * (planar ? 1 : channels);
         uint8_t* planes[AV_NUM_DATA_POINTERS] = {};
         for (int channel = 0; channel < (planar ? channels : 1); ++channel) {
             planes[channel] = frame->extended_data[channel] + offset * stride;
         }
-        int result = av_audio_fifo_realloc(fifo, av_audio_fifo_size(fifo) + count);
+        int result = av_audio_fifo_realloc(this->fifo, av_audio_fifo_size(this->fifo) + count);
         if (result < 0) return result;
-        if (av_audio_fifo_write(fifo, reinterpret_cast<void**>(planes), count) != count) return AVERROR(EIO);
-        written_samples += count;
+        if (av_audio_fifo_write(this->fifo, reinterpret_cast<void**>(planes), count) != count) return AVERROR(EIO);
+        this->written_samples += count;
         return encode_pending();
     }
 
     int append_silence(int64_t samples) {
         while (samples > 0) {
-            const int count = static_cast<int>(std::min<int64_t>(samples, encoder->frame_size));
-            int result = prepare_frame(encoded, encoder, count);
+            const int count = static_cast<int>(std::min<int64_t>(samples, this->encoder->frame_size));
+            int result = prepare_frame(this->encoded, this->encoder, count);
             if (result < 0) return result;
-            result = av_samples_set_silence(encoded->extended_data, 0, count, encoder->ch_layout.nb_channels,
-                                           encoder->sample_fmt);
+            result = av_samples_set_silence(this->encoded->extended_data, 0, count,
+                                           this->encoder->ch_layout.nb_channels, this->encoder->sample_fmt);
             if (result < 0) return result;
-            const int64_t before = written_samples;
-            result = append_samples(encoded, 0, count);
-            silence_samples += written_samples - before;
+            const int64_t before = this->written_samples;
+            result = append_samples(this->encoded, 0, count);
+            this->silence_samples += this->written_samples - before;
             if (result < 0) return result;
             samples -= count;
         }
@@ -169,21 +172,21 @@ struct AudioTranscoder {
     int append_converted(int samples, int64_t target) {
         // Millisecond rounding can survive a remux into MP4's finer timestamp clock.
         // Allow at least that much jitter, while retaining real offsets and gaps.
-        const int64_t tolerance = std::max<int64_t>(encoder->sample_rate / 1000,
-            av_rescale_q(1, input_stream->time_base, encoder->time_base));
+        const int64_t tolerance = std::max<int64_t>(this->encoder->sample_rate / 1000,
+            av_rescale_q(1, this->input_stream->time_base, this->encoder->time_base));
         // Keep the sample clock through container timestamp rounding, including
         // DTS's 512-sample frames at 48 kHz and TrueHD/MLP's shorter frames.
-        if (source_position_known) {
+        if (this->source_position_known) {
             int64_t delta;
-            if (__builtin_sub_overflow(target, source_position, &delta)) return AVERROR_INVALIDDATA;
-            if (delta >= -tolerance && delta <= tolerance) target = source_position;
+            if (__builtin_sub_overflow(target, this->source_position, &delta)) return AVERROR_INVALIDDATA;
+            if (delta >= -tolerance && delta <= tolerance) target = this->source_position;
         }
         int64_t difference;
-        if (__builtin_add_overflow(target, static_cast<int64_t>(samples), &source_position) ||
-            __builtin_sub_overflow(target, written_samples, &difference)) {
+        if (__builtin_add_overflow(target, static_cast<int64_t>(samples), &this->source_position) ||
+            __builtin_sub_overflow(target, this->written_samples, &difference)) {
             return AVERROR_INVALIDDATA;
         }
-        source_position_known = true;
+        this->source_position_known = true;
         if (difference > tolerance) {
             const int result = append_silence(difference);
             if (result < 0) return result;
@@ -193,73 +196,77 @@ struct AudioTranscoder {
         if (target < 0 || difference < -tolerance) {
             skip = difference <= -static_cast<int64_t>(samples) ? samples : static_cast<int>(-difference);
         }
-        trimmed_samples += skip;
-        return append_samples(converted, skip, samples - skip);
+        this->trimmed_samples += skip;
+        return append_samples(this->converted, skip, samples - skip);
     }
 
     int drain_resampler() {
-        if (resampler == nullptr) return 0;
+        if (this->resampler == nullptr) return 0;
         while (true) {
-            const int capacity = static_cast<int>(swr_get_delay(resampler, encoder->sample_rate));
+            const int capacity = static_cast<int>(swr_get_delay(this->resampler, this->encoder->sample_rate));
             if (capacity <= 0) return 0;
-            int result = prepare_frame(converted, encoder, capacity);
+            int result = prepare_frame(this->converted, this->encoder, capacity);
             if (result < 0) return result;
-            const int samples = swr_convert(resampler, converted->extended_data, capacity, nullptr, 0);
+            const int samples = swr_convert(this->resampler, this->converted->extended_data, capacity, nullptr, 0);
             if (samples <= 0) return samples;
-            result = append_converted(samples, source_position_known ? source_position : written_samples);
+            result = append_converted(samples,
+                this->source_position_known ? this->source_position : this->written_samples);
             if (result < 0) return result;
         }
     }
 
     int configure_resampler() {
-        if (resampler != nullptr && resampler_sample_rate == decoded->sample_rate &&
-            resampler_format == decoded->format && av_channel_layout_compare(&resampler_layout, &decoded->ch_layout) == 0) {
+        if (this->resampler != nullptr && this->resampler_sample_rate == this->decoded->sample_rate &&
+            this->resampler_format == this->decoded->format &&
+            av_channel_layout_compare(&this->resampler_layout, &this->decoded->ch_layout) == 0) {
             return 0;
         }
 
         // Drain the previous format before replacing its resampler, retaining its sample clock.
         int result = drain_resampler();
         if (result < 0) return result;
-        swr_free(&resampler);
-        av_channel_layout_uninit(&resampler_layout);
-        result = av_channel_layout_copy(&resampler_layout, &decoded->ch_layout);
+        swr_free(&this->resampler);
+        av_channel_layout_uninit(&this->resampler_layout);
+        result = av_channel_layout_copy(&this->resampler_layout, &this->decoded->ch_layout);
         if (result < 0) return result;
-        resampler_format = static_cast<AVSampleFormat>(decoded->format);
-        resampler_sample_rate = decoded->sample_rate;
+        this->resampler_format = static_cast<AVSampleFormat>(this->decoded->format);
+        this->resampler_sample_rate = this->decoded->sample_rate;
         char layout[128] = {};
-        av_channel_layout_describe(&resampler_layout, layout, sizeof(layout));
-        const char* sample_format = av_get_sample_fmt_name(resampler_format);
+        av_channel_layout_describe(&this->resampler_layout, layout, sizeof(layout));
+        const char* sample_format = av_get_sample_fmt_name(this->resampler_format);
         char message[512] = {};
         std::snprintf(message, sizeof(message),
                       "Decoded audio format: codec=%s, sample_rate=%d, sample_format=%s, channel_layout=%s",
-                      avcodec_get_name(decoder->codec_id), resampler_sample_rate,
+                      avcodec_get_name(this->decoder->codec_id), this->resampler_sample_rate,
                       sample_format != nullptr ? sample_format : "unknown", layout);
         runtime_diagnostic(DiagnosticLevel::trace, message);
-        result = swr_alloc_set_opts2(&resampler, &encoder->ch_layout, encoder->sample_fmt, encoder->sample_rate,
-            &resampler_layout, resampler_format, resampler_sample_rate, 0, nullptr);
-        return result < 0 ? result : swr_init(resampler);
+        result = swr_alloc_set_opts2(&this->resampler, &this->encoder->ch_layout, this->encoder->sample_fmt,
+            this->encoder->sample_rate, &this->resampler_layout, this->resampler_format,
+            this->resampler_sample_rate, 0, nullptr);
+        return result < 0 ? result : swr_init(this->resampler);
     }
 
     int convert_frame() {
         int result = configure_resampler();
         if (result < 0) return result;
-        const int64_t delay = swr_get_delay(resampler, resampler_sample_rate);
-        const int capacity = static_cast<int>(av_rescale_rnd(delay + decoded->nb_samples,
-            encoder->sample_rate, resampler_sample_rate, AV_ROUND_UP));
-        result = prepare_frame(converted, encoder, capacity);
+        const int64_t delay = swr_get_delay(this->resampler, this->resampler_sample_rate);
+        const int capacity = static_cast<int>(av_rescale_rnd(delay + this->decoded->nb_samples,
+            this->encoder->sample_rate, this->resampler_sample_rate, AV_ROUND_UP));
+        result = prepare_frame(this->converted, this->encoder, capacity);
         if (result < 0) return result;
-        const int samples = swr_convert(resampler, converted->extended_data, capacity,
-            const_cast<const uint8_t**>(decoded->extended_data), decoded->nb_samples);
+        const int samples = swr_convert(this->resampler, this->converted->extended_data, capacity,
+            const_cast<const uint8_t**>(this->decoded->extended_data), this->decoded->nb_samples);
         if (samples <= 0) return samples;
 
-        int64_t target = source_position_known ? source_position : written_samples;
-        if (decoded->best_effort_timestamp != AV_NOPTS_VALUE) {
-            const int64_t timestamp = av_rescale_q(decoded->best_effort_timestamp,
-                input_stream->time_base, encoder->time_base);
-            const int64_t delay_samples = av_rescale_q(delay, AVRational{1, resampler_sample_rate}, encoder->time_base);
+        int64_t target = this->source_position_known ? this->source_position : this->written_samples;
+        if (this->decoded->best_effort_timestamp != AV_NOPTS_VALUE) {
+            const int64_t timestamp = av_rescale_q(this->decoded->best_effort_timestamp,
+                this->input_stream->time_base, this->encoder->time_base);
+            const int64_t delay_samples = av_rescale_q(delay, AVRational{1, this->resampler_sample_rate},
+                this->encoder->time_base);
             // av_rescale_q returns INT64_MIN when the input cannot fit the output clock.
             if (timestamp == AV_NOPTS_VALUE || delay_samples == AV_NOPTS_VALUE ||
-                __builtin_sub_overflow(timestamp, origin, &target) ||
+                __builtin_sub_overflow(timestamp, this->origin, &target) ||
                 __builtin_sub_overflow(target, delay_samples, &target)) {
                 return AVERROR_INVALIDDATA;
             }
@@ -270,13 +277,13 @@ struct AudioTranscoder {
     // Like the ffmpeg CLI, skip corrupt input: the next frame's timestamp fills its gap with silence.
     int tolerate_decode_error(int result) {
         if (result == AVERROR(ENOMEM)) return result;
-        ++decoder_errors;
+        ++this->decoder_errors;
         return 0;
     }
 
     int receive_frames() {
         while (true) {
-            int result = avcodec_receive_frame(decoder, decoded);
+            int result = avcodec_receive_frame(this->decoder, this->decoded);
             if (result == AVERROR(EAGAIN) || result == AVERROR_EOF) return 0;
             result = result < 0 ? tolerate_decode_error(result) : convert_frame();
             if (result < 0) return result;
@@ -284,7 +291,7 @@ struct AudioTranscoder {
     }
 
     int finish() {
-        int result = avcodec_send_packet(decoder, nullptr);
+        int result = avcodec_send_packet(this->decoder, nullptr);
         if (result < 0 && result != AVERROR_EOF) return result;
         result = receive_frames();
         if (result < 0) return result;
@@ -292,35 +299,36 @@ struct AudioTranscoder {
         if (result < 0) return result;
         result = encode_pending(true);
         if (result < 0) return result;
-        result = avcodec_send_frame(encoder, nullptr);
+        result = avcodec_send_frame(this->encoder, nullptr);
         if (result < 0) return result;
         result = drain_encoder();
-        return result < 0 ? result : av_write_trailer(output);
+        return result < 0 ? result : av_write_trailer(this->output);
     }
     // Each stage returns 0 or the result of fail(), leaving partially created resources to the destructor.
 
     int open_input(InputBuffer* input_buffer) {
         auto* io_buffer = static_cast<uint8_t*>(av_malloc(io_buffer_bytes));
         if (io_buffer == nullptr) return fail("Unable to allocate FFmpeg input buffer", AVERROR(ENOMEM));
-        input_io = avio_alloc_context(io_buffer, io_buffer_bytes, 0, input_buffer, read_input, nullptr, seek_input);
-        if (input_io == nullptr) {
+        this->input_io = avio_alloc_context(io_buffer, io_buffer_bytes, 0, input_buffer,
+            read_input, nullptr, seek_input);
+        if (this->input_io == nullptr) {
             av_free(io_buffer);
             return fail("Unable to create FFmpeg input context", AVERROR(ENOMEM));
         }
-        input = avformat_alloc_context();
-        if (input == nullptr) return fail("Unable to allocate FFmpeg input format", AVERROR(ENOMEM));
-        input->pb = input_io;
-        input->flags |= AVFMT_FLAG_CUSTOM_IO;
-        const int result = avformat_open_input(&input, nullptr, nullptr, nullptr);
+        this->input = avformat_alloc_context();
+        if (this->input == nullptr) return fail("Unable to allocate FFmpeg input format", AVERROR(ENOMEM));
+        this->input->pb = this->input_io;
+        this->input->flags |= AVFMT_FLAG_CUSTOM_IO;
+        const int result = avformat_open_input(&this->input, nullptr, nullptr, nullptr);
         return result < 0 ? fail("Could not open input", result) : 0;
     }
 
     int select_track(int track_index) {
         int audio_count = 0;
-        for (unsigned int index = 0; index < input->nb_streams; ++index) {
-            auto* stream = input->streams[index];
+        for (unsigned int index = 0; index < this->input->nb_streams; ++index) {
+            auto* stream = this->input->streams[index];
             if (stream->codecpar->codec_type == AVMEDIA_TYPE_AUDIO && audio_count++ == track_index) {
-                input_stream = stream;
+                this->input_stream = stream;
             } else {
                 // Video timestamps must contribute to the media origin during probing;
                 // discarding them here shifts delayed Matroska audio back to zero.
@@ -331,120 +339,145 @@ struct AudioTranscoder {
                 stream->codecpar->extradata_size = 0;
             }
         }
-        if (input_stream == nullptr) return fail("The requested audio track does not exist", AVERROR(EINVAL));
-        const int result = avformat_find_stream_info(input, nullptr);
+        if (this->input_stream == nullptr) return fail("The requested audio track does not exist", AVERROR(EINVAL));
+        const int result = avformat_find_stream_info(this->input, nullptr);
         return result < 0 ? fail("Could not read input stream information", result) : 0;
     }
 
     int open_decoder() {
-        const auto* codec = avcodec_find_decoder(input_stream->codecpar->codec_id);
+        const auto* codec = avcodec_find_decoder(this->input_stream->codecpar->codec_id);
         if (codec == nullptr) return fail("The selected audio codec is not available", AVERROR_DECODER_NOT_FOUND);
-        decoder = avcodec_alloc_context3(codec);
-        if (decoder == nullptr) return fail("Unable to allocate the audio decoder", AVERROR(ENOMEM));
-        int result = avcodec_parameters_to_context(decoder, input_stream->codecpar);
+        this->decoder = avcodec_alloc_context3(codec);
+        if (this->decoder == nullptr) return fail("Unable to allocate the audio decoder", AVERROR(ENOMEM));
+        int result = avcodec_parameters_to_context(this->decoder, this->input_stream->codecpar);
         if (result < 0) return fail("Could not configure audio decoder", result);
-        decoder->pkt_timebase = input_stream->time_base;
-        result = avcodec_open2(decoder, codec, nullptr);
+        this->decoder->pkt_timebase = this->input_stream->time_base;
+        result = avcodec_open2(this->decoder, codec, nullptr);
         return result < 0 ? fail("Could not open audio decoder", result) : 0;
     }
 
     int open_output() {
-        int result = avformat_alloc_output_context2(&output, nullptr, "webm", nullptr);
-        if (result < 0 || output == nullptr) {
+        int result = avformat_alloc_output_context2(&this->output, nullptr, "webm", nullptr);
+        if (result < 0 || this->output == nullptr) {
             return fail("Could not create audio output", result < 0 ? result : AVERROR(ENOMEM));
         }
         const auto* codec = avcodec_find_encoder_by_name("libopus");
         if (codec == nullptr) return fail("The audio encoder is not available", AVERROR_ENCODER_NOT_FOUND);
-        auto* output_stream = avformat_new_stream(output, nullptr);
-        encoder = avcodec_alloc_context3(codec);
-        if (output_stream == nullptr || encoder == nullptr) {
+        auto* output_stream = avformat_new_stream(this->output, nullptr);
+        this->encoder = avcodec_alloc_context3(codec);
+        if (output_stream == nullptr || this->encoder == nullptr) {
             return fail("Unable to allocate the audio encoder", AVERROR(ENOMEM));
         }
-        encoder->codec_type = AVMEDIA_TYPE_AUDIO;
-        encoder->codec_id = AV_CODEC_ID_OPUS;
-        encoder->sample_rate = opus_sample_rate;
-        encoder->sample_fmt = AV_SAMPLE_FMT_FLT;
-        encoder->bit_rate = opus_bit_rate;
-        encoder->compression_level = opus_compression_level;
-        av_channel_layout_default(&encoder->ch_layout, output_channels);
-        encoder->time_base = AVRational{1, encoder->sample_rate};
-        if (output->oformat->flags & AVFMT_GLOBALHEADER) encoder->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
-        result = avcodec_open2(encoder, codec, nullptr);
+        this->encoder->codec_type = AVMEDIA_TYPE_AUDIO;
+        this->encoder->codec_id = AV_CODEC_ID_OPUS;
+        this->encoder->sample_rate = opus_sample_rate;
+        this->encoder->sample_fmt = AV_SAMPLE_FMT_FLT;
+        this->encoder->bit_rate = opus_bit_rate;
+        this->encoder->compression_level = opus_compression_level;
+        av_channel_layout_default(&this->encoder->ch_layout, output_channels);
+        this->encoder->time_base = AVRational{1, this->encoder->sample_rate};
+        if (this->output->oformat->flags & AVFMT_GLOBALHEADER) this->encoder->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
+        result = avcodec_open2(this->encoder, codec, nullptr);
         if (result < 0) return fail("Could not open audio encoder", result);
-        result = avcodec_parameters_from_context(output_stream->codecpar, encoder);
+        result = avcodec_parameters_from_context(output_stream->codecpar, this->encoder);
         if (result < 0) return fail("Could not configure audio output", result);
-        output_stream->time_base = encoder->time_base;
+        output_stream->time_base = this->encoder->time_base;
         auto* output_buffer = static_cast<uint8_t*>(av_malloc(io_buffer_bytes));
         if (output_buffer == nullptr) return fail("Could not allocate audio output buffer", AVERROR(ENOMEM));
-        output->pb = avio_alloc_context(output_buffer, io_buffer_bytes, 1, nullptr, nullptr, write_output, nullptr);
-        if (output->pb == nullptr) {
+        this->output->pb = avio_alloc_context(output_buffer, io_buffer_bytes, 1, nullptr,
+            nullptr, write_output, nullptr);
+        if (this->output->pb == nullptr) {
             av_free(output_buffer);
             return fail("Could not create audio output context", AVERROR(ENOMEM));
         }
-        output->flags |= AVFMT_FLAG_CUSTOM_IO | AVFMT_FLAG_FLUSH_PACKETS;
+        this->output->flags |= AVFMT_FLAG_CUSTOM_IO | AVFMT_FLAG_FLUSH_PACKETS;
         return 0;
     }
 
     int read_first_audio_packet() {
         // Browser video keeps positive presentation timestamps and clips negative
         // preroll. FFmpeg's container/stream start may instead be inferred from audio.
-        const bool has_video = std::any_of(input->streams, input->streams + input->nb_streams,
+        const bool has_video = std::any_of(this->input->streams, this->input->streams + this->input->nb_streams,
             [](const AVStream* stream) { return stream->codecpar->codec_type == AVMEDIA_TYPE_VIDEO; });
         // Audio-only inputs retain their existing normalization.
-        if (!has_video && input->start_time != AV_NOPTS_VALUE) {
-            origin = std::min<int64_t>(0, av_rescale_q(input->start_time, AV_TIME_BASE_Q, encoder->time_base));
-            if (origin == AV_NOPTS_VALUE) return fail("Invalid audio timeline", AVERROR_INVALIDDATA);
+        if (!has_video && this->input->start_time != AV_NOPTS_VALUE) {
+            this->origin = std::min<int64_t>(0,
+                av_rescale_q(this->input->start_time, AV_TIME_BASE_Q, this->encoder->time_base));
+            if (this->origin == AV_NOPTS_VALUE) return fail("Invalid audio timeline", AVERROR_INVALIDDATA);
         }
 
         int result;
-        while ((result = av_read_frame(input, packet)) >= 0) {
-            if (packet->stream_index == input_stream->index) {
-                for (unsigned int index = 0; index < input->nb_streams; ++index) {
-                    auto* stream = input->streams[index];
-                    if (stream != input_stream) stream->discard = AVDISCARD_ALL;
+        while ((result = av_read_frame(this->input, this->packet)) >= 0) {
+            if (this->packet->stream_index == this->input_stream->index) {
+                char message[512] = {};
+                const auto container_start = this->input->start_time == AV_NOPTS_VALUE
+                    ? "unknown" : std::to_string(this->input->start_time);
+                const auto stream_start = this->input_stream->start_time == AV_NOPTS_VALUE
+                    ? "unknown" : std::to_string(this->input_stream->start_time);
+                const auto first_pts = this->packet->pts == AV_NOPTS_VALUE
+                    ? "unknown" : std::to_string(this->packet->pts);
+                const auto first_dts = this->packet->dts == AV_NOPTS_VALUE
+                    ? "unknown" : std::to_string(this->packet->dts);
+                std::snprintf(message, sizeof(message),
+                              "Audio timeline origin: stream_index=%d, codec=%s, has_video=%s, "
+                              "container_start_us=%s, stream_start_pts=%s, input_time_base=%d/%d, "
+                              "first_packet_pts=%s, first_packet_dts=%s, origin_samples=%lld, "
+                              "output_time_base=%d/%d, basis=%s",
+                              this->input_stream->index, avcodec_get_name(this->input_stream->codecpar->codec_id),
+                              has_video ? "true" : "false", container_start.c_str(), stream_start.c_str(),
+                              this->input_stream->time_base.num, this->input_stream->time_base.den,
+                              first_pts.c_str(), first_dts.c_str(), static_cast<long long>(this->origin),
+                              this->encoder->time_base.num, this->encoder->time_base.den,
+                              has_video ? "browser_video_zero" : "nonpositive_container_start_or_zero");
+                runtime_diagnostic(DiagnosticLevel::trace, message);
+                for (unsigned int index = 0; index < this->input->nb_streams; ++index) {
+                    auto* stream = this->input->streams[index];
+                    if (stream != this->input_stream) stream->discard = AVDISCARD_ALL;
                 }
                 return 0;
             }
-            av_packet_unref(packet);
+            av_packet_unref(this->packet);
         }
         return fail("Could not read the first audio packet", result);
     }
 
     void resolve_timeline() {
-        if (input_stream->duration != AV_NOPTS_VALUE && input_stream->duration > 0) {
-            total_seconds = input_stream->duration * av_q2d(input_stream->time_base);
-            if (input_stream->start_time != AV_NOPTS_VALUE) {
-                const double offset = input_stream->start_time * av_q2d(input_stream->time_base)
-                    - static_cast<double>(origin) / encoder->sample_rate;
-                total_seconds += std::max(0.0, offset);
+        if (this->input_stream->duration != AV_NOPTS_VALUE && this->input_stream->duration > 0) {
+            this->total_seconds = this->input_stream->duration * av_q2d(this->input_stream->time_base);
+            if (this->input_stream->start_time != AV_NOPTS_VALUE) {
+                const double offset = this->input_stream->start_time * av_q2d(this->input_stream->time_base)
+                    - static_cast<double>(this->origin) / this->encoder->sample_rate;
+                this->total_seconds += std::max(0.0, offset);
             }
-        } else if (input->duration != AV_NOPTS_VALUE && input->duration > 0) {
-            total_seconds = static_cast<double>(input->duration) / AV_TIME_BASE;
+        } else if (this->input->duration != AV_NOPTS_VALUE && this->input->duration > 0) {
+            this->total_seconds = static_cast<double>(this->input->duration) / AV_TIME_BASE;
         }
     }
 
     int write_header() {
         // Reserve a Duration element even when the input has no duration metadata.
         // The caller patches this header with the exact sample duration for the completed Blob.
-        output->duration = total_seconds > 0 ? static_cast<int64_t>(std::llround(total_seconds * AV_TIME_BASE)) : AV_TIME_BASE;
+        this->output->duration = this->total_seconds > 0
+            ? static_cast<int64_t>(std::llround(this->total_seconds * AV_TIME_BASE)) : AV_TIME_BASE;
         AVDictionary* options = nullptr;
         av_dict_set(&options, "cluster_time_limit", cluster_time_limit_ms, 0);
-        const int result = avformat_write_header(output, &options);
+        const int result = avformat_write_header(this->output, &options);
         av_dict_free(&options);
         if (result < 0) return fail("Could not write audio output header", result);
-        avio_flush(output->pb);
+        avio_flush(this->output->pb);
         return 0;
     }
 
     int allocate_buffers() {
-        fifo = av_audio_fifo_alloc(encoder->sample_fmt, encoder->ch_layout.nb_channels, encoder->frame_size);
-        decoded = av_frame_alloc();
-        converted = av_frame_alloc();
-        encoded = av_frame_alloc();
-        packet = av_packet_alloc();
-        encoded_packet = av_packet_alloc();
-        if (fifo == nullptr || decoded == nullptr || converted == nullptr ||
-            encoded == nullptr || packet == nullptr || encoded_packet == nullptr) {
+        this->fifo = av_audio_fifo_alloc(this->encoder->sample_fmt, this->encoder->ch_layout.nb_channels,
+            this->encoder->frame_size);
+        this->decoded = av_frame_alloc();
+        this->converted = av_frame_alloc();
+        this->encoded = av_frame_alloc();
+        this->packet = av_packet_alloc();
+        this->encoded_packet = av_packet_alloc();
+        if (this->fifo == nullptr || this->decoded == nullptr || this->converted == nullptr ||
+            this->encoded == nullptr || this->packet == nullptr || this->encoded_packet == nullptr) {
             return fail("Unable to allocate audio frames", AVERROR(ENOMEM));
         }
         return 0;
@@ -463,23 +496,23 @@ struct AudioTranscoder {
         int result = 0;
         // The first audio packet was retained while resolving the media origin.
         do {
-            if (packet->stream_index == input_stream->index) {
-                result = avcodec_send_packet(decoder, packet);
+            if (this->packet->stream_index == this->input_stream->index) {
+                result = avcodec_send_packet(this->decoder, this->packet);
                 if (result < 0) result = tolerate_decode_error(result);
                 if (result >= 0) result = receive_frames();
             }
-            av_packet_unref(packet);
+            av_packet_unref(this->packet);
             if (result < 0) return fail("Could not transcode audio", result);
-        } while ((result = av_read_frame(input, packet)) >= 0);
+        } while ((result = av_read_frame(this->input, this->packet)) >= 0);
         return result == AVERROR_EOF ? 0 : fail("Could not read audio packets", result);
     }
 
     int finalize() {
         const int result = finish();
         if (result < 0) return fail("Could not finish audio output", result);
-        avio_flush(output->pb);
-        if (output->pb->error < 0) return fail("Could not deliver audio output", output->pb->error);
-        if (next_pts == 0) return fail("The audio track contains no decodable audio", AVERROR_INVALIDDATA);
+        avio_flush(this->output->pb);
+        if (this->output->pb->error < 0) return fail("Could not deliver audio output", this->output->pb->error);
+        if (this->next_pts == 0) return fail("The audio track contains no decodable audio", AVERROR_INVALIDDATA);
         return 0;
     }
 };
