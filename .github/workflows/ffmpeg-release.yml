@@ -23,7 +23,6 @@ concurrency:
 jobs:
     version:
         runs-on: ubuntu-24.04
-        environment: ffmpeg-release
         permissions:
             contents: write # GitHub requires push access to find drafts for current.
         outputs:
@@ -77,7 +76,6 @@ jobs:
     publish:
         needs: [version, build]
         runs-on: ubuntu-24.04
-        environment: ffmpeg-release
         env:
             GH_REPO: ${{ github.repository }}
             RELEASE_TAG: ${{ needs.version.outputs.release-tag }}

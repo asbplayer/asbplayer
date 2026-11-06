@@ -130,4 +130,12 @@ module.exports = [
             },
         },
     },
+    {
+        files: ['ffmpeg/src/**/*.{ts,tsx,mtsx}'],
+        languageOptions: {
+            parserOptions: {
+                project: ['./ffmpeg/tsconfig.eslint.json'],
+            },
+        },
+    },
 ];
