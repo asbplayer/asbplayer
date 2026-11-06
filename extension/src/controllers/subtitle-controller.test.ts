@@ -132,16 +132,12 @@ describe('SubtitleController appearance rendering', () => {
         controller.subtitles[0].tokenization!.tokens[1].status = TokenStatus.UNKNOWN;
         controller.cacheHtml();
         controller.playbackStateChanged({ timestampMs: 0, showingSubtitleIndexes: [0], paused: false });
-        expect(
-            document.querySelector('.asbplayer-subtitles-container-bottom .asb-token-adaptive-hidden')
-        ).not.toBeNull();
+        expect(document.querySelector('.asb-subtitles-container-bottom .asb-token-adaptive-hidden')).not.toBeNull();
 
         controller.setAdaptiveWordVisibilityEnabled(false);
-        expect(document.querySelector('.asbplayer-subtitles-container-bottom .asb-token-adaptive-hidden')).toBeNull();
+        expect(document.querySelector('.asb-subtitles-container-bottom .asb-token-adaptive-hidden')).toBeNull();
         controller.setAdaptiveWordVisibilityEnabled(true);
-        expect(
-            document.querySelector('.asbplayer-subtitles-container-bottom .asb-token-adaptive-hidden')
-        ).not.toBeNull();
+        expect(document.querySelector('.asb-subtitles-container-bottom .asb-token-adaptive-hidden')).not.toBeNull();
     });
 
     it.each(['bottom', 'top'] as const)(
@@ -250,9 +246,9 @@ describe('SubtitleController appearance rendering', () => {
         expect(controller.currentTokenSelectionLocation()).toEqual(
             autoPause ? undefined : { subtitleIndex: 0, tokenStart: 0 }
         );
-        expect(
-            document.querySelector('.asbplayer-subtitles-container-bottom .asb-subtitle-token-selected') !== null
-        ).toBe(!autoPause);
+        expect(document.querySelector('.asb-subtitles-container-bottom .asb-subtitle-token-selected') !== null).toBe(
+            !autoPause
+        );
         expect(document.getSelection()?.toString()).toBe(autoPause ? '' : 'word');
     });
 
@@ -276,7 +272,7 @@ describe('SubtitleController appearance rendering', () => {
             controller.playbackStateChanged({ timestampMs: 0, showingSubtitleIndexes: [0], paused: true });
         }
 
-        const containers = document.querySelectorAll('.asbplayer-subtitles-container-bottom');
+        const containers = document.querySelectorAll('.asb-subtitles-container-bottom');
         expect(containers).toHaveLength(2);
         expect(Array.from(containers, (container) => container.querySelectorAll('.asb-token').length)).toEqual([1, 1]);
         expect(firstController.selectToken({ subtitleIndex: 0, tokenStart: 0 })).toBe(true);
@@ -303,7 +299,7 @@ describe('SubtitleController appearance rendering', () => {
         controller.cacheHtml();
         controller.playbackStateChanged({ timestampMs: 0, showingSubtitleIndexes: [0], paused: false });
 
-        expect(document.querySelector('.asbplayer-subtitles-container-bottom span')?.getAttribute('style')).toContain(
+        expect(document.querySelector('.asb-subtitles-container-bottom span')?.getAttribute('style')).toContain(
             'color: #ff0000'
         );
 
@@ -313,8 +309,8 @@ describe('SubtitleController appearance rendering', () => {
             subtitleAlignment: 'top',
         });
 
-        expect(document.querySelector('.asbplayer-subtitles-container-bottom span')).toBeNull();
-        expect(document.querySelector('.asbplayer-subtitles-container-top span')?.getAttribute('style')).toContain(
+        expect(document.querySelector('.asb-subtitles-container-bottom span')).toBeNull();
+        expect(document.querySelector('.asb-subtitles-container-top span')?.getAttribute('style')).toContain(
             'color: #0000ff'
         );
     });
@@ -331,13 +327,11 @@ describe('SubtitleController appearance rendering', () => {
         });
 
         controller.showLoadedMessage([]);
-        expect(document.querySelector('.asbplayer-subtitles-container-bottom')?.textContent).toContain('episode.srt');
+        expect(document.querySelector('.asb-subtitles-container-bottom')?.textContent).toContain('episode.srt');
 
         jest.advanceTimersByTime(1000);
 
-        expect(document.querySelector('.asbplayer-subtitles-container-bottom')?.textContent).not.toContain(
-            'episode.srt'
-        );
+        expect(document.querySelector('.asb-subtitles-container-bottom')?.textContent).not.toContain('episode.srt');
     });
 
     it('renders layout placeholders invisibly and supports playback states from older clients', () => {
@@ -373,7 +367,7 @@ describe('SubtitleController appearance rendering', () => {
         });
 
         const secondary = document.querySelector<HTMLElement>('span[data-track="1"]')?.parentElement;
-        const container = document.querySelector<HTMLElement>('.asbplayer-subtitles-container-bottom');
+        const container = document.querySelector<HTMLElement>('.asb-subtitles-container-bottom');
         const primary = document.querySelector<HTMLElement>('span[data-track="0"]')?.parentElement;
         expect(container?.style.getPropertyValue('pointer-events')).toBe('none');
         expect(primary?.style.pointerEvents).toBe('auto');
@@ -417,7 +411,7 @@ describe('SubtitleController appearance rendering', () => {
             paused: false,
         });
 
-        const container = document.querySelector<HTMLElement>('.asbplayer-subtitles-container-bottom')!;
+        const container = document.querySelector<HTMLElement>('.asb-subtitles-container-bottom')!;
         const visible = document.querySelector<HTMLElement>('span[data-track="0"]')!.parentElement!;
         const placeholder = document.querySelector<HTMLElement>('span[data-track="1"]')!.parentElement!;
         container.getBoundingClientRect = () => ({ x: 100, y: 100, width: 100, height: 80 }) as DOMRect;
@@ -461,7 +455,7 @@ describe('SubtitleController appearance rendering', () => {
             paused: false,
         });
 
-        const container = document.querySelector('.asbplayer-subtitles-container-bottom');
+        const container = document.querySelector('.asb-subtitles-container-bottom');
         expect(container?.querySelector('span[data-track="0"]')).toBeNull();
         expect(container?.querySelector<HTMLElement>('span[data-track="1"]')?.parentElement?.style.visibility).toBe(
             'hidden'
@@ -498,7 +492,7 @@ describe('SubtitleController appearance rendering', () => {
         controller.playbackStateChanged({ timestampMs: 0, showingSubtitleIndexes: [0], paused: false });
         controller.refresh();
 
-        const containers = document.querySelectorAll<HTMLElement>('.asbplayer-subtitles-container-bottom');
+        const containers = document.querySelectorAll<HTMLElement>('.asb-subtitles-container-bottom');
         return containers[containers.length - 1]?.style.width;
     };
 

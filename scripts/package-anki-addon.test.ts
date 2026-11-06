@@ -29,6 +29,7 @@ test('packages the configured add-on version while keeping its installed identit
         mkdirSync(addonRoot, { recursive: true });
         mkdirSync(join(root, 'scripts'));
         mkdirSync(join(root, 'common'));
+        copyFileSync(new URL('../package.json', import.meta.url), join(root, 'package.json'));
         copyFileSync(new URL('../plugins/anki/package.sh', import.meta.url), join(root, 'plugins/anki/package.sh'));
         copyFileSync(
             new URL('./sync-project-config.ts', import.meta.url),

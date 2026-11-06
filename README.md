@@ -148,7 +148,9 @@ Thank you to all those who have contributed to asbplayer:
 [@eXaminator](https://github.com/eXaminator),
 [@rajpiskala](https://github.com/rajpiskala),
 [@gpressutto5](https://github.com/gpressutto5),
-[@chadzimmerman](https://github.com/chadzimmerman)
+[@chadzimmerman](https://github.com/chadzimmerman),
+[@awelotta](https://github.com/awelotta),
+[@0xSm0ky](https://github.com/0xSm0ky)
 
 Thank you to all those who have translated asbplayer:
 
@@ -206,8 +208,7 @@ Submit bugs or feature requests from the [issues page](https://github.com/asbpla
 
 ### Environment
 
-- node 24.22.1
-- pnpm 11.27.0
+Use the Node.js and pnpm versions specified by `development.node` and `development.pnpm` in [`project.json`](./project.json).
 
 ### Building
 

@@ -197,14 +197,14 @@ Keyboard shortcuts can be used to access most of asbplayer's features.
 
 ### <a href={new URL('?view=settings#mining-settings', project.urls.app).href}>Mining</a> keyboard shortcuts {#mining-keyboard-shortcuts}
 
-| Behavior                                                                             | Default shortcut |
-| ------------------------------------------------------------------------------------ | ---------------- |
-| Mine current subtitle                                                                | Ctrl + Shift + Z |
-| Mine current subtitle and open Anki dialog                                           | Ctrl + Shift + X |
-| Update last-created Anki card with asbplayer-captured screenshot, audio, etc.        | Ctrl + Shift + U |
-| Export card to Anki, bypassing dialog.                                               |                  |
-| Manually take screenshot, overriding the one that is automatically taken when mining | Ctrl + Shift + V |
-| Manually start/stop audio recording, even when a subtitle file is loaded.            | Ctrl + Shift + R |
+| Behavior                                                                             | Default shortcut           |
+| ------------------------------------------------------------------------------------ | -------------------------- |
+| Mine current subtitle                                                                | Ctrl + Shift + Z (website) |
+| Mine current subtitle and open Anki dialog                                           | Ctrl + Shift + X           |
+| Update last-created Anki card with asbplayer-captured screenshot, audio, etc.        | Ctrl + Shift + U           |
+| Export card to Anki, bypassing dialog.                                               |                            |
+| Manually take screenshot, overriding the one that is automatically taken when mining | Ctrl + Shift + V (website) |
+| Manually start/stop audio recording, even when a subtitle file is loaded.            | Ctrl + Shift + R (website) |
 
 ### <a href={new URL('?view=settings#playback', project.urls.app).href}>Playback</a> keyboard shortcuts {#playback-keyboard-shortcuts}
 
@@ -676,10 +676,10 @@ Controls how an automatic pause finishes.
 - **Manual**: Playback stays paused until you resume it.
 
 - **Fixed**: Every automatic pause lasts for the same configured time.
-    - Controls [Fixed pause duration](#fixed-pause-duration) and [Resume delay after auto-pause](#resume-delay-after-auto-pause).
+  - Controls [Fixed pause duration](#fixed-pause-duration) and [Resume delay after auto-pause](#resume-delay-after-auto-pause).
 
 - **Subtitle length**: The pause duration is calculated from the subtitle's character count. Only subtitles on seekable tracks are counted, so a translation track loaded alongside the target language does not inflate the pause.
-    - Controls [Minimum pause duration](#minimum-pause-duration), [Maximum pause duration](#maximum-pause-duration), [Pause time per character](#pause-time-per-character), and [Resume delay after auto-pause](#resume-delay-after-auto-pause).
+  - Controls [Minimum pause duration](#minimum-pause-duration), [Maximum pause duration](#maximum-pause-duration), [Pause time per character](#pause-time-per-character), and [Resume delay after auto-pause](#resume-delay-after-auto-pause).
 
 ### Fixed pause duration {#fixed-pause-duration}
 

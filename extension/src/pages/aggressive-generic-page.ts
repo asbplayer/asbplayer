@@ -1,4 +1,5 @@
 import type { VideoData, VideoDataSubtitleTrack, VideoDataSubtitleTrackDef } from '@project/common';
+import { genericSubtitleDisplayLabel } from '@project/common/util/subtitle-language';
 import {
     BaseGenericPageDiscovery,
     cuesFromTextTrack,
@@ -22,7 +23,6 @@ import {
     bindVideoDataDiscovery,
     deduplicateTracks,
     detectedSubtitleLabel,
-    genericSubtitleDisplayLabel,
     hasSubtitleMetadataHint,
     isJsonContentType,
     normalizedContentType,

@@ -11,11 +11,21 @@
         "discord": "https://discord.gg/ad7VAQru7m"
     },
     "releases": {
+        "app": {
+            "releaseTag": "app-v{{version}}"
+        },
         "extension": {
             "publishedVersion": "1.22.0",
             "releaseTitle": "asbplayer-extension-v{{version}}",
             "releaseTag": "v{{version}}",
             "sources": "asbplayer-{{version}}-sources"
+        },
+        "ffmpeg": {
+            "package": "asbplayer-ffmpeg",
+            "releaseTitle": "asbplayer-ffmpeg-v{{version}}",
+            "releaseTag": "ffmpeg-v{{version}}",
+            "artifact": "asbplayer-ffmpeg-{{version}}-runtime",
+            "sources": "asbplayer-ffmpeg-{{version}}-sources"
         },
         "ankiAddon": {
             "version": "1.0.0",
@@ -48,6 +58,8 @@
         }
     },
     "development": {
+        "node": "24.22.1",
+        "pnpm": "11.27.0",
         "host": "localhost",
         "port": 3000
     },

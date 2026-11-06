@@ -146,6 +146,7 @@ document.dispatchEvent(new CustomEvent('asbplayer-query-netflix'));
 const youtube = /(m|www)\.youtube\.com/.test(window.location.host);
 const disneyPlus = /www\.disneyplus\..+/.test(window.location.host);
 const crunchyroll = /(www\.)?crunchyroll\.com/.test(window.location.host);
+const isHboMax = /(^|\.)(hbo)?max\.com$/.test(window.location.hostname);
 
 interface DisneyPlaybackEventDetail {
     readonly timestampMs: number;
@@ -268,6 +269,7 @@ export default class Binding {
     recordMedia: boolean;
 
     private seekedListener?: EventListener;
+    private recordingPauseListener?: EventListener;
     private videoChangeListener?: EventListener;
     private canPlayListener?: EventListener;
     private mouseMoveListener?: (event: MouseEvent) => void;
@@ -575,9 +577,6 @@ export default class Binding {
                             src: this._registeredVideoSrc,
                         };
                         void browser.runtime.sendMessage(command);
-                        if (this.recordingMedia && this.recordingPostMineAction !== undefined) {
-                            void this._toggleRecordingMedia(this.recordingPostMineAction);
-                        }
                     },
                     onSeeked: () => this.seekedListener?.(new Event('seeked')),
                     onPlaybackRateChanged: (playbackRate) => {
@@ -838,6 +837,14 @@ export default class Binding {
     }
 
     _subscribe() {
+        // Recording must respond to pauses even when no subtitles are loaded and
+        // the playback engine's timing driver is unbound.
+        this.recordingPauseListener = () => {
+            if (!this.recordingMedia || this.recordingPostMineAction === undefined) return;
+            void this._toggleRecordingMedia(this.recordingPostMineAction);
+        };
+        this.video.addEventListener('pause', this.recordingPauseListener);
+
         this.seekedListener = () => {
             const currentTimeCommand: VideoToExtensionCommand<CurrentTimeFromVideoMessage> = {
                 sender: 'asbplayer-video',
@@ -1558,6 +1565,11 @@ export default class Binding {
             this.canPlayListener = undefined;
         }
 
+        if (this.recordingPauseListener) {
+            this.video.removeEventListener('pause', this.recordingPauseListener);
+            this.recordingPauseListener = undefined;
+        }
+
         if (this.disneyPlusTimeListener) {
             document.removeEventListener('asbplayer-disney-plus-time', this.disneyPlusTimeListener);
             this.disneyPlusTimeListener = undefined;
@@ -1846,6 +1858,7 @@ export default class Binding {
         const noSubtitles = this.subtitleController.subtitles.length === 0;
         const audioPaddingStart = noSubtitles ? 0 : this.audioPaddingStart;
         const audioPaddingEnd = noSubtitles ? 0 : this.audioPaddingEnd;
+        this.recordingPostMineAction = PostMineAction.showAnkiDialog;
         this.recordingState = RecordingState.requested;
         this.recordingMediaStartedTimestamp = this.currentTimeMs;
         const rerecordSeekTargetMs = Math.max(0, start - audioPaddingStart);
@@ -1877,7 +1890,7 @@ export default class Binding {
         asbTrace('playback/binding', 'Seeking media owner', {
             requestedTimestampMs: timestampMs,
             clampedTimestampMs,
-            route: netflix ? 'netflix' : disneyPlus ? 'disney-plus' : 'video-element',
+            route: netflix ? 'netflix' : disneyPlus ? 'disney-plus' : isHboMax ? 'hbo-player-api' : 'video-element',
         });
 
         if (netflix) {
@@ -1915,7 +1928,19 @@ export default class Binding {
                 );
             });
         } else if (!(crunchyroll && this._seekCrunchyroll(clampedTimestampMs / 1000))) {
-            seekWithNudge(this.video, clampedTimestampMs / 1000);
+            if (isHboMax) {
+                const handled = !this.video.dispatchEvent(
+                    new CustomEvent('asbplayer-hbo-max-seek', {
+                        detail: clampedTimestampMs,
+                        bubbles: true,
+                        composed: true,
+                        cancelable: true,
+                    })
+                );
+                if (!handled) this.video.currentTime = clampedTimestampMs / 1000; // Avoid the extra nudge seek on HBO even when the player API is unavailable.
+            } else {
+                seekWithNudge(this.video, clampedTimestampMs / 1000);
+            }
         }
     }
 

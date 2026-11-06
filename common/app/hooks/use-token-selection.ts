@@ -4,6 +4,7 @@ import type { IndexedSubtitleModel } from '@project/common';
 import {
     ASB_TOKEN_SELECTED_CLASS,
     ASB_TOKEN_START_ATTRIBUTE,
+    ASB_TOKEN_CONTAINER_CLASS,
     clearTokenSelectionInRoot,
     clearAutoPauseTokenSelectionInRoot,
     currentTokenSelectionLocation,
@@ -20,7 +21,7 @@ import { asbTrace } from '@project/common/util/log';
 let lastTokenSelectionOwner: HTMLElement | null = null; // Necessary so VideoPlayer and SubtitlePlayer can coordinate token selection focus (especially after yomitan popup)
 
 const playerContainerFor = (element: Element | null) => {
-    const container = element?.closest<HTMLElement>('.asbplayer-token-container') ?? null;
+    const container = element?.closest<HTMLElement>(`.${ASB_TOKEN_CONTAINER_CLASS}`) ?? null;
     return container === container?.ownerDocument.body ? null : container;
 };
 
@@ -108,7 +109,14 @@ export const useTokenSelection = ({
     const selectToken = useCallback(
         (target: TokenSelectionLocation, options?: SelectTokenInRootOptions) => {
             const root = rootRef.current;
-            if (root && options?.onlyIfUnselected && restorableTokenSelectionInRoot(root)) return true;
+            // Navigation owns the selection even while its destination is waiting to render.
+            if (
+                options?.onlyIfUnselected &&
+                ((pendingTokenSelectionRef.current && !pendingTokenSelectionOptionsRef.current?.autoPause) ||
+                    (root && restorableTokenSelectionInRoot(root)))
+            ) {
+                return true;
+            }
             if (!root || !selectTokenInRoot(root, target, options)) return false;
             clearPendingTokenSelection();
             lastTokenSelectionOwner = playerContainerFor(root);

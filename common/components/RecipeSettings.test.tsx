@@ -2,7 +2,7 @@ import project from '@project/common/project';
 import React, { act, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import type { Root } from 'react-dom/client';
-import { afterEach, beforeEach, describe, expect, it } from '@jest/globals';
+import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { createInstance } from 'i18next';
 import { I18nextProvider } from 'react-i18next';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
@@ -70,6 +70,7 @@ describe('recipe editor', () => {
 
     afterEach(async () => {
         await act(async () => root.unmount());
+        jest.useRealTimers();
         container.remove();
         globalThis.structuredClone = originalClone;
         globalThis.TextEncoder = originalEncoder;
@@ -396,8 +397,26 @@ describe('recipe editor', () => {
         expect(copied).toEqual([JSON.stringify(recipe, null, 2), recipeImportUrl(recipe)]);
         expect(saves).toEqual([]);
         await click('Delete', footer);
-        expect(footer.textContent).toContain('Delete "Reading"?');
-        await click('Delete', footer);
+        expect(saves).toEqual([]);
+        await click('Confirm', footer);
+        expect(saves).toEqual([{ recipes: [], activeRecipeId: null }]);
+    });
+
+    it('resets the delete button after three seconds and when closing the recipe preview', async () => {
+        await renderEditor();
+        await openView();
+        jest.useFakeTimers();
+        await click('Delete', dialog());
+        expect(dialog().textContent).toContain('Confirm');
+        await act(async () => jest.advanceTimersByTime(3_000));
+        await click('Delete', dialog());
+        expect(saves).toEqual([]);
+        await click('Close', dialog());
+        await act(async () => jest.advanceTimersByTime(300));
+        await openView();
+        await click('Delete', dialog());
+        expect(saves).toEqual([]);
+        await click('Confirm', dialog());
         expect(saves).toEqual([{ recipes: [], activeRecipeId: null }]);
     });
 

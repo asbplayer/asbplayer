@@ -90,7 +90,7 @@ describe('KeyBindings playback modes', () => {
         const seek = jest.fn<Binding['seek']>().mockResolvedValue(undefined);
         const saveTokenLocal = jest.fn();
         const tokenContainer = document.createElement('div');
-        tokenContainer.className = 'asbplayer-token-container';
+        tokenContainer.className = 'asb-token-container';
         tokenContainer.tabIndex = -1;
         tokenContainer.innerHTML =
             '<span data-asb-subtitle-index="0" data-track="0"><span class="asb-token" data-asb-token-start="0">first</span></span>' +

@@ -1,6 +1,7 @@
 {
     "action": {
         "cancel": "Anuluj",
+        "confirm": "Confirm",
         "close": "Close",
         "copy": "Kopiuj",
         "delete": "Usuń",
@@ -849,7 +850,6 @@
         "importUrl": "Import URL",
         "introduction": "Recipes combine playback modes and settings for different learning activities. <docs>Learn about recipes and importing presets</docs>.",
         "notification": "Recipe: {{name}}",
-        "settingLocked": "{{setting}} can't be changed while a Recipe is active",
-        "confirmDelete": "Delete \"{{name}}\"?"
+        "settingLocked": "{{setting}} can't be changed while a Recipe is active"
     }
 }

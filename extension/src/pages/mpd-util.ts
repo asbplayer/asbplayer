@@ -20,6 +20,7 @@ interface InferTracksFromMpdOptions {
 
 export interface MpdTrackMetadata {
     mimeType?: string;
+    language?: string;
 }
 
 type MpdTrackExtractor = (
@@ -33,8 +34,10 @@ function parseMpdManifest(manifest: string, manifestUri: string) {
     const dashPlaylists = toPlaylists(parsedManifestInfo.representationInfo);
     const metadata = new Map<string, MpdTrackMetadata>();
     for (const playlist of dashPlaylists) {
-        const { id, mimeType } = playlist.attributes;
-        if (typeof id === 'string') metadata.set(id, { mimeType });
+        const { id, mimeType, lang } = playlist.attributes;
+        if (typeof id === 'string') {
+            metadata.set(id, { mimeType, language: typeof lang === 'string' ? lang : undefined });
+        }
     }
     return {
         manifest: toM3u8({

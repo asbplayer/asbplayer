@@ -120,11 +120,11 @@ describe('HoveredToken', () => {
     it('does not use a selected token from another subtitle overlay while hovering', () => {
         const hoveredToken = new HoveredToken();
         const selectedOverlay = document.createElement('div');
-        selectedOverlay.className = 'asbplayer-subtitles-container-bottom';
+        selectedOverlay.className = 'asb-subtitles-container-bottom';
         selectedOverlay.innerHTML =
             '<span data-track="1" data-asb-subtitle-index="0"><span class="asb-token" data-asb-token-start="0">selected</span></span>';
         const hoveredOverlay = document.createElement('div');
-        hoveredOverlay.className = 'asbplayer-subtitles-container-bottom';
+        hoveredOverlay.className = 'asb-subtitles-container-bottom';
         hoveredOverlay.innerHTML =
             '<span data-track="2" data-asb-subtitle-index="0"><span class="asb-token" data-asb-token-start="0">hovered</span></span>';
         document.body.append(selectedOverlay, hoveredOverlay);
@@ -347,7 +347,7 @@ describe('token jump navigation', () => {
 
     it('selects the requested token in a root and reports missing locations', () => {
         const wrapper = document.createElement('div');
-        wrapper.className = 'asbplayer-token-container';
+        wrapper.className = 'asb-token-container';
         wrapper.tabIndex = -1;
         wrapper.innerHTML = '<span data-asb-subtitle-index="4"><span data-asb-token-start="1">target</span></span>';
         const focusedElement = document.createElement('button');

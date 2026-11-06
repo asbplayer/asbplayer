@@ -157,12 +157,12 @@
     display: inline;
 }
 
-.asbplayer-token-container:focus-within .asb-token-highlight:hover,
-.asbplayer-token-container:focus-within .asb-token-selected {
+.asb-token-container:focus-within .asb-token-highlight:hover,
+.asb-token-container:focus-within .asb-token-selected {
     background-color: rgb(0, 123, 255) !important;
 }
 
-.asbplayer-token-container:focus-within {
+.asb-token-container:focus-within {
     outline: none;
 }
 

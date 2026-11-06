@@ -208,7 +208,7 @@ describe('Binding playback mode integration', () => {
     const renderedSubtitleTexts = () =>
         Array.from(
             document.querySelectorAll(
-                '.asbplayer-subtitles-container-bottom span[data-track], .asbplayer-subtitles-container-top span[data-track]'
+                '.asb-subtitles-container-bottom span[data-track], .asb-subtitles-container-top span[data-track]'
             )
         )
             .filter((element) => !element.closest('[style*="display: none"], [aria-hidden="true"]'))

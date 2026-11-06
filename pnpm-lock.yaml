@@ -273,6 +273,9 @@ importers:
       '@project/common':
         specifier: workspace:^
         version: link:../common
+      '@project/ffmpeg':
+        specifier: workspace:^
+        version: link:../ffmpeg
       '@types/node':
         specifier: ^24.13.3
         version: 24.13.3
@@ -321,7 +324,7 @@ importers:
         version: 30.0.5(@types/node@24.13.3)(babel-plugin-macros@3.1.0)(node-notifier@10.0.1)(supports-color@8.1.1)
       ts-jest:
         specifier: ^29.4.0
-        version: 29.4.0(@babel/core@7.28.0(supports-color@8.1.1))(@jest/transform@30.0.5(supports-color@8.1.1))(@jest/types@30.0.5)(babel-jest@30.0.5(@babel/core@7.28.0(supports-color@8.1.1))(supports-color@8.1.1))(esbuild@0.27.3)(jest-util@30.0.5)(jest@30.0.5(@types/node@24.13.3)(babel-plugin-macros@3.1.0)(node-notifier@10.0.1)(supports-color@8.1.1))(typescript@5.8.3)
+        version: 29.4.0(@babel/core@7.28.0(supports-color@8.1.1))(@jest/transform@30.0.5(supports-color@8.1.1))(@jest/types@30.0.5)(babel-jest@30.0.5(@babel/core@7.28.0(supports-color@8.1.1))(supports-color@8.1.1))(esbuild@0.27.3)(jest-util@30.0.5)(jest@30.0.5(babel-plugin-macros@3.1.0)(node-notifier@10.0.1)(supports-color@8.1.1))(typescript@5.8.3)
       vite-plugin-html:
         specifier: ^3.2.2
         version: 3.2.2(vite@8.2.2(@types/node@24.13.3)(esbuild@0.27.3)(jiti@2.6.1)(terser@5.51.2))
@@ -355,6 +358,9 @@ importers:
       '@project/common':
         specifier: workspace:^
         version: 'link:'
+      '@project/ffmpeg':
+        specifier: workspace:^
+        version: link:../ffmpeg
       '@qgustavor/srt-parser':
         specifier: ^2.0.0
         version: 2.0.0
@@ -621,7 +627,7 @@ importers:
         version: 30.0.5(@types/node@24.13.3)(babel-plugin-macros@3.1.0)(node-notifier@10.0.1)(supports-color@8.1.1)
       ts-jest:
         specifier: ^29.4.0
-        version: 29.4.0(@babel/core@7.28.0(supports-color@8.1.1))(@jest/transform@30.0.5(supports-color@8.1.1))(@jest/types@30.0.5)(babel-jest@30.0.5(@babel/core@7.28.0(supports-color@8.1.1))(supports-color@8.1.1))(esbuild@0.27.3)(jest-util@30.0.5)(jest@30.0.5(@types/node@24.13.3)(babel-plugin-macros@3.1.0)(node-notifier@10.0.1)(supports-color@8.1.1))(typescript@5.8.3)
+        version: 29.4.0(@babel/core@7.28.0(supports-color@8.1.1))(@jest/transform@30.0.5(supports-color@8.1.1))(@jest/types@30.0.5)(babel-jest@30.0.5(@babel/core@7.28.0(supports-color@8.1.1))(supports-color@8.1.1))(esbuild@0.27.3)(jest-util@30.0.5)(jest@30.0.5(babel-plugin-macros@3.1.0)(node-notifier@10.0.1)(supports-color@8.1.1))(typescript@5.8.3)
       vite:
         specifier: ^8.2.2
         version: 8.2.2(@types/node@24.13.3)(esbuild@0.27.3)(jiti@2.6.1)(terser@5.51.2)
@@ -631,6 +637,28 @@ importers:
       wxt:
         specifier: ^0.21.4
         version: 0.21.4(eslint@9.39.4(jiti@2.6.1)(supports-color@8.1.1))(rollup@4.63.3)(typescript@5.8.3)(vite@8.2.2(@types/node@24.13.3)(esbuild@0.27.3)(jiti@2.6.1)(terser@5.51.2))(web-ext@10.6.0(jiti@2.6.1)(supports-color@8.1.1))
+
+  ffmpeg:
+    dependencies:
+      uuid:
+        specifier: 11.1.1
+        version: 11.1.1
+    devDependencies:
+      '@types/jest':
+        specifier: ^30.0.0
+        version: 30.0.0
+      jest:
+        specifier: ^30.0.5
+        version: 30.0.5(@types/node@24.13.3)(babel-plugin-macros@3.1.0)(node-notifier@10.0.1)(supports-color@8.1.1)
+      rolldown:
+        specifier: 1.2.6
+        version: 1.2.6
+      ts-jest:
+        specifier: ^29.4.0
+        version: 29.4.0(@babel/core@7.28.0(supports-color@8.1.1))(@jest/transform@30.0.5(supports-color@8.1.1))(@jest/types@30.0.5)(babel-jest@30.0.5(@babel/core@7.28.0(supports-color@8.1.1))(supports-color@8.1.1))(esbuild@0.27.3)(jest-util@30.0.5)(jest@30.0.5(babel-plugin-macros@3.1.0)(node-notifier@10.0.1)(supports-color@8.1.1))(typescript@5.8.3)
+      typescript:
+        specifier: ^5.8.3
+        version: 5.8.3
 
   scripts/loc:
     dependencies:
@@ -21098,7 +21126,7 @@ snapshots:
       esbuild: 0.27.3
       jest-util: 30.0.5
 
-  ts-jest@29.4.0(@babel/core@7.28.0(supports-color@8.1.1))(@jest/transform@30.0.5(supports-color@8.1.1))(@jest/types@30.0.5)(babel-jest@30.0.5(@babel/core@7.28.0(supports-color@8.1.1))(supports-color@8.1.1))(esbuild@0.27.3)(jest-util@30.0.5)(jest@30.0.5(@types/node@24.13.3)(babel-plugin-macros@3.1.0)(node-notifier@10.0.1)(supports-color@8.1.1))(typescript@5.8.3):
+  ts-jest@29.4.0(@babel/core@7.28.0(supports-color@8.1.1))(@jest/transform@30.0.5(supports-color@8.1.1))(@jest/types@30.0.5)(babel-jest@30.0.5(@babel/core@7.28.0(supports-color@8.1.1))(supports-color@8.1.1))(esbuild@0.27.3)(jest-util@30.0.5)(jest@30.0.5(babel-plugin-macros@3.1.0)(node-notifier@10.0.1)(supports-color@8.1.1))(typescript@5.8.3):
     dependencies:
       bs-logger: 0.2.6
       ejs: 3.1.10

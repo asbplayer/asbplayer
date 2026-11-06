@@ -71,6 +71,7 @@ import {
     getAnnotationsHtml,
     ASB_SUBTITLE_INDEX_ATTRIBUTE,
     ASB_PLAYBACK_PAUSED_CLASS,
+    ASB_TOKEN_CONTAINER_CLASS,
 } from '@project/common/annotations';
 import type { TokenJumpMatch } from '@project/common/annotations/token-navigation';
 import Clock from '@project/common/playback/timing/clock';
@@ -2316,7 +2317,7 @@ export default function VideoPlayer({
             ref={containerRef}
             onMouseMove={handleMouseMove}
             onMouseLeave={handleMouseLeave}
-            className={`${classes.root} asbplayer-token-container`}
+            className={`${classes.root} ${ASB_TOKEN_CONTAINER_CLASS}`}
             tabIndex={-1}
         >
             <Alert

@@ -60,7 +60,7 @@ export default class TokenSelectionController {
 
     playbackPaused(timestampMs: number): void {
         if (this.callbacks.automaticallyPaused()) return; // An automatic pause also emits a media pause event, sometimes synchronously.
-        this.selectOnPause(timestampMs, this.plan.onPause);
+        this.selectOnPause(timestampMs, this.plan.onPause, true);
     }
 
     seekStarted(): void {

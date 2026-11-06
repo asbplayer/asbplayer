@@ -64,7 +64,9 @@ We epecially acknowledge the wonderful humans below.
 [@eXaminator](https://github.com/eXaminator),
 [@rajpiskala](https://github.com/rajpiskala),
 [@gpressutto5](https://github.com/gpressutto5),
-[@chadzimmerman](https://github.com/chadzimmerman)
+[@chadzimmerman](https://github.com/chadzimmerman),
+[@awelotta](https://github.com/awelotta),
+[@0xSm0ky](https://github.com/0xSm0ky)
 
 ## Translators {#translators}
 
