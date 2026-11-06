@@ -1,13 +1,17 @@
 import { describe, expect, it, jest } from '@jest/globals';
+import { strFromU8, unzipSync } from 'fflate';
 
 // This dependency ships as ESM that ts-jest does not transform. The narrow fake
-// returns cue text for the SRT ruby conversion tests below.
+// returns cue text for ruby tests and exposes serialized cues for download tests.
 jest.mock('@qgustavor/srt-parser', () => ({
     __esModule: true,
     default: class {
         fromSrt(value: string) {
             const text = value.split(/\r?\n/).slice(2).join('\n');
             return [{ startTime: 0, endTime: 1, text }];
+        }
+        toSrt(cues: { startTime: number; endTime: number; text: string }[]) {
+            return cues.length === 0 ? '' : JSON.stringify(cues);
         }
     },
 }));
@@ -30,6 +34,128 @@ const createReader = (options: Partial<ConstructorParameters<typeof SubtitleRead
 
 const vttFile = (text: string, extension = 'vtt', timings = '00:00:00.000 --> 999:59:59.999') =>
     ({ name: `test.${extension}`, text: async () => `WEBVTT\n\n${timings}\n${text}\n\n` }) as unknown as File;
+
+describe('SubtitleReader SRT downloads', () => {
+    const readBytes = (blob: Blob) =>
+        new Promise<Uint8Array>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(new Uint8Array(reader.result as ArrayBuffer));
+            reader.onerror = () => reject(reader.error);
+            reader.readAsArrayBuffer(blob);
+        });
+    const cue = (text: string, track: number, start = 1000) => ({ text, track, start, end: start + 1000 });
+
+    it('exports tracks in slot order without mixing cues or changing playback timing', async () => {
+        const result = createReader().createSrtDownload(
+            [
+                { track: 2, name: 'episode.vtt', subtitles: [cue('English 1', 2, 1200), cue('English 2', 2, 2500)] },
+                { track: 0, name: 'episode.vtt', subtitles: [cue('日本語', 0, 1800)] },
+            ],
+            'episode.vtt'
+        );
+
+        expect(result?.name).toBe('episode.zip');
+        expect(result?.blob.type).toBe('application/zip');
+        const files = unzipSync(await readBytes(result!.blob));
+        expect(Object.keys(files)).toEqual(['[Track1]episode.srt', '[Track3]episode.srt']);
+        expect(JSON.parse(strFromU8(files['[Track1]episode.srt']))).toEqual([
+            { id: '0', startTime: 1800, endTime: 2800, text: '日本語' },
+        ]);
+        expect(JSON.parse(strFromU8(files['[Track3]episode.srt']))).toEqual([
+            { id: '0', startTime: 1200, endTime: 2200, text: 'English 1' },
+            { id: '1', startTime: 2500, endTime: 3500, text: 'English 2' },
+        ]);
+    });
+
+    it('parses segmented source tracks and exports one file per track with gaps preserved', async () => {
+        const reader = createReader();
+        const subtitles = await reader.subtitles([
+            {
+                fileParts: [
+                    vttFile('日本語 1', 'vtt', '00:01.000 --> 00:02.000'),
+                    vttFile('日本語 2', 'vtt', '00:03.000 --> 00:04.000'),
+                ],
+            },
+            { fileParts: [] },
+            { fileParts: [vttFile('English', 'vtt', '00:02.000 --> 00:03.000')] },
+        ]);
+        const result = reader.createSrtDownload(
+            [
+                { track: 0, name: '日本語.vtt', subtitles: subtitles.filter((cue) => cue.track === 0) },
+                { track: 2, name: 'English.vtt', subtitles: subtitles.filter((cue) => cue.track === 2) },
+            ],
+            'episode.mp4'
+        );
+
+        expect(result?.name).toBe('episode.zip');
+        const files = unzipSync(await readBytes(result!.blob));
+        expect(Object.keys(files)).toEqual(['[Track1]日本語.srt', '[Track3]English.srt']);
+        expect(JSON.parse(strFromU8(files['[Track1]日本語.srt']))).toEqual([
+            { id: '0', startTime: 1000, endTime: 2000, text: '日本語 1' },
+            { id: '1', startTime: 3000, endTime: 4000, text: '日本語 2' },
+        ]);
+        expect(JSON.parse(strFromU8(files['[Track3]English.srt']))).toEqual([
+            { id: '0', startTime: 2000, endTime: 3000, text: 'English' },
+        ]);
+    });
+
+    it('downloads a single text track directly with its original slot prefix', async () => {
+        const result = createReader().createSrtDownload(
+            [{ track: 2, name: 'English.vtt', subtitles: [cue('English', 2)] }],
+            'episode.mp4'
+        );
+
+        expect(result?.name).toBe('[Track3]English.srt');
+        expect(result?.blob.type).toBe('text/plain');
+        expect(JSON.parse(strFromU8(await readBytes(result!.blob)))).toEqual([
+            { id: '0', startTime: 1000, endTime: 2000, text: 'English' },
+        ]);
+    });
+
+    it('keeps repeated Unicode filenames as separate ZIP entries and sanitizes paths', async () => {
+        const result = createReader().createSrtDownload(
+            [
+                { track: 0, name: '../日本語.vtt', subtitles: [cue('日本語', 0)] },
+                { track: 1, name: '../日本語.vtt', subtitles: [cue('日本語', 1)] },
+            ],
+            '../日本語.vtt'
+        );
+        const files = unzipSync(await readBytes(result!.blob));
+
+        expect(result?.name).toBe('..日本語.zip');
+        expect(Object.keys(files)).toEqual(['[Track1]..日本語.srt', '[Track2]..日本語.srt']);
+        expect(strFromU8(files['[Track1]..日本語.srt'])).toBe(strFromU8(files['[Track2]..日本語.srt']));
+    });
+
+    it('uses the video filename when a subtitle source has no basename', () => {
+        expect(
+            createReader().createSrtDownload(
+                [{ track: 0, name: '.srt', subtitles: [cue('English', 0)] }],
+                'episode.mp4'
+            )?.name
+        ).toBe('[Track1]episode.srt');
+    });
+
+    it('uses a generic fallback when no filename is available', () => {
+        expect(
+            createReader().createSrtDownload([{ track: 2, name: '', subtitles: [cue('English', 2)] }], '')?.name
+        ).toBe('[Track3]subtitles.srt');
+    });
+
+    it('preserves an explicitly selected text track with no cues as an empty SRT', () => {
+        const result = createReader().createSrtDownload(
+            [{ track: 0, name: 'English.vtt', subtitles: [] }],
+            'episode.mp4'
+        );
+
+        expect(result?.name).toBe('[Track1]English.srt');
+        expect(result?.blob.size).toBe(0);
+    });
+
+    it('produces no download without selected text tracks', () => {
+        expect(createReader().createSrtDownload([], 'episode.mp4')).toBeUndefined();
+    });
+});
 
 const nfimscFile = (xml: string) => ({ name: 'test.nfimsc', text: async () => xml }) as unknown as File;
 const srtFile = (text: string) =>

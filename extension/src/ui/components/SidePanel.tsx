@@ -150,7 +150,7 @@ export default function SidePanel({
     }, [extension, subtitles]);
 
     useEffect(() => {
-        setCanDownloadSubtitles(subtitles?.some((s) => s.text !== '') ?? false);
+        setCanDownloadSubtitles(subtitles?.some((s) => s.textImage === undefined && s.text.trim() !== '') ?? false);
     }, [subtitles]);
 
     useEffect(() => {
@@ -340,14 +340,26 @@ export default function SidePanel({
     }, [currentTabId]);
 
     const handleDownloadSubtitles = useCallback(() => {
-        if (subtitles) {
-            const fileName =
-                subtitleFileNames !== undefined && subtitleFileNames.length > 0
-                    ? `${subtitleFileNames[0]}.srt`
-                    : 'subtitles.srt';
-            download(new Blob([subtitleReader.subtitlesToSrt(subtitles)], { type: 'text/plain' }), fileName);
+        if (subtitles === undefined) return;
+        try {
+            const cuesByTrack = new Map<number, DisplaySubtitleModel[]>();
+            for (const subtitle of subtitles) {
+                if (subtitle.textImage !== undefined || subtitle.text.trim() === '') continue;
+                const cues = cuesByTrack.get(subtitle.track);
+                if (cues === undefined) cuesByTrack.set(subtitle.track, [subtitle]);
+                else cues.push(subtitle);
+            }
+            const tracks = [...cuesByTrack.entries()].map(([track, cues]) => ({
+                track,
+                name: subtitleFileNames?.[track] ?? '',
+                subtitles: cues,
+            }));
+            const result = subtitleReader.createSrtDownload(tracks, subtitleFileNames?.[0] ?? 'subtitles');
+            if (result !== undefined) download(result.blob, result.name);
+        } catch (error) {
+            handleError(error);
         }
-    }, [subtitles, subtitleFileNames, subtitleReader]);
+    }, [subtitles, subtitleFileNames, subtitleReader, handleError]);
 
     const handleDownloadSubtitleTimeline = useCallback(() => {
         playerRef.current?.downloadSubtitleTimeline();

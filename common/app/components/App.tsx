@@ -436,7 +436,7 @@ function App({
     const playerRef = useRef<PlayerRef>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const bufferedFileInputRef = useRef<HTMLInputElement>(null);
-    const { subtitleSourceFiles, firstSubtitleSourceFiles, subtitleFileNames } = sources;
+    const { firstSubtitleSourceFiles, subtitleFileNames } = sources;
 
     const handleError = useCallback(
         (message: any) => {
@@ -1557,21 +1557,27 @@ function App({
     );
 
     const handleDownloadSubtitleFilesAsSrt = useCallback(async () => {
-        const textSubtitleSourceFiles = subtitleSourceFiles
-            .filter(({ file: subtitleSourceFile }) => !subtitleSourceFile.name.endsWith('.sup'))
-            .map(({ file: subtitleSourceFile }) => subtitleSourceFile);
-
-        if (textSubtitleSourceFiles.length === 0) {
-            return;
+        try {
+            const sourceTracks = sources.subtitleTracks.map(({ fileParts }) => ({
+                fileParts: fileParts
+                    .map(({ file }) => file)
+                    .filter((file) => file.size > 0 && getExtension(file.name) !== '.sup'),
+            }));
+            const subtitles = await subtitleReader.subtitles(sourceTracks);
+            const tracks = sourceTracks.flatMap(({ fileParts }, track) =>
+                fileParts.length === 0
+                    ? []
+                    : [{ track, name: fileParts[0].name, subtitles: subtitles.filter((cue) => cue.track === track) }]
+            );
+            const result = subtitleReader.createSrtDownload(
+                tracks,
+                sources.videoFile?.file.name ?? sources.firstSubtitleSourceFiles[0]?.file.name ?? 'subtitles'
+            );
+            if (result !== undefined) download(result.blob, result.name);
+        } catch (error) {
+            handleError(error);
         }
-
-        download(
-            new Blob([await subtitleReader.filesToSrt(textSubtitleSourceFiles)], {
-                type: 'text/plain',
-            }),
-            `${fileName}.srt`
-        );
-    }, [fileName, subtitleSourceFiles, subtitleReader]);
+    }, [sources, subtitleReader, handleError]);
 
     const handleDownloadSubtitleTimeline = useCallback(() => {
         playerRef.current?.downloadSubtitleTimeline();

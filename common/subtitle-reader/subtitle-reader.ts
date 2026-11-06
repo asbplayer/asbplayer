@@ -1,6 +1,8 @@
 import { compile as parseAss } from 'ass-compiler';
 import SrtParser from '@qgustavor/srt-parser';
 import { subtitlesToSrt } from '@project/common/subtitle-reader/subtitles-to-srt';
+import { strToU8, zipSync } from 'fflate';
+import sanitize from 'sanitize-filename';
 import { removeSubtitleHtml } from '@project/common/util';
 import { WebVTT } from 'videojs-vtt.js';
 import { XMLParser } from 'fast-xml-parser';
@@ -89,6 +91,18 @@ interface SubtitleNode {
     track: number;
     tokenization?: Tokenization;
 }
+
+/** One selected text track to export. Empty cue lists still produce an SRT file. */
+interface SubtitleExportTrack {
+    track: number;
+    name: string;
+    subtitles: SubtitleNode[];
+}
+
+const sourceBaseName = (name: string) => {
+    const extensionIndex = name.lastIndexOf('.');
+    return sanitize(extensionIndex === -1 ? name : name.slice(0, extensionIndex));
+};
 
 export interface TextFilter {
     regex: RegExp;
@@ -895,12 +909,31 @@ export default class SubtitleReader {
     }
 
     /**
-     * Accepts complete subtitle files or fragments. Parses each source file as
-     * a separate track and combines the cues into one SRT, without track identities.
+     * Exports selected text tracks as one SRT or a ZIP, retaining their slot indexes.
+     * Callers omit unused slots and image tracks, and supply source or playback cue timing.
      */
-    async filesToSrt(subtitleSourceFiles: File[]) {
-        return this.subtitlesToSrt(
-            await this.subtitles(subtitleSourceFiles.map((subtitleSourceFile) => ({ fileParts: [subtitleSourceFile] })))
-        );
+    createSrtDownload(
+        tracks: readonly SubtitleExportTrack[],
+        fallbackName: string
+    ): { blob: Blob; name: string } | undefined {
+        if (tracks.length === 0) return;
+
+        const fallbackBaseName = sourceBaseName(fallbackName) || 'subtitles';
+        const files = [...tracks]
+            .sort((left, right) => left.track - right.track)
+            .map(({ track, name, subtitles }) => ({
+                name: sanitize(`[Track${track + 1}]${sourceBaseName(name) || fallbackBaseName}.srt`),
+                srt: this.subtitlesToSrt(subtitles),
+            }));
+        if (files.length === 1) {
+            return { name: files[0].name, blob: new Blob([files[0].srt], { type: 'text/plain' }) };
+        }
+
+        return {
+            name: `${fallbackBaseName}.zip`,
+            blob: new Blob([zipSync(Object.fromEntries(files.map(({ name, srt }) => [name, strToU8(srt)])))], {
+                type: 'application/zip',
+            }),
+        };
     }
 }
