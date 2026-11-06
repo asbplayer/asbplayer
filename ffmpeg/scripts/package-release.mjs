@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process';
-import { copyFile, mkdir, rm } from 'node:fs/promises';
+import { copyFile, cp, mkdir, rm } from 'node:fs/promises';
 import { promisify } from 'node:util';
 import { resolve } from 'node:path';
 import {
@@ -22,7 +22,16 @@ const packageArchive = (archive, directory, entry) =>
 // The workflow publishes every file in this directory; keep only this candidate's assets.
 await rm(release, { recursive: true, force: true });
 await mkdir(release, { recursive: true });
-await packageArchive(resolve(release, names.runtimeArchive), resolve(packageRoot, 'dist'), version);
+const runtimeStaging = resolve(packageRoot, '.cache/release-runtime');
+await rm(runtimeStaging, { recursive: true, force: true });
+try {
+    await cp(resolve(packageRoot, 'dist', version), resolve(runtimeStaging, names.runtimeRoot), {
+        recursive: true,
+    });
+    await packageArchive(resolve(release, names.runtimeArchive), runtimeStaging, names.runtimeRoot);
+} finally {
+    await rm(runtimeStaging, { recursive: true, force: true });
+}
 
 // Publish the exact upstream tarballs used by the build, unmodified, as the libraries' corresponding source.
 const staging = resolve(packageRoot, '.cache/release-sources');

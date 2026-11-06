@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-require-imports, no-undef */
 const { execFile } = require('node:child_process');
 const { createHash } = require('node:crypto');
-const { chmod, copyFile, mkdir, mkdtemp, readFile, rm, writeFile } = require('node:fs/promises');
+const { chmod, copyFile, cp, mkdir, mkdtemp, readFile, rename, rm, writeFile } = require('node:fs/promises');
 const { tmpdir } = require('node:os');
 const { resolve } = require('node:path');
 const { promisify } = require('node:util');
@@ -16,7 +16,8 @@ const releaseConfig = {
     sources: 'example-ffmpeg-{{version}}-sources',
 };
 const tag = `example-runtime-v${version}`;
-const runtimeName = `example-ffmpeg-${version}-runtime.tar.gz`;
+const runtimeRoot = `example-ffmpeg-${version}-runtime`;
+const runtimeName = `${runtimeRoot}.tar.gz`;
 const sourcesName = `example-ffmpeg-${version}-sources.tar.gz`;
 const sourcesRoot = `example-ffmpeg-${version}-sources`;
 const sources = [
@@ -31,8 +32,8 @@ let release;
 let runtime;
 let manifest;
 
-const writeRuntimeArchive = () =>
-    exec('tar', ['--format=ustar', '-czf', resolve(release, runtimeName), '-C', resolve(root, 'runtime'), version]);
+const writeRuntimeArchive = (entry = runtimeRoot) =>
+    exec('tar', ['--format=ustar', '-czf', resolve(release, runtimeName), '-C', resolve(root, 'runtime'), entry]);
 /** Publish a sources archive holding the given tarball bodies, keyed by filename. */
 const writeSourcesArchive = async (tarballs) => {
     const staging = resolve(root, 'sources-staging');
@@ -50,6 +51,7 @@ const prepareRuntime = async () => {
     await copyFile(resolve(release, runtimeName), resolve(root, 'release', runtimeName));
     await mkdir(resolve(root, 'dist'), { recursive: true });
     await exec('tar', ['-xzf', resolve(release, runtimeName), '-C', resolve(root, 'dist')]);
+    await rename(resolve(root, 'dist', runtimeRoot), resolve(root, 'dist', version));
 };
 
 beforeEach(async () => {
@@ -78,11 +80,12 @@ beforeEach(async () => {
     await writeFile(resolve(root, 'artifact-lock.json'), initialLock);
     const bodies = {
         'ffmpeg-worker.js': 'export {};',
-        'ffmpeg-core.js': 'export const _asb_runtime_info_json = () => 0;',
+        'ffmpeg-core.js':
+            'export const _asb_runtime_info_json = () => 0; export const _asb_transcode_audio = () => 0; export const _asb_last_error = () => 0;',
         'ffmpeg-core.wasm': Buffer.from([0, 97, 115, 109, 1, 0, 0, 0]),
         ...Object.fromEntries(inventory.notices.map((filename) => [`notices/${filename}`, `License: ${filename}`])),
     };
-    runtime = resolve(root, 'runtime', version);
+    runtime = resolve(root, 'runtime', runtimeRoot);
     for (const [filename, body] of Object.entries(bodies)) {
         await mkdir(resolve(runtime, filename, '..'), { recursive: true });
         await writeFile(resolve(runtime, filename), body);
@@ -238,7 +241,14 @@ it('permits repeated draft selection until publication', async () => {
     const firstLock = await readLock();
 
     // A valid new archive with the same manifest/runtime identity represents a rebuilt draft.
-    await exec('tar', ['--format=pax', '-czf', resolve(release, runtimeName), '-C', resolve(root, 'runtime'), version]);
+    await exec('tar', [
+        '--format=pax',
+        '-czf',
+        resolve(release, runtimeName),
+        '-C',
+        resolve(root, 'runtime'),
+        runtimeRoot,
+    ]);
     await select(['--repo', 'example/fork'], env);
     const finalLock = await readLock();
     expect(finalLock).not.toBe(firstLock);
@@ -385,6 +395,16 @@ it('rejects a runtime archive whose files differ from its manifest', async () =>
     await expect(select(['--repo', 'example/fork'])).rejects.toThrow('hash or size mismatch');
     expect(await readLock()).toBe(initialLock);
 });
+
+it.each([version, 'unexpected-runtime'])(
+    'rejects a runtime archive rooted at %s without changing the lock',
+    async (entry) => {
+        await cp(runtime, resolve(root, 'runtime', entry), { recursive: true });
+        await writeRuntimeArchive(entry);
+        await expect(select(['--repo', 'example/fork'])).rejects.toThrow('unexpected root directory');
+        expect(await readLock()).toBe(initialLock);
+    }
+);
 
 it('verifies a minimal configuration without requiring redundant disable flags', async () => {
     manifest.ffmpeg.configuration = '--disable-all --enable-version3';

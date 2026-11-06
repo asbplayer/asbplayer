@@ -441,6 +441,28 @@ export interface AudioTrackSelectedToVideoMessage extends Message {
     readonly id: string;
 }
 
+/** Live conversion lifecycle and latest immutable encoded prefix shared with the playback document. */
+export type TranscodedAudioPayload = {
+    /** The original track must not be recorded, even if conversion is unavailable or fails. */
+    readonly required: boolean;
+    readonly codecName?: string;
+} & (
+    | { readonly state: 'idle' | 'failed'; readonly audio?: never }
+    | { readonly state: 'transcoding'; readonly audio?: Blob }
+    | { readonly state: 'ready'; readonly audio: Blob }
+);
+
+export type TranscodedAudioToVideoMessage = Message &
+    TranscodedAudioPayload & {
+        readonly command: 'transcodedAudio';
+    };
+
+export interface AudioBufferedFromVideoMessage extends Message {
+    readonly command: 'audioBuffered';
+    /** Milliseconds; undefined removes streaming seek limits after completion or detach. */
+    readonly range: { readonly start: number; readonly end: number } | undefined;
+}
+
 export interface ToggleSubtitleTrackInListFromVideoMessage extends Message {
     readonly command: 'toggleSubtitleTrackInList';
     readonly track: number;
@@ -957,6 +979,10 @@ export interface DeleteCopyHistoryMessage extends MessageWithId {
 
 export interface ClearCopyHistoryMessage extends MessageWithId {
     readonly command: 'clear-copy-history';
+}
+
+export interface CopyHistoryChangedMessage extends Message {
+    readonly command: 'copy-history-changed';
 }
 
 export interface DictionaryGetBulkMessage extends MessageWithId {

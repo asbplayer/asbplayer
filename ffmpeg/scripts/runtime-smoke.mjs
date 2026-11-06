@@ -27,6 +27,10 @@ const module = await createRuntime({
     },
 });
 const info = JSON.parse(module.UTF8ToString(module._asb_runtime_info_json()));
+assert.equal(typeof module._asb_transcode_audio, 'function');
+assert.equal(typeof module._asb_last_error, 'function');
+assert.ok(module.HEAPU8 instanceof Uint8Array, 'The native bridge requires an exported heap view');
+assert.ok(module.HEAPU8.buffer instanceof ArrayBuffer, 'Workers use private, unshared WASM memory');
 
 assert.deepEqual(Object.keys(info).sort(), [
     'ffmpegConfiguration',
@@ -41,9 +45,9 @@ assert.equal(info.runtimeVersion, expectedRuntimeVersion);
 assert.equal(info.ffmpegVersion, expectedFfmpegVersion);
 assert.equal(info.ffmpegConfiguration, expectedConfiguration);
 assert.equal(info.ffmpegLicense, expectedLicense);
-assert.deepEqual(info.linkedLibraries, ['libavutil']);
-assert.deepEqual(info.operations, ['inspect']);
-assert.equal(info.libraries.length, 1);
+assert.deepEqual(info.linkedLibraries, ['libavutil', 'libavcodec', 'libavformat', 'libswresample']);
+assert.deepEqual(info.operations, ['inspect', 'transcodeAudio']);
+assert.equal(info.libraries.length, 4);
 assert.equal(info.libraries[0].name, 'libavutil');
 assert.ok(Number.isSafeInteger(info.libraries[0].version) && info.libraries[0].version > 0);
 assert.equal(info.libraries[0].configuration, expectedConfiguration);

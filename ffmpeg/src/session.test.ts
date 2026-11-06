@@ -1,5 +1,11 @@
 import { createFfmpegSession, ffmpegMetadata } from '@project/ffmpeg';
-import type { FfmpegRuntimeInfo, FfmpegWorker, PreparedFfmpegAssets, WorkerRequest } from '@project/ffmpeg';
+import type {
+    FfmpegDiagnostics,
+    FfmpegRuntimeInfo,
+    FfmpegWorker,
+    PreparedFfmpegAssets,
+    WorkerRequest,
+} from '@project/ffmpeg';
 
 const preparedAssets = (): PreparedFfmpegAssets => ({
     workerURL: 'blob:verified-worker',
@@ -24,6 +30,7 @@ class FakeWorker implements FfmpegWorker {
     readonly messages: WorkerRequest[] = [];
     readonly terminate = jest.fn();
     responseInfo = runtimeInfo();
+    transcodeResult = 5;
     autoReply = true;
 
     postMessage(message: WorkerRequest) {
@@ -33,13 +40,22 @@ class FakeWorker implements FfmpegWorker {
             this.target.dispatchEvent(
                 new MessageEvent('message', {
                     data: {
+                        diagnostics: { messages: [], omittedMessages: 0 },
                         sessionId: message.sessionId,
                         requestId: message.requestId,
                         ok: true,
-                        result: this.responseInfo,
+                        result: message.operation === 'transcodeAudio' ? this.transcodeResult : this.responseInfo,
                     },
                 })
             )
+        );
+    }
+
+    chunk(chunk: ArrayBuffer, request = this.messages.at(-1)!) {
+        this.target.dispatchEvent(
+            new MessageEvent('message', {
+                data: { sessionId: request.sessionId, requestId: request.requestId, type: 'chunk', chunk },
+            })
         );
     }
 
@@ -62,10 +78,144 @@ const workerStarted = async (worker: FakeWorker) => {
 };
 
 describe('FFmpeg session', () => {
+    it.each([
+        { ok: true, throwingSink: false },
+        { ok: false, throwingSink: false },
+        { ok: true, throwingSink: true },
+        { ok: false, throwingSink: true },
+    ])('delivers terminal diagnostics once without changing the result: %j', async ({ ok, throwingSink }) => {
+        const worker = new FakeWorker();
+        const reports: unknown[] = [];
+        const diagnostics: FfmpegDiagnostics = {
+            messages: [
+                { source: 'runtime', level: 'warning', message: 'Tolerated 2 audio decoder errors', occurrences: 1 },
+            ],
+            omittedMessages: 0,
+        };
+        const session = createFfmpegSession({
+            prepareAssets: async () => preparedAssets(),
+            workerFactory: () => worker,
+            onDiagnostics: (report, context) => {
+                reports.push({ report, context });
+                if (throwingSink) throw new Error('Host logging failed');
+            },
+        });
+        const runtime = await session.load();
+        reports.length = 0;
+        worker.autoReply = false;
+        const conversion = runtime.transcodeAudio({ input: new Blob(), trackIndex: 0, onChunk: () => {} });
+        const request = worker.messages.at(-1)!;
+        const reply = {
+            sessionId: request.sessionId,
+            requestId: request.requestId,
+            diagnostics,
+            ...(ok ? { ok: true, result: 5 } : { ok: false, error: { code: 'native', message: 'Decoder failed' } }),
+        };
+        worker.target.dispatchEvent(new MessageEvent('message', { data: reply }));
+        if (ok) await expect(conversion).resolves.toBe(5);
+        else await expect(conversion).rejects.toMatchObject({ code: 'native', message: 'Decoder failed' });
+        expect(reports).toEqual([
+            {
+                report: diagnostics,
+                context: {
+                    sessionId: request.sessionId,
+                    requestId: request.requestId,
+                    operation: 'transcodeAudio',
+                    failed: !ok,
+                },
+            },
+        ]);
+        worker.target.dispatchEvent(new MessageEvent('message', { data: reply }));
+        expect(reports).toHaveLength(1);
+        expect(session.state).toBe('ready');
+        session.dispose();
+    });
+
+    it('does not deliver diagnostics from an aborted request', async () => {
+        const worker = new FakeWorker();
+        const reports: FfmpegDiagnostics[] = [];
+        const session = createFfmpegSession({
+            prepareAssets: async () => preparedAssets(),
+            workerFactory: () => worker,
+            onDiagnostics: (report) => reports.push(report),
+        });
+        const runtime = await session.load();
+        reports.length = 0;
+        worker.autoReply = false;
+        const controller = new AbortController();
+        const conversion = runtime.transcodeAudio({
+            input: new Blob(),
+            trackIndex: 0,
+            onChunk: () => {},
+            signal: controller.signal,
+        });
+        const request = worker.messages.at(-1)!;
+        controller.abort();
+        await expect(conversion).rejects.toMatchObject({ code: 'aborted' });
+        worker.target.dispatchEvent(
+            new MessageEvent('message', {
+                data: {
+                    sessionId: request.sessionId,
+                    requestId: request.requestId,
+                    ok: true,
+                    result: 5,
+                    diagnostics: { messages: [], omittedMessages: 0 },
+                },
+            })
+        );
+        expect(reports).toEqual([]);
+        expect(session.state).toBe('ready');
+        session.dispose();
+    });
+
+    it.each([
+        { name: 'missing', diagnostics: undefined },
+        {
+            name: 'oversized',
+            diagnostics: {
+                messages: Array.from({ length: 33 }, () => ({
+                    source: 'ffmpeg',
+                    level: 'warning',
+                    message: 'Repeated warning',
+                    occurrences: 1,
+                })),
+                omittedMessages: 0,
+            },
+        },
+    ])('rejects $name terminal diagnostics', async ({ diagnostics }) => {
+        const worker = new FakeWorker();
+        const onDiagnostics = jest.fn();
+        const session = createFfmpegSession({
+            prepareAssets: async () => preparedAssets(),
+            workerFactory: () => worker,
+            onDiagnostics,
+        });
+        const runtime = await session.load();
+        onDiagnostics.mockClear();
+        worker.autoReply = false;
+        const conversion = runtime.transcodeAudio({ input: new Blob(), trackIndex: 0, onChunk: () => {} });
+        const request = worker.messages.at(-1)!;
+        worker.target.dispatchEvent(
+            new MessageEvent('message', {
+                data: {
+                    sessionId: request.sessionId,
+                    requestId: request.requestId,
+                    ok: true,
+                    result: 5,
+                    diagnostics,
+                },
+            })
+        );
+        await expect(conversion).rejects.toMatchObject({ code: 'protocol' });
+        expect(onDiagnostics).not.toHaveBeenCalled();
+        expect(session.state).toBe('failed');
+    });
+
     it.each(['error', 'messageerror'])('reports %s during loading as an initialization failure', async (type) => {
         const worker = new FakeWorker();
         worker.autoReply = false;
         const session = createFfmpegSession({
+            onDiagnostics: () => {},
             prepareAssets: async () => preparedAssets(),
             workerFactory: () => worker,
         });
@@ -82,6 +232,7 @@ describe('FFmpeg session', () => {
             const assets = preparedAssets();
             const worker = new FakeWorker();
             const session = createFfmpegSession({
+                onDiagnostics: () => {},
                 prepareAssets: async () => assets,
                 workerFactory: () => worker,
             });
@@ -103,6 +254,7 @@ describe('FFmpeg session', () => {
         const prepare = jest.fn(async () => preparedAssets());
         const factory = jest.fn(() => new FakeWorker());
         const session = createFfmpegSession({
+            onDiagnostics: () => {},
             signal: controller.signal,
             prepareAssets: prepare,
             workerFactory: factory,
@@ -117,6 +269,7 @@ describe('FFmpeg session', () => {
         const worker = new FakeWorker();
         const owner = new AbortController();
         const session = createFfmpegSession({
+            onDiagnostics: () => {},
             signal: owner.signal,
             prepareAssets: async () => assets,
             workerFactory: () => worker,
@@ -136,6 +289,7 @@ describe('FFmpeg session', () => {
         const error = Object.assign(new Error('Update the app to continue.'), { code: 'update-required' });
         const factory = jest.fn(() => new FakeWorker());
         const session = createFfmpegSession({
+            onDiagnostics: () => {},
             workerFactory: factory,
             prepareAssets: async () => {
                 throw error;
@@ -156,6 +310,7 @@ describe('FFmpeg session', () => {
         const worker = new FakeWorker();
         const factory = jest.fn(() => worker);
         const session = createFfmpegSession({
+            onDiagnostics: () => {},
             workerFactory: factory,
             prepareAssets,
         });
@@ -181,6 +336,7 @@ describe('FFmpeg session', () => {
         });
         const worker = new FakeWorker();
         const session = createFfmpegSession({
+            onDiagnostics: () => {},
             workerFactory: () => worker,
             prepareAssets: () => preparation,
         });
@@ -204,6 +360,7 @@ describe('FFmpeg session', () => {
         });
         const factory = jest.fn(() => new FakeWorker());
         const session = createFfmpegSession({
+            onDiagnostics: () => {},
             workerFactory: factory,
             prepareAssets: (signal) => {
                 preparationSignal = signal;
@@ -225,6 +382,7 @@ describe('FFmpeg session', () => {
         const factory = jest.fn(() => new FakeWorker());
         const controller = new AbortController();
         const session = createFfmpegSession({
+            onDiagnostics: () => {},
             workerFactory: factory,
             signal: controller.signal,
             prepareAssets: () => new Promise(() => {}),
@@ -241,7 +399,11 @@ describe('FFmpeg session', () => {
     it('is lazy, loads one versioned worker, and exposes runtime inspection', async () => {
         const worker = new FakeWorker();
         const factory = jest.fn(() => worker);
-        const session = createFfmpegSession({ prepareAssets: async () => preparedAssets(), workerFactory: factory });
+        const session = createFfmpegSession({
+            onDiagnostics: () => {},
+            prepareAssets: async () => preparedAssets(),
+            workerFactory: factory,
+        });
         expect(factory).not.toHaveBeenCalled();
 
         const [first, second] = await Promise.all([session.load(), session.load()]);
@@ -255,11 +417,174 @@ describe('FFmpeg session', () => {
         expect(worker.terminate).not.toHaveBeenCalled();
     });
 
+    it('streams ordered chunks through the worker boundary and completes separately', async () => {
+        const worker = new FakeWorker();
+        const session = createFfmpegSession({
+            onDiagnostics: () => {},
+            prepareAssets: async () => preparedAssets(),
+            workerFactory: () => worker,
+        });
+        const runtime = await session.load();
+        worker.autoReply = false;
+        const input = new Blob([new Uint8Array([9, 8, 7])]);
+        const chunks: ArrayBuffer[] = [];
+        let completed = false;
+        const conversion = runtime
+            .transcodeAudio({ input, trackIndex: 0, onChunk: (chunk) => chunks.push(chunk) })
+            .then((duration) => {
+                completed = true;
+                return duration;
+            });
+        const request = worker.messages.at(-1)!;
+        for (const bytes of [[1, 2], [3]]) {
+            worker.target.dispatchEvent(
+                new MessageEvent('message', {
+                    data: {
+                        sessionId: request.sessionId,
+                        requestId: request.requestId,
+                        type: 'chunk',
+                        chunk: new Uint8Array(bytes).buffer,
+                    },
+                })
+            );
+        }
+        await Promise.resolve();
+        expect(chunks.map((chunk) => [...new Uint8Array(chunk)])).toEqual([[1, 2], [3]]);
+        expect(completed).toBe(false);
+        worker.target.dispatchEvent(
+            new MessageEvent('message', {
+                data: {
+                    diagnostics: { messages: [], omittedMessages: 0 },
+                    sessionId: request.sessionId,
+                    requestId: request.requestId,
+                    ok: true,
+                    result: worker.transcodeResult,
+                },
+            })
+        );
+        await expect(conversion).resolves.toBe(worker.transcodeResult);
+        expect(completed).toBe(true);
+        worker.chunk(new Uint8Array([4]).buffer, request);
+        expect(chunks.map((chunk) => [...new Uint8Array(chunk)])).toEqual([[1, 2], [3]]);
+        expect(request).toMatchObject({ operation: 'transcodeAudio', trackIndex: 0, input });
+        session.dispose();
+    });
+
+    it.each([new ArrayBuffer(0), 'bytes', null])('rejects a malformed stream chunk: %j', async (chunk) => {
+        const worker = new FakeWorker();
+        const session = createFfmpegSession({
+            onDiagnostics: () => {},
+            prepareAssets: async () => preparedAssets(),
+            workerFactory: () => worker,
+        });
+        const runtime = await session.load();
+        worker.autoReply = false;
+        const conversion = runtime.transcodeAudio({
+            input: new Blob(),
+            trackIndex: 0,
+            onChunk: () => {},
+        });
+        const request = worker.messages.at(-1)!;
+        worker.target.dispatchEvent(
+            new MessageEvent('message', {
+                data: { sessionId: request.sessionId, requestId: request.requestId, type: 'chunk', chunk },
+            })
+        );
+        await expect(conversion).rejects.toMatchObject({ code: 'protocol' });
+        expect(worker.terminate).toHaveBeenCalledTimes(1);
+    });
+
+    it('ignores late chunks for a cancelled conversion and routes chunks to the remaining request', async () => {
+        const worker = new FakeWorker();
+        const session = createFfmpegSession({
+            onDiagnostics: () => {},
+            prepareAssets: async () => preparedAssets(),
+            workerFactory: () => worker,
+        });
+        const runtime = await session.load();
+        worker.autoReply = false;
+        const cancelledChunks = jest.fn();
+        const chunks: ArrayBuffer[] = [];
+        const controller = new AbortController();
+        const first = runtime.transcodeAudio({
+            input: new Blob(),
+            trackIndex: 0,
+            signal: controller.signal,
+            onChunk: cancelledChunks,
+        });
+        const firstRequest = worker.messages.at(-1)!;
+        const second = runtime.transcodeAudio({
+            input: new Blob(),
+            trackIndex: 1,
+            onChunk: (chunk) => chunks.push(chunk),
+        });
+        const secondRequest = worker.messages.at(-1)!;
+        controller.abort();
+        await expect(first).rejects.toMatchObject({ code: 'aborted' });
+        const chunk = new Uint8Array([1, 2]).buffer;
+        worker.chunk(chunk, firstRequest);
+        worker.chunk(chunk, secondRequest);
+        expect(cancelledChunks).not.toHaveBeenCalled();
+        expect(chunks).toEqual([chunk]);
+        worker.target.dispatchEvent(
+            new MessageEvent('message', {
+                data: {
+                    diagnostics: { messages: [], omittedMessages: 0 },
+                    sessionId: secondRequest.sessionId,
+                    requestId: secondRequest.requestId,
+                    ok: true,
+                    result: worker.transcodeResult,
+                },
+            })
+        );
+        await expect(second).resolves.toEqual(worker.transcodeResult);
+        session.dispose();
+    });
+
+    it('rejects chunks received for initialization', async () => {
+        const worker = new FakeWorker();
+        worker.autoReply = false;
+        const session = createFfmpegSession({
+            onDiagnostics: () => {},
+            prepareAssets: async () => preparedAssets(),
+            workerFactory: () => worker,
+        });
+        const loading = session.load();
+        worker.chunk(new Uint8Array([1]).buffer, await workerStarted(worker));
+        await expect(loading).rejects.toMatchObject({ code: 'protocol' });
+    });
+
+    it('rejects a conversion when its chunk consumer throws', async () => {
+        const worker = new FakeWorker();
+        const session = createFfmpegSession({
+            onDiagnostics: () => {},
+            prepareAssets: async () => preparedAssets(),
+            workerFactory: () => worker,
+        });
+        const runtime = await session.load();
+        worker.autoReply = false;
+        const error = new Error('Chunk consumer failed');
+        const conversion = runtime.transcodeAudio({
+            input: new Blob(),
+            trackIndex: 0,
+            onChunk: () => {
+                throw error;
+            },
+        });
+        worker.chunk(new Uint8Array([1]).buffer);
+        await expect(conversion).rejects.toBe(error);
+        session.dispose();
+    });
+
     it('rejects an already-aborted load without creating a worker', async () => {
         const controller = new AbortController();
         controller.abort();
         const factory = jest.fn();
-        const session = createFfmpegSession({ prepareAssets: async () => preparedAssets(), workerFactory: factory });
+        const session = createFfmpegSession({
+            onDiagnostics: () => {},
+            prepareAssets: async () => preparedAssets(),
+            workerFactory: factory,
+        });
         await expect(session.load({ signal: controller.signal })).rejects.toMatchObject({ code: 'aborted' });
         expect(factory).not.toHaveBeenCalled();
         expect(session.state).toBe('new');
@@ -269,6 +594,7 @@ describe('FFmpeg session', () => {
         const worker = new FakeWorker();
         worker.autoReply = false;
         const session = createFfmpegSession({
+            onDiagnostics: () => {},
             prepareAssets: async () => preparedAssets(),
             workerFactory: () => worker,
         });
@@ -284,6 +610,7 @@ describe('FFmpeg session', () => {
         worker.target.dispatchEvent(
             new MessageEvent('message', {
                 data: {
+                    diagnostics: { messages: [], omittedMessages: 0 },
                     sessionId: initialize.sessionId,
                     requestId: initialize.requestId,
                     ok: true,
@@ -300,6 +627,7 @@ describe('FFmpeg session', () => {
         const worker = new FakeWorker();
         worker.autoReply = false;
         const session = createFfmpegSession({
+            onDiagnostics: () => {},
             prepareAssets: async () => preparedAssets(),
             workerFactory: () => worker,
         });
@@ -308,6 +636,7 @@ describe('FFmpeg session', () => {
         worker.target.dispatchEvent(
             new MessageEvent('message', {
                 data: {
+                    diagnostics: { messages: [], omittedMessages: 0 },
                     sessionId: initialize.sessionId,
                     requestId: initialize.requestId,
                     ok: true,
@@ -327,6 +656,7 @@ describe('FFmpeg session', () => {
         const worker = new FakeWorker();
         worker.responseInfo = runtimeInfo({ runtimeVersion: 'mismatch' });
         const session = createFfmpegSession({
+            onDiagnostics: () => {},
             prepareAssets: async () => assets,
             workerFactory: () => worker,
         });
@@ -341,6 +671,7 @@ describe('FFmpeg session', () => {
         const worker = new FakeWorker();
         worker.responseInfo = runtimeInfo({ ffmpegVersion: `${ffmpegMetadata.ffmpegVersion}0` });
         const session = createFfmpegSession({
+            onDiagnostics: () => {},
             prepareAssets: async () => preparedAssets(),
             workerFactory: () => worker,
         });
@@ -352,6 +683,7 @@ describe('FFmpeg session', () => {
     it('aborts an unresponsive request without disposing the session', async () => {
         const worker = new FakeWorker();
         const session = createFfmpegSession({
+            onDiagnostics: () => {},
             prepareAssets: async () => preparedAssets(),
             workerFactory: () => worker,
         });
@@ -368,6 +700,7 @@ describe('FFmpeg session', () => {
         worker.target.dispatchEvent(
             new MessageEvent('message', {
                 data: {
+                    diagnostics: { messages: [], omittedMessages: 0 },
                     sessionId: inspect.sessionId,
                     requestId: inspect.requestId,
                     ok: true,
@@ -381,6 +714,7 @@ describe('FFmpeg session', () => {
     it('ignores a late aborted reply while another request is pending', async () => {
         const worker = new FakeWorker();
         const session = createFfmpegSession({
+            onDiagnostics: () => {},
             prepareAssets: async () => preparedAssets(),
             workerFactory: () => worker,
         });
@@ -397,6 +731,7 @@ describe('FFmpeg session', () => {
         worker.target.dispatchEvent(
             new MessageEvent('message', {
                 data: {
+                    diagnostics: { messages: [], omittedMessages: 0 },
                     sessionId: firstInspect.sessionId,
                     requestId: firstInspect.requestId,
                     ok: true,
@@ -409,6 +744,7 @@ describe('FFmpeg session', () => {
         worker.target.dispatchEvent(
             new MessageEvent('message', {
                 data: {
+                    diagnostics: { messages: [], omittedMessages: 0 },
                     sessionId: initialize.sessionId,
                     requestId: secondInspect.requestId,
                     ok: true,
@@ -422,6 +758,7 @@ describe('FFmpeg session', () => {
     it('fails a reply for a request that was never issued by the session', async () => {
         const worker = new FakeWorker();
         const session = createFfmpegSession({
+            onDiagnostics: () => {},
             prepareAssets: async () => preparedAssets(),
             workerFactory: () => worker,
         });
@@ -433,6 +770,7 @@ describe('FFmpeg session', () => {
         worker.target.dispatchEvent(
             new MessageEvent('message', {
                 data: {
+                    diagnostics: { messages: [], omittedMessages: 0 },
                     sessionId: request.sessionId,
                     requestId: request.requestId + 1,
                     ok: true,
@@ -450,6 +788,7 @@ describe('FFmpeg session', () => {
         worker.autoReply = false;
         const controller = new AbortController();
         const session = createFfmpegSession({
+            onDiagnostics: () => {},
             prepareAssets: async () => preparedAssets(),
             workerFactory: () => worker,
             signal: controller.signal,
@@ -468,10 +807,17 @@ describe('FFmpeg session', () => {
     it('fails all work on malformed or stale replies', async () => {
         for (const data of [
             { malformed: true },
-            { sessionId: 'stale', requestId: 2, ok: true, result: runtimeInfo() },
+            {
+                diagnostics: { messages: [], omittedMessages: 0 },
+                sessionId: 'stale',
+                requestId: 2,
+                ok: true,
+                result: runtimeInfo(),
+            },
         ]) {
             const worker = new FakeWorker();
             const session = createFfmpegSession({
+                onDiagnostics: () => {},
                 prepareAssets: async () => preparedAssets(),
                 workerFactory: () => worker,
             });
@@ -487,6 +833,7 @@ describe('FFmpeg session', () => {
     it('terminates exactly once when disposed', async () => {
         const worker = new FakeWorker();
         const session = createFfmpegSession({
+            onDiagnostics: () => {},
             prepareAssets: async () => preparedAssets(),
             workerFactory: () => worker,
         });

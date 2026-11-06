@@ -124,7 +124,7 @@ describe('Binding playback mode integration', () => {
         const frameCallbacks = new Map<number, VideoFrameRequestCallback>();
         video.src = 'https://example.com/video.mp4';
         Object.defineProperties(video, {
-            readyState: { configurable: true, value: 4 },
+            readyState: { configurable: true, value: HTMLMediaElement.HAVE_ENOUGH_DATA },
             duration: { configurable: true, value: 120 },
             videoWidth: { configurable: true, value: width },
             videoHeight: { configurable: true, value: height },

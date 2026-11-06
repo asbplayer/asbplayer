@@ -8,6 +8,7 @@
         "asbplayer-AGPL-3.0-or-later.txt",
         "FFmpeg-LGPL-3.0.txt",
         "FFmpeg-GPL-3.0.txt",
+        "Opus-BSD.txt",
         "Emscripten-MIT.txt",
         "musl-COPYRIGHT.txt",
         "compiler-rt-LICENSE.txt",

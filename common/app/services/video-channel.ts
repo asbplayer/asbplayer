@@ -7,6 +7,9 @@ import type {
     AudioTrackModel,
     AudioTrackSelectedFromVideoMessage,
     AudioTrackSelectedToVideoMessage,
+    TranscodedAudioPayload,
+    TranscodedAudioToVideoMessage,
+    AudioBufferedFromVideoMessage,
     CardTextFieldValues,
     CopyMessage,
     CopyToVideoMessage,
@@ -101,6 +104,9 @@ export default class VideoChannel {
     oncanplay: ((ev: Event) => void) | null = null;
     onTokenSelectionFocus: (() => void) | null = null;
     audioTracks?: AudioTrackModel[];
+    private audioConversionFailedCallbacks: (() => void)[] = [];
+    audioSeekableRange?: { readonly start: number; readonly end: number };
+    private latestTranscodedAudio?: TranscodedAudioToVideoMessage;
     selectedAudioTrack?: string;
     playModes: Set<PlayMode>;
     duration: number;
@@ -112,7 +118,7 @@ export default class VideoChannel {
         this.paused = true;
         this.duration = 0;
         this.isReady = false;
-        this.readyState = 0;
+        this.readyState = HTMLMediaElement.HAVE_NOTHING;
         this._playbackRate = 1;
         this.playModes = new Set([PlayMode.normal]);
         this.selectedAudioTrack = undefined;
@@ -150,7 +156,7 @@ export default class VideoChannel {
                     this.isReady = true;
                     this.audioTracks = readyMessage.audioTracks;
                     this.selectedAudioTrack = readyMessage.selectedAudioTrack;
-                    this.readyState = 4;
+                    this.readyState = HTMLMediaElement.HAVE_ENOUGH_DATA;
                     this.time = readyMessage.currentTime;
                     this._playbackRate = readyMessage.playbackRate;
 
@@ -159,11 +165,23 @@ export default class VideoChannel {
                     }
                     break;
                 }
+                case 'audioConversionFailed': {
+                    for (const callback of this.audioConversionFailedCallbacks) callback();
+                    break;
+                }
+                case 'requestTranscodedAudio': {
+                    if (this.latestTranscodedAudio) this.protocol.postMessage(this.latestTranscodedAudio);
+                    break;
+                }
+                case 'audioBuffered': {
+                    this.audioSeekableRange = (event.data as AudioBufferedFromVideoMessage).range;
+                    break;
+                }
                 case 'readyState': {
                     const readyStateMessage = event.data as ReadyStateFromVideoMessage;
 
                     this.readyState = readyStateMessage.value;
-                    if (this.readyState === 4) {
+                    if (this.readyState === HTMLMediaElement.HAVE_ENOUGH_DATA) {
                         this.oncanplay?.(new Event('canplay'));
                     }
                     break;
@@ -356,7 +374,7 @@ export default class VideoChannel {
 
     set currentTime(value: number) {
         this.time = value;
-        this.readyState = 3;
+        this.readyState = HTMLMediaElement.HAVE_FUTURE_DATA;
         const message: CurrentTimeToVideoMessage = { command: 'currentTime', value: this.time };
         this.protocol.postMessage(message);
     }
@@ -530,6 +548,17 @@ export default class VideoChannel {
 
     audioTrackSelected(id: string) {
         const message: AudioTrackSelectedToVideoMessage = { command: 'audioTrackSelected', id: id };
+        this.protocol.postMessage(message);
+    }
+
+    onAudioConversionFailed(callback: () => void) {
+        this.audioConversionFailedCallbacks.push(callback);
+        return () => this._remove(callback, this.audioConversionFailedCallbacks);
+    }
+
+    transcodedAudio(payload: TranscodedAudioPayload) {
+        const message: TranscodedAudioToVideoMessage = { command: 'transcodedAudio', ...payload };
+        this.latestTranscodedAudio = message;
         this.protocol.postMessage(message);
     }
 
@@ -866,6 +895,8 @@ export default class VideoChannel {
         this.protocol.postMessage({ command: 'close' });
         this.protocol.close();
         this.readyCallbacks = [];
+        this.audioConversionFailedCallbacks = [];
+        this.latestTranscodedAudio = undefined;
         this.playCallbacks = [];
         this.pauseCallbacks = [];
         this.playbackStateCallbacks = [];

@@ -1,5 +1,4 @@
-import 'core-js/stable/structured-clone'; // fake-indexeddb requires structured clone polyfill
-import 'fake-indexeddb/auto';
+import '@project/common/copy-history/test-database';
 import { IndexedDBCopyHistoryRepository } from '@project/common/copy-history/copy-history-repository';
 import { expect, it, beforeEach } from '@jest/globals';
 

@@ -1,9 +1,13 @@
 import { NativeBridge } from '@project/ffmpeg/native';
 import type { NativeModule } from '@project/ffmpeg/native';
-import type { WorkerReply, WorkerReplyBody, WorkerRequest } from '@project/ffmpeg/protocol';
+import { createInputReader } from '@project/ffmpeg/input-reader';
+import type { FfmpegDiagnostics, WorkerReply, WorkerReplyBody, WorkerRequest } from '@project/ffmpeg/protocol';
+
+// The package also compiles its main-thread API with DOM types, without WebWorker globals.
+declare const FileReaderSync: { new (): { readAsArrayBuffer(blob: Blob): ArrayBuffer } };
 
 type WorkerScope = {
-    postMessage(message: WorkerReply): void;
+    postMessage(message: WorkerReply, transfer?: Transferable[]): void;
     onmessage: ((event: MessageEvent<WorkerRequest>) => void) | null;
 };
 
@@ -11,8 +15,8 @@ const scope = self as unknown as WorkerScope;
 let bridge: NativeBridge | undefined;
 let sessionId: string | undefined;
 
-const reply = (request: WorkerRequest, value: WorkerReplyBody) =>
-    scope.postMessage({ sessionId: request.sessionId, requestId: request.requestId, ...value });
+const reply = (request: WorkerRequest, value: WorkerReplyBody, transfer?: Transferable[]) =>
+    scope.postMessage({ sessionId: request.sessionId, requestId: request.requestId, ...value }, transfer);
 
 const handleInitialize = async (request: Extract<WorkerRequest, { operation: 'initialize' }>) => {
     if (bridge !== undefined || sessionId !== undefined) throw new Error('The worker is already initialized');
@@ -27,6 +31,24 @@ const handleInitialize = async (request: Extract<WorkerRequest, { operation: 'in
     return bridge.inspect();
 };
 
+const handleTranscodeAudio = (
+    request: Extract<WorkerRequest, { operation: 'transcodeAudio' }>,
+    bridge: NativeBridge,
+    onDiagnostics: (diagnostics: FfmpegDiagnostics) => void
+) => {
+    if (!(request.input instanceof Blob) || !Number.isInteger(request.trackIndex) || request.trackIndex < 0) {
+        throw new Error('Invalid FFmpeg audio transcode request');
+    }
+    return bridge.transcodeAudio(
+        createInputReader(request.input, (slice) => new FileReaderSync().readAsArrayBuffer(slice)),
+        request.trackIndex,
+        (chunk) => {
+            reply(request, { type: 'chunk', chunk }, [chunk]);
+        },
+        onDiagnostics
+    );
+};
+
 const handleRequest = async (request: WorkerRequest) => {
     if (
         typeof request !== 'object' ||
@@ -36,10 +58,11 @@ const handleRequest = async (request: WorkerRequest) => {
     ) {
         return;
     }
+    let diagnostics: FfmpegDiagnostics = { messages: [], omittedMessages: 0 };
     try {
         if (request.operation === 'initialize') {
             const result = await handleInitialize(request);
-            reply(request, { ok: true, result });
+            reply(request, { ok: true, result, diagnostics });
             return;
         }
         if (request.sessionId !== sessionId || bridge === undefined) {
@@ -47,10 +70,21 @@ const handleRequest = async (request: WorkerRequest) => {
         }
         switch (request.operation) {
             case 'inspect':
-                reply(request, { ok: true, result: bridge.inspect() });
+                reply(request, { ok: true, result: bridge.inspect(), diagnostics });
                 break;
+            case 'transcodeAudio': {
+                const result = handleTranscodeAudio(request, bridge, (value) => {
+                    diagnostics = value;
+                });
+                reply(request, { ok: true, result, diagnostics });
+                break;
+            }
             default:
-                reply(request, { ok: false, error: { code: 'unsupported', message: 'Unsupported FFmpeg operation' } });
+                reply(request, {
+                    ok: false,
+                    error: { code: 'unsupported', message: 'Unsupported FFmpeg operation' },
+                    diagnostics,
+                });
         }
     } catch (error) {
         reply(request, {
@@ -59,6 +93,7 @@ const handleRequest = async (request: WorkerRequest) => {
                 code: request.operation === 'initialize' ? 'initialization' : 'native',
                 message: error instanceof Error ? error.message : 'Unknown native error',
             },
+            diagnostics,
         });
     }
 };

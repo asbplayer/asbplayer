@@ -8,17 +8,25 @@
             "sha256": "84960df915059e8754fef2cd7c9afeb614062b1b5458ec471eecee619ee04e98"
         }
     },
+    "opus": {
+        "version": "1.6.1",
+        "license": "BSD-3-Clause",
+        "source": {
+            "url": "https://downloads.xiph.org/releases/opus/opus-1.6.1.tar.gz",
+            "sha256": "6ffcb593207be92584df15b32466ed64bbec99109f007c82205f0194572411a1"
+        }
+    },
     "toolchain": {
         "emscriptenVersion": "6.0.13",
         "container": "emscripten/emsdk@sha256:fb7864e398acfda863dfcea78b8bc8adad359fa60c6a0bbeb845931de64aa68a",
         "platform": "linux/amd64"
     },
-    "nativeLibraries": ["libavutil"],
+    "nativeLibraries": ["libavutil", "libavcodec", "libavformat", "libswresample"],
     "limits": {
         "initialMemoryBytes": 16777216,
         "maximumMemoryBytes": 1073741824,
         "stackBytes": 1048576,
-        "maximumWasmBytes": 1000000
+        "maximumWasmBytes": 2000000
     },
-    "implementedOperations": ["inspect"]
+    "implementedOperations": ["inspect", "transcodeAudio"]
 }
