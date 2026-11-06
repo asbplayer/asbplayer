@@ -9,10 +9,11 @@ The commands below run from the repository root unless stated otherwise.
 1. Commit and push the implementation source. Leave `artifact-lock.json` selecting the previous published runtime so implementation PRs can pass Verify independently of the next runtime release.
 2. Run [**Release FFmpeg**](../../.github/workflows/ffmpeg-release.yml) against that branch and choose **patch** or **minor**.
 3. The workflow builds and runs [release-check.sh](../scripts/verify/release-check.sh): code and artifact checks, native/WASM tests, and a clean rebuild for byte-for-byte comparison. It passes `ASB_FFMPEG_RUNTIME_VERSION` without modifying the lock, then creates a draft `ffmpeg-v<version>` with a runtime archive and an upstream sources archive.
-4. [Test the uploaded draft locally](#test-an-uploaded-draft-locally). Continue reviewing the implementation while its committed lock selects the previous published runtime. Implementation PRs can also merge before the runtime is published.
+4. [Test the uploaded draft locally](#test-an-uploaded-draft-locally). Continue reviewing the implementation while its committed lock selects the previous published runtime. Keep any local draft selection uncommitted.
 5. To rebuild the pending release from a newer commit, run **Release FFmpeg** on the desired branch with **current (draft only)**. This resolves the sole existing FFmpeg draft in the workflow repository, independently of the selected version. It fails if there are no matching drafts or multiple matching drafts. After verification, it replaces the runtime and sources assets and updates the draft's target commit, preserving its release notes. It rechecks that the original release is still a draft before replacing assets and updating its target. Published releases cannot be updated with `current`.
-6. Once the implementation is ready, rebuild the draft against the final implementation commit on that branch, or `main` if the implementation has already merged. Wait for the workflow to finish, finalize the release notes, and publish the draft.
-7. On the implementation branch, run `pnpm --filter @project/ffmpeg run select:runtime --version 0.X.Y --repo owner/repo`, review the generated `artifact-lock.json`, and commit and push it. Verify and production app builds now consume the published runtime. Include this lock update in the implementation PR; a separate selection PR is only needed if the implementation has already merged.
+6. Merge the implementation into `main` before publishing the runtime. The implementation PR must leave `artifact-lock.json` selecting the previous published runtime.
+7. Run **Release FFmpeg** from `main` with **current (draft only)** to rebuild the draft from the merged implementation. The workflow uses that run's exact `GITHUB_SHA` for both the build and the release target, so the published tag points at the implementation commit on `main`, not the pre-merge branch commit. Wait for all checks to pass, verify the draft targets that commit, finalize the release notes, and publish the draft.
+8. After publication, create a new branch from `main` and run `pnpm --filter @project/ffmpeg run select:runtime --version 0.X.Y --repo owner/repo`. Review the generated `artifact-lock.json`, commit and push it, and open a separate selection PR. CI and production app builds need the selected release to be published so they can download its assets without draft-release credentials.
 
 The workflow serializes release runs and rejects existing tags so the published source points at the commit that produced the assets. Patch and minor create new drafts; `current` only updates an existing draft. Published runtime bytes and capabilities are immutable and require a new version to change. Select and commit the preceding release before calculating another bump from it.
 
@@ -36,7 +37,7 @@ Keep this draft selection uncommitted during implementation review. Rerun select
 git restore ffmpeg/artifact-lock.json
 ```
 
-Once the release is published, selection rejects changing its locked bytes at the same version. Publishing an unchanged draft does not require rerunning selection; its existing local lock update can be committed after publication. CI uses the new runtime once that lock update is pushed, and production app builds use it once the update reaches their source branch.
+Once the release is published, selection rejects changing its locked bytes at the same version. Rerun selection after publication on a new branch from `main`, and commit the resulting lock update in a separate selection PR rather than committing the temporary draft selection. CI uses the new runtime once that lock update is pushed, and production app builds use it once the update reaches their source branch.
 
 ## Selection and verification
 
