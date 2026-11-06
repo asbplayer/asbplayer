@@ -1,5 +1,5 @@
 /** @jest-environment node */
-import { snapshotMiningAudio, snapshotWebmAudio } from '@project/common/audio-transcode/mining-audio';
+import { canMineWithAudio, snapshotMiningAudio, snapshotWebmAudio } from '@project/common/audio-transcode/mining-audio';
 import { webmHeader } from '@project/common/audio-transcode/test-host';
 import { finalizeWebmAudio } from '@project/common/audio-transcode/webm-audio';
 
@@ -93,4 +93,34 @@ it('uses the exact completed duration rather than the conservative partial bound
     const snapshot = await snapshotMiningAudio({ audio, required: true, complete: true });
     expect(snapshot.durationMs).toBeCloseTo(3002);
     expect(snapshot.audio).toBe(audio);
+});
+
+it.each<[number, boolean]>([
+    [39, true],
+    [40, true],
+    [41, false],
+    [1040, false],
+    [2000, false],
+])('allows mining a subtitle ending at %i ms only with another second of converted audio', async (end, ready) => {
+    const source = { audio: prefix(cluster(1000)), required: true, complete: false };
+    await expect(canMineWithAudio(source, end)).resolves.toBe(ready);
+});
+
+it('blocks mining until complete converted clusters reach the requested boundary', async () => {
+    const audio = prefix(cluster(1000), cluster(2000).slice(0, -1));
+    await expect(canMineWithAudio({ audio, required: true, complete: false }, 1040)).resolves.toBe(false);
+    await expect(
+        canMineWithAudio({ audio: prefix(cluster(1000), cluster(2000)), required: true, complete: false }, 1040)
+    ).resolves.toBe(true);
+});
+
+it('blocks mining before converted audio is available without restricting ordinary audio', async () => {
+    await expect(canMineWithAudio({ required: true, complete: false }, 1000)).resolves.toBe(false);
+    await expect(canMineWithAudio({ audio: prefix(), required: true, complete: false }, 1000)).resolves.toBe(false);
+    await expect(canMineWithAudio({ required: false, complete: false }, 1000)).resolves.toBe(true);
+});
+
+it('allows mining near the end of a completed file without requiring an extra second', async () => {
+    const audio = await finalizeWebmAudio([prefix(cluster(1000))], 3.002);
+    await expect(canMineWithAudio({ audio, required: true, complete: true }, 3000)).resolves.toBe(true);
 });

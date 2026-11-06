@@ -10,7 +10,7 @@ import type { RefObject } from 'react';
 import React, { useCallback, useState, useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import makeStyles from '@mui/styles/makeStyles';
-import type { SubtitleModel, CardModel, AnkiExportMode } from '@project/common';
+import type { SubtitleModel, CardModel, AnkiExportMode, TranscodedAudioModel } from '@project/common';
 import { MediaFragment } from '@project/common';
 import type { AnkiSettings, Profile } from '@project/common/settings';
 import { sortedAnkiFieldModels } from '@project/common/settings';
@@ -424,6 +424,41 @@ const AnkiDialog = ({
         [card, settings.audioPaddingStart, settings.audioPaddingEnd, settings.recordWithAudioPlayback]
     );
 
+    const snapshotSource = card.audio ? undefined : card.file?.transcodedAudio;
+    const [snapshotDuration, setSnapshotDuration] = useState<{ source: TranscodedAudioModel; durationMs: number }>();
+    useEffect(() => {
+        if (!open || !initialAudioClip || !snapshotSource) return;
+        let cancelled = false;
+        void initialAudioClip
+            .sourceDurationMs()
+            .then((durationMs) => {
+                if (!cancelled) {
+                    setSnapshotDuration({ source: snapshotSource, durationMs: Math.floor(durationMs ?? 0) });
+                }
+            })
+            .catch((error) => asbInfo('anki/ui', error));
+        return () => {
+            cancelled = true;
+        };
+    }, [open, initialAudioClip, snapshotSource]);
+    const snapshotEnd =
+        snapshotSource === undefined
+            ? undefined
+            : snapshotDuration?.source === snapshotSource
+              ? snapshotDuration.durationMs
+              : 0;
+    const clampTimestampInterval = useCallback(
+        (interval: number[]) =>
+            snapshotEnd === undefined
+                ? interval
+                : interval.map((timestamp) => Math.max(0, Math.min(snapshotEnd, timestamp))),
+        [snapshotEnd]
+    );
+    const boundedInterval = timestampBoundaryInterval && clampTimestampInterval(timestampBoundaryInterval);
+    const sliderBoundaryInterval =
+        boundedInterval && boundedInterval[0] < boundedInterval[1] ? boundedInterval : undefined;
+    const sliderInterval = timestampInterval && clampTimestampInterval(timestampInterval);
+
     useEffect(() => {
         if (!initialAudioClip) {
             setAudioClip(undefined);
@@ -612,7 +647,7 @@ const AnkiDialog = ({
 
     const handleTimestampIntervalChange = useCallback(
         (_: unknown, newValue: number | number[]) => {
-            const newTimestampInterval = newValue as number[];
+            const newTimestampInterval = clampTimestampInterval(newValue as number[]);
             setTimestampInterval(newTimestampInterval);
             const selectedSubtitles = card.surroundingSubtitles.filter((s) =>
                 subtitleIntersectsTimeInterval(s, newTimestampInterval)
@@ -625,7 +660,7 @@ const AnkiDialog = ({
                 setLastAppliedTimestampIntervalToAudio(newTimestampInterval);
             }
         },
-        [card.surroundingSubtitles, audioClip, onRerecord, applyTimestampIntervalToAllTracks]
+        [card.surroundingSubtitles, audioClip, onRerecord, applyTimestampIntervalToAllTracks, clampTimestampInterval]
     );
 
     const handleResetTimestampInterval = useCallback(() => {
@@ -633,24 +668,26 @@ const AnkiDialog = ({
             return;
         }
 
+        const resetInterval = initialTimestampInterval && clampTimestampInterval(initialTimestampInterval);
         const selectedSubtitles =
-            initialTimestampInterval == undefined
+            resetInterval === undefined
                 ? []
-                : card.surroundingSubtitles.filter((s) => subtitleIntersectsTimeInterval(s, initialTimestampInterval));
+                : card.surroundingSubtitles.filter((s) => subtitleIntersectsTimeInterval(s, resetInterval));
         setSelectedSubtitles(selectedSubtitles);
-        setTimestampInterval(initialTimestampInterval);
+        setTimestampInterval(resetInterval);
         setTimestampBoundaryInterval(initialTimestampBoundaryInterval);
         setTimestampMarks(sliderMarksFromCard(card.surroundingSubtitles, initialTimestampBoundaryInterval));
 
-        if (initialTimestampInterval !== undefined) {
-            applyTimestampIntervalToAllTracks(initialTimestampInterval, true);
-            setLastAppliedTimestampIntervalToText(initialTimestampInterval);
+        if (resetInterval !== undefined) {
+            applyTimestampIntervalToAllTracks(resetInterval, true);
+            setLastAppliedTimestampIntervalToText(resetInterval);
         }
     }, [
         initialTimestampInterval,
         initialTimestampBoundaryInterval,
         card.surroundingSubtitles,
         applyTimestampIntervalToAllTracks,
+        clampTimestampInterval,
     ]);
 
     const handleZoomInTimestampInterval = useCallback(() => {
@@ -658,35 +695,30 @@ const AnkiDialog = ({
             return;
         }
 
-        const newMin = (timestampBoundaryInterval[0] + timestampInterval[0]) / 2;
-        const newMax = (timestampBoundaryInterval[1] + timestampInterval[1]) / 2;
+        const boundary = clampTimestampInterval(timestampBoundaryInterval);
+        const interval = clampTimestampInterval(timestampInterval);
+        const newMin = (boundary[0] + interval[0]) / 2;
+        const newMax = (boundary[1] + interval[1]) / 2;
         const newTimestampBoundaryInterval = [newMin, newMax];
         setTimestampBoundaryInterval(newTimestampBoundaryInterval);
         setTimestampMarks(sliderMarksFromCard(card.surroundingSubtitles, newTimestampBoundaryInterval));
-    }, [timestampBoundaryInterval, timestampInterval, card.surroundingSubtitles]);
+    }, [timestampBoundaryInterval, timestampInterval, card.surroundingSubtitles, clampTimestampInterval]);
 
     const handleZoomOutTimestampInterval = useCallback(() => {
         if (!timestampBoundaryInterval || !timestampInterval) {
             return;
         }
 
-        const currentLength = timestampBoundaryInterval[1] - timestampBoundaryInterval[0];
+        const boundary = clampTimestampInterval(timestampBoundaryInterval);
+        const interval = clampTimestampInterval(timestampInterval);
+        const currentLength = boundary[1] - boundary[0];
         const minimumChange = currentLength / 4;
-        const newMin = Math.max(
-            0,
-            Math.min(
-                timestampBoundaryInterval[0] - minimumChange,
-                2 * timestampBoundaryInterval[0] - timestampInterval[0]
-            )
-        );
-        const newMax = Math.max(
-            timestampBoundaryInterval[1] + minimumChange,
-            2 * timestampBoundaryInterval[1] - timestampInterval[1]
-        );
-        const newTimestampBoundaryInterval = [newMin, newMax];
+        const newMin = Math.max(0, Math.min(boundary[0] - minimumChange, 2 * boundary[0] - interval[0]));
+        const newMax = Math.max(boundary[1] + minimumChange, 2 * boundary[1] - interval[1]);
+        const newTimestampBoundaryInterval = clampTimestampInterval([newMin, newMax]);
         setTimestampBoundaryInterval(newTimestampBoundaryInterval);
         setTimestampMarks(sliderMarksFromCard(card.surroundingSubtitles, newTimestampBoundaryInterval));
-    }, [timestampBoundaryInterval, timestampInterval, card.surroundingSubtitles]);
+    }, [timestampBoundaryInterval, timestampInterval, card.surroundingSubtitles, clampTimestampInterval]);
 
     const handleCopyImageToClipboard = useCallback(
         async (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
@@ -993,17 +1025,21 @@ const AnkiDialog = ({
                             items={tags}
                             onItemsChange={setTags}
                         />
-                        {timestampInterval && timestampBoundaryInterval && timestampMarks && (
+                        {sliderInterval && sliderBoundaryInterval && timestampMarks && (
                             <Grid container direction="row">
                                 <Grid item style={{ flexGrow: 1 }}>
                                     <Slider
                                         slots={{ valueLabel: ValueLabelComponent }}
-                                        value={timestampInterval}
+                                        value={sliderInterval}
                                         valueLabelFormat={sliderValueLabelFormat}
                                         onChange={handleTimestampIntervalChange}
-                                        min={timestampBoundaryInterval[0]}
-                                        max={timestampBoundaryInterval[1]}
-                                        marks={timestampMarks}
+                                        min={sliderBoundaryInterval[0]}
+                                        max={sliderBoundaryInterval[1]}
+                                        marks={timestampMarks.filter(
+                                            (mark) =>
+                                                mark.value >= sliderBoundaryInterval[0] &&
+                                                mark.value <= sliderBoundaryInterval[1]
+                                        )}
                                         step={1}
                                         valueLabelDisplay="auto"
                                         className={classes.rangeSelectSlider}

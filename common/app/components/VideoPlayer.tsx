@@ -1,4 +1,5 @@
 import { AudioClip } from '@project/common/audio-clip';
+import { canMineWithAudio } from '@project/common/audio-transcode/mining-audio';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { MutableRefObject } from 'react';
 
@@ -1622,7 +1623,7 @@ export default function VideoPlayer({
     }, [subtitles, calculateSurroundingSubtitles, lengthMs, clock]);
 
     const mineSubtitle = useCallback(
-        (
+        async (
             postMineAction: PostMineAction,
             videoFileUrl: string,
             videoFileName: string,
@@ -1633,14 +1634,23 @@ export default function VideoPlayer({
             cardTextFieldValues: CardTextFieldValues,
             timestamp: number
         ) => {
-            const showAnkiDialog = postMineAction === PostMineAction.showAnkiDialog;
-            if (showAnkiDialog) {
-                const wasPlaying = playing();
-                if (wasPlaying) playerChannel.pause();
-                setWasPlayingOnAnkiDialogRequest(wasPlaying);
-            }
             try {
                 const miningAudio = convertedAudioRef.current;
+                if (!(await canMineWithAudio(miningAudio, subtitle.end))) {
+                    setAlert({
+                        open: true,
+                        notifications: [
+                            { message: { locKey: 'info.audioNotReadyForMining', replacements: {} }, severity: 'info' },
+                        ],
+                    });
+                    return;
+                }
+                const showAnkiDialog = postMineAction === PostMineAction.showAnkiDialog;
+                if (showAnkiDialog) {
+                    const wasPlaying = playing();
+                    if (wasPlaying) playerChannel.pause();
+                    setWasPlayingOnAnkiDialogRequest(wasPlaying);
+                }
                 playerChannel.copy(
                     subtitle,
                     surroundingSubtitles,
@@ -1710,7 +1720,7 @@ export default function VideoPlayer({
                 mediaTimestamp = subtitleTimestampWithDelay(subtitle, settings.streamingScreenshotDelay);
             }
 
-            mineSubtitle(
+            void mineSubtitle(
                 postMineAction,
                 videoFile,
                 videoFileName ?? '',
@@ -1794,7 +1804,7 @@ export default function VideoPlayer({
                         surroundingSubtitles = calculated.surroundingSubtitles ?? [];
                     }
 
-                    mineSubtitle(
+                    void mineSubtitle(
                         postMineAction,
                         videoFile,
                         videoFileName ?? '',
@@ -1913,7 +1923,7 @@ export default function VideoPlayer({
                     onAnkiDialogRewind();
                 } else if (lastMinedRecord) {
                     const currentTimestamp = clock.time({ maxMs: lengthMs });
-                    mineSubtitle(
+                    void mineSubtitle(
                         PostMineAction.showAnkiDialog,
                         lastMinedRecord.videoFileUrl,
                         lastMinedRecord.videoFileName,
@@ -2345,6 +2355,16 @@ export default function VideoPlayer({
     };
     const baseBottomSubtitleOffset = !playing() && isMobile ? overlayContainerHeight : 0;
     const alertAnchor = subtitleAlignments[0] === 'top' ? 'bottom' : 'top';
+    const playbackAlert = (
+        <Alert
+            inline
+            open={alert.open}
+            disableAutoHide={alertDisableAutoHide}
+            onClose={handleAlertClosed}
+            notifications={alert.notifications}
+            useAppLogo={false}
+        />
+    );
     const resumePlaybackPrompt = useMemo(
         () => (
             <>
@@ -2376,7 +2396,7 @@ export default function VideoPlayer({
             className={`${classes.root} ${ASB_TOKEN_CONTAINER_CLASS}`}
             tabIndex={-1}
         >
-            <AlertStack anchor={alertAnchor}>
+            <AlertStack anchor="bottom">
                 <Alert
                     inline
                     open={resumePlaybackSnackbar.open}
@@ -2390,14 +2410,10 @@ export default function VideoPlayer({
                 >
                     {resumePlaybackPrompt}
                 </Alert>
-                <Alert
-                    inline
-                    open={alert.open}
-                    disableAutoHide={alertDisableAutoHide}
-                    onClose={handleAlertClosed}
-                    notifications={alert.notifications}
-                    useAppLogo={false}
-                />
+                {alertAnchor === 'bottom' && playbackAlert}
+            </AlertStack>
+            <AlertStack anchor="top">
+                {alertAnchor === 'top' && playbackAlert}
                 {videoLoadNotifications.conversion && (
                     <MuiAlert severity="info">
                         {t('info.audioConversionStarted', {

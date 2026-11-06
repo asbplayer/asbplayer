@@ -1,5 +1,6 @@
 import { effectiveSettings } from '@project/common/settings/settings-recipes';
 import { AudioClip } from '@project/common/audio-clip';
+import { canMineWithAudio } from '@project/common/audio-transcode/mining-audio';
 import React, { useEffect, useState, useMemo, useCallback, useRef, useImperativeHandle } from 'react';
 import type { MutableRefObject } from 'react';
 
@@ -1326,7 +1327,7 @@ function PlayerComponent(
     );
 
     const handleCopyFromSubtitlePlayer = useCallback(
-        (
+        async (
             subtitle: SubtitleModel,
             surroundingSubtitles: SubtitleModel[],
             postMineAction: PostMineAction,
@@ -1341,34 +1342,52 @@ function PlayerComponent(
                     channel?.copy(postMineAction);
                 }
             } else {
-                onCopy(
-                    {
-                        subtitle,
-                        surroundingSubtitles,
-                        subtitleFileName: subtitleFiles?.[subtitle.track]?.file?.name ?? '',
-                        mediaTimestamp: clock.time({ maxMs: calculateLengthMs(videoDurationRef) }),
-                        file:
-                            videoFile === undefined
-                                ? undefined
-                                : {
-                                      name: videoFile.file.name,
-                                      audioTrack: selectedAudioTrack,
-                                      playbackRate,
-                                      blobUrl: createBlobUrl(videoFile.file),
-                                      transcodedAudio: AudioClip.createTranscodedAudioSource({
-                                          audio: transcodedAudioRef.current.blob,
-                                          required: transcodedAudioRef.current.required,
-                                          complete: transcodedAudioRef.current.complete,
-                                      }),
-                                  },
-                        ...cardTextFieldValues,
-                    },
-                    postMineAction,
-                    undefined
-                );
+                try {
+                    const miningAudio = transcodedAudioRef.current;
+                    const audioSource = {
+                        audio: miningAudio.blob,
+                        required: miningAudio.required,
+                        complete: miningAudio.complete,
+                    };
+                    if (!(await canMineWithAudio(audioSource, subtitle.end))) {
+                        setAlert({
+                            open: true,
+                            notifications: [
+                                {
+                                    message: { locKey: 'info.audioNotReadyForMining', replacements: {} },
+                                    severity: 'info',
+                                },
+                            ],
+                        });
+                        return;
+                    }
+                    onCopy(
+                        {
+                            subtitle,
+                            surroundingSubtitles,
+                            subtitleFileName: subtitleFiles?.[subtitle.track]?.file?.name ?? '',
+                            mediaTimestamp: clock.time({ maxMs: calculateLengthMs(videoDurationRef) }),
+                            file:
+                                videoFile === undefined
+                                    ? undefined
+                                    : {
+                                          name: videoFile.file.name,
+                                          audioTrack: selectedAudioTrack,
+                                          playbackRate,
+                                          blobUrl: createBlobUrl(videoFile.file),
+                                          transcodedAudio: AudioClip.createTranscodedAudioSource(audioSource),
+                                      },
+                            ...cardTextFieldValues,
+                        },
+                        postMineAction,
+                        undefined
+                    );
+                } catch (error) {
+                    onError(error);
+                }
             }
         },
-        [channel, onCopy, clock, videoFile, videoFileUrl, subtitleFiles, selectedAudioTrack, playbackRate]
+        [channel, onCopy, clock, videoFile, videoFileUrl, subtitleFiles, selectedAudioTrack, playbackRate, onError]
     );
 
     const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {

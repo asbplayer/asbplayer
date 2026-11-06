@@ -114,3 +114,12 @@ export const snapshotMiningAudio = async ({
     if (snapshot === undefined) return { durationMs: 0 };
     return { audio: snapshot.blob, durationMs: snapshot.durationMs };
 };
+
+/** Leave a second of converted audio after the subtitle before freezing its mining source. */
+export const canMineWithAudio = async (source: TranscodedAudioState, subtitleEndMs: number): Promise<boolean> => {
+    if (!source.required) return true;
+    if (source.audio === undefined) return false;
+    if (source.complete) return true;
+    const { durationMs = 0 } = await snapshotMiningAudio(source);
+    return durationMs >= subtitleEndMs + millisecondsPerSecond;
+};

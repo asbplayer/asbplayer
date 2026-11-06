@@ -346,6 +346,7 @@
         "resumePlaybackPrompt": "Resume at {{time}}?",
         "resumePlaybackButton": "Resume",
         "audioConversionStarted": "Converting {{codec}} audio due to browser compatibility, playback can begin while the conversion continues.",
+        "audioNotReadyForMining": "Audio is still being converting for this subtitle, please try mining again shortly.",
         "videoLoadingDelayed": "The browser is still loading this video, playback will be available when loading finishes.",
         "updatedCard": "Carta aggiornata: {{result}}",
         "enabledRepeatPlayback": "Riproduzione ripetuta: Attivata",

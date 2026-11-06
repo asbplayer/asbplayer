@@ -41,6 +41,7 @@ interface AudioData {
     base64: () => Promise<string>;
     slice: (start: number, end: number) => AudioData;
     isSliceable: () => boolean;
+    sourceDurationMs?: () => Promise<number | undefined>;
     error?: AudioErrorCode;
     playing: boolean;
     onEvent: (name: AudioClipEvent, callback: () => void) => () => void;
@@ -731,6 +732,10 @@ class TranscodedAudioData implements AudioData {
         return true;
     }
 
+    async sourceDurationMs() {
+        return (await this._snapshot()).durationMs ?? 0;
+    }
+
     private async _readSnapshot() {
         const source = this._source;
         if (source.blobUrl === undefined) return { durationMs: 0 };
@@ -821,6 +826,10 @@ class Mp3AudioData implements AudioData {
         return this.data.isSliceable();
     }
 
+    async sourceDurationMs() {
+        return this.data.sourceDurationMs?.();
+    }
+
     get error() {
         return this.data.error;
     }
@@ -884,6 +893,10 @@ class EncodedAudioData implements AudioData {
 
     isSliceable() {
         return this._data.isSliceable();
+    }
+
+    async sourceDurationMs() {
+        return this._data.sourceDurationMs?.();
     }
 
     get error() {
@@ -1052,6 +1065,10 @@ export default class AudioClip {
 
     isSliceable() {
         return this.data.isSliceable();
+    }
+
+    async sourceDurationMs() {
+        return this.data.sourceDurationMs?.();
     }
 
     get error() {

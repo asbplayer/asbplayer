@@ -119,6 +119,34 @@ it('constructs, names and slices synchronously without reading converted audio',
     expect(fetchSource).not.toHaveBeenCalled();
 });
 
+it('shares the frozen source duration across slices and encoders without starting a recording', async () => {
+    const fetchSource = jest.spyOn(globalThis, 'fetch');
+    const clip = AudioClip.fromFile(fileFor(prefix()), 0, 500, 1, false);
+    const encoder = jest.fn(async (audio: Blob) => audio);
+    await expect(clip.sourceDurationMs()).resolves.toBe(1040);
+    await expect(clip.slice(100, 200).sourceDurationMs()).resolves.toBe(1040);
+    await expect(clip.toEncoded(encoder, 'mp3').sourceDurationMs()).resolves.toBe(1040);
+    await expect(
+        clip
+            .toMp3(() => {
+                throw new Error('No recording or encoding needed');
+            })
+            .sourceDurationMs()
+    ).resolves.toBe(1040);
+    expect(fetchSource).toHaveBeenCalledTimes(1);
+    expect(encoder).not.toHaveBeenCalled();
+});
+
+it('reads the completed snapshot boundary and returns no limit for ordinary file audio', async () => {
+    const audio = await finalizeWebmAudio([prefix()], 3.002);
+    await expect(AudioClip.fromFile(fileFor(audio, true), 0, 500, 1, false).sourceDurationMs()).resolves.toBeCloseTo(
+        3002
+    );
+    await expect(
+        AudioClip.fromFile({ name: 'ordinary.mp4', blobUrl: 'blob:ordinary' }, 0, 500, 1, false).sourceDurationMs()
+    ).resolves.toBeUndefined();
+});
+
 it('keeps mining without audio usable and never records from the original Dolby track', async () => {
     expect(AudioClip.createTranscodedAudioSource({ required: false, complete: false })).toBeUndefined();
     const file = fileFor();
