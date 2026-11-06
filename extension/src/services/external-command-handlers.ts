@@ -9,6 +9,8 @@ import type {
     SeekTimestampCommand,
     SubtitleCue,
     ExternalCommandHandlers,
+    GetMiningHistoryCommand,
+    GetMiningHistoryResponseBody,
 } from '@project/common/external-commands';
 import type TabRegistry from '@project/extension/src/services/tab-registry';
 import type {
@@ -27,7 +29,8 @@ import {
     resolveMediaTargets,
 } from '@project/extension/src/services/external-media-targets';
 import { requestSubtitlesFromVideoElement } from '@project/extension/src/services/request-video-element-subtitles';
-import { filterByTracks, toSubtitleCues } from '@project/common/external-commands/subtitles';
+import { copyHistoryItemsToCards, filterByTracks, toSubtitleCues } from '@project/common/external-commands/util';
+import type { CopyHistoryRepository } from '@project/common/copy-history';
 
 const ankiFieldValues = async (
     settings: SettingsProvider,
@@ -60,7 +63,7 @@ const mineSubtitle = async (
     command: MineSubtitleCommand
 ): Promise<boolean> => {
     const {
-        body: { fields: receivedFields, postMineAction: receivedPostMineAction, mediaId, noteId },
+        body: { fields: receivedFields, postMineAction: receivedPostMineAction, mediaId, noteId, asbplayerCardId },
     } = command;
     const targets = (await resolveMediaTargets(tabRegistry, mediaId)).filter((target) =>
         isVideoElementTarget(target) ? target.videoElement.loadedSubtitles : target.asbplayer.loadedSubtitles
@@ -81,6 +84,7 @@ const mineSubtitle = async (
                 ...cardTextFieldValues,
                 postMineAction,
                 noteId,
+                id: asbplayerCardId,
             },
             src,
         })),
@@ -130,6 +134,14 @@ const loadSubtitles = async (tabRegistry: TabRegistry, command: LoadSubtitlesCom
     }
 
     await forwardToAsbplayers(tabRegistry, targets, command);
+};
+
+const getMiningHistory = async (
+    copyHistoryRepository: CopyHistoryRepository,
+    command: GetMiningHistoryCommand
+): Promise<GetMiningHistoryResponseBody> => {
+    const copyHistoryItems = await copyHistoryRepository.fetch(command.body.limit, command.body.filter?.cardIds);
+    return { cards: copyHistoryItemsToCards(copyHistoryItems) };
 };
 
 const seekTimestamp = async (tabRegistry: TabRegistry, command: SeekTimestampCommand) => {
@@ -220,10 +232,12 @@ const getSubtitles = async (
 
 export const externalCommandHandlers = (
     settings: SettingsProvider,
-    tabRegistry: TabRegistry
+    tabRegistry: TabRegistry,
+    copyHistoryRepository: CopyHistoryRepository
 ): ExternalCommandHandlers => ({
     onMineSubtitle: (command) => mineSubtitle(settings, tabRegistry, command),
     onLoadSubtitles: (command) => loadSubtitles(tabRegistry, command),
+    onGetMiningHistory: (command) => getMiningHistory(copyHistoryRepository, command),
     onSeekTimestamp: (command) => seekTimestamp(tabRegistry, command),
     onGetBoundMedia: () => getBoundMedia(tabRegistry),
     onGetSubtitles: (mediaId, trackNumbers) => getSubtitles(tabRegistry, mediaId, trackNumbers),

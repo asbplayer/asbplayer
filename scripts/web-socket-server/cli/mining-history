@@ -1,0 +1,18 @@
+#!/bin/bash
+set -euo pipefail
+
+source "$(dirname -- "${BASH_SOURCE[0]}")/config"
+
+if [ -z "${1:-}" ]; then
+    echo "usage: $0 <limit> [comma-separated card IDs]"
+    exit 1
+fi
+
+LIMIT="$1"
+CARD_IDS="${2:-}"
+
+QUERY="limit=$LIMIT"
+[ ! -z "$CARD_IDS" ] && QUERY="${QUERY:+$QUERY&}cardIds=$CARD_IDS"
+
+curl -H "content-type: application/json" \
+    -X GET "$ASBPLAYER_SERVER_URL/asbplayer/mining-history?$QUERY"

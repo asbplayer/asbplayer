@@ -1,8 +1,15 @@
 import type { SubtitleModel } from '@project/common/src/model';
 import { buildSubtitleTracks } from '@project/common/util';
-import type { BoundMedia, SubtitleCue, ExternalCommandHandlers } from '@project/common/external-commands';
+import type {
+    BoundMedia,
+    SubtitleCue,
+    ExternalCommandHandlers,
+    GetMiningHistoryCommand,
+    GetMiningHistoryResponseBody,
+} from '@project/common/external-commands';
 import { localMediaId, localMediaTitle } from '@project/common/external-commands/media';
-import { filterByTracks, toSubtitleCues } from '@project/common/external-commands/subtitles';
+import { copyHistoryItemsToCards, filterByTracks, toSubtitleCues } from '@project/common/external-commands/util';
+import type { CopyHistoryRepository } from '@project/common/copy-history';
 
 export interface AppExternalMediaState {
     appId: string;
@@ -11,12 +18,10 @@ export interface AppExternalMediaState {
     isActive: () => boolean;
 }
 
-export const appExternalCommandHandlers = ({
-    appId,
-    subtitles,
-    subtitleFileNames,
-    isActive,
-}: AppExternalMediaState): Pick<ExternalCommandHandlers, 'onGetBoundMedia' | 'onGetSubtitles'> => ({
+export const appExternalCommandHandlers = (
+    { appId, subtitles, subtitleFileNames, isActive }: AppExternalMediaState,
+    copyHistoryRepository: CopyHistoryRepository
+): Pick<ExternalCommandHandlers, 'onGetBoundMedia' | 'onGetSubtitles' | 'onGetMiningHistory'> => ({
     onGetBoundMedia: async (): Promise<BoundMedia[]> => {
         if (subtitles.length === 0) {
             return [];
@@ -41,5 +46,9 @@ export const appExternalCommandHandlers = ({
         }
 
         return toSubtitleCues(filterByTracks(subtitles, trackNumbers));
+    },
+    onGetMiningHistory: async (command: GetMiningHistoryCommand): Promise<GetMiningHistoryResponseBody> => {
+        const copyHistoryItems = await copyHistoryRepository.fetch(command.body.limit, command.body.filter?.cardIds);
+        return { cards: copyHistoryItemsToCards(copyHistoryItems) };
     },
 });

@@ -38,6 +38,7 @@ export default class CopySubtitleHandler {
                         subtitle: copySubtitleCommand.message.subtitle,
                         surroundingSubtitles: copySubtitleCommand.message.surroundingSubtitles,
                         isBulkExport: copySubtitleCommand.message.isBulkExport,
+                        id: copySubtitleCommand.message.id,
                     },
                     src: videoElement.src,
                 };

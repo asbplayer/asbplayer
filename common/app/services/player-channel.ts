@@ -84,7 +84,8 @@ export default class PlayerChannel {
         postMineAction: PostMineAction,
         subtitle?: SubtitleModel,
         surroundingSubtitles?: SubtitleModel[],
-        cardTextFieldValues?: CardTextFieldValues
+        cardTextFieldValues?: CardTextFieldValues,
+        cardId?: string
     ) => void)[];
 
     constructor(channel: string) {
@@ -284,13 +285,14 @@ export default class PlayerChannel {
                     const copyMessage = event.data as CopyToVideoMessage;
 
                     for (const callback of this.copyCallbacks) {
-                        const { text, word, definition, customFieldValues } = copyMessage;
+                        const { text, word, definition, customFieldValues, id: cardId } = copyMessage;
                         const cardTextFieldValues = { text, word, definition, customFieldValues };
                         callback(
                             copyMessage.postMineAction,
                             copyMessage.subtitle,
                             copyMessage.surroundingSubtitles,
-                            cardTextFieldValues
+                            cardTextFieldValues,
+                            cardId
                         );
                     }
                     break;
@@ -430,7 +432,8 @@ export default class PlayerChannel {
             postMineAction: PostMineAction,
             subtitle?: SubtitleModel,
             surroundingSubtitles?: SubtitleModel[],
-            cardTextFieldValues?: CardTextFieldValues
+            cardTextFieldValues?: CardTextFieldValues,
+            cardId?: string
         ) => void
     ) {
         this.copyCallbacks.push(callback);
@@ -528,10 +531,12 @@ export default class PlayerChannel {
         cardTextFieldValues: CardTextFieldValues,
         subtitleFileName: string,
         mediaTimestamp: number,
-        postMineAction: PostMineAction
+        postMineAction: PostMineAction,
+        cardId?: string
     ) {
         const message: CopyMessage = {
             command: 'copy',
+            id: cardId,
             subtitle,
             surroundingSubtitles,
             ...cardTextFieldValues,
