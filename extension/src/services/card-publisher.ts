@@ -15,13 +15,17 @@ import type { AnkiSettings, SettingsProvider } from '@project/common/settings';
 import { ankiSettingsKeys } from '@project/common/settings';
 import { v4 as uuidv4 } from 'uuid';
 import { exportCard, DuplicateNoteError } from '@project/common/anki';
-import { IndexedDBCopyHistoryRepository } from '@project/common/copy-history';
+import { ExtensionCopyHistoryRepository } from '@project/extension/src/services/copy-history-repository';
+import type TabRegistry from '@project/extension/src/services/tab-registry';
 
 export class CardPublisher {
     private readonly _settingsProvider: SettingsProvider;
     bulkExportCancelled = false;
 
-    constructor(settingsProvider: SettingsProvider) {
+    constructor(
+        settingsProvider: SettingsProvider,
+        private readonly _tabRegistry: TabRegistry
+    ) {
         this._settingsProvider = settingsProvider;
     }
 
@@ -215,7 +219,7 @@ export class CardPublisher {
     private async _saveCardToRepository(id: string, card: CardModel) {
         try {
             const storageLimit = await this._settingsProvider.getSingle('miningHistoryStorageLimit');
-            await new IndexedDBCopyHistoryRepository(storageLimit).save({
+            await new ExtensionCopyHistoryRepository(storageLimit, this._tabRegistry).save({
                 ...card,
                 id: card.id ?? id,
                 timestamp: Date.now(),

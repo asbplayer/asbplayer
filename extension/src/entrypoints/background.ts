@@ -184,7 +184,7 @@ export default defineBackground(() => {
         isFirefoxBuild ? new CaptureStreamAudioRecorder() : new OffscreenAudioRecorder(settings)
     );
     const imageCapturer = new ImageCapturer(settings);
-    const cardPublisher = new CardPublisher(settings);
+    const cardPublisher = new CardPublisher(settings, tabRegistry);
     const dictionaryDB = new DictionaryDB(settings);
 
     const handlers: CommandHandler[] = [
@@ -213,7 +213,7 @@ export default defineBackground(() => {
         new RequestCurrentSubtitleHandler(),
         new SaveTokenLocalHandler(),
         new RequestCopyHistoryHandler(),
-        new SaveCopyHistoryHandler(settings),
+        new SaveCopyHistoryHandler(settings, tabRegistry),
         new DeleteCopyHistoryHandler(settings, tabRegistry),
         new ClearCopyHistoryHandler(settings, tabRegistry),
         new PublishCardHandler(cardPublisher),

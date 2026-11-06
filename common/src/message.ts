@@ -976,10 +976,8 @@ export interface ClearCopyHistoryMessage extends MessageWithId {
     readonly command: 'clear-copy-history';
 }
 
-export interface CopyHistoryRemovedMessage extends Message {
-    readonly command: 'copy-history-removed';
-    /** Omitted when all history was cleared. An empty array removes nothing. */
-    readonly ids?: string[];
+export interface CopyHistoryChangedMessage extends Message {
+    readonly command: 'copy-history-changed';
 }
 
 export interface DictionaryGetBulkMessage extends MessageWithId {

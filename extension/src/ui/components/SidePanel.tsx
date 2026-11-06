@@ -31,8 +31,7 @@ import type { AsbplayerSettings, SettingsProvider } from '@project/common/settin
 import { AudioClip } from '@project/common/audio-clip';
 import type { ChromeExtension } from '@project/common/app';
 import { useCopyHistory, LocalizedError } from '@project/common/app';
-import { useCopyHistoryRemoval } from '@project/common/app/hooks/use-copy-history-removal';
-import { publishCopyHistoryRemoval } from '@project/extension/src/services/copy-history-removal';
+import { ExtensionCopyHistoryRepository } from '@project/extension/src/services/copy-history-repository';
 import { useI18n } from '@project/extension/src/ui/hooks/use-i18n';
 import { SubtitleReader } from '@project/common/subtitle-reader';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -55,7 +54,6 @@ import CopyHistory from '@project/common/app/components/CopyHistory';
 import { useAppKeyBinder } from '@project/common/app/hooks/use-app-key-binder';
 import { MiningContext } from '@project/common/app/services/mining-context';
 import BulkExportModal from '@project/common/app/components/BulkExportModal';
-import { IndexedDBCopyHistoryRepository } from '@project/common/copy-history';
 import { mp3WorkerFactory } from '@project/extension/src/services/mp3-worker-factory';
 import { pgsParserWorkerFactory } from '@project/extension/src/services/pgs-parser-worker-factory';
 import type { DictionaryProvider } from '@project/common/dictionary-db';
@@ -439,22 +437,17 @@ export default function SidePanel({
     );
 
     const copyHistoryRepository = useMemo(
-        () => new IndexedDBCopyHistoryRepository(settings.miningHistoryStorageLimit),
+        () => new ExtensionCopyHistoryRepository(settings.miningHistoryStorageLimit, uiTabRegistry),
         [settings.miningHistoryStorageLimit]
     );
-    const {
-        copyHistoryItems,
-        refreshCopyHistory,
-        deleteCopyHistoryItem,
-        deleteAllCopyHistoryItems,
-        removeCopyHistoryItems,
-    } = useCopyHistory(settings.miningHistoryStorageLimit, copyHistoryRepository);
-    useCopyHistoryRemoval(extension, removeCopyHistoryItems);
+    const { copyHistoryItems, refreshCopyHistory, deleteCopyHistoryItem, deleteAllCopyHistoryItems } = useCopyHistory(
+        settings.miningHistoryStorageLimit,
+        copyHistoryRepository
+    );
     const handleDeleteCopyHistoryItem = useCallback(
         async (item: CopyHistoryItem) => {
             try {
                 await deleteCopyHistoryItem(item);
-                await publishCopyHistoryRemoval(uiTabRegistry, [item.id]);
             } catch (error) {
                 handleError(error);
             }
@@ -464,7 +457,6 @@ export default function SidePanel({
     const handleDeleteAllCopyHistoryItems = useCallback(async () => {
         try {
             await deleteAllCopyHistoryItems();
-            await publishCopyHistoryRemoval(uiTabRegistry);
         } catch (error) {
             handleError(error);
         }

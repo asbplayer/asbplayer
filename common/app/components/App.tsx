@@ -59,7 +59,6 @@ import { addBlobUrl, createBlobUrl, revokeBlobUrl } from '@project/common/blob-u
 import { useTranslation } from 'react-i18next';
 import { LocalizedError } from '@project/common/app/components/localized-error';
 import { useCopyHistory } from '@project/common/app/hooks/use-copy-history';
-import { useCopyHistoryRemoval } from '@project/common/app/hooks/use-copy-history-removal';
 import { useCardAudioSources } from '@project/common/app/hooks/use-card-audio-sources';
 import { useFileSession } from '@project/common/app/hooks/use-file-session';
 import { useI18n } from '@project/common/app/hooks/use-i18n';
@@ -419,14 +418,12 @@ function App({
     }, [extension, settings.miningHistoryStorageLimit]);
     const {
         copyHistoryItems,
-        rememberCopyHistoryItem,
-        removeCopyHistoryItems,
+        pendingCopyHistoryItems,
         refreshCopyHistory,
         deleteCopyHistoryItem,
         saveCopyHistoryItem,
         deleteAllCopyHistoryItems,
     } = useCopyHistory(settings.miningHistoryStorageLimit, copyHistoryRepository);
-    useCopyHistoryRemoval(extension, removeCopyHistoryItems);
     const copyHistoryItemsRef = useRef<CopyHistoryItem[]>([]);
     copyHistoryItemsRef.current = copyHistoryItems;
     const [copyHistoryOpen, setCopyHistoryOpen] = useState<boolean>(false);
@@ -464,8 +461,9 @@ function App({
     const [ankiDialogDisabled, setAnkiDialogDisabled] = useState<boolean>(false);
     const [ankiDialogCard, setAnkiDialogCard] = useState<CardModel>();
     const [exportingCards, setExportingCards] = useState<CardModel[]>([]);
-    useCardAudioSources([
+    const retainCardAudioSource = useCardAudioSources([
         ...copyHistoryItems,
+        ...pendingCopyHistoryItems,
         ...exportingCards,
         ...(ankiDialogOpen && ankiDialogCard ? [ankiDialogCard] : []),
     ]);
@@ -649,12 +647,8 @@ function App({
                 id: id || uuidv4(),
             };
 
-            if (extension.supportsSidePanel) {
-                rememberCopyHistoryItem(newCard);
-                extension.publishCard(newCard);
-            } else {
-                void saveCopyHistoryItem(newCard);
-            }
+            retainCardAudioSource(newCard);
+            void saveCopyHistoryItem(newCard).catch(handleError);
 
             switch (postMineAction ?? PostMineAction.none) {
                 case PostMineAction.none:
@@ -718,9 +712,9 @@ function App({
             }
         },
         [
-            extension,
             miningContext,
-            rememberCopyHistoryItem,
+            retainCardAudioSource,
+            handleError,
             saveCopyHistoryItem,
             handleAnkiDialogProceed,
             handleAnkiDialogRequest,

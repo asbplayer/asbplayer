@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import type { CardModel } from '@project/common';
 import { isActiveBlobUrl, revokeBlobUrl } from '@project/common/blob-url';
 
@@ -31,5 +31,11 @@ export const useCardAudioSources = (cards: readonly CardModel[]) => {
                 retained.current.clear();
             });
         };
+    }, []);
+
+    // Register synchronously: a fast save can finish before React renders its pending state.
+    return useCallback((card: CardModel) => {
+        const url = card.file?.transcodedAudio?.blobUrl;
+        if (url && isActiveBlobUrl(url)) retained.current.add(url);
     }, []);
 };

@@ -1,9 +1,8 @@
 import type { Command, Message } from '@project/common';
 import { asbError } from '@project/common/util/log';
-import { IndexedDBCopyHistoryRepository } from '@project/common/copy-history';
+import { ExtensionCopyHistoryRepository } from '@project/extension/src/services/copy-history-repository';
 import type { SettingsProvider } from '@project/common/settings';
 import type TabRegistry from '@project/extension/src/services/tab-registry';
-import { publishCopyHistoryRemoval } from '@project/extension/src/services/copy-history-removal';
 
 export default class ClearCopyHistoryHandler {
     private readonly _settings: SettingsProvider;
@@ -25,9 +24,8 @@ export default class ClearCopyHistoryHandler {
     handle(command: Command<Message>, sender: Browser.runtime.MessageSender, sendResponse: (r?: any) => void) {
         void this._settings
             .getSingle('miningHistoryStorageLimit')
-            .then((limit) => new IndexedDBCopyHistoryRepository(limit))
+            .then((limit) => new ExtensionCopyHistoryRepository(limit, this._tabRegistry))
             .then((copyHistoryRepository) => copyHistoryRepository.clear())
-            .then(() => publishCopyHistoryRemoval(this._tabRegistry))
             .then(() => sendResponse({}))
             .catch((error) => asbError('copy-history', 'Failed to clear copy history:', error));
 

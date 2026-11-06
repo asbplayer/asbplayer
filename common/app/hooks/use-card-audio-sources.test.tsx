@@ -3,15 +3,12 @@ import { createRoot } from 'react-dom/client';
 import type { Root } from 'react-dom/client';
 import { Blob as ReadableBlob, resolveObjectURL } from 'node:buffer';
 import { URL as NodeURL } from 'node:url';
-import type { CardModel, CopyHistoryItem, CopyHistoryRemovedMessage } from '@project/common';
+import type { CardModel, CopyHistoryItem } from '@project/common';
 import { AudioClip } from '@project/common/audio-clip';
 import { createBlobUrl, isActiveBlobUrl, revokeBlobUrl } from '@project/common/blob-url';
 import { useCardAudioSources } from '@project/common/app/hooks/use-card-audio-sources';
 import { useCopyHistory } from '@project/common/app/hooks/use-copy-history';
-import { useCopyHistoryRemoval } from '@project/common/app/hooks/use-copy-history-removal';
 import type { CopyHistoryRepository } from '@project/common/copy-history';
-import type ChromeExtension from '@project/common/app/services/chrome-extension';
-import type { ExtensionMessage } from '@project/common/app/services/chrome-extension';
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -152,11 +149,19 @@ it('releases deleted and cleared history sources while preserving the open dialo
     expect(resolveObjectURL(firstUrl)).toBeUndefined();
 });
 
-it('applies remote removals without writing to storage and retains open dialogs and exports', async () => {
+it('replaces live history snapshots and retains open dialogs and exports without accepting stale fetches', async () => {
     const saved = new Map<string, CopyHistoryItem>();
+    let publish!: (items: CopyHistoryItem[]) => void;
+    let subscribed = false;
     const repository: CopyHistoryRepository = {
         fetch: async () => [...saved.values()],
-        liveFetch: () => () => {},
+        liveFetch: (_count, callback) => {
+            publish = callback;
+            subscribed = true;
+            return () => {
+                subscribed = false;
+            };
+        },
         save: async (item) => {
             saved.set(item.id, item);
         },
@@ -167,26 +172,16 @@ it('applies remote removals without writing to storage and retains open dialogs 
             throw new Error('Remote removals must not write back');
         },
     };
-    const listeners = new Set<(message: ExtensionMessage) => void>();
-    const extension: Pick<ChromeExtension, 'subscribe' | 'id'> = {
-        id: 'test-app',
-        subscribe: (listener) => {
-            listeners.add(listener);
-            return () => {
-                listeners.delete(listener);
-            };
-        },
-    };
     const notify = async (ids?: string[]) => {
-        const data: CopyHistoryRemovedMessage = { command: 'copy-history-removed', ids };
+        if (ids) ids.forEach((id) => saved.delete(id));
+        else saved.clear();
         await act(async () => {
-            for (const listener of listeners) listener({ data });
+            publish([...saved.values()]);
         });
     };
     let history!: ReturnType<typeof useCopyHistory>;
     const RemoteHarness = ({ dialog, exporting }: { dialog?: CardModel; exporting?: CardModel }) => {
         history = useCopyHistory(25, repository);
-        useCopyHistoryRemoval(extension, history.removeCopyHistoryItems);
         useCardAudioSources([
             ...history.copyHistoryItems,
             ...(dialog ? [dialog] : []),
@@ -230,20 +225,23 @@ it('applies remote removals without writing to storage and retains open dialogs 
     });
     expect(history.copyHistoryItems).toEqual([]);
     expect(resolveObjectURL(urls[2])).toBeDefined();
-    expect(saved.size).toBe(3);
+    expect(saved.size).toBe(0);
     await act(async () => root.render(<RemoteHarness exporting={third} />));
     expect(resolveObjectURL(urls[0])).toBeUndefined();
     await act(async () => root.render(<RemoteHarness />));
     expect(resolveObjectURL(urls[2])).toBeUndefined();
     await act(async () => root.unmount());
-    expect(listeners.size).toBe(0);
+    expect(subscribed).toBe(false);
 });
 
 it.each(['delete', 'clear'] as const)('preserves history and its source when %s fails', async (operation) => {
+    const saved = new Map<string, CopyHistoryItem>();
     const repository: CopyHistoryRepository = {
-        fetch: async () => [],
+        fetch: async () => [...saved.values()],
         liveFetch: () => () => {},
-        save: async () => {},
+        save: async (item) => {
+            saved.set(item.id, item);
+        },
         delete: async () => {
             throw new Error('Storage failed');
         },
@@ -267,4 +265,92 @@ it.each(['delete', 'clear'] as const)('preserves history and its source when %s 
     });
     expect(history.copyHistoryItems).toEqual([card]);
     expect(resolveObjectURL(card.file!.transcodedAudio!.blobUrl!)).toBeDefined();
+});
+
+it.each(['disabled', 'failed'] as const)(
+    'releases an unretained snapshot after a fast save with history %s',
+    async (mode) => {
+        const repository: CopyHistoryRepository = {
+            fetch: async () => [],
+            liveFetch: () => () => {},
+            save: async () => {
+                if (mode === 'failed') throw new Error('Save failed');
+            },
+            delete: async () => {},
+            clear: async () => {},
+        };
+        let history!: ReturnType<typeof useCopyHistory>;
+        let retain!: ReturnType<typeof useCardAudioSources>;
+        const SavingHarness = () => {
+            history = useCopyHistory(0, repository);
+            retain = useCardAudioSources([...history.copyHistoryItems, ...history.pendingCopyHistoryItems]);
+            return null;
+        };
+        await act(async () => root.render(<SavingHarness />));
+        const card = { ...cardFor(), id: 'card', timestamp: 1 };
+        const url = card.file!.transcodedAudio!.blobUrl!;
+        await act(async () => {
+            retain(card);
+            const saving = history.saveCopyHistoryItem(card);
+            if (mode === 'failed') await expect(saving).rejects.toThrow('Save failed');
+            else await saving;
+        });
+        expect(history.copyHistoryItems).toEqual([]);
+        expect(history.pendingCopyHistoryItems).toEqual([]);
+        expect(resolveObjectURL(url)).toBeUndefined();
+    }
+);
+
+it('keeps a snapshot through a pending save and releases it only after a committed snapshot discards it', async () => {
+    let finishSave!: () => void;
+    const pendingSave = new Promise<void>((resolve) => {
+        finishSave = resolve;
+    });
+    let finishFetch!: (items: CopyHistoryItem[]) => void;
+    const repository: CopyHistoryRepository = {
+        fetch: () =>
+            new Promise((resolve) => {
+                finishFetch = resolve;
+            }),
+        liveFetch: () => () => {},
+        save: () => pendingSave,
+        delete: async () => {},
+        clear: async () => {},
+    };
+    let history!: ReturnType<typeof useCopyHistory>;
+    let retain!: ReturnType<typeof useCardAudioSources>;
+    const SavingHarness = () => {
+        history = useCopyHistory(1, repository);
+        retain = useCardAudioSources([...history.copyHistoryItems, ...history.pendingCopyHistoryItems]);
+        return null;
+    };
+    await act(async () => root.render(<SavingHarness />));
+    const card = { ...cardFor(), id: 'card', timestamp: 1 };
+    const url = card.file!.transcodedAudio!.blobUrl!;
+    let saving!: Promise<void>;
+    await act(async () => {
+        retain(card);
+        saving = history.saveCopyHistoryItem(card);
+    });
+    expect(resolveObjectURL(url)).toBeDefined();
+    await act(async () => finishSave());
+    expect(resolveObjectURL(url)).toBeDefined();
+
+    // A newer explicit fetch supersedes the save's fetch; ownership must survive until it finishes.
+    const oldFetch = finishFetch;
+    let refreshing!: Promise<void>;
+    await act(async () => {
+        refreshing = history.refreshCopyHistory();
+    });
+    await act(async () => {
+        oldFetch([card]);
+        await saving;
+    });
+    expect(resolveObjectURL(url)).toBeDefined();
+    await act(async () => {
+        finishFetch([]);
+        await refreshing;
+    });
+    expect(history.pendingCopyHistoryItems).toEqual([]);
+    expect(resolveObjectURL(url)).toBeUndefined();
 });
