@@ -1074,7 +1074,7 @@ function App({
                     setLoadingSources(loadingSources);
 
                     void retainSourcesInFileSession({
-                        subtitleIds: sources.subtitleSourceFiles.map(({ id }) => id),
+                        subtitleTrackIds: sources.subtitleTracks.map(({ fileParts }) => fileParts.map(({ id }) => id)),
                         videoId: sources.videoFile?.id,
                     });
 
