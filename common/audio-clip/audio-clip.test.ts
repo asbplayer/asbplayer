@@ -2,7 +2,7 @@ import AudioClip from '@project/common/audio-clip/audio-clip';
 import { AudioErrorCode } from '@project/common';
 import type { FileModel } from '@project/common';
 import { addBlobUrl } from '@project/common/blob-url';
-import { expect, it, jest } from '@jest/globals';
+import { beforeAll, describe, expect, it, jest } from '@jest/globals';
 
 // Mock the download utility so tests don't touch the DOM
 jest.mock('@project/common/util', () => ({

@@ -1,4 +1,5 @@
 /** @jest-environment node */
+import { expect, it } from '@jest/globals';
 import ByteReader from '@project/common/media-probe/byte-reader';
 import { findEbmlElement, readEbmlElement, readEbmlVarInt } from '@project/common/media-probe/ebml';
 

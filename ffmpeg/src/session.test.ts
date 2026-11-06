@@ -1,5 +1,7 @@
+import { describe, expect, it, jest } from '@jest/globals';
 import { createFfmpegSession, ffmpegMetadata } from '@project/ffmpeg';
 import type {
+    CreateFfmpegSessionOptions,
     FfmpegDiagnostics,
     FfmpegRuntimeInfo,
     FfmpegWorker,
@@ -308,7 +310,7 @@ describe('FFmpeg session', () => {
         });
         const prepareAssets = jest.fn(() => preparation);
         const worker = new FakeWorker();
-        const factory = jest.fn(() => worker);
+        const factory = jest.fn<CreateFfmpegSessionOptions['workerFactory']>(() => worker);
         const session = createFfmpegSession({
             onDiagnostics: () => {},
             workerFactory: factory,
@@ -398,7 +400,7 @@ describe('FFmpeg session', () => {
 
     it('is lazy, loads one versioned worker, and exposes runtime inspection', async () => {
         const worker = new FakeWorker();
-        const factory = jest.fn(() => worker);
+        const factory = jest.fn<CreateFfmpegSessionOptions['workerFactory']>(() => worker);
         const session = createFfmpegSession({
             onDiagnostics: () => {},
             prepareAssets: async () => preparedAssets(),
@@ -579,7 +581,7 @@ describe('FFmpeg session', () => {
     it('rejects an already-aborted load without creating a worker', async () => {
         const controller = new AbortController();
         controller.abort();
-        const factory = jest.fn();
+        const factory = jest.fn<CreateFfmpegSessionOptions['workerFactory']>();
         const session = createFfmpegSession({
             onDiagnostics: () => {},
             prepareAssets: async () => preparedAssets(),

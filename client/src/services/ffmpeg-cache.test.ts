@@ -1,4 +1,5 @@
 /** @jest-environment node */
+import { expect, it, jest } from '@jest/globals';
 import type { FfmpegRuntimeArchive } from '@project/ffmpeg';
 import { createHash } from 'node:crypto';
 import {
@@ -139,7 +140,7 @@ it.each(['short', 'long'])('rejects a %s response against the locked archive siz
 });
 
 it('cancels the response stream promptly when the owner aborts', async () => {
-    const cancelled = jest.fn();
+    const cancelled = jest.fn<UnderlyingSourceCancelCallback>();
     const fetcher: typeof fetch = async () => new Response(new ReadableStream({ cancel: cancelled }));
     const owner = new AbortController();
     const downloading = prepare(archive('0.1.0'), memoryCaches(), fetcher, owner.signal);

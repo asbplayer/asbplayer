@@ -1,3 +1,4 @@
+import { expect, it, jest } from '@jest/globals';
 import { createInputReader } from '@project/ffmpeg';
 
 const maximumReadBytes = 64 * 1024;
@@ -43,7 +44,7 @@ it.each([
 
 it('keeps offsets above 4 GiB precise and clips read-ahead at EOF', () => {
     const offset = 2 ** 32 + 1;
-    const slice = jest.fn(() => new MemoryBlob(new Uint8Array([7, 8, 9])));
+    const slice = jest.fn<Blob['slice']>(() => new MemoryBlob(new Uint8Array([7, 8, 9])));
     const file = { size: offset + 3, slice } as unknown as Blob;
     const reader = createInputReader(file, readSlice);
     expect([...reader.readAt(offset, maximumReadBytes)]).toEqual([7, 8, 9]);

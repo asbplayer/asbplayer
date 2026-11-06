@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-require-imports, no-undef */
+const { expect, it } = require('@jest/globals');
 const { execFile } = require('node:child_process');
 const { resolve } = require('node:path');
 const { promisify } = require('node:util');

@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-require-imports, no-undef */
+const { afterEach, beforeEach, expect, it } = require('@jest/globals');
 const { execFile } = require('node:child_process');
 const { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } = require('node:fs/promises');
 const { tmpdir } = require('node:os');

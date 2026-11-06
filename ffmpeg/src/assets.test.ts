@@ -1,3 +1,4 @@
+import { expect, it } from '@jest/globals';
 import { createFfmpegObjectUrls } from '@project/ffmpeg';
 
 it('creates executable URLs from the prepared bytes and releases them idempotently', async () => {
