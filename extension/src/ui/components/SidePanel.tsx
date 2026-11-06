@@ -31,6 +31,7 @@ import type { AsbplayerSettings, SettingsProvider } from '@project/common/settin
 import { AudioClip } from '@project/common/audio-clip';
 import type { ChromeExtension } from '@project/common/app';
 import { useCopyHistory, LocalizedError } from '@project/common/app';
+import { ExtensionCopyHistoryRepository } from '@project/extension/src/services/copy-history-repository';
 import { useI18n } from '@project/extension/src/ui/hooks/use-i18n';
 import { SubtitleReader } from '@project/common/subtitle-reader';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -53,7 +54,6 @@ import CopyHistory from '@project/common/app/components/CopyHistory';
 import { useAppKeyBinder } from '@project/common/app/hooks/use-app-key-binder';
 import { MiningContext } from '@project/common/app/services/mining-context';
 import BulkExportModal from '@project/common/app/components/BulkExportModal';
-import { IndexedDBCopyHistoryRepository } from '@project/common/copy-history';
 import { mp3WorkerFactory } from '@project/extension/src/services/mp3-worker-factory';
 import { pgsParserWorkerFactory } from '@project/extension/src/services/pgs-parser-worker-factory';
 import type { DictionaryProvider } from '@project/common/dictionary-db';
@@ -437,13 +437,30 @@ export default function SidePanel({
     );
 
     const copyHistoryRepository = useMemo(
-        () => new IndexedDBCopyHistoryRepository(settings.miningHistoryStorageLimit),
+        () => new ExtensionCopyHistoryRepository(settings.miningHistoryStorageLimit, uiTabRegistry),
         [settings.miningHistoryStorageLimit]
     );
     const { copyHistoryItems, refreshCopyHistory, deleteCopyHistoryItem, deleteAllCopyHistoryItems } = useCopyHistory(
         settings.miningHistoryStorageLimit,
         copyHistoryRepository
     );
+    const handleDeleteCopyHistoryItem = useCallback(
+        async (item: CopyHistoryItem) => {
+            try {
+                await deleteCopyHistoryItem(item);
+            } catch (error) {
+                handleError(error);
+            }
+        },
+        [deleteCopyHistoryItem, handleError]
+    );
+    const handleDeleteAllCopyHistoryItems = useCallback(async () => {
+        try {
+            await deleteAllCopyHistoryItems();
+        } catch (error) {
+            handleError(error);
+        }
+    }, [deleteAllCopyHistoryItems, handleError]);
     useEffect(() => {
         if (viewingAsbplayer) {
             void refreshCopyHistory();
@@ -701,8 +718,8 @@ export default function SidePanel({
                     items={copyHistoryItems}
                     forceShowDownloadOptions={true}
                     onClose={noOp}
-                    onDelete={deleteCopyHistoryItem}
-                    onDeleteAll={deleteAllCopyHistoryItems}
+                    onDelete={handleDeleteCopyHistoryItem}
+                    onDeleteAll={handleDeleteAllCopyHistoryItems}
                     onAnki={handleAnki}
                     onClipAudio={handleClipAudio}
                     onDownloadImage={handleDownloadImage}
@@ -730,8 +747,8 @@ export default function SidePanel({
                         open={showCopyHistory || extensionRequestedLocation === 'mining-history'}
                         items={copyHistoryItems}
                         onClose={handleCloseCopyHistory}
-                        onDelete={deleteCopyHistoryItem}
-                        onDeleteAll={deleteAllCopyHistoryItems}
+                        onDelete={handleDeleteCopyHistoryItem}
+                        onDeleteAll={handleDeleteAllCopyHistoryItems}
                         onAnki={handleAnki}
                         onClipAudio={handleClipAudio}
                         onDownloadImage={handleDownloadImage}

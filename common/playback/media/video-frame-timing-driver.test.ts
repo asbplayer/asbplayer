@@ -3,17 +3,21 @@ import { emptyTimingDriverCallbacks, makeTimeline } from '@project/common/playba
 import { buildPlaybackPlan } from '@project/common/playback/plan/playback-plan';
 import PlaybackPlanExecutor from '@project/common/playback/plan/playback-plan-executor';
 import PlaybackTimelineCursor from '@project/common/playback/timeline/playback-timeline-cursor';
-import VideoFrameTimingDriver from '@project/common/playback/timing/video-frame-timing-driver';
-import type { VideoFrameTimingSource } from '@project/common/playback/timing/video-frame-timing-driver';
+import VideoFrameTimingDriver from '@project/common/playback/media/video-frame-timing-driver';
+import type { VideoFrameTimingSource } from '@project/common/playback/media/video-frame-timing-driver';
 import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { AutoPausePreference, PlayMode } from '@project/common';
 import type { IndexedSubtitleModel } from '@project/common';
-import type { TimingDriverCallbacks, TimingDriverEventCallbacks } from '@project/common/playback/timing/timing-driver';
+import type { TimingDriverCallbacks, TimingDriverEventCallbacks } from '@project/common/playback/media/timing-driver';
 
 class FakeVideo extends EventTarget {
     currentTime = 0;
     playbackRate = 1;
     paused = true;
+    ready = true;
+    preservesPitch = true;
+    volume = 1;
+    muted = false;
     hasVideoTrack = true;
     requestVideoFrameCallbackCalls = 0;
     private nextHandle = 1;
@@ -92,6 +96,11 @@ const videoSource = (video: FakeVideo, currentTimeMs = () => video.currentTime *
     playbackRate: () => video.playbackRate,
     durationMs: () => 120_000,
     currentTimeMs,
+    ready: () => video.ready,
+    preservesPitch: () => video.preservesPitch,
+    volume: () => video.volume,
+    muted: () => video.muted,
+    subscribePlaybackRequests: () => () => {},
     hasVideoTrack: () => video.hasVideoTrack,
     frameTimestampMs: () => undefined,
     externalSeekEvents: false,
@@ -1310,5 +1319,59 @@ describe('VideoFrameTimingDriver', () => {
         expect(discontinuities).toEqual([2345]);
 
         driver.unbind();
+    });
+});
+
+describe('video media observation', () => {
+    it('exposes media state independently of subtitle timing', () => {
+        const video = new FakeVideo();
+        const driver = timingDriver(videoSource(video), {});
+        video.currentTime = 5;
+        video.ready = false;
+        video.volume = 0.4;
+        video.muted = true;
+        video.playbackRate = 1.5;
+        video.preservesPitch = false;
+        expect(driver.mediaState()).toEqual({
+            currentTimeMs: 5_000,
+            paused: true,
+            ready: false,
+            playbackRate: 1.5,
+            preservesPitch: false,
+            volume: 0.4,
+            muted: true,
+        });
+    });
+
+    it('observes media and playback requests through timing bind and unbind, with independent cleanup', () => {
+        const video = new FakeVideo();
+        let request: ((paused: boolean) => void) | undefined;
+        const driver = timingDriver(
+            {
+                ...videoSource(video),
+                subscribePlaybackRequests: (onRequest) => {
+                    request = onRequest;
+                    return () => {
+                        request = undefined;
+                    };
+                },
+            },
+            {}
+        );
+        const observed: string[] = [];
+        driver.bindMedia((event) => observed.push(event));
+        driver.bindMedia((event) => observed.push(event));
+        video.dispatchEvent(new Event('waiting'));
+        driver.bind();
+        driver.unbind();
+        video.dispatchEvent(new Event('canplay'));
+        video.dispatchEvent(new Event('volumechange'));
+        request!(true);
+        request!(false);
+        expect(observed).toEqual(['waiting', 'canplay', 'volumechange', 'pause-requested', 'play-requested']);
+        driver.unbindMedia();
+        video.dispatchEvent(new Event('waiting'));
+        expect(observed).toHaveLength(5);
+        expect(request).toBeUndefined();
     });
 });

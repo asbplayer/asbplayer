@@ -15,6 +15,7 @@ docker buildx build \
     --build-arg "ASB_RUNTIME_VERSION=$runtime_version" \
     --build-arg "ASB_FFMPEG_VERSION=$ffmpeg_version" \
     "${docker_arguments[@]}" \
+    --output type=cacheonly \
     "$package_root"
 
 echo "Docker C++ and WASM tests passed for asbplayer $runtime_version with FFmpeg $ffmpeg_version"

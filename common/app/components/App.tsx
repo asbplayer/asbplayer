@@ -1,5 +1,6 @@
 import project from '@project/common/project';
 import { asbError, asbWarn } from '@project/common/util/log';
+import type { AudioTranscodeHost } from '@project/common/audio-transcode';
 import { humanReadableTime, download, extractText, timeDurationDisplay } from '@project/common/util';
 import type { ComponentProps } from 'react';
 import React, { useCallback, useEffect, useState, useMemo, useRef } from 'react';
@@ -9,6 +10,7 @@ import ThemeProvider from '@mui/material/styles/ThemeProvider';
 import { useWindowSize } from '@project/common/app/hooks/use-window-size';
 import { useLocationHash } from '@project/common/hooks/use-location-hash';
 import type {
+    FileModel,
     OpenStatisticsOverlayMessage,
     RequestLocalSubtitlesMessage,
     SubtitleModel,
@@ -57,6 +59,7 @@ import { addBlobUrl, createBlobUrl, revokeBlobUrl } from '@project/common/blob-u
 import { useTranslation } from 'react-i18next';
 import { LocalizedError } from '@project/common/app/components/localized-error';
 import { useCopyHistory } from '@project/common/app/hooks/use-copy-history';
+import { useCardAudioSources } from '@project/common/app/hooks/use-card-audio-sources';
 import { useFileSession } from '@project/common/app/hooks/use-file-session';
 import { useI18n } from '@project/common/app/hooks/use-i18n';
 import { useAppKeyBinder } from '@project/common/app/hooks/use-app-key-binder';
@@ -233,6 +236,7 @@ interface RenderVideoProps {
     onAnkiDialogRequest: (
         videoFileUrl: string,
         videoFileName: string,
+        transcodedAudio: FileModel['transcodedAudio'],
         selectedAudioTrack: string | undefined,
         playbackRate: number,
         subtitle: SubtitleModel,
@@ -346,6 +350,7 @@ interface Props {
     extension: ChromeExtension;
     fetcher: Fetcher;
     onSettingsChanged: (settings: Partial<AsbplayerSettings>) => void;
+    audioTranscodeHost: AudioTranscodeHost;
     profile?: string;
     profiles: Profile[];
     activeProfile?: string;
@@ -365,6 +370,7 @@ function App({
     globalState,
     extension,
     fetcher,
+    audioTranscodeHost,
     onSettingsChanged,
     profile,
     onGlobalStateChanged,
@@ -412,6 +418,7 @@ function App({
     }, [extension, settings.miningHistoryStorageLimit]);
     const {
         copyHistoryItems,
+        pendingCopyHistoryItems,
         refreshCopyHistory,
         deleteCopyHistoryItem,
         saveCopyHistoryItem,
@@ -453,6 +460,13 @@ function App({
     const [ankiDialogOpen, setAnkiDialogOpen] = useState<boolean>(false);
     const [ankiDialogDisabled, setAnkiDialogDisabled] = useState<boolean>(false);
     const [ankiDialogCard, setAnkiDialogCard] = useState<CardModel>();
+    const [exportingCards, setExportingCards] = useState<CardModel[]>([]);
+    const retainCardAudioSource = useCardAudioSources([
+        ...copyHistoryItems,
+        ...pendingCopyHistoryItems,
+        ...exportingCards,
+        ...(ankiDialogOpen && ankiDialogCard ? [ankiDialogCard] : []),
+    ]);
     const miningContext = useMemo(() => new MiningContext(), []);
     const [settingsDialogOpen, setSettingsDialogOpen] = useState<boolean>(false);
     const [settingsDialogScrollToId, setSettingsDialogScrollToId] = useState<string>();
@@ -537,9 +551,10 @@ function App({
     );
 
     const handleAnkiDialogRequestFromVideoPlayer = useCallback(
-        async (
+        (
             videoFileUrl: string,
             videoFileName: string,
+            transcodedAudio: FileModel['transcodedAudio'],
             audioTrack: string | undefined,
             playbackRate: number,
             subtitle: SubtitleModel,
@@ -560,6 +575,7 @@ function App({
                     blobUrl: videoFileUrl,
                     audioTrack,
                     playbackRate,
+                    transcodedAudio,
                 },
             };
             handleAnkiDialogRequest(item);
@@ -631,11 +647,8 @@ function App({
                 id: id || uuidv4(),
             };
 
-            if (extension.supportsSidePanel) {
-                extension.publishCard(newCard);
-            } else {
-                void saveCopyHistoryItem(newCard);
-            }
+            retainCardAudioSource(newCard);
+            void saveCopyHistoryItem(newCard).catch(handleError);
 
             switch (postMineAction ?? PostMineAction.none) {
                 case PostMineAction.none:
@@ -667,6 +680,7 @@ function App({
                         audioClip = audioClip.toMp3(() => new mp3WorkerFactory());
                     }
 
+                    setExportingCards((cards) => [...cards, newCard]);
                     void handleAnkiDialogProceed({
                         text: extractText(card.subtitle, card.surroundingSubtitles),
                         track1: extractText(card.subtitle, card.surroundingSubtitles, 0),
@@ -690,14 +704,22 @@ function App({
                         customFieldValues: newCard.customFieldValues ?? {},
                         tags: settingsRef.current.tags,
                         mode: postMineAction === PostMineAction.updateLastCard ? 'updateLast' : 'default',
-                    });
+                    }).finally(() => setExportingCards((cards) => cards.filter((card) => card !== newCard)));
                     break;
                 }
                 default:
                     throw new Error('Unknown post mine action: ' + postMineAction);
             }
         },
-        [extension, miningContext, saveCopyHistoryItem, handleAnkiDialogProceed, handleAnkiDialogRequest, t]
+        [
+            miningContext,
+            retainCardAudioSource,
+            handleError,
+            saveCopyHistoryItem,
+            handleAnkiDialogProceed,
+            handleAnkiDialogRequest,
+            t,
+        ]
     );
 
     const handleOpenCopyHistory = useCallback(async () => {
@@ -2101,6 +2123,7 @@ function App({
                                 </Paper>
                                 <Player
                                     supportsDictionaryPlayback={supportsDictionaryPlayback}
+                                    audioTranscodeHost={audioTranscodeHost}
                                     ref={playerRef}
                                     origin={origin}
                                     subtitleReader={subtitleReader}

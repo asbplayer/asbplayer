@@ -158,7 +158,7 @@ const prepare = async (overrides = {}) => {
             '-e',
             `
         import { prepareRuntime } from ${JSON.stringify(resolve(directory, 'scripts/prepare-runtime.mjs'))};
-        console.log(await prepareRuntime(${JSON.stringify(lock)}));
+        console.log(await prepareRuntime(${JSON.stringify(lock)}, ${JSON.stringify(resolve(directory, '.cache/runtimes'))}));
     `,
         ],
         { env: env(overrides) }

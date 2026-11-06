@@ -90,6 +90,7 @@ export default defineConfig(async ({ mode, isPreview }) => {
                     enabled: false,
                 },
                 workbox: {
+                    maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
                     clientsClaim: true,
                     cleanupOutdatedCaches: true,
                     navigateFallback: 'index.html',

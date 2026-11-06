@@ -61,15 +61,38 @@ it('generates compiler inputs using the locked runtime version independently of 
     ]);
     const flags = (await readFile(join(output, 'ffmpeg-configure-args'), 'utf8')).trim().split('\n');
     expect(flags).toEqual(
-        expect.arrayContaining(['--disable-all', '--disable-autodetect', '--disable-pthreads', '--enable-version3'])
+        expect.arrayContaining([
+            '--disable-all',
+            '--disable-autodetect',
+            '--disable-network',
+            '--disable-pthreads',
+            '--disable-iconv',
+            '--enable-version3',
+        ])
     );
-    expect(
-        flags.some(
-            (flag) =>
-                flag.startsWith('--enable-') &&
-                !['--enable-cross-compile', '--enable-small', '--enable-version3'].includes(flag)
-        )
-    ).toBe(false);
+    expect(flags.filter((flag) => flag.startsWith('--enable-')).sort()).toEqual(
+        [
+            '--enable-cross-compile',
+            '--enable-version3',
+            '--enable-small',
+            '--enable-avcodec',
+            '--enable-avformat',
+            '--enable-swresample',
+            '--enable-decoder=ac3',
+            '--enable-decoder=eac3',
+            '--enable-decoder=dca',
+            '--enable-decoder=truehd',
+            '--enable-decoder=mlp',
+            '--enable-libopus',
+            '--enable-encoder=libopus',
+            '--enable-demuxer=matroska',
+            '--enable-demuxer=mov',
+            '--enable-muxer=webm',
+            '--enable-parser=ac3',
+            '--enable-parser=dca',
+            '--enable-parser=mlp',
+        ].sort()
+    );
 });
 
 it('stamps the release version override into compiler inputs without changing the lock', async () => {

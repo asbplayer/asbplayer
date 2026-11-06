@@ -1,11 +1,12 @@
-import TimingUpdateQueue from '@project/common/playback/timing/timing-driver';
+import TimingUpdateQueue from '@project/common/playback/media/timing-driver';
 import { asbTrace } from '@project/common/util/log';
+import type { VideoPlaybackEvent, VideoPlaybackState } from '@project/common/playback/media/media';
 import type {
     InternalSeekCompletion,
     TimingDriver,
     TimingDriverCallbacks,
     TimingDriverEventCallbacks,
-} from '@project/common/playback/timing/timing-driver';
+} from '@project/common/playback/media/timing-driver';
 
 const defaultFrameTimeMs = 1000 / 60;
 const timeUpdateIntervalMs = 50;
@@ -13,6 +14,11 @@ const videoFrameCallbackHealthCheckIntervalMs = 1000;
 type VideoFrameTimingEvent =
     | 'play'
     | 'pause'
+    | 'playing'
+    | 'waiting'
+    | 'canplay'
+    | 'ended'
+    | 'volumechange'
     | 'seeking'
     | 'seeked'
     | 'timeupdate'
@@ -28,6 +34,12 @@ export interface VideoFrameTimingSource {
     readonly playbackRate: () => number;
     readonly durationMs: () => number;
     readonly currentTimeMs: () => number;
+    readonly ready: () => boolean;
+    readonly preservesPitch: () => boolean;
+    readonly volume: () => number;
+    readonly muted: () => boolean;
+    /** Application requests, including a pause while the browser is already paused for buffering. */
+    readonly subscribePlaybackRequests: (onRequest: (paused: boolean) => void) => () => void;
     /** Whether the loaded media resource has a video track (e.g., an audio-only element). */
     readonly hasVideoTrack: () => boolean;
     /** Overrides requestVideoFrameCallback metadata when the media element does not expose content time. */
@@ -70,6 +82,7 @@ export default class VideoFrameTimingDriver implements TimingDriver {
     };
     private readonly updates: TimingUpdateQueue;
     private readonly eventCallbacks: TimingDriverEventCallbacks;
+    private unbindMediaEvents?: () => void;
 
     constructor(video: VideoFrameTimingSource, eventCallbacks: TimingDriverEventCallbacks) {
         this.video = video;
@@ -105,6 +118,48 @@ export default class VideoFrameTimingDriver implements TimingDriver {
 
     setCallbacks(callbacks: TimingDriverCallbacks): void {
         this.callbacks = callbacks;
+    }
+
+    mediaState(): VideoPlaybackState {
+        return {
+            currentTimeMs: this.currentTimeMs(),
+            paused: this.paused(),
+            ready: this.video.ready(),
+            playbackRate: this.playbackRate(),
+            preservesPitch: this.video.preservesPitch(),
+            volume: this.video.volume(),
+            muted: this.video.muted(),
+        };
+    }
+
+    bindMedia(onEvent: (event: VideoPlaybackEvent) => void): void {
+        if (this.unbindMediaEvents) return;
+        const types = [
+            'play',
+            'playing',
+            'pause',
+            'seeking',
+            'seeked',
+            'waiting',
+            'canplay',
+            'ended',
+            'ratechange',
+            'volumechange',
+        ] as const;
+        const listener = (event: Event) => onEvent(event.type as VideoPlaybackEvent);
+        for (const type of types) this.video.addEventListener(type, listener);
+        const unsubscribeRequests = this.video.subscribePlaybackRequests((paused) =>
+            onEvent(paused ? 'pause-requested' : 'play-requested')
+        );
+        this.unbindMediaEvents = () => {
+            for (const type of types) this.video.removeEventListener(type, listener);
+            unsubscribeRequests();
+        };
+    }
+
+    unbindMedia(): void {
+        this.unbindMediaEvents?.();
+        this.unbindMediaEvents = undefined;
     }
 
     beginInternalSeek(): Promise<InternalSeekCompletion> {

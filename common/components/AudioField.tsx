@@ -34,7 +34,8 @@ const useAudioHelperText = (audioClip?: AudioClip, onRerecord?: () => void) => {
     const [audioClipPlayable, setAudioClipPlayable] = useState<boolean>();
 
     useEffect(() => {
-        if (audioClip) {
+        const update = () => {
+            if (!audioClip) return;
             const playable = audioClip.error === undefined;
             setAudioClipPlayable(playable);
 
@@ -47,7 +48,9 @@ const useAudioHelperText = (audioClip?: AudioClip, onRerecord?: () => void) => {
             } else {
                 setAudioHelperText(t(audioClip.errorLocKey!));
             }
-        }
+        };
+        update();
+        return audioClip?.onEvent('error', update);
     }, [audioClip, onRerecord, t]);
 
     return { audioHelperText, audioClipPlayable };

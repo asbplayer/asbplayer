@@ -62,3 +62,27 @@ it('does not extract an invalid cached archive over working sources', async () =
     await expect(prepare()).rejects.toThrow('Unexpected download');
     expect(await readFile(join(source, 'avutil.c'), 'utf8')).toBe('working source');
 });
+
+it('prepares every upstream source from its own verified archive', async () => {
+    await mkdir(join(temporary, '.cache/archives'), { recursive: true });
+    config = {};
+    for (const name of ['ffmpeg', 'opus']) {
+        const upstream = join(temporary, `${name}-upstream`);
+        await mkdir(upstream);
+        await writeFile(join(upstream, 'COPYING'), `${name} license`);
+        const archive = join(temporary, `.cache/archives/${name}.tar.gz`);
+        await exec('tar', ['-czf', archive, '-C', temporary, `${name}-upstream`]);
+        config[name] = {
+            source: {
+                url: `https://example.test/${name}.tar.gz`,
+                sha256: createHash('sha256')
+                    .update(await readFile(archive))
+                    .digest('hex'),
+            },
+        };
+    }
+    await prepare();
+    for (const name of ['ffmpeg', 'opus']) {
+        expect(await readFile(join(temporary, '.cache/sources', name, 'COPYING'), 'utf8')).toBe(`${name} license`);
+    }
+});

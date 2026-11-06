@@ -41,7 +41,7 @@ export default class MediaAdapter {
     }
 
     _onMediaCanPlay(callback: () => void) {
-        if (this.ref.current?.readyState === 4) {
+        if (this.ref.current?.readyState === HTMLMediaElement.HAVE_ENOUGH_DATA) {
             callback();
             return;
         }

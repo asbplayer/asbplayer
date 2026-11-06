@@ -1,10 +1,11 @@
-import TimingUpdateQueue from '@project/common/playback/timing/timing-driver';
+import TimingUpdateQueue from '@project/common/playback/media/timing-driver';
 import { asbTrace } from '@project/common/util/log';
+import type { VideoPlaybackState } from '@project/common/playback/media/media';
 import type {
     InternalSeekCompletion,
     TimingDriver,
     TimingDriverCallbacks,
-} from '@project/common/playback/timing/timing-driver';
+} from '@project/common/playback/media/timing-driver';
 
 const defaultFrameTimeMs = 1000 / 60;
 
@@ -63,6 +64,22 @@ export default class AnimationFrameTimingDriver implements TimingDriver {
 
     setCallbacks(callbacks: TimingDriverCallbacks): void {
         this.callbacks = callbacks;
+    }
+
+    bindMedia(): void {}
+
+    unbindMedia(): void {}
+
+    mediaState(): VideoPlaybackState {
+        return {
+            currentTimeMs: this.currentTimeMs(),
+            paused: this.paused(),
+            ready: true,
+            playbackRate: this.playbackRate(),
+            preservesPitch: true,
+            volume: 1,
+            muted: false,
+        };
     }
 
     beginInternalSeek(): Promise<InternalSeekCompletion> {

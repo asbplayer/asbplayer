@@ -1,4 +1,6 @@
 import { effectiveSettings } from '@project/common/settings/settings-recipes';
+import { AudioClip } from '@project/common/audio-clip';
+import { canMineWithAudio } from '@project/common/audio-transcode/mining-audio';
 import React, { useEffect, useState, useMemo, useCallback, useRef, useImperativeHandle } from 'react';
 import type { MutableRefObject } from 'react';
 
@@ -19,6 +21,7 @@ import type {
     DisplaySubtitleModel,
     TokenizedSubtitleModel,
     VideoTabModel,
+    TranscodedAudioPayload,
 } from '@project/common';
 
 import { ApplyStrategy, isTrackAutoCopyable, TokenState, VideoSubtitleSplitBehavior } from '@project/common/settings';
@@ -45,7 +48,7 @@ import PlaybackEngine, {
 import { playbackModeNotificationJoin } from '@project/common/playback/controllers/playback-mode-controller';
 import BroadcastChannelVideoProtocol from '@project/common/app/services/broadcast-channel-video-protocol';
 import ChromeTabVideoProtocol from '@project/common/app/services/chrome-tab-video-protocol';
-import Clock from '@project/common/playback/timing/clock';
+import Clock from '@project/common/playback/media/clock';
 import Controls from '@project/common/app/components/Controls';
 import type { Point } from '@project/common/app/components/Controls';
 
@@ -67,7 +70,7 @@ import {
     useVideoAspectRatio,
 } from '@project/common/app/components/video-subtitle-split';
 import type { FileWithId } from '@project/common/file-selector';
-import AnimationFrameTimingDriver from '@project/common/playback/timing/animation-frame-timing-driver';
+import AnimationFrameTimingDriver from '@project/common/playback/media/animation-frame-timing-driver';
 
 import {
     buildPlaybackTimelineExportPlan,
@@ -80,9 +83,11 @@ import type {
 } from '@project/common/playback/timeline/playback-timeline-html';
 
 import { createTheme } from '@project/common/theme/theme';
-import Alert from '@project/common/app/components/Alert';
+import Alert, { AlertStack } from '@project/common/app/components/Alert';
 import type { AlertNotification } from '@project/common/app/components/Alert';
-
+import { useTranscodedAudio } from '@project/common/app/hooks/use-transcoded-audio';
+import { clampAudioSeekMs } from '@project/common/audio-transcode/streaming-audio';
+import type { AudioTranscodeHost } from '@project/common/audio-transcode';
 import useSnackbar from '@project/common/hooks/use-snackbar';
 import {
     claimTokenSelectionFocus,
@@ -147,6 +152,7 @@ export interface MediaSources {
 }
 
 interface PlayerProps {
+    audioTranscodeHost?: AudioTranscodeHost;
     sources?: MediaSources;
     subtitles: DisplaySubtitleModel[];
     mediaId?: string;
@@ -204,9 +210,24 @@ export interface PlayerRef {
 
 const Player = React.memo(React.forwardRef<PlayerRef, PlayerProps>(PlayerComponent));
 
+/** Send only playback data across documents, preserving the relationship between state and audio. */
+function toTranscodedAudioPayload(conversion: ReturnType<typeof useTranscodedAudio>): TranscodedAudioPayload {
+    const { required, codecName } = conversion;
+    switch (conversion.state) {
+        case 'idle':
+        case 'failed':
+            return { state: conversion.state, required, codecName };
+        case 'transcoding':
+            return { state: 'transcoding', audio: conversion.blob, required, codecName };
+        case 'ready':
+            return { state: 'ready', audio: conversion.blob, required, codecName };
+    }
+}
+
 function PlayerComponent(
     {
         sources,
+        audioTranscodeHost,
         subtitles,
         mediaId,
         subtitleReader,
@@ -279,6 +300,10 @@ function PlayerComponent(
     const videoFile = sources?.videoFile;
     const videoFileUrl = sources?.videoFileUrl;
     const playbackPositionKey = videoFile?.file.name;
+    const transcodedAudio = useTranscodedAudio(videoFile, audioTranscodeHost);
+    const failAudioConversion = transcodedAudio.fail;
+    const transcodedAudioRef = useRef(transcodedAudio);
+    transcodedAudioRef.current = transcodedAudio;
     const syntheticPlayback = videoFileUrl === undefined && tab === undefined;
     const playModeEnabled = subtitles && subtitles.length > 0 && Boolean(videoFileUrl);
     const [subtitlePlayerResizing, setSubtitlePlayerResizing] = useState<boolean>(false);
@@ -400,7 +425,10 @@ function PlayerComponent(
 
     const seek = useCallback(
         async (time: number, clock: Clock, forwardToMedia: boolean, options: { readonly paused: boolean }) => {
-            const clampedTime = clampMediaTimestamp(time, (channelRef.current?.duration ?? 0) * 1000);
+            const clampedTime = clampAudioSeekMs(
+                clampMediaTimestamp(time, (channelRef.current?.duration ?? 0) * 1000),
+                forwardToMedia ? channelRef.current?.audioSeekableRange : undefined
+            );
             clock.setTime(clampedTime, options);
 
             if (forwardToMedia) {
@@ -535,6 +563,7 @@ function PlayerComponent(
                 seek: async (timestampMs) => {
                     clock.setTime(timestampMs, { paused: !clock.running });
                 },
+                setMuted: () => {},
                 setPlaybackRate: (rate) => updatePlaybackRate(rate, false),
                 setSubtitleOffset: (offset, options, notificationKey) => {
                     applyOffsetRef.current?.(offset, false);
@@ -1042,6 +1071,18 @@ function PlayerComponent(
         () => channel?.onReady(() => channel?.hideSubtitlePlayerToggle(hideSubtitlePlayer)),
         [channel, hideSubtitlePlayer]
     );
+    // Sent over the channel rather than as an iframe query parameter: changing the iframe src
+    // unloads the player frame, which the outer frame treats as the video being closed.
+    useEffect(() => {
+        if (channel === undefined) return;
+
+        // The channel caches this state so a newly subscribed frame can request it before video readiness.
+        channel.transcodedAudio(toTranscodedAudioPayload(transcodedAudio));
+    }, [channel, transcodedAudio]);
+    useEffect(
+        () => channel?.onAudioConversionFailed(() => failAudioConversion(new Error('Opus playback failed'))),
+        [channel, failAudioConversion]
+    );
     useEffect(() => channel?.ankiSettings(settings), [channel, settings]);
     useEffect(() => channel?.miscSettings(settings), [channel, settings]);
     useEffect(
@@ -1122,31 +1163,43 @@ function PlayerComponent(
                     postMineAction,
                     id,
                     mediaTimestamp
-                ) =>
-                    onCopy(
-                        {
-                            subtitle,
-                            surroundingSubtitles,
-                            subtitleFileName: subtitle ? (subtitleFiles?.[subtitle.track]?.file?.name ?? '') : '',
-                            ...cardTextFieldValues,
-                            mediaTimestamp: mediaTimestamp ?? 0,
-                            file: videoFile
-                                ? {
-                                      name: videoFile.file.name,
-                                      blobUrl: createBlobUrl(videoFile.file),
-                                      audioTrack: channel?.selectedAudioTrack,
-                                      playbackRate: channel?.playbackRate,
-                                  }
-                                : undefined,
-                            audio,
-                            image,
-                            url,
-                        },
-                        postMineAction,
-                        id
-                    )
+                ) => {
+                    try {
+                        const currentAudio = transcodedAudioRef.current;
+                        const transcodedAudioSource = AudioClip.createTranscodedAudioSource({
+                            audio: currentAudio.blob,
+                            required: currentAudio.required,
+                            complete: currentAudio.state === 'ready',
+                        });
+                        onCopy(
+                            {
+                                subtitle,
+                                surroundingSubtitles,
+                                subtitleFileName: subtitle ? (subtitleFiles?.[subtitle.track]?.file?.name ?? '') : '',
+                                ...cardTextFieldValues,
+                                mediaTimestamp: mediaTimestamp ?? 0,
+                                file: videoFile
+                                    ? {
+                                          name: videoFile.file.name,
+                                          blobUrl: createBlobUrl(videoFile.file),
+                                          audioTrack: channel?.selectedAudioTrack,
+                                          playbackRate: channel?.playbackRate,
+                                          transcodedAudio: transcodedAudioSource,
+                                      }
+                                    : undefined,
+                                audio,
+                                image,
+                                url,
+                            },
+                            postMineAction,
+                            id
+                        );
+                    } catch (error) {
+                        onError(error);
+                    }
+                }
             ),
-        [channel, onCopy, videoFile, subtitleFiles]
+        [channel, onCopy, videoFile, subtitleFiles, onError]
     );
     useEffect(() => {
         if (channel === undefined) return;
@@ -1290,29 +1343,51 @@ function PlayerComponent(
                     channel?.copy(postMineAction);
                 }
             } else {
-                onCopy(
-                    {
-                        subtitle,
-                        surroundingSubtitles,
-                        subtitleFileName: subtitleFiles?.[subtitle.track]?.file?.name ?? '',
-                        mediaTimestamp: clock.time({ maxMs: calculateLengthMs(videoDurationRef) }),
-                        file:
-                            videoFile === undefined
-                                ? undefined
-                                : {
-                                      name: videoFile.file.name,
-                                      audioTrack: selectedAudioTrack,
-                                      playbackRate,
-                                      blobUrl: createBlobUrl(videoFile.file),
-                                  },
-                        ...cardTextFieldValues,
-                    },
-                    postMineAction,
-                    undefined
-                );
+                try {
+                    const miningAudio = transcodedAudioRef.current;
+                    const audioSource = toTranscodedAudioPayload(miningAudio);
+                    if (!(await canMineWithAudio(audioSource, subtitle.end))) {
+                        setAlert({
+                            open: true,
+                            notifications: [
+                                {
+                                    message: { locKey: 'info.audioNotReadyForMining', replacements: {} },
+                                    severity: 'info',
+                                },
+                            ],
+                        });
+                        return;
+                    }
+                    onCopy(
+                        {
+                            subtitle,
+                            surroundingSubtitles,
+                            subtitleFileName: subtitleFiles?.[subtitle.track]?.file?.name ?? '',
+                            mediaTimestamp: clock.time({ maxMs: calculateLengthMs(videoDurationRef) }),
+                            file:
+                                videoFile === undefined
+                                    ? undefined
+                                    : {
+                                          name: videoFile.file.name,
+                                          audioTrack: selectedAudioTrack,
+                                          playbackRate,
+                                          blobUrl: createBlobUrl(videoFile.file),
+                                          transcodedAudio: AudioClip.createTranscodedAudioSource({
+                                              ...audioSource,
+                                              complete: miningAudio.state === 'ready',
+                                          }),
+                                      },
+                            ...cardTextFieldValues,
+                        },
+                        postMineAction,
+                        undefined
+                    );
+                } catch (error) {
+                    onError(error);
+                }
             }
         },
-        [channel, onCopy, clock, videoFile, videoFileUrl, subtitleFiles, selectedAudioTrack, playbackRate]
+        [channel, onCopy, clock, videoFile, videoFileUrl, subtitleFiles, selectedAudioTrack, playbackRate, onError]
     );
 
     const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
@@ -1613,36 +1688,50 @@ function PlayerComponent(
 
     return (
         <div onMouseMove={handleMouseMove} className={classes.root}>
-            <Alert
-                open={resumePlaybackSnackbar.open}
-                useAppLogo={false}
-                onClose={resumePlaybackSnackbar.close}
-                onMouseEnter={resumePlaybackSnackbar.onMouseEnter}
-                onMouseLeave={resumePlaybackSnackbar.onMouseLeave}
-                autoHideDuration={0}
-                disableAutoHide={true}
-                severity="info"
-                anchor="top"
-            >
-                {t('info.resumePlaybackPrompt', {
-                    time: timeDurationDisplay(pendingPlaybackPosition ?? 0, pendingPlaybackPosition ?? 0, false),
-                })}
-                <Button
-                    size="small"
-                    color="inherit"
-                    style={{ pointerEvents: 'auto', marginLeft: 12 }}
-                    onClick={() => void syntheticPlaybackEngineRef.current?.resumePlaybackPosition()}
+            <AlertStack anchor="top">
+                <Alert
+                    inline
+                    open={resumePlaybackSnackbar.open}
+                    useAppLogo={false}
+                    onClose={resumePlaybackSnackbar.close}
+                    onMouseEnter={resumePlaybackSnackbar.onMouseEnter}
+                    onMouseLeave={resumePlaybackSnackbar.onMouseLeave}
+                    autoHideDuration={0}
+                    disableAutoHide={true}
+                    severity="info"
                 >
-                    {t('info.resumePlaybackButton')}
-                </Button>
-            </Alert>
-            <Alert
-                open={alert.open}
-                onClose={handleAlertClosed}
-                notifications={alert.notifications}
-                useAppLogo={false}
-                anchor="top"
-            />
+                    {t('info.resumePlaybackPrompt', {
+                        time: timeDurationDisplay(pendingPlaybackPosition ?? 0, pendingPlaybackPosition ?? 0, false),
+                    })}
+                    <Button
+                        size="small"
+                        color="inherit"
+                        style={{ pointerEvents: 'auto', marginLeft: 12 }}
+                        onClick={() => void syntheticPlaybackEngineRef.current?.resumePlaybackPosition()}
+                    >
+                        {t('info.resumePlaybackButton')}
+                    </Button>
+                </Alert>
+                <Alert
+                    inline
+                    open={alert.open}
+                    onClose={handleAlertClosed}
+                    notifications={alert.notifications}
+                    useAppLogo={false}
+                />
+                <Alert
+                    inline
+                    open={transcodedAudio.state === 'failed'}
+                    useAppLogo={false}
+                    dismissible
+                    onClose={() => {}} // Alert owns dismissal; closing it must not change the conversion result.
+                    autoHideDuration={0}
+                    disableAutoHide={true}
+                    severity="error"
+                >
+                    {t('error.audioConversionFailed', { codec: transcodedAudio.codecName })}
+                </Alert>
+            </AlertStack>
             {!videoInWindow && statisticsOverlay}
             <Grid container direction="row" wrap="nowrap" className={classes.container}>
                 {videoInWindow && (
@@ -1681,6 +1770,11 @@ function PlayerComponent(
                             clock={clock}
                             length={calculateLengthMs(videoDurationRef)}
                             displayLength={calculateLengthMs(videoDurationRef, subtitles)}
+                            bufferedMs={
+                                transcodedAudio.state === 'transcoding'
+                                    ? (channel?.audioSeekableRange?.end ?? 0)
+                                    : undefined
+                            }
                             audioTracks={audioTracks}
                             selectedAudioTrack={selectedAudioTrack}
                             tabs={(!videoFileUrl && availableTabs) || undefined}

@@ -45,9 +45,10 @@ afterEach(async () => {
 
 it('uses the locked version for all release templates independently of the package version', async () => {
     expect((await run()).stdout).toBe(
-        'version=0.3.4\ntag=custom-0.3.4\ntitle=Runtime 0.3.4 (0.3.4)\nruntimeArchive=binary-0.3.4.tar.gz\nsourcesArchive=upstream-0.3.4.tar.gz\nsourcesRoot=upstream-0.3.4\n'
+        'version=0.3.4\ntag=custom-0.3.4\ntitle=Runtime 0.3.4 (0.3.4)\nruntimeArchive=binary-0.3.4.tar.gz\nruntimeRoot=binary-0.3.4\nsourcesArchive=upstream-0.3.4.tar.gz\nsourcesRoot=upstream-0.3.4\n'
     );
     expect((await run(['runtimeArchive'])).stdout).toBe('binary-0.3.4.tar.gz\n');
+    expect((await run(['runtimeRoot'])).stdout).toBe('binary-0.3.4\n');
 });
 
 it.each([
