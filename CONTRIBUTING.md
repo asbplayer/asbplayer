@@ -102,7 +102,7 @@ node ./merge-loc-from-en.js
 
 Translations are later pulled from the [Crowdin project](https://crowdin.com/project/asbplayer).
 
-Supported languages and their translation revisions are maintained in `project.json` under `languages`. Each entry has a `code` and a `version`; maintainers bump the revision when publishing updated translations.
+Supported languages and their translation revisions are maintained in `project.json` under `languages`. Each entry has a `code` and a `version`; maintainers bump the revision when publishing updated translations. Run `pnpm bump:loc` on `main` to increment the versions of languages whose strings changed since the last webapp deploy; named languages can be bumped explicitly, e.g. `pnpm bump:loc ja en`. `pnpm bump:loc --check` performs the equivalent CI check without writing; it regenerates `common/extension.json` as part of a successful bump.
 
 `pnpm sync:project` also generates `common/extension.json` for the translation update endpoint used by existing extensions. Edit its inputs in `project.json`; do not edit `extension.json` directly. CI runs sync and fails if it produces modified or untracked files, while local `pnpm check:project` checks for missing or stale outputs without writing.
 
@@ -132,7 +132,7 @@ In general, the webapp can be deployed at any time. Webapp-facing changes are wr
 ### Extension
 
 
-1. If a webapp deploy is required for new loc keys, features, and settings shared by both the webapp and extension, deploy the webapp first. If there are new loc keys, ensure that `project.json` loc versions are incremented on `main` before deploying.
+1. If a webapp deploy is required for new loc keys, features, and settings shared by both the webapp and extension, deploy the webapp first. If there are new loc keys, ensure that `project.json` loc versions are incremented on `main` before deploying by running `pnpm bump:loc`.
 2. Use the snapshot [action](https://github.com/asbplayer/asbplayer/actions/workflows/release-snapshot-build.yml) to distribute release candidate snapshots on Discord a few days prior to releasing. This gives users an opportunity to test the new build before it's released. It is a known issue that this process is unreliable because only a few users pay attention to snapshots.
 3. Use the [action](https://github.com/asbplayer/asbplayer/actions/workflows/draft-extension-release.lock.yml) to draft a GitHub release.
 4. The drafted text will be incomplete, so fill in any blanks and edit as necessary.
