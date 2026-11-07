@@ -86,55 +86,55 @@
     "languages": [
         {
             "code": "en",
-            "version": 29
+            "version": 30
         },
         {
             "code": "es",
-            "version": 26
+            "version": 27
         },
         {
             "code": "ja",
-            "version": 34
+            "version": 35
         },
         {
             "code": "de",
-            "version": 27
+            "version": 28
         },
         {
             "code": "pl",
-            "version": 27
+            "version": 28
         },
         {
             "code": "pt_BR",
-            "version": 26
+            "version": 27
         },
         {
             "code": "zh_CN",
-            "version": 26
+            "version": 27
         },
         {
             "code": "ru",
-            "version": 25
+            "version": 26
         },
         {
             "code": "fi",
-            "version": 18
+            "version": 19
         },
         {
             "code": "fr",
-            "version": 18
+            "version": 19
         },
         {
             "code": "ko",
-            "version": 18
+            "version": 19
         },
         {
             "code": "id",
-            "version": 17
+            "version": 18
         },
         {
             "code": "it",
-            "version": 8
+            "version": 9
         }
     ]
 }
