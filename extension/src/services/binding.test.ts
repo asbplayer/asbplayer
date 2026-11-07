@@ -168,6 +168,16 @@ describe('Binding playback mode integration', () => {
         await jest.advanceTimersByTimeAsync(0);
     };
 
+    // Prefer this over `jest.advanceTimersByTimeAsync` for large spans: the
+    // async variant yields the real event loop once per fired timer, and while
+    // a video plays the timing driver polls every 50ms, so advancing 10s
+    // virtual costs ~0.5s of real time per test. The flush drains the async
+    // continuations the ticks kick off.
+    const advancePlaybackTimers = async (ms: number) => {
+        jest.advanceTimersByTime(ms);
+        await flushPlaybackTiming();
+    };
+
     const sendSubtitles = (binding: Binding, subtitles: IndexedSubtitleModel[], names = ['subtitles.srt']) => {
         const request = {
             sender: 'asbplayer-extension-to-video',
@@ -482,7 +492,7 @@ describe('Binding playback mode integration', () => {
             { fileParts: [vttFile('hidden', 'second.vtt', longCue)] },
         ]);
         video.currentTime = 62;
-        await jest.advanceTimersByTimeAsync(10_000);
+        await advancePlaybackTimers(10_000);
         expect((await storage.get('lastPlaybackPositions')).lastPlaybackPositions).toEqual([
             { fileName: 'first.vtt', position: 62_000 },
         ]);
@@ -491,7 +501,7 @@ describe('Binding playback mode integration', () => {
         sendSettingsUpdated(binding);
         await flushPlaybackTiming();
         video.currentTime = 63;
-        await jest.advanceTimersByTimeAsync(10_000);
+        await advancePlaybackTimers(10_000);
         expect((await storage.get('lastPlaybackPositions')).lastPlaybackPositions).toEqual([
             { fileName: 'second.vtt', position: 63_000 },
             { fileName: 'first.vtt', position: 62_000 },
@@ -590,7 +600,7 @@ describe('Binding playback mode integration', () => {
                 await flushPlaybackTiming();
             }
             video.currentTime = 63;
-            await jest.advanceTimersByTimeAsync(10_000);
+            await advancePlaybackTimers(10_000);
             expect(binding.subtitleController.subtitles.map((subtitle) => subtitle.text)).toEqual(['keep']);
             expect((await storage.get('lastPlaybackPositions')).lastPlaybackPositions).toEqual([]);
             binding.unbind();
@@ -774,7 +784,7 @@ describe('Binding playback mode integration', () => {
         binding.bind();
         await flushPlaybackTiming();
         if (synced) sendSubtitles(binding, hasSubtitles ? [makeSubtitle()] : []);
-        await jest.advanceTimersByTimeAsync(6000);
+        await advancePlaybackTimers(6000);
         const notification = jest.spyOn(binding.subtitleController, 'notification').mockImplementation(() => {});
         await storage.set({ activeRecipeId: 0 });
         const request = {
@@ -1202,7 +1212,7 @@ describe('Binding playback mode integration', () => {
         sendSubtitles(binding, [makeSubtitle({ end: 120_000, originalEnd: 120_000 })], ['subtitle.srt', 'Empty.srt']);
 
         video.currentTime = 62;
-        await jest.advanceTimersByTimeAsync(10_000);
+        await advancePlaybackTimers(10_000);
 
         expect((await storage.get('lastPlaybackPositions')).lastPlaybackPositions).toEqual([
             { fileName: 'subtitle.srt', position: 62_000 },

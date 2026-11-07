@@ -121,7 +121,6 @@ beforeEach(async () => {
         import { createHash } from 'node:crypto';
         globalThis.fetch = async (url, init = {}) => {
             await appendFile(${JSON.stringify(resolve(root, 'requests'))}, url + '\\n');
-            await new Promise(resolve => setTimeout(resolve, 25));
             const options = JSON.parse(await readFile(${JSON.stringify(resolve(root, 'github.json'))}, 'utf8'));
             const parsed = new URL(url);
             const headers = new Headers(init.headers);
