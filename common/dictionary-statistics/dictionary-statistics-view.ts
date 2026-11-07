@@ -650,8 +650,9 @@ function mergeProjectedStatuses(...projectedStatusMaps: Map<string, TokenStatus>
 function mergeSentenceTokenSnapshots(sentenceSnapshots: ProcessedSentenceSnapshot[]): ProcessedTokenSnapshots {
     const tokens: ProcessedTokenSnapshots = new Map();
     for (const { tokens: sentenceTokens } of sentenceSnapshots) {
-        for (const [key, token] of sentenceTokens.entries())
+        for (const [key, token] of sentenceTokens.entries()) {
             tokens.set(key, mergeTokenSnapshot(tokens.get(key), token));
+        }
     }
     return tokens;
 }

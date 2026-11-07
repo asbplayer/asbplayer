@@ -37,7 +37,10 @@
         "userGuide": "用户指南",
         "search": "Search",
         "reload": "Reload",
-        "findPlaceholder": "Search by text or /regex/"
+        "findPlaceholder": "Search by text or /regex/",
+        "approve": "Approve",
+        "deny": "Deny",
+        "remove": "Remove"
     },
     "about": {
         "title": "关于 asbplayer",
@@ -228,6 +231,7 @@
         "subtitleFileNotOpen": "字幕文件 {{fileName}} 未打开。",
         "unknownExtension": "无法识别 {{fileName}} 的文件格式",
         "unsupportedExtension": "不支持该文件格式：{{extension}}",
+        "audioConversionFailed": "Failed to convert {{codec}} audio",
         "videoPlayerDragAndDropNotAllowed": "播放器无法接收拖放文件，请拖至视频画面外。",
         "restoreSessionFailed": "恢复上次会话失败，文件可能已被移动或删除。"
     },
@@ -344,6 +348,9 @@
         "savedTimestamp": "已保存进度：{{timestamp}}",
         "resumePlaybackPrompt": "Resume at {{time}}?",
         "resumePlaybackButton": "Resume",
+        "audioConversionStarted": "Converting {{codec}} audio due to browser compatibility, playback can begin while the conversion continues.",
+        "audioNotReadyForMining": "Audio is still being converting for this subtitle, please try mining again shortly.",
+        "videoLoadingDelayed": "The browser is still loading this video, playback will be available when loading finishes.",
         "updatedCard": "已更新卡片：{{result}}",
         "enabledRepeatPlayback": "循环模式：已启用",
         "disabledRepeatPlayback": "循环模式：已禁用",
@@ -850,6 +857,15 @@
         "importUrl": "Import URL",
         "introduction": "Recipes combine playback modes and settings for different learning activities. <docs>Learn about recipes and importing presets</docs>.",
         "notification": "Recipe: {{name}}",
-        "settingLocked": "{{setting}} can't be changed while a Recipe is active"
+        "settingLocked": "{{setting}} can't be changed while a Recipe is active",
+        "confirmDelete": "Delete \"{{name}}\"?"
+    },
+    "externalConnections": {
+        "title": "External extensions",
+        "empty": "No external extensions to display.",
+        "help": "Learn about external extensions <docs>here</docs>.",
+        "incomingRequest": "An external extension is requesting to connect to asbplayer.",
+        "warning": "Once approved, extension <0>{{id}}</0> will be able to control asbplayer. Only approve if you recognize it.",
+        "extensionDetailsHelper": "Extension details can be viewed at <0>{{address}}</0>."
     }
 }

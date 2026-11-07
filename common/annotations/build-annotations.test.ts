@@ -640,7 +640,7 @@ describe('BuildAnnotations public boundary', () => {
         const fetcher: Fetcher = {
             fetch: jest.fn(async (url: string, request: { term?: string | string[] }) => {
                 if (url.endsWith('/yomitanVersion')) return { version: '26.4.6' };
-                if (url.endsWith('/tokenize'))
+                if (url.endsWith('/tokenize')) {
                     return [
                         {
                             id: 'id',
@@ -650,9 +650,11 @@ describe('BuildAnnotations public boundary', () => {
                             content: [[{ text: 'word', reading: '' }]],
                         },
                     ];
+                }
                 if (url.endsWith('/termEntries')) {
-                    if (Array.isArray(request.term))
+                    if (Array.isArray(request.term)) {
                         return [{ index: 0, originalTextLength: 4, dictionaryEntries: [entry] }];
+                    }
                     return { dictionaryEntries: [entry] };
                 }
                 throw new Error(`unexpected request: ${url}`);
@@ -829,7 +831,7 @@ describe('BuildAnnotations public boundary', () => {
                     versionStarted.resolve();
                     return version.promise;
                 }
-                if (url.endsWith('/tokenize'))
+                if (url.endsWith('/tokenize')) {
                     return [
                         {
                             id: 'id',
@@ -839,6 +841,7 @@ describe('BuildAnnotations public boundary', () => {
                             content: [[{ text: 'word', reading: '' }]],
                         },
                     ];
+                }
                 if (url.endsWith('/termEntries')) return { dictionaryEntries: [] };
                 throw new Error(`unexpected request: ${url}`);
             }),
@@ -1109,7 +1112,7 @@ describe('BuildAnnotations public boundary', () => {
                 if (request.action === 'requestPermission') return { result: { permission: 'granted' } };
                 if (request.action === 'findCards') return { result: [] };
                 if (url.endsWith('/yomitanVersion')) return { version: '0.0.0.0' };
-                if (url.endsWith('/tokenize'))
+                if (url.endsWith('/tokenize')) {
                     return [
                         {
                             id: 'id',
@@ -1119,6 +1122,7 @@ describe('BuildAnnotations public boundary', () => {
                             content: [[{ text: 'word', reading: '' }]],
                         },
                     ];
+                }
                 if (url.endsWith('/termEntries')) return { dictionaryEntries: [] };
                 throw new Error(`unexpected request: ${url}`);
             }),
@@ -1165,7 +1169,7 @@ describe('BuildAnnotations public boundary', () => {
         const fetcher: Fetcher = {
             fetch: jest.fn(async (url: string) => {
                 if (url.endsWith('/yomitanVersion')) return { version: '26.4.5' };
-                if (url.endsWith('/tokenize'))
+                if (url.endsWith('/tokenize')) {
                     return [
                         {
                             id: 'id',
@@ -1175,7 +1179,8 @@ describe('BuildAnnotations public boundary', () => {
                             content: [[{ text: 'word', reading: 'word' }]],
                         },
                     ];
-                if (url.endsWith('/termEntries'))
+                }
+                if (url.endsWith('/termEntries')) {
                     return {
                         dictionaryEntries: [
                             {
@@ -1233,6 +1238,7 @@ describe('BuildAnnotations public boundary', () => {
                             },
                         ],
                     };
+                }
                 throw new Error(`unexpected request: ${url}`);
             }),
         };
@@ -1261,7 +1267,7 @@ describe('BuildAnnotations public boundary', () => {
         const fetcher: Fetcher = {
             fetch: jest.fn(async (url: string, request: { action?: string }) => {
                 if (url.endsWith('/yomitanVersion')) return { version: '0.0.0.0' };
-                if (url.endsWith('/tokenize'))
+                if (url.endsWith('/tokenize')) {
                     return [
                         {
                             id: 'id',
@@ -1271,6 +1277,7 @@ describe('BuildAnnotations public boundary', () => {
                             content: [[{ text: 'word', reading: '' }]],
                         },
                     ];
+                }
                 if (url.endsWith('/termEntries')) return { dictionaryEntries: [] };
                 if (request.action === 'requestPermission') return { result: { permission: 'granted' } };
                 if (request.action === 'findCards') return { result: recentCards.shift() ?? [] };
@@ -1343,7 +1350,7 @@ describe('BuildAnnotations public boundary', () => {
         const consoleError = jest.spyOn(console, 'error').mockImplementation(() => undefined);
         storage.getRecords.mockImplementation(async (_profile?: string, track?: number) => {
             if (track === 1) throw new Error('track offline');
-            if (track === 0)
+            if (track === 0) {
                 return {
                     tokenRecords: [],
                     ankiCardRecords: {},
@@ -1375,6 +1382,7 @@ describe('BuildAnnotations public boundary', () => {
                         },
                     },
                 };
+            }
             return { tokenRecords: [], ankiCardRecords: {}, waniKaniSubjectRecords: {} };
         });
         subtitles.push(makeSubtitle({ text: 'word', track: 0 }));

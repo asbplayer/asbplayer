@@ -1,0 +1,12 @@
+{
+    "schemaVersion": 1,
+    "runtimeVersion": "0.1.0",
+    "ffmpegVersion": "9.0.2",
+    "releaseUrl": "https://github.com/asbplayer/asbplayer/releases/tag/ffmpeg-v0.1.0",
+    "releaseBaseDownloadUrl": "https://github.com/asbplayer/asbplayer/releases/download/ffmpeg-v0.1.0",
+    "runtimeArchive": {
+        "filename": "asbplayer-ffmpeg-0.1.0-runtime.tar.gz",
+        "bytes": 671901,
+        "sha256": "6c80f7962c5cce153c49287ee2fa9354df043ef74d9dcf49f8ba579798dd72f1"
+    }
+}

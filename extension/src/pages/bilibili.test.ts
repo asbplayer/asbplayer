@@ -1,3 +1,4 @@
+import { describe, expect, it } from '@jest/globals';
 import { extractBilibiliTracks } from '@project/extension/src/pages/bilibili';
 
 describe('extractBilibiliTracks', () => {

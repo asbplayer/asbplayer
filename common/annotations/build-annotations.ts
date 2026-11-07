@@ -477,7 +477,9 @@ export class BuildAnnotations {
                 const slice = this.options.subtitlesAt(this.options.getMediaTimeMs());
                 subtitles = slice.showing;
                 if (!subtitles.length) subtitles = slice.nextToShow ?? [];
-            } else return { annotationsStartIndex: 0, annotationsEndIndex: this.subtitles.length };
+            } else {
+                return { annotationsStartIndex: 0, annotationsEndIndex: this.subtitles.length };
+            }
         }
         const tokenCacheBuildAhead = init ? TOKEN_CACHE_BUILD_AHEAD_INIT : TOKEN_CACHE_BUILD_AHEAD;
         if (!subtitles.length) return { annotationsStartIndex: 0, annotationsEndIndex: tokenCacheBuildAhead };
@@ -982,12 +984,14 @@ export class BuildAnnotations {
                 });
                 for (const [token, { states, statuses, externalCandidateStatuses, source }] of Object.entries(
                     exactFormResultMap
-                ))
+                )) {
                     ts.tokenCollectionExact.add(statuses, source, externalCandidateStatuses, token, states);
+                }
                 for (const [lemma, { states, statuses, externalCandidateStatuses, source }] of Object.entries(
                     lemmaFormResultMap
-                ))
+                )) {
                     ts.tokenCollectionLemma.add(statuses, source, externalCandidateStatuses, lemma, states);
+                }
                 for (const [lemma, lemmaResults] of Object.entries(anyFormResultsMap)) {
                     for (const { states, statuses, externalCandidateStatuses, source, token } of lemmaResults) {
                         ts.tokenCollectionAny.add(statuses, source, externalCandidateStatuses, lemma, states, token);
@@ -1044,8 +1048,9 @@ export class BuildAnnotations {
                             return;
                         }
                         reconstructedTextParts.push(model.reconstructedText);
-                        if (model.tokenization.tokens.length) allTokens.push(...model.tokenization.tokens);
-                        else if (model.tokenization.error) {
+                        if (model.tokenization.tokens.length) {
+                            allTokens.push(...model.tokenization.tokens);
+                        } else if (model.tokenization.error) {
                             error = true;
                             this.erroredCache.add(index);
                         }

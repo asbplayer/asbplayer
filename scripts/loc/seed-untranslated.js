@@ -21,5 +21,5 @@ for (const locale of locales) {
         }
     }
 
-    await writeFile(`${untranslatedPath}/${locale}.json`, JSON.stringify(untranslated, null, 4));
+    await writeFile(`${untranslatedPath}/${locale}.json`, JSON.stringify(untranslated, null, 4) + '\n');
 }

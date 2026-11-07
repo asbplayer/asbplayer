@@ -1,0 +1,39 @@
+# Runs the Anki add-on tests and checks that its uv lockfile matches
+# plugins/anki/pyproject.toml.
+#
+# Skips pull requests that touch none of these paths, so it does not gate
+# merging.
+
+name: Verify Anki add-on
+
+on:
+    push:
+        branches: [main]
+        paths:
+            - 'plugins/anki/**'
+            - '.github/workflows/verify-anki-addon.yml'
+    pull_request:
+        branches: [main]
+        paths:
+            - 'plugins/anki/**'
+            - '.github/workflows/verify-anki-addon.yml'
+
+permissions:
+    contents: read
+
+jobs:
+    check:
+        name: Check Anki add-on
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v7
+
+            - uses: astral-sh/setup-uv@v9.0.0
+
+            - name: Check Anki lockfile
+              run: uv lock --project plugins/anki --check
+
+            - name: Test Anki add-on protocol
+              run: |
+                  python3 -m compileall -q plugins/anki/asbplayer-addon
+                  python3 -m unittest discover -s plugins/anki/tests -v

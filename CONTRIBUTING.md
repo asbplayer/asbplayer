@@ -56,15 +56,17 @@ Use these values for current project defaults, links, and UI metadata. Keep user
 
 After editing `project.json`, run `pnpm sync:project` and include the generated changes in your commit. `pnpm check:project` (also part of `pnpm verify`) detects stale generated files. The Anki add-on and Go server packaging scripts also synchronize configuration before building, so their distributions do not need the repository at runtime.
 
+If tool version checks block syncing, run `node scripts/sync-project-config.ts` directly.
+
 ### Commands
 
-Use the Node version specified in `.nvmrc`, either via a node version manager (e.g. `nvm use`) or via nix, which has it locked down in `flake.lock`.
+Use the Node.js and pnpm versions in [`project.json`](./project.json). Sync updates `.nvmrc` and `package.json`; with nvm, run `nvm install && nvm use`.
 
 Below are useful commands for development.
 
 ```bash
-# Install pnpm (if not using nix). Other ways to install: https://pnpm.io/installation
-curl -fsSL https://get.pnpm.io/install.sh | env PNPM_VERSION=11.27.0 sh -
+# Install pnpm from project.json (if not using nix).
+curl -fsSL https://get.pnpm.io/install.sh | env PNPM_VERSION="$(node -p "require('./project.json').development.pnpm")" sh -
 
 # Install dependencies
 pnpm i
@@ -85,6 +87,8 @@ pnpm --filter @project/extension dev:firefox-android
 ./scripts/push-firefox-android
 ```
 
+Client startup and builds download and cache the selected prebuilt FFmpeg runtime. Ordinary development does not need Docker or an FFmpeg build. See [ffmpeg/README.md](ffmpeg/README.md) for details.
+
 If you have problems building try deleting `node_modules` and re-running `pnpm i`.
 
 ## Localization
@@ -98,7 +102,7 @@ node ./merge-loc-from-en.js
 
 Translations are later pulled from the [Crowdin project](https://crowdin.com/project/asbplayer).
 
-Supported languages and their translation revisions are maintained in `project.json` under `languages`. Each entry has a `code` and a `version`; maintainers bump the revision when publishing updated translations.
+Supported languages and their translation revisions are maintained in `project.json` under `languages`. Each entry has a `code` and a `version`; maintainers bump the revision when publishing updated translations. Run `pnpm bump:loc` on `main` to increment the versions of languages whose strings changed since the last webapp deploy; named languages can be bumped explicitly, e.g. `pnpm bump:loc ja en`. `pnpm bump:loc --check` performs the equivalent CI check without writing; it regenerates `common/extension.json` as part of a successful bump.
 
 `pnpm sync:project` also generates `common/extension.json` for the translation update endpoint used by existing extensions. Edit its inputs in `project.json`; do not edit `extension.json` directly. CI runs sync and fails if it produces modified or untracked files, while local `pnpm check:project` checks for missing or stale outputs without writing.
 
@@ -128,7 +132,7 @@ In general, the webapp can be deployed at any time. Webapp-facing changes are wr
 ### Extension
 
 
-1. If a webapp deploy is required for new loc keys, features, and settings shared by both the webapp and extension, deploy the webapp first. If there are new loc keys, ensure that `project.json` loc versions are incremented on `main` before deploying.
+1. If a webapp deploy is required for new loc keys, features, and settings shared by both the webapp and extension, deploy the webapp first. If there are new loc keys, ensure that `project.json` loc versions are incremented on `main` before deploying by running `pnpm bump:loc`.
 2. Use the snapshot [action](https://github.com/asbplayer/asbplayer/actions/workflows/release-snapshot-build.yml) to distribute release candidate snapshots on Discord a few days prior to releasing. This gives users an opportunity to test the new build before it's released. It is a known issue that this process is unreliable because only a few users pay attention to snapshots.
 3. Use the [action](https://github.com/asbplayer/asbplayer/actions/workflows/draft-extension-release.lock.yml) to draft a GitHub release.
 4. The drafted text will be incomplete, so fill in any blanks and edit as necessary.

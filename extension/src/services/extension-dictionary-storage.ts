@@ -272,8 +272,9 @@ export class ExtensionDictionaryStorage implements DictionaryStorage {
                 if (
                     message.message.command !== 'card-updated-dialog' &&
                     message.message.command !== 'card-exported-dialog'
-                )
+                ) {
                     return;
+                }
                 this.ankiCardModifiedCallbacks.forEach((c) => c());
             };
             browser.runtime.onMessage.addListener(this.ankiCardModified);

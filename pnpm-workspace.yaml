@@ -3,7 +3,9 @@ minimumReleaseAge: 720
 packages:
     - 'client'
     - 'common'
+    - 'external-api'
     - 'extension'
+    - 'ffmpeg'
     - 'docs'
     - 'scripts/loc'
 

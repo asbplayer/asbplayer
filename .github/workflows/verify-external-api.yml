@@ -1,0 +1,44 @@
+# Checks that the committed external-api/openrpc.json still matches the zod
+# schemas it is generated from. The schemas live in common/, which is why
+# common/** is in the paths filter.
+#
+# Skips pull requests that touch none of these paths, so it does not gate
+# merging.
+
+name: Verify external API
+
+on:
+    push:
+        branches: [main]
+        paths:
+            - 'common/**'
+            - 'external-api/**'
+            - 'scripts/generate-openrpc.ts'
+            - 'pnpm-lock.yaml'
+            - '.github/workflows/verify-external-api.yml'
+    pull_request:
+        branches: [main]
+        paths:
+            - 'common/**'
+            - 'external-api/**'
+            - 'scripts/generate-openrpc.ts'
+            - 'pnpm-lock.yaml'
+            - '.github/workflows/verify-external-api.yml'
+
+permissions:
+    contents: read
+
+jobs:
+    check:
+        name: Check external API document
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v7
+
+            - name: Setup Node.js and pnpm
+              uses: ./.github/actions/setup-node-pnpm
+
+            - run: pnpm install --filter @project/common
+
+            - name: Check external API document is up to date
+              run: pnpm run check:external-api

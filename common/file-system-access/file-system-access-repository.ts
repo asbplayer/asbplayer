@@ -22,8 +22,9 @@ export interface FileSessionRecord {
     // Subtitle files downloaded from online sources do not have file-system handles.
     // Cache their contents so they can still be restored without downloading them again.
     cachedSubtitleFiles?: FileWithId[];
-    // Playback slots, including repeated IDs and '-' for empty tracks.
-    subtitleTrackIds?: string[];
+    // Source file IDs grouped by playback slot. Groups may be empty or repeat IDs;
+    // '-' represents an empty placeholder within a group.
+    subtitleTrackIds?: string[][];
     timestamp: number;
 }
 
@@ -33,7 +34,7 @@ export interface FileSystemFileHandleWithId {
 }
 
 export interface FileSessionSourceIds {
-    subtitleIds: string[];
+    subtitleTrackIds: string[][];
     videoId?: string;
 }
 
@@ -66,6 +67,20 @@ class FileSessionDatabase extends Dexie {
                         }
                     });
             });
+        this.version(3)
+            .stores({
+                sessions: '++id,timestamp',
+            })
+            .upgrade((trans) =>
+                trans
+                    .table('sessions')
+                    .toCollection()
+                    .modify((record: { subtitleTrackIds?: string[] | string[][] }) => {
+                        record.subtitleTrackIds = record.subtitleTrackIds?.map((ids) =>
+                            typeof ids === 'string' ? [ids] : ids
+                        );
+                    })
+            );
     }
 }
 
@@ -98,7 +113,7 @@ export class IndexedDBFileSessionRepository implements FileSessionRepository {
             ...next,
             // Preserve slot positions when stored files are removed. Newly selected IDs
             // may still be awaiting their handle/cache save and must be kept.
-            subtitleTrackIds: next.subtitleTrackIds?.map((id) => (discarded.has(id) ? '-' : id)),
+            subtitleTrackIds: next.subtitleTrackIds?.map((ids) => ids.map((id) => (discarded.has(id) ? '-' : id))),
         };
     }
 
@@ -119,7 +134,7 @@ export class IndexedDBFileSessionRepository implements FileSessionRepository {
 
     async fetch(): Promise<FileSessionRecord | undefined> {
         const records = await this._db.sessions.orderBy('timestamp').reverse().limit(1).toArray();
-        return records.length > 0 ? records[0] : undefined;
+        return records[0];
     }
 
     async merge(
@@ -150,25 +165,25 @@ export class IndexedDBFileSessionRepository implements FileSessionRepository {
         }
     }
 
-    async retain({ subtitleIds, videoId }: FileSessionSourceIds) {
+    async retain({ subtitleTrackIds, videoId }: FileSessionSourceIds) {
         const permit = await this._semaphore.acquire();
 
         try {
             const existing = await this.fetch();
 
-            if (!existing && !subtitleIds.length) {
+            if (!existing && !subtitleTrackIds.length) {
                 return;
             }
 
             // The selected slots may arrive before their first handle/cache save.
             const { videoHandle, subtitleHandles = [], bufferedSubtitleHandles, cachedSubtitleFiles } = existing ?? {};
-            const retainedSubtitleIds = new Set(subtitleIds);
+            const retainedSubtitleIds = new Set(subtitleTrackIds.flat());
             await this._replace({
                 videoHandle: videoHandle?.id === videoId ? videoHandle : undefined,
                 subtitleHandles: subtitleHandles.filter((h) => retainedSubtitleIds.has(h.id)),
                 bufferedSubtitleHandles: bufferedSubtitleHandles?.filter((h) => retainedSubtitleIds.has(h.id)),
                 cachedSubtitleFiles: cachedSubtitleFiles?.filter((f) => retainedSubtitleIds.has(f.id)),
-                subtitleTrackIds: subtitleIds,
+                subtitleTrackIds,
                 id: 1,
                 timestamp: Date.now(),
             });

@@ -1,4 +1,3 @@
-import Grid from '@mui/material/Grid';
 import type { Command, HttpPostMessage, OpenStatisticsOverlayMessage, PopupToExtensionCommand } from '@project/common';
 import type { AsbplayerSettings, Profile } from '@project/common/settings';
 import { chromeCommandBindsToKeyBinds, dictionaryTrackEnabled } from '@project/common/settings';
@@ -18,7 +17,6 @@ import { useSupportedLanguages } from '@project/extension/src/ui/hooks/use-suppo
 import { useI18n } from '@project/extension/src/ui/hooks/use-i18n';
 import { isFirefoxBuild } from '@/services/build-flags';
 import { isMobile } from 'react-device-detect';
-import { useTheme } from '@mui/material/styles';
 import SettingsProfileSelectMenu from '@project/common/components/SettingsProfileSelectMenu';
 import { settingsPageConfigs } from '@/services/pages';
 import Stack from '@mui/material/Stack';
@@ -29,14 +27,24 @@ import type { DictionaryProvider } from '@project/common/dictionary-db';
 import type { LogProvider } from '@project/common/util/log';
 import { useAnnotationTutorial } from '@project/common/hooks/use-annotation-tutorial';
 import { ExtensionGlobalStateProvider } from '@/services/extension-global-state-provider';
-import { uiTabRegistry, useMediaId, useLastMediaIdOnce } from '@project/extension/src/ui/hooks/use-media-id';
+import { uiTabRegistry, useMediaId } from '@project/extension/src/ui/hooks/use-media-id';
+import { useExternalConnections } from '@project/extension/src/ui/hooks/use-external-connections';
 import Statistics from '@project/common/components/Statistics';
 import Box from '@mui/material/Box';
 import { createStatisticsPopup } from '@/services/statistics-util';
 import Tooltip from '@project/common/components/Tooltip';
 import { useCurrentTabId } from '@project/extension/src/ui/hooks/use-current-tab-id';
+import ExternalConnections from '@/ui/components/ExternalConnections';
+import { activePendingExternalConnections } from '@project/common/global-state';
+import ToggleButton from '@mui/material/ToggleButton';
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
+import type { ToggleButtonProps } from '@mui/material/ToggleButton';
+import ExtensionIcon from '@mui/icons-material/Extension';
+import Badge from '@mui/material/Badge';
 
 const globalStateProvider = new ExtensionGlobalStateProvider();
+
+type SubView = 'settings' | 'statistics' | 'external-extensions';
 
 interface Props {
     dictionaryProvider: DictionaryProvider;
@@ -87,26 +95,37 @@ const handleFirefoxImportSettings = () => {
     window.close();
 };
 
-const NavButton: React.FC<ButtonProps & { label: string }> = ({ label, ...buttonProps }) => {
-    const [isOverflowing, setIsOverflowing] = useState<boolean>();
+const SubViewButton: React.FC<
+    Omit<ToggleButtonProps, 'value' | 'selected'> & {
+        subView: SubView;
+        label: string;
+    }
+> = ({ subView, label, children, ...buttonProps }) => {
     return (
-        <Tooltip title={label} disabled={!isOverflowing}>
-            <Button size="small" variant="contained" color="primary" {...buttonProps}>
-                <span
-                    ref={(ref) => {
-                        setIsOverflowing(ref !== null && ref.scrollWidth > ref.clientWidth);
-                    }}
-                    style={{
-                        display: 'block',
-                        maxWidth: '100%',
-                        overflow: 'hidden',
-                        whiteSpace: 'nowrap',
-                        textOverflow: 'ellipsis',
-                    }}
-                >
-                    {label}
-                </span>
-            </Button>
+        <Tooltip title={label}>
+            <ToggleButton {...buttonProps} value={subView} size="small" aria-label={label}>
+                {children}
+            </ToggleButton>
+        </Tooltip>
+    );
+};
+
+const NavButton: React.FC<ButtonProps & { label: string }> = ({ label, ...buttonProps }) => {
+    return (
+        <Tooltip title={label}>
+            <Button
+                size="small"
+                variant="text"
+                color="inherit"
+                fullWidth={false}
+                aria-label={label}
+                sx={{
+                    flex: '0 0 auto',
+                    px: 1,
+                    '& .MuiButton-startIcon': { m: 0 },
+                }}
+                {...buttonProps}
+            />
         </Tooltip>
     );
 };
@@ -128,12 +147,13 @@ const Popup = ({
     const anki = useMemo(() => new Anki(settings, new ExtensionFetcher()), [settings]);
     const { supportedLanguages } = useSupportedLanguages();
     const { localFontsAvailable, localFontsPermission, localFontFamilies } = useLocalFontFamilies();
-    const theme = useTheme();
     const { handleAnnotationTutorialSeen, inAnnotationTutorial } = useAnnotationTutorial({ globalStateProvider });
     const [scrollToId, setScrollToId] = useState<string>();
+    const [subView, setSubView] = useState<SubView>('settings');
+
     const handleViewAnnotationSettings = useCallback(() => {
         setScrollToId('annotation');
-        setStatisticsOpen(false);
+        setSubView('settings');
     }, []);
     const handleOpenStatisticsOverlay = useCallback((mediaId: string) => {
         const command: Command<OpenStatisticsOverlayMessage> = {
@@ -146,31 +166,43 @@ const Popup = ({
         };
         void browser.runtime.sendMessage(command);
     }, []);
-
-    const [statisticsOpen, setStatisticsOpen] = useState<boolean>(false);
-
     const settingsRef = useRef<AsbplayerSettings>(settings);
     settingsRef.current = settings;
 
     const currentTabId = useCurrentTabId();
+    const { externalConnections } = useExternalConnections();
     const currentMediaIdWithSubtitles = useMediaId({
         whereAsbplayer: (a) => a.tab?.id === currentTabId,
         whereVideoElement: (v) => v.id === currentTabId,
     });
-    const fallbackMediaIdWithSubtitles = useLastMediaIdOnce();
-    const mediaIdWithSubtitles = currentMediaIdWithSubtitles ?? fallbackMediaIdWithSubtitles;
+    const hasPendingExternalConnection =
+        Object.values(activePendingExternalConnections(externalConnections, Date.now())).length > 0;
+    const autoSelectedPendingRef = useRef(false);
+    const autoSelectedMediaIdRef = useRef<string | undefined>(undefined);
 
     useEffect(() => {
-        const annotationsEnabled =
-            settingsRef.current?.dictionaryTracks.some((dt) => dictionaryTrackEnabled(dt)) ?? false;
-        setStatisticsOpen(mediaIdWithSubtitles !== undefined && annotationsEnabled);
-    }, [mediaIdWithSubtitles]);
+        if (hasPendingExternalConnection && !autoSelectedPendingRef.current) {
+            autoSelectedPendingRef.current = true;
+            setSubView('external-extensions');
+            return;
+        }
+        if (!hasPendingExternalConnection) {
+            autoSelectedPendingRef.current = false;
+        }
 
-    const handleToggleStatistics = useCallback(() => setStatisticsOpen((v) => !v), []);
-    const fetchStatisticsMediaInfo = useCallback(async (mediaId: string) => {
-        const sourceString = (await uiTabRegistry.activeVideoElements()).find((v) => v.src === mediaId)?.title;
-        return { sourceString: sourceString ?? '' };
-    }, []);
+        const autoGenerateStatistics =
+            settingsRef.current?.dictionaryTracks.some(
+                (dt) => dictionaryTrackEnabled(dt) && dt.dictionaryAutoGenerateStatistics
+            ) ?? false;
+        if (
+            currentMediaIdWithSubtitles !== undefined &&
+            autoGenerateStatistics &&
+            autoSelectedMediaIdRef.current !== currentMediaIdWithSubtitles
+        ) {
+            autoSelectedMediaIdRef.current = currentMediaIdWithSubtitles;
+            setSubView('statistics');
+        }
+    }, [currentMediaIdWithSubtitles, hasPendingExternalConnection]);
 
     if (!i18nInitialized) {
         return null;
@@ -178,54 +210,81 @@ const Popup = ({
 
     return (
         <Paper>
-            <Stack direction="column" spacing={1.5} sx={{ padding: theme.spacing(1.5) }}>
-                <ButtonGroup
-                    fullWidth
-                    size="small"
-                    variant="contained"
-                    color="primary"
-                    orientation="horizontal"
-                    sx={{
-                        '& .MuiButton-root': {
-                            height: '36px',
-                        },
-                    }}
-                >
-                    {mediaIdWithSubtitles !== undefined && (
-                        <>
-                            {statisticsOpen && (
-                                <NavButton
-                                    startIcon={<SettingsIcon />}
-                                    onClick={handleToggleStatistics}
-                                    label={t('bar.settings')}
-                                />
-                            )}
-                            {!statisticsOpen && (
-                                <NavButton
-                                    startIcon={<BarChartIcon />}
-                                    onClick={handleToggleStatistics}
-                                    label={t('statistics.title')}
-                                />
-                            )}
-                        </>
-                    )}
-                    <NavButton startIcon={<LaunchIcon />} onClick={onOpenApp} label={t('action.openApp')} />
-                    {!isMobile && (
+            <Stack direction="column" spacing={1.5} sx={{ p: 1.5 }}>
+                <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
+                    <ToggleButtonGroup
+                        value={subView}
+                        exclusive
+                        size="small"
+                        orientation="horizontal"
+                        onChange={(_, value: SubView | null) => {
+                            if (value !== null) setSubView(value);
+                        }}
+                        sx={{
+                            // Match the look of the other ButtonGroup on the right side
+                            '& .MuiToggleButtonGroup-grouped': {
+                                border: 0,
+                                margin: 0,
+                                minWidth: 0,
+                                py: 0.5,
+                                px: 1,
+                                color: 'text.secondary',
+                                '& .MuiSvgIcon-root': { fontSize: 18 },
+                                '&:hover': {
+                                    color: 'text.primary',
+                                    backgroundColor: 'action.hover',
+                                },
+                            },
+                        }}
+                    >
+                        <SubViewButton subView="settings" label={t('bar.settings')}>
+                            <SettingsIcon />
+                        </SubViewButton>
+                        {currentMediaIdWithSubtitles !== undefined && (
+                            <SubViewButton subView="statistics" label={t('statistics.title')}>
+                                <BarChartIcon />
+                            </SubViewButton>
+                        )}
+                        <SubViewButton subView="external-extensions" label={t('externalConnections.title')}>
+                            <Badge
+                                color="warning"
+                                variant="dot"
+                                overlap="circular"
+                                invisible={!hasPendingExternalConnection}
+                            >
+                                <ExtensionIcon />
+                            </Badge>
+                        </SubViewButton>
+                    </ToggleButtonGroup>
+                    <ButtonGroup
+                        size="small"
+                        variant="text"
+                        color="inherit"
+                        orientation="horizontal"
+                        sx={{ '& .MuiButtonGroup-grouped': { border: 0 } }}
+                    >
+                        <NavButton startIcon={<LaunchIcon />} onClick={onOpenApp} label={t('action.openApp')} />
+                        {!isMobile && (
+                            <NavButton
+                                startIcon={<PanelIcon />}
+                                onClick={onOpenSidePanel}
+                                label={t('action.openSidePanel')}
+                            />
+                        )}
                         <NavButton
-                            startIcon={<PanelIcon />}
-                            onClick={onOpenSidePanel}
-                            label={t('action.openSidePanel')}
+                            startIcon={<TutorialIcon />}
+                            onClick={onOpenUserGuide}
+                            label={t('action.userGuide')}
                         />
-                    )}
-                    <NavButton startIcon={<TutorialIcon />} onClick={onOpenUserGuide} label={t('action.userGuide')} />
-                </ButtonGroup>
-                <Grid
-                    item
-                    style={{
+                    </ButtonGroup>
+                </Stack>
+
+                <Box
+                    sx={{
                         height: isMobile ? 'auto' : 390,
                     }}
                 >
-                    {!statisticsOpen && (
+                    {subView === 'settings' && (
                         <SettingsForm
                             onImportSettings={isFirefoxBuild ? handleFirefoxImportSettings : undefined}
                             heightConstrained
@@ -243,7 +302,6 @@ const Popup = ({
                             extensionSupportsAutoPauseResume
                             extensionSupportsExportCardBind
                             extensionSupportsPageSettings
-                            extensionSupportsAnimatedImageCapture={!isFirefoxBuild}
                             extensionSupportsDictionary
                             extensionSupportsDictionaryBrowser
                             extensionSupportsDictionaryWaniKani
@@ -256,7 +314,7 @@ const Popup = ({
                             extensionSupportsSubtitleTrackSelectorInWebApp
                             extensionSupportsSubtitleListCustomization
                             extensionSupportsUpdateLastWithSameSubtitleText
-                            extensionSupportsAnimatedMediaFragment={!isFirefoxBuild}
+                            extensionSupportsAnimatedImageCapture={!isFirefoxBuild}
                             forceVerticalTabs={false}
                             anki={anki}
                             chromeKeyBinds={chromeCommandBindsToKeyBinds(commands)}
@@ -278,28 +336,28 @@ const Popup = ({
                             scrollToId={scrollToId}
                         />
                     )}
-                    {statisticsOpen && (
+                    {subView === 'statistics' && (
                         <Box sx={{ display: 'flex', width: '100%', height: '100%', overflowY: 'scroll' }}>
                             <Statistics
-                                mediaId={mediaIdWithSubtitles}
+                                contentPadding={1}
+                                mediaId={currentMediaIdWithSubtitles}
                                 dictionaryProvider={dictionaryProvider}
                                 settings={settings}
-                                hasSubtitles={mediaIdWithSubtitles !== undefined}
+                                hasSubtitles={currentMediaIdWithSubtitles !== undefined}
                                 onViewAnnotationSettings={handleViewAnnotationSettings}
                                 onOpenOverlay={handleOpenStatisticsOverlay}
                                 onSeekWasRequested={uiTabRegistry.focusTabForMediaId}
                                 onMineWasRequested={uiTabRegistry.focusTabForMediaId}
                                 onOpenInNewWindow={createStatisticsPopup}
-                                mediaInfoFetcher={fetchStatisticsMediaInfo}
-                                sx={{ m: 1 }}
                             />
                         </Box>
                     )}
-                </Grid>
-                {!statisticsOpen && (
-                    <Grid item>
+                    {subView === 'external-extensions' && <ExternalConnections />}
+                </Box>
+                {subView === 'settings' && (
+                    <Box>
                         <SettingsProfileSelectMenu {...profilesContext} />
-                    </Grid>
+                    </Box>
                 )}
             </Stack>
         </Paper>

@@ -1,10 +1,13 @@
 import { asbError } from '@project/common/util/log';
 import type { GlobalState, GlobalStateProvider } from '@project/common/global-state';
 import { initialGlobalState } from '@project/common/global-state';
+import type { GlobalStateUpdatedMessage } from '@project/common';
 import type ChromeExtension from '@project/common/app/services/chrome-extension';
 
 export class AppExtensionGlobalStateProvider implements GlobalStateProvider {
     private readonly _extension: ChromeExtension;
+    private readonly _globalStateUpdatedCallbacks: ((state: Partial<GlobalState>) => void)[] = [];
+    private _unsubscribeExtension?: () => void;
 
     constructor(extension: ChromeExtension) {
         this._extension = extension;
@@ -49,6 +52,72 @@ export class AppExtensionGlobalStateProvider implements GlobalStateProvider {
 
         for (const key of Object.keys(state)) {
             localStorage.setItem(key, JSON.stringify(state[key as keyof GlobalState]));
+        }
+    }
+
+    /**
+     * Lock-protected updates are not supported by this provider: the state is read through one
+     * message round-trip and written through another, and the backing storage lives in the
+     * extension, whose lock scope differs from the app's — so a lock cannot be honored even in
+     * principle. Throws unconditionally.
+     */
+    async updateWithLocking<K extends keyof GlobalState>(key: K): Promise<void> {
+        throw new Error(
+            `Lock-protected update of global state key ${key} is not supported: state is persisted via the extension, which does not share the app's lock scope`
+        );
+    }
+
+    onUpdated(callback: (state: Partial<GlobalState>) => void): () => void {
+        if (this._extension.supportsGlobalState) {
+            if (this._globalStateUpdatedCallbacks.length === 0) {
+                this._unsubscribeExtension = this._extension.subscribe((message) => {
+                    if (message.data.command === 'global-state-updated') {
+                        const { state } = message.data as GlobalStateUpdatedMessage;
+                        for (const c of this._globalStateUpdatedCallbacks) {
+                            c(state);
+                        }
+                    }
+                });
+            }
+            this._globalStateUpdatedCallbacks.push(callback);
+            return () => this._unsubscribeCallback(callback);
+        }
+
+        // Fallback for extensions without global state support: global state lives
+        // in localStorage, so rely on cross-tab 'storage' events.
+        const storageListener = (event: StorageEvent) => {
+            if (event.storageArea !== localStorage || event.key === null) {
+                return;
+            }
+
+            const key = event.key as keyof GlobalState;
+
+            if (!(key in initialGlobalState)) {
+                return;
+            }
+
+            try {
+                const value = event.newValue === null ? initialGlobalState[key] : JSON.parse(event.newValue);
+                callback({ [key]: value });
+            } catch (e) {
+                asbError('app/state', e);
+            }
+        };
+        window.addEventListener('storage', storageListener);
+        return () => window.removeEventListener('storage', storageListener);
+    }
+
+    _unsubscribeCallback(callback: (state: Partial<GlobalState>) => void) {
+        for (let i = this._globalStateUpdatedCallbacks.length - 1; i >= 0; --i) {
+            if (callback === this._globalStateUpdatedCallbacks[i]) {
+                this._globalStateUpdatedCallbacks.splice(i, 1);
+                break;
+            }
+        }
+
+        if (this._globalStateUpdatedCallbacks.length === 0) {
+            this._unsubscribeExtension?.();
+            this._unsubscribeExtension = undefined;
         }
     }
 }
