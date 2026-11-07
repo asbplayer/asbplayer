@@ -38,13 +38,8 @@ export interface FileSessionSourceIds {
     videoId?: string;
 }
 
-// Existing saved sessions contain one file ID per playback slot.
-type StoredFileSessionRecord = Omit<FileSessionRecord, 'subtitleTrackIds'> & {
-    subtitleTrackIds?: string[] | string[][];
-};
-
 class FileSessionDatabase extends Dexie {
-    sessions!: Dexie.Table<StoredFileSessionRecord, number>;
+    sessions!: Dexie.Table<FileSessionRecord, number>;
 
     constructor() {
         super('FileSessionDatabase');
@@ -72,6 +67,20 @@ class FileSessionDatabase extends Dexie {
                         }
                     });
             });
+        this.version(3)
+            .stores({
+                sessions: '++id,timestamp',
+            })
+            .upgrade((trans) =>
+                trans
+                    .table('sessions')
+                    .toCollection()
+                    .modify((record: { subtitleTrackIds?: string[] | string[][] }) => {
+                        record.subtitleTrackIds = record.subtitleTrackIds?.map((ids) =>
+                            typeof ids === 'string' ? [ids] : ids
+                        );
+                    })
+            );
     }
 }
 
@@ -125,12 +134,7 @@ export class IndexedDBFileSessionRepository implements FileSessionRepository {
 
     async fetch(): Promise<FileSessionRecord | undefined> {
         const records = await this._db.sessions.orderBy('timestamp').reverse().limit(1).toArray();
-        const record = records[0];
-        if (record === undefined) return;
-        return {
-            ...record,
-            subtitleTrackIds: record.subtitleTrackIds?.map((ids) => (typeof ids === 'string' ? [ids] : ids)),
-        };
+        return records[0];
     }
 
     async merge(

@@ -1,5 +1,6 @@
 import 'core-js/stable/structured-clone'; // fake-indexeddb requires structured clone polyfill
 import 'fake-indexeddb/auto';
+import { IDBFactory } from 'fake-indexeddb';
 import { beforeEach, expect, it } from '@jest/globals';
 import Dexie from 'dexie';
 import { MediaSources } from '@project/common/app/services/media-sources';
@@ -12,12 +13,12 @@ import {
 } from '@project/common/file-system-access/file-system-access';
 import { IndexedDBFileSessionRepository } from '@project/common/file-system-access/file-system-access-repository';
 
-beforeEach(async () => {
+beforeEach(() => {
+    Dexie.dependencies.indexedDB = new IDBFactory();
     Object.defineProperty(navigator, 'storage', {
         configurable: true,
         value: { estimate: async () => ({ quota: 1024 ** 3, usage: 0 }) },
     });
-    await new IndexedDBFileSessionRepository().clear();
 });
 
 const readFile = (file: File) =>
@@ -171,7 +172,7 @@ it.each(
     }
 });
 
-it('restores older sessions in their original handle-then-cache order', async () => {
+it('restores sessions without a saved arrangement in handle-then-cache order', async () => {
     const repository = new IndexedDBFileSessionRepository();
     await repository.merge({ videoHandle: handleFor(video), subtitleHandles: [local, secondLocal].map(handleFor) });
     const cachedSource = { ...online, track: 0 };
@@ -184,32 +185,73 @@ it('restores older sessions in their original handle-then-cache order', async ()
     expect(MediaSources.fromFiles(files).subtitleSourceFiles.map(({ track }) => track)).toEqual([0, 1, 2]);
 });
 
-it('reads an existing flat arrangement and preserves its slots through later saves', async () => {
-    const database = new Dexie('FileSessionDatabase');
-    await database.open();
-    try {
-        await database.table('sessions').put({
-            id: 1,
-            timestamp: 1,
-            subtitleHandles: [],
-            cachedSubtitleFiles: [{ ...online, track: 2 }],
-            subtitleTrackIds: ['online', '-', 'online'],
-        });
-    } finally {
-        database.close();
-    }
+it.each([
+    {
+        name: 'a flat arrangement',
+        savedTracks: ['online', '-', 'online'],
+        expectedTracks: [['online'], ['-'], ['online']],
+        expectedRestoredTracks: [['online'], ['-'], ['online']],
+    },
+    {
+        name: 'an already grouped arrangement with repeated parts and empty slots',
+        savedTracks: [['online', 'online'], [], ['online', 'online'], []],
+        expectedTracks: [['online', 'online'], [], ['online', 'online'], []],
+        expectedRestoredTracks: [['online', 'online'], ['-'], ['online', 'online'], ['-']],
+    },
+    {
+        name: 'an empty arrangement',
+        savedTracks: [],
+        expectedTracks: [],
+        expectedRestoredTracks: [],
+    },
+    {
+        name: 'no saved arrangement',
+        savedTracks: undefined,
+        expectedTracks: undefined,
+        expectedRestoredTracks: [['online']],
+    },
+])(
+    'migrates version 2 with $name and preserves it through later saves',
+    async ({ savedTracks, expectedTracks, expectedRestoredTracks }) => {
+        const database = new Dexie('FileSessionDatabase');
+        database.version(2).stores({ sessions: '++id,timestamp' });
+        try {
+            await database.table('sessions').put({
+                id: 1,
+                timestamp: 1,
+                subtitleHandles: [],
+                cachedSubtitleFiles: [{ ...online, track: 2 }],
+                subtitleTrackIds: savedTracks,
+            });
+        } finally {
+            database.close();
+        }
 
-    await new IndexedDBFileSessionRepository().clearBuffered();
-    const { record, files } = await reload();
-    expect(record.subtitleTrackIds).toEqual([['online'], ['-'], ['online']]);
-    const sources = MediaSources.fromFiles(files);
-    expect(sources.subtitleTracks.map(({ fileParts }) => fileParts.map(({ id }) => id))).toEqual([
-        ['online'],
-        ['-'],
-        ['online'],
-    ]);
-    expect(sources.subtitleSourceFiles.map(({ track }) => track)).toEqual([0, 1, 2]);
-});
+        const repository = new IndexedDBFileSessionRepository();
+        expect((await repository.fetch())?.subtitleTrackIds).toEqual(expectedTracks);
+
+        // Verify the upgrade persisted the new format before a repository write can normalize it.
+        const migratedDatabase = new Dexie('FileSessionDatabase');
+        await migratedDatabase.open();
+        try {
+            expect(migratedDatabase.verno).toBe(3);
+            expect((await migratedDatabase.table('sessions').get(1)).subtitleTrackIds).toEqual(expectedTracks);
+        } finally {
+            migratedDatabase.close();
+        }
+
+        await repository.clearBuffered();
+        const { record, files } = await reload();
+        expect(record.subtitleTrackIds).toEqual(expectedTracks);
+        const sources = MediaSources.fromFiles(files);
+        expect(sources.subtitleTracks.map(({ fileParts }) => fileParts.map(({ id }) => id))).toEqual(
+            expectedRestoredTracks
+        );
+        expect(sources.subtitleSourceFiles.map(({ track }) => track)).toEqual(
+            expectedRestoredTracks.flatMap((ids, track) => ids.map(() => track))
+        );
+    }
+);
 
 it.each([
     {
