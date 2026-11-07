@@ -60,6 +60,7 @@ import VideoChannel from '@project/common/app/services/video-channel';
 import type ChromeExtension from '@project/common/app/services/chrome-extension';
 import type PlaybackPreferenceController from '@project/common/playback/controllers/playback-preference-controller';
 import { useWindowSize } from '@project/common/app/hooks/use-window-size';
+import { useSubtitleTracks } from '@project/common/app/hooks/use-subtitle-tracks';
 import { useAppBarHeight } from '@project/common/hooks/use-app-bar-height';
 import { createBlobUrl } from '@project/common/blob-url';
 import type { MiningContext } from '@project/common/app/services/mining-context';
@@ -69,7 +70,7 @@ import {
     resolveVideoSubtitleSplitLayout,
     useVideoAspectRatio,
 } from '@project/common/app/components/video-subtitle-split';
-import type { FileWithId } from '@project/common/file-selector';
+import type { MediaSources } from '@project/common/app/services/media-sources';
 import AnimationFrameTimingDriver from '@project/common/playback/media/animation-frame-timing-driver';
 
 import {
@@ -142,13 +143,6 @@ function pause(clock: Clock, mediaAdapter: MediaAdapter, forwardToMedia: boolean
     if (forwardToMedia) {
         mediaAdapter.pause();
     }
-}
-
-export interface MediaSources {
-    subtitleFiles: FileWithId[];
-    flattenSubtitleFiles?: boolean;
-    videoFile?: FileWithId;
-    videoFileUrl?: string;
 }
 
 interface PlayerProps {
@@ -283,7 +277,6 @@ function PlayerComponent(
     const [playModes, setPlayModes] = useState<Set<PlayMode>>(() => new Set([PlayMode.normal]));
     const playModesRef = useRef<Set<PlayMode>>(playModes);
     playModesRef.current = playModes;
-    const [subtitlesSentThroughChannel, setSubtitlesSentThroughChannel] = useState<boolean>();
     const subtitlesRef = useRef<DisplaySubtitleModel[]>(undefined);
     const annotationSubtitlesRef = useRef<DisplaySubtitleModel[]>(undefined);
     subtitlesRef.current = subtitles;
@@ -295,8 +288,7 @@ function PlayerComponent(
     );
     subtitleCollectionRef.current = subtitleCollection;
 
-    const subtitleFiles = sources?.subtitleFiles;
-    const flattenSubtitleFiles = sources?.flattenSubtitleFiles;
+    const subtitleTracks = sources?.subtitleTracks;
     const videoFile = sources?.videoFile;
     const videoFileUrl = sources?.videoFileUrl;
     const playbackPositionKey = videoFile?.file.name;
@@ -307,7 +299,6 @@ function PlayerComponent(
     const syntheticPlayback = videoFileUrl === undefined && tab === undefined;
     const playModeEnabled = subtitles && subtitles.length > 0 && Boolean(videoFileUrl);
     const [subtitlePlayerResizing, setSubtitlePlayerResizing] = useState<boolean>(false);
-    const [loadingSubtitles, setLoadingSubtitles] = useState<boolean>(false);
     const [lastJumpToTopTimestamp, setLastJumpToTopTimestamp] = useState<number>(0);
     const [offset, setOffset] = useState<number>(0);
     const [playbackRate, setPlaybackRate] = useState<number>(settings.playbackRate);
@@ -346,6 +337,7 @@ function PlayerComponent(
     const clockRef = useRef<Clock>(clock);
     clockRef.current = clock;
     const syntheticPlaybackEngineRef = useRef<PlaybackEngine<DisplaySubtitleModel>>(undefined);
+    const getSubtitleOffset = useCallback(() => syntheticPlaybackEngineRef.current?.lastSubtitleOffset ?? 0, []);
     const subtitlePlayerRef = useRef<SubtitlePlayerHandle>(null);
     const profileRef = useRef(profile);
     const applyOffsetRef = useRef<(offset: number, forwardToVideo: boolean) => void>(undefined);
@@ -691,6 +683,17 @@ function PlayerComponent(
         setOffset(subtitles[0].start - subtitles[0].originalStart);
     }, [subtitles, syntheticPlayback, tab]);
 
+    const { loadingSubtitles, subtitleFileNames } = useSubtitleTracks({
+        subtitleTracks,
+        subtitleReader,
+        subtitles,
+        channel,
+        getSubtitleOffset,
+        onSubtitles,
+        onLoaded,
+        onError,
+    });
+
     const applyOffset = useCallback(
         (offset: number, forwardToVideo: boolean) => {
             setOffset(offset);
@@ -720,14 +723,14 @@ function PlayerComponent(
 
                     // Older versions of extension don't support the offset message
                     if (tab !== undefined && extension.installed && !extension.supportsOffsetMessage) {
-                        channel.subtitles(newSubtitles, subtitleFiles?.map((f) => f.file.name) ?? ['']);
+                        channel.subtitles(newSubtitles, subtitleFileNames);
                     }
                 }
             }
 
             onSubtitles(newSubtitles);
         },
-        [subtitleFiles, subtitles, extension, tab, channel, onSubtitles]
+        [subtitleFileNames, subtitles, extension, tab, channel, onSubtitles]
     );
     applyOffsetRef.current = applyOffset;
 
@@ -789,62 +792,6 @@ function PlayerComponent(
             releaseTokenSelectionFocus(frame);
         };
     }, [channel, videoFrameRef]);
-
-    useEffect(() => {
-        async function init() {
-            asbTrace('playback/player', 'Loading player subtitles', {
-                subtitleFileCount: subtitleFiles?.length ?? 0,
-                flattenSubtitleFiles,
-            });
-            const offset = syntheticPlaybackEngineRef.current?.lastSubtitleOffset ?? 0;
-            let subtitles: DisplaySubtitleModel[] | undefined;
-
-            if (subtitleFiles !== undefined && subtitleFiles.length > 0) {
-                setLoadingSubtitles(true);
-
-                try {
-                    const nodes = await subtitleReader.subtitles(
-                        subtitleFiles.map((f) => f.file),
-                        flattenSubtitleFiles
-                    );
-                    const length = nodes.length > 0 ? nodes[nodes.length - 1].end + offset : 0;
-
-                    subtitles = nodes.map((s, i) => ({
-                        text: s.text,
-                        textImage: s.textImage,
-                        start: s.start + offset,
-                        originalStart: s.start,
-                        end: s.end + offset,
-                        originalEnd: s.end,
-                        displayTime: timeDurationDisplay(s.start + offset, length),
-                        displayEndTime: timeDurationDisplay(s.end + offset, length),
-                        track: s.track,
-                        index: i,
-                        tokenization: s.tokenization,
-                    }));
-
-                    setSubtitlesSentThroughChannel(false);
-                    asbTrace('playback/player', 'Loaded player subtitles', {
-                        subtitleCount: subtitles.length,
-                        offset,
-                    });
-                    onSubtitles(subtitles);
-                } catch (e) {
-                    asbTrace('playback/player', 'Failed to load player subtitles', { error: e });
-                    onError(e);
-                    onSubtitles([]);
-                } finally {
-                    setLoadingSubtitles(false);
-                }
-            } else {
-                subtitles = undefined;
-            }
-        }
-
-        void init()
-            .then(() => onLoaded(subtitleFiles?.map((f) => f.file) ?? []))
-            .catch(onError);
-    }, [subtitleReader, onLoaded, onError, subtitleFiles, flattenSubtitleFiles, onSubtitles]);
 
     useEffect(() => {
         if (tab) {
@@ -1012,10 +959,6 @@ function PlayerComponent(
         });
     }, [channel]);
 
-    useEffect(() => {
-        setSubtitlesSentThroughChannel(false);
-    }, [channel]);
-
     useEffect(
         () => channel?.onExit(() => videoFileUrl && onUnloadVideo(videoFileUrl)),
         [channel, onUnloadVideo, videoFileUrl]
@@ -1036,29 +979,6 @@ function PlayerComponent(
             }),
         [channel, subtitles, videoFile]
     );
-    useEffect(() => {
-        if (
-            channel === undefined ||
-            subtitles === undefined ||
-            subtitlesSentThroughChannel ||
-            subtitleFiles === undefined ||
-            subtitleFiles.length === 0
-        ) {
-            return;
-        }
-
-        return channel.onReady(() => {
-            setSubtitlesSentThroughChannel(true);
-            asbTrace('playback/player', 'Sending subtitles to media channel', {
-                subtitleCount: subtitles.length,
-                fileCount: flattenSubtitleFiles ? 1 : subtitleFiles.length,
-            });
-            channel.subtitles(
-                subtitles,
-                flattenSubtitleFiles ? [subtitleFiles[0].file.name] : subtitleFiles.map((f) => f.file.name)
-            );
-        });
-    }, [subtitles, channel, flattenSubtitleFiles, subtitleFiles, subtitlesSentThroughChannel]);
     useEffect(
         () =>
             channel?.onReady(() => {
@@ -1175,7 +1095,7 @@ function PlayerComponent(
                             {
                                 subtitle,
                                 surroundingSubtitles,
-                                subtitleFileName: subtitle ? (subtitleFiles?.[subtitle.track]?.file?.name ?? '') : '',
+                                subtitleFileName: subtitle ? (subtitleFileNames[subtitle.track] ?? '') : '',
                                 ...cardTextFieldValues,
                                 mediaTimestamp: mediaTimestamp ?? 0,
                                 file: videoFile
@@ -1199,7 +1119,7 @@ function PlayerComponent(
                     }
                 }
             ),
-        [channel, onCopy, videoFile, subtitleFiles, onError]
+        [channel, onCopy, videoFile, subtitleFileNames, onError]
     );
     useEffect(() => {
         if (channel === undefined) return;
@@ -1362,7 +1282,7 @@ function PlayerComponent(
                         {
                             subtitle,
                             surroundingSubtitles,
-                            subtitleFileName: subtitleFiles?.[subtitle.track]?.file?.name ?? '',
+                            subtitleFileName: subtitleFileNames[subtitle.track] ?? '',
                             mediaTimestamp: clock.time({ maxMs: calculateLengthMs(videoDurationRef) }),
                             file:
                                 videoFile === undefined
@@ -1387,7 +1307,7 @@ function PlayerComponent(
                 }
             }
         },
-        [channel, onCopy, clock, videoFile, videoFileUrl, subtitleFiles, selectedAudioTrack, playbackRate, onError]
+        [channel, onCopy, clock, videoFile, videoFileUrl, subtitleFileNames, selectedAudioTrack, playbackRate, onError]
     );
 
     const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
@@ -1667,7 +1587,7 @@ function PlayerComponent(
     const shouldLoadVideoAspectRatio =
         videoInWindow && settings.videoSubtitleSplitBehavior !== VideoSubtitleSplitBehavior.rememberSplitPosition;
     const videoAspectRatio = useVideoAspectRatio(videoFileUrl, shouldLoadVideoAspectRatio);
-    const loaded = videoFileUrl || (sources?.subtitleFiles.length ?? 0) > 0 || tab;
+    const loaded = videoFileUrl || (sources?.subtitleTracks.length ?? 0) > 0 || tab;
     const playerHeight = appBarHidden ? windowHeight : Math.max(0, windowHeight - appBarHeight);
     const aspectFitVideoWidth = videoAspectRatio
         ? Math.max(minVideoPlayerWidth, Math.round(playerHeight * videoAspectRatio))

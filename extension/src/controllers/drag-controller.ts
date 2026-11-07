@@ -45,17 +45,17 @@ export default class DragController {
                 return;
             }
 
-            const files = [];
+            const subtitleFiles = [];
 
             for (let i = 0; i < e.dataTransfer.files.length; ++i) {
-                const f = e.dataTransfer.files[i];
-                const extensionStartIndex = f.name.lastIndexOf('.');
+                const droppedFile = e.dataTransfer.files[i];
+                const extensionStartIndex = droppedFile.name.lastIndexOf('.');
 
                 if (extensionStartIndex === -1) {
                     return false;
                 }
 
-                const extension = f.name.substring(extensionStartIndex + 1, f.name.length);
+                const extension = droppedFile.name.substring(extensionStartIndex + 1, droppedFile.name.length);
 
                 if (
                     extension === 'ass' ||
@@ -65,11 +65,11 @@ export default class DragController {
                     extension === 'dfxp' ||
                     extension === 'ttml2'
                 ) {
-                    files.push(f);
+                    subtitleFiles.push(droppedFile);
                 }
             }
 
-            void context.loadSubtitles(files, false);
+            void context.loadSubtitles(subtitleFiles.map((subtitleFile) => ({ fileParts: [subtitleFile] })));
         };
 
         this.dragOverListener = (e) => e.preventDefault();

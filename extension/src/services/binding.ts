@@ -47,6 +47,7 @@ import type {
     CurrentTimeToVideoMessage,
     EncodeMp3InServiceWorkerMessage,
     ExtensionSyncMessage,
+    LoadableSubtitleTrack,
     ImageCaptureParams,
     NotificationDialogMessage,
     OffsetFromVideoMessage,
@@ -200,8 +201,7 @@ const subtitleParsingSettingsKeys = [
 type SubtitleParsingSettings = Pick<AsbplayerSettings, (typeof subtitleParsingSettingsKeys)[number]>;
 
 interface SubtitleSource {
-    readonly files: File[];
-    readonly flatten: boolean;
+    readonly tracks: LoadableSubtitleTrack[];
     settings: SubtitleParsingSettings;
     offset: number;
 }
@@ -2077,7 +2077,13 @@ export default class Binding {
         return cropAndResize(maxWidth, maxHeight, rect, tabImageDataUrl, false);
     }
 
-    async loadSubtitles(files: File[], flatten: boolean, syncWithAsbplayerId?: string) {
+    /**
+     * Loads selected tracks; each group's fileParts belong to one track, and
+     * group order defines track indexes. Parses locally or delegates to the app
+     * according to the subtitle-list preference. Local loading also syncs files
+     * to an already-synced app, or the app explicitly named by syncWithAsbplayerId.
+     */
+    async loadSubtitles(tracks: LoadableSubtitleTrack[], syncWithAsbplayerId?: string) {
         this._subtitleSource = undefined;
         const {
             streamingSubtitleListPreference,
@@ -2093,20 +2099,30 @@ export default class Binding {
             'convertNetflixRuby',
         ]);
         const syncWithAsbplayerTab = async (withSyncedAsbplayerOnly: boolean, withAsbplayerId: string | undefined) => {
+            // The existing sync protocol carries a flat file list. Include each
+            // file's group index so the app can reconstruct the selected tracks.
             const syncMessage: VideoToExtensionCommand<ExtensionSyncMessage> = {
                 sender: 'asbplayer-video',
                 message: {
                     command: 'sync',
-                    subtitles: await Promise.all(
-                        files.map(async (f) => {
-                            const base64 = bufferToBase64(await f.arrayBuffer());
-
-                            return {
-                                name: f.name,
-                                base64: base64,
-                            };
-                        })
-                    ),
+                    subtitles: (
+                        await Promise.all(
+                            tracks.map(async ({ fileParts }, track) =>
+                                Promise.all(
+                                    // Preserve empty selected slots for clients receiving serialized files.
+                                    (fileParts.length ? fileParts : [new File([], '.srt')]).map(
+                                        async (subtitleSourceFile) => ({
+                                            name: subtitleSourceFile.name,
+                                            base64: bufferToBase64(await subtitleSourceFile.arrayBuffer()),
+                                            track,
+                                        })
+                                    )
+                                )
+                            )
+                        )
+                    ).flat(),
+                    // Older app versions only understand the all-files flattening flag.
+                    flatten: tracks.some(({ fileParts }) => fileParts.length > 1),
                     withSyncedAsbplayerOnly,
                     withAsbplayerId,
                 },
@@ -2118,8 +2134,7 @@ export default class Binding {
         switch (streamingSubtitleListPreference) {
             case SubtitleListPreference.noSubtitleList: {
                 const source: SubtitleSource = {
-                    files: [...files],
-                    flatten,
+                    tracks: tracks.map(({ fileParts }) => ({ fileParts: [...fileParts] })),
                     settings: {
                         subtitleRegexFilter,
                         subtitleRegexFilterTextReplacement,
@@ -2146,7 +2161,13 @@ export default class Binding {
                 }
 
                 this._subtitleSource = source;
-                this._updateSubtitles(subtitles, flatten ? [files[0].name] : files.map((f) => f.name));
+                this._updateSubtitles(
+                    subtitles,
+                    tracks.map(({ fileParts }) => {
+                        const firstFilePart = fileParts[0];
+                        return firstFilePart?.name ?? '';
+                    })
+                );
                 break;
             }
             case SubtitleListPreference.app:
@@ -2164,7 +2185,7 @@ export default class Binding {
             convertNetflixRuby: settings.convertNetflixRuby,
             pgsParserWorkerFactory,
         });
-        const subtitles = await reader.subtitles(source.files, source.flatten);
+        const subtitles = await reader.subtitles(source.tracks);
         return subtitles.map((subtitle, index) => ({
             ...subtitle,
             start: subtitle.start + source.offset,
@@ -2189,7 +2210,11 @@ export default class Binding {
         asbTrace('playback/binding', 'Reloading media-owner subtitles', {
             subtitleCount: subtitles.length,
             trackCount: nonEmptyTrackIndexes.length,
-            fileCount: subtitleFileNames.length,
+            fileCount: source.tracks.reduce((count, { fileParts }) => count + fileParts.length, 0),
+            subtitleFileNames,
+            subtitleCountsByTrack: source.tracks.map(
+                (_, track) => subtitles.filter((subtitle) => subtitle.track === track).length
+            ),
         });
         this.subtitleController.subtitles = subtitles;
         this.subtitleController.cacheHtml();
@@ -2209,7 +2234,12 @@ export default class Binding {
         asbTrace('playback/binding', 'Updating media-owner subtitles', {
             subtitleCount: subtitles.length,
             trackCount: this._nonEmptyTrackIndexes(subtitles).length,
-            fileCount: subtitleFileNames.length,
+            // Files are unavailable when receiving already-parsed cues from the app.
+            fileCount: this._subtitleSource?.tracks.reduce((count, { fileParts }) => count + fileParts.length, 0),
+            subtitleFileNames,
+            subtitleCountsByTrack: subtitleFileNames.map(
+                (_, track) => subtitles.filter((subtitle) => subtitle.track === track).length
+            ),
         });
         this.subtitleController.subtitles = subtitles;
         this.subtitleController.subtitleFileNames = subtitleFileNames;

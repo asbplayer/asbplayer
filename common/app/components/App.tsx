@@ -23,7 +23,6 @@ import type {
     CardModel,
     ShowAnkiUiMessage,
     JumpToSubtitleMessage,
-    SubtitleFile,
     DownloadImageMessage,
     DownloadAudioMessage,
     CardTextFieldValues,
@@ -48,7 +47,7 @@ import type ChromeExtension from '@project/common/app/services/chrome-extension'
 import CopyHistory from '@project/common/app/components/CopyHistory';
 import StatisticsDrawer from '@project/common/components/StatisticsDrawer';
 import LandingPage from '@project/common/app/components/LandingPage';
-import type { MediaSources, PlayerRef } from '@project/common/app/components/Player';
+import type { PlayerRef } from '@project/common/app/components/Player';
 import Player from '@project/common/app/components/Player';
 import SettingsDialog from '@project/common/app/components/SettingsDialog';
 import type { SeekRequest } from '@project/common/app/components/VideoPlayer';
@@ -97,6 +96,18 @@ import OneUncollectedSentenceDetailsDialog from '@project/common/components/OneU
 import VideoDataSyncDialog, { useVideoDataSyncDialogState } from '@project/common/components/VideoDataSyncDialog';
 import type { FileWithId } from '@project/common/file-selector';
 import { DefaultFileSelector } from '@project/common/file-selector';
+import type { MediaSourceFile } from '@project/common/app/services/media-sources';
+import {
+    MediaSources,
+    decodeSubtitleSourceFiles,
+    audioExtensions,
+    videoExtensions,
+    subtitleExtensions,
+    AUDIO_EXT_SET,
+    VIDEO_EXT_SET,
+    SUBTITLE_EXT_SET,
+    getExtension,
+} from '@project/common/app/services/media-sources';
 
 const extensionUrl = project.extension.chrome.storeUrl;
 
@@ -118,40 +129,7 @@ const useContentStyles = makeStyles<Theme, ContentProps>((theme) => ({
     }),
 }));
 
-const videoExtensions = ['.mkv', '.mp4', '.m4v', '.avi', '.webm'] as const;
-const audioExtensions = ['.mp3', '.m4a', '.aac', '.flac', '.ogg', '.wav', '.opus', '.m4b'] as const;
-const subtitleExtensions = [
-    '.srt',
-    '.ass',
-    '.vtt',
-    '.sup',
-    '.nfvtt',
-    '.nfimsc',
-    '.ytxml',
-    '.ytsrv3',
-    '.dfxp',
-    '.ttml2',
-    '.bbjson',
-] as const;
 const inputAcceptFileExtensions = [...subtitleExtensions, ...audioExtensions, ...videoExtensions].join(',');
-
-const VIDEO_EXT_SET = new Set<string>(videoExtensions);
-const AUDIO_EXT_SET = new Set<string>(audioExtensions);
-const SUBTITLE_EXT_SET = new Set<string>(subtitleExtensions);
-
-const getExtension = (fileName: string) => {
-    const index = fileName.lastIndexOf('.');
-    return index === -1 ? '' : fileName.substring(index).toLowerCase();
-};
-
-const decodeSubtitleFiles = async (subtitleFiles: SubtitleFile[]): Promise<FileWithId[]> => {
-    const files = await Promise.all(
-        subtitleFiles.map(
-            async (f) => new File([await (await fetch('data:text/plain;base64,' + f.base64)).blob()], f.name)
-        )
-    );
-    return files.map((file) => ({ file, id: uuidv4() }));
-};
 
 async function extractDropFileHandles(items: DataTransferItemList): Promise<FileSystemFileHandle[] | undefined> {
     if (!window.isSecureContext) return; // Chromium error due to getAsFileSystemHandle: RESULT_CODE_KILLED_BAD_MESSAGE
@@ -188,40 +166,6 @@ async function extractDropFileHandles(items: DataTransferItemList): Promise<File
     }
 
     return handles;
-}
-
-function extractSources(files: FileWithId[]): MediaSources {
-    const subtitleFiles: FileWithId[] = [];
-    let videoFile: FileWithId | undefined = undefined;
-
-    for (let i = 0; i < files.length; ++i) {
-        const f = files[i];
-        const extension = getExtension(f.file.name);
-
-        if (extension === '') {
-            throw new LocalizedError('error.unknownExtension', { fileName: f.file.name });
-        }
-
-        if (SUBTITLE_EXT_SET.has(extension)) {
-            subtitleFiles.push(f);
-        } else if (VIDEO_EXT_SET.has(extension)) {
-            if (videoFile) {
-                throw new LocalizedError('error.onlyOneVideoFile');
-            }
-            videoFile = f;
-        } else if (AUDIO_EXT_SET.has(extension)) {
-            if (videoFile) {
-                throw new LocalizedError('error.onlyOneAudioFile');
-            }
-            videoFile = f;
-        } else {
-            throw new LocalizedError('error.unsupportedExtension', {
-                extension: extension.startsWith('.') ? extension.substring(1) : extension,
-            });
-        }
-    }
-
-    return { subtitleFiles: subtitleFiles, videoFile: videoFile };
 }
 
 interface RenderVideoProps {
@@ -436,7 +380,7 @@ function App({
     const [alertSeverity, setAlertSeverity] = useState<AlertColor>();
     const [jumpToSubtitle, setJumpToSubtitle] = useState<SubtitleModel>();
     const [rewindSubtitle, setRewindSubtitle] = useState<SubtitleModel>();
-    const [sources, setSources] = useState<MediaSources>({ subtitleFiles: [] });
+    const [sources, setSources] = useState(() => new MediaSources());
     useEffect(() => {
         if (!sources.videoFile) {
             return;
@@ -492,7 +436,7 @@ function App({
     const playerRef = useRef<PlayerRef>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const bufferedFileInputRef = useRef<HTMLInputElement>(null);
-    const { subtitleFiles } = sources;
+    const { firstSubtitleSourceFiles, subtitleFileNames } = sources;
 
     const handleError = useCallback(
         (message: any) => {
@@ -853,11 +797,7 @@ function App({
             setSources((previous) => {
                 revokeBlobUrl(videoFileUrl);
 
-                return {
-                    subtitleFiles: previous.subtitleFiles,
-                    videoFile: undefined,
-                    videoFileUrl: undefined,
-                };
+                return new MediaSources(previous.subtitleTracks);
             });
             setVideoFullscreen(false);
         },
@@ -950,14 +890,14 @@ function App({
 
     const handleJumpToSubtitle = useCallback(
         (subtitle: SubtitleModel, subtitleFileName: string) => {
-            if (!subtitleFiles.find((f) => f.file.name === subtitleFileName)) {
+            if (!sources.hasSubtitleFile(subtitleFileName)) {
                 handleError(t('error.subtitleFileNotOpen', { fileName: subtitleFileName }));
                 return;
             }
 
             setJumpToSubtitle({ ...subtitle });
         },
-        [subtitleFiles, handleError, t]
+        [sources, handleError, t]
     );
 
     const handleSelectCopyHistoryItem = useCallback(
@@ -992,14 +932,14 @@ function App({
             return;
         }
 
-        if (!subtitleFiles.find((f) => f.file.name === ankiDialogCard.subtitleFileName)) {
+        if (!sources.hasSubtitleFile(ankiDialogCard.subtitleFileName)) {
             handleError(t('error.subtitleFileNotOpen', { fileName: ankiDialogCard.subtitleFileName }));
             return;
         }
 
         setRewindSubtitle(ankiDialogCard.subtitle);
         handleAnkiDialogCancel();
-    }, [ankiDialogCard, subtitleFiles, handleAnkiDialogCancel, handleError, t]);
+    }, [ankiDialogCard, sources, handleAnkiDialogCancel, handleError, t]);
 
     const handleAnkiDialogRewindFromVideoPlayer = useCallback(() => {
         if (!ankiDialogCard) {
@@ -1068,12 +1008,12 @@ function App({
         setSubtitleTrackSelectorTracks,
         subtitleTrackSelectorDisabled,
         setSubtitleTrackSelectorDisabled,
-    } = useVideoDataSyncDialogState(sources.subtitleFiles);
+    } = useVideoDataSyncDialogState(firstSubtitleSourceFiles);
 
     const validateFiles = useCallback(
         (files: FileWithId[]) => {
             try {
-                extractSources(files);
+                MediaSources.fromFiles(files);
                 return true;
             } catch (e) {
                 handleError(e);
@@ -1084,13 +1024,13 @@ function App({
     );
 
     const handleFiles = useCallback(
-        ({ files, flattenSubtitleFiles }: { files: FileWithId[]; flattenSubtitleFiles?: boolean }): boolean => {
+        (files: MediaSourceFile[]): boolean => {
             try {
-                const mediaSources = extractSources(files);
+                const mediaSources = MediaSources.fromFiles(files);
                 let videoFile = mediaSources.videoFile;
-                const subtitleFiles = mediaSources.subtitleFiles;
+                const { subtitleSourceFiles } = mediaSources;
 
-                if (videoFile || subtitleFiles.length > 0) {
+                if (videoFile || subtitleSourceFiles.length > 0) {
                     setJumpToSubtitle(undefined);
                 }
 
@@ -1112,20 +1052,19 @@ function App({
                         videoFileUrl = previous.videoFileUrl;
                     }
 
-                    const sources = {
-                        subtitleFiles: subtitleFiles.length === 0 ? previous.subtitleFiles : subtitleFiles,
+                    // An empty selection clears subtitles; a video-only selection retains them.
+                    const sources = new MediaSources(
+                        files.length === 0 || mediaSources.subtitleTracks.length > 0
+                            ? mediaSources.subtitleTracks
+                            : previous.subtitleTracks,
                         videoFile,
-                        videoFileUrl: videoFileUrl,
-                        flattenSubtitleFiles,
-                    };
+                        videoFileUrl
+                    );
 
-                    const sourcesToList = (s: MediaSources) =>
-                        [...s.subtitleFiles, s.videoFile].filter((f) => f !== undefined);
-
-                    const previousLoadingSources = sourcesToList(previous);
-                    const loadingSources = sourcesToList(sources).filter((f) => {
+                    const previousLoadingSources = previous.allSourceFiles;
+                    const loadingSources = sources.allSourceFiles.filter((source) => {
                         for (const previousLoadingSource of previousLoadingSources) {
-                            if (f.file === previousLoadingSource.file) {
+                            if (source.file === previousLoadingSource.file) {
                                 return false;
                             }
                         }
@@ -1135,15 +1074,16 @@ function App({
                     setLoadingSources(loadingSources);
 
                     void retainSourcesInFileSession({
-                        subtitleIds: sources.subtitleFiles.map((f) => f.id),
+                        subtitleTrackIds: sources.subtitleTracks.map(({ fileParts }) => fileParts.map(({ id }) => id)),
                         videoId: sources.videoFile?.id,
                     });
 
                     return sources;
                 });
 
-                if (subtitleFiles.length > 0) {
-                    const subtitleFileName = subtitleFiles[0].file.name;
+                if (subtitleSourceFiles.length > 0) {
+                    const firstFilePart = subtitleSourceFiles[0];
+                    const subtitleFileName = firstFilePart.file.name;
                     setFileName(subtitleFileName.substring(0, subtitleFileName.lastIndexOf('.')));
                 }
 
@@ -1158,8 +1098,9 @@ function App({
 
     const handleManualFiles = useCallback(
         (files: FileWithId[]) => {
-            if (!handleFiles({ files })) return false;
-            const { subtitleFiles } = extractSources(files);
+            if (files.length === 0) return true;
+            if (!handleFiles(files)) return false;
+            const subtitleFiles = MediaSources.fromFiles(files).subtitleSourceFiles;
             if (subtitleFiles.length > 1) openSubtitleTrackSelectorWithFiles(subtitleFiles);
             return true;
         },
@@ -1232,7 +1173,7 @@ function App({
             }
 
             const files = restoreSessionFiles(record, resolvedFiles);
-            if (!handleFiles({ files })) {
+            if (!handleFiles(files)) {
                 await clearFileSession();
             }
         } catch (e) {
@@ -1292,7 +1233,7 @@ function App({
                         return;
                     }
 
-                    handleFiles({ files: await decodeSubtitleFiles(files ?? []) });
+                    handleFiles(decodeSubtitleSourceFiles(files ?? []));
                 },
             }),
         [externalCommands, extension, handleFiles]
@@ -1304,11 +1245,11 @@ function App({
                 appExternalCommandHandlers({
                     appId: extension.id,
                     subtitles,
-                    subtitleFileNames: sources.subtitleFiles.map((f) => f.file.name),
+                    subtitleFileNames,
                     isActive: () => document.visibilityState === 'visible',
                 })
             ),
-        [externalCommands, extension, subtitles, sources.subtitleFiles]
+        [externalCommands, extension, subtitles, subtitleFileNames]
     );
 
     useEffect(() => {
@@ -1352,26 +1293,14 @@ function App({
                 }
 
                 const tab = tabs[0];
-                let subtitleFiles: File[];
-                let flatten = false;
+                let subtitleSourceFiles: MediaSourceFile[];
 
                 if (message.data.command === 'sync') {
                     const syncMessage = message.data as LegacyPlayerSyncMessage;
-                    subtitleFiles = [
-                        new File(
-                            [await (await fetch('data:text/plain;base64,' + syncMessage.subtitles.base64)).blob()],
-                            syncMessage.subtitles.name
-                        ),
-                    ];
+                    subtitleSourceFiles = decodeSubtitleSourceFiles([syncMessage.subtitles]);
                 } else if (message.data.command === 'syncv2') {
                     const syncMessage = message.data as PlayerSyncMessage;
-                    subtitleFiles = await Promise.all(
-                        syncMessage.subtitles.map(
-                            async (s) =>
-                                new File([await (await fetch('data:text/plain;base64,' + s.base64)).blob()], s.name)
-                        )
-                    );
-                    flatten = syncMessage.flatten ?? false;
+                    subtitleSourceFiles = decodeSubtitleSourceFiles(syncMessage.subtitles, syncMessage.flatten);
                 } else {
                     asbError('app/messages', 'Unknown message ' + message.data.command);
                     return;
@@ -1381,10 +1310,7 @@ function App({
                     handleUnloadVideo(sources.videoFileUrl);
                 }
 
-                handleFiles({
-                    files: subtitleFiles.map((file) => ({ file, id: uuidv4() })),
-                    flattenSubtitleFiles: flatten,
-                });
+                handleFiles(subtitleSourceFiles);
                 setTab(tab);
             } else if (message.data.command === 'edit-keyboard-shortcuts') {
                 setSettingsDialogOpen(true);
@@ -1405,7 +1331,7 @@ function App({
                 const requestMessage = message.data as RequestLocalSubtitlesMessage;
                 extension.sendSubtitles(requestMessage.messageId, {
                     subtitles,
-                    subtitleFileNames: sources.subtitleFiles.map((f) => f.file.name),
+                    subtitleFileNames,
                 });
             }
         }
@@ -1415,10 +1341,7 @@ function App({
         });
         extension.videoPlayer = false;
         extension.loadedSubtitles = subtitles.length > 0;
-        extension.setSubtitleTracks(
-            subtitles,
-            sources.subtitleFiles.map((f) => f.file.name)
-        );
+        extension.setSubtitleTracks(subtitles, subtitleFileNames);
         extension.syncedVideoElement = tab;
         extension.startHeartbeat();
         return unsubscribe;
@@ -1428,7 +1351,7 @@ function App({
         supportsDictionaryStatistics,
         inVideoPlayer,
         sources.videoFileUrl,
-        sources.subtitleFiles,
+        subtitleFileNames,
         statisticsOverlayOpen,
         tab,
         handleFiles,
@@ -1634,25 +1557,27 @@ function App({
     );
 
     const handleDownloadSubtitleFilesAsSrt = useCallback(async () => {
-        if (sources.subtitleFiles === undefined) {
-            return;
+        try {
+            const sourceTracks = sources.subtitleTracks.map(({ fileParts }) => ({
+                fileParts: fileParts
+                    .map(({ file }) => file)
+                    .filter((file) => file.size > 0 && getExtension(file.name) !== '.sup'),
+            }));
+            const subtitles = await subtitleReader.subtitles(sourceTracks);
+            const tracks = sourceTracks.flatMap(({ fileParts }, track) =>
+                fileParts.length === 0
+                    ? []
+                    : [{ track, name: fileParts[0].name, subtitles: subtitles.filter((cue) => cue.track === track) }]
+            );
+            const result = subtitleReader.createSrtDownload(
+                tracks,
+                sources.videoFile?.file.name ?? sources.firstSubtitleSourceFiles[0]?.file.name ?? 'subtitles'
+            );
+            if (result !== undefined) download(result.blob, result.name);
+        } catch (error) {
+            handleError(error);
         }
-
-        const nonSupSubtitleFiles = sources.subtitleFiles
-            .filter((f) => !f.file.name.endsWith('.sup'))
-            .map((f) => f.file);
-
-        if (nonSupSubtitleFiles.length === 0) {
-            return;
-        }
-
-        download(
-            new Blob([await subtitleReader.filesToSrt(nonSupSubtitleFiles)], {
-                type: 'text/plain',
-            }),
-            `${fileName}.srt`
-        );
-    }, [fileName, sources.subtitleFiles, subtitleReader]);
+    }, [sources, subtitleReader, handleError]);
 
     const handleDownloadSubtitleTimeline = useCallback(() => {
         playerRef.current?.downloadSubtitleTimeline();
@@ -1814,37 +1739,50 @@ function App({
             void (async () => {
                 setSubtitleTrackSelectorDisabled(false);
                 try {
-                    const files: FileWithId[] = [];
-                    const cachedSubtitleFiles: FileWithId[] = [];
+                    const selectedSubtitleSourceFiles: MediaSourceFile[] = [];
+                    const cachedSubtitleSourceFiles: FileWithId[] = [];
                     const previouslyCachedIds = new Set(
                         (await fetchFileSession())?.cachedSubtitleFiles?.map(({ id }) => id) ?? []
                     );
-                    for (const t of tracks) {
-                        if (t.file !== undefined) {
-                            const fileWithId = { file: t.file, id: t.id };
-                            files.push(fileWithId);
-                            if (previouslyCachedIds.has(t.id)) cachedSubtitleFiles.push(fileWithId);
-                        } else if (!Array.isArray(t.url)) {
-                            const url = t.url as string;
+                    for (const [track, selectedTrack] of tracks.entries()) {
+                        if (selectedTrack.file !== undefined) {
+                            const loadedTrack = sources.findSubtitleTrack({
+                                id: selectedTrack.id,
+                                file: selectedTrack.file,
+                            });
+                            const trackFileParts = loadedTrack?.fileParts ?? [
+                                { file: selectedTrack.file, id: selectedTrack.id },
+                            ];
+                            selectedSubtitleSourceFiles.push(
+                                ...trackFileParts.map((filePart) => ({ ...filePart, track }))
+                            );
+                            cachedSubtitleSourceFiles.push(
+                                ...trackFileParts.filter(({ id }) => previouslyCachedIds.has(id))
+                            );
+                        } else if (!Array.isArray(selectedTrack.url)) {
+                            const url = selectedTrack.url as string;
                             const blob = await (await fetch(url)).blob();
-                            const isEmptyTrack = t.id === '-';
-                            const file = new File([blob], isEmptyTrack ? '.srt' : `${t.name}.${t.extension}`);
-                            const fileWithId = { file, id: t.id };
-                            files.push(fileWithId);
+                            const isEmptyTrack = selectedTrack.id === '-';
+                            const subtitleFile = new File(
+                                [blob],
+                                isEmptyTrack ? '.srt' : `${selectedTrack.name}.${selectedTrack.extension}`
+                            );
+                            const subtitleFileWithId = { file: subtitleFile, id: selectedTrack.id, track };
+                            selectedSubtitleSourceFiles.push(subtitleFileWithId);
                             if (!isEmptyTrack) {
-                                cachedSubtitleFiles.push(fileWithId);
+                                cachedSubtitleSourceFiles.push(subtitleFileWithId);
                             }
                         } else {
                             asbWarn(
                                 'app/subtitles',
                                 'unexpected url array when downloading subtitle track selection',
-                                t
+                                selectedTrack
                             );
                         }
                     }
-                    if (handleFiles({ files })) {
-                        await saveCachedSubtitleFilesToFileSession(cachedSubtitleFiles);
-                        await promoteBufferedHandlesInFileSession(files.map((f) => f.id));
+                    if (handleFiles(selectedSubtitleSourceFiles)) {
+                        await saveCachedSubtitleFilesToFileSession(cachedSubtitleSourceFiles);
+                        await promoteBufferedHandlesInFileSession(selectedSubtitleSourceFiles.map(({ id }) => id));
                         closeSubtitleTrackSelector();
                     }
                 } catch (e) {
@@ -1863,6 +1801,7 @@ function App({
             promoteBufferedHandlesInFileSession,
             saveCachedSubtitleFilesToFileSession,
             setSubtitleTrackSelectorDisabled,
+            sources,
         ]
     );
 
@@ -1870,7 +1809,7 @@ function App({
         (files: FileWithId[]) => {
             if (handleManualFiles(files)) {
                 void promoteBufferedHandlesInFileSession(files.map((f) => f.id));
-                if (extractSources(files).subtitleFiles.length <= 1) closeSubtitleTrackSelector();
+                if (MediaSources.fromFiles(files).subtitleTracks.length <= 1) closeSubtitleTrackSelector();
             } else {
                 void clearBufferedHandlesInFileSession();
             }
@@ -1905,7 +1844,7 @@ function App({
     const loading = loadingSources.length !== 0;
     const nothingLoaded =
         tab === undefined &&
-        ((loading && !videoFrameRef.current) || (sources.subtitleFiles.length === 0 && !sources.videoFile));
+        ((loading && !videoFrameRef.current) || (sources.subtitleTracks.length === 0 && !sources.videoFile));
     const appBarHidden = sources.videoFile !== undefined && ((theaterMode && !videoPopOut) || videoFullscreen);
     const effectiveDrawerOpen = (copyHistoryOpen || statisticsOpen) && !videoFullscreen;
     const lastSelectedAnkiExportMode =
@@ -2071,7 +2010,7 @@ function App({
                                 drawerWidth={drawerWidth}
                                 drawerOpen={effectiveDrawerOpen}
                                 hidden={appBarHidden}
-                                subtitleFiles={sources.subtitleFiles}
+                                subtitleFiles={firstSubtitleSourceFiles}
                                 onOpenCopyHistory={handleOpenCopyHistory}
                                 onOpenStatistics={supportsDictionaryStatistics ? handleOpenStatistics : undefined}
                                 onDownloadSubtitleFilesAsSrt={handleDownloadSubtitleFilesAsSrt}

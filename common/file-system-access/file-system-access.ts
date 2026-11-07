@@ -5,6 +5,7 @@
  */
 
 import type { FileWithId } from '@project/common/file-selector';
+import type { MediaSourceFile } from '@project/common/app/services/media-sources';
 import type {
     FileSessionRecord,
     FileSystemFileHandleWithId,
@@ -74,18 +75,24 @@ export function canRestoreSession(record: FileSessionRecord | undefined): boolea
     );
 }
 
-/** Reconstruct playback slots after resolving the session's local handles. */
-export function restoreSessionFiles(record: FileSessionRecord, resolvedFiles: FileWithId[]): FileWithId[] {
+/** Restores each source occurrence with its playback slot index, retaining all parts of a track. */
+export function restoreSessionFiles(record: FileSessionRecord, resolvedFiles: FileWithId[]): MediaSourceFile[] {
     const files = [...resolvedFiles, ...(record.cachedSubtitleFiles ?? [])];
-    if (record.subtitleTrackIds === undefined) return files;
+    if (record.subtitleTrackIds === undefined) {
+        // Sessions without a saved arrangement treat each subtitle file as its own track.
+        let track = 0;
+        return files.map((source) => (source.id === record.videoHandle?.id ? source : { ...source, track: track++ }));
+    }
 
     const filesById = new Map(files.map((file) => [file.id, file]));
-    const subtitleFiles = record.subtitleTrackIds.map((id) => {
-        const file = filesById.get(id);
-        return id !== '-' && file !== undefined ? file : { id: '-', file: new File([], '.srt') };
-    });
+    const subtitleSourceFiles = record.subtitleTrackIds.flatMap((ids, track) =>
+        (ids.length > 0 ? ids : ['-']).map((id) => ({
+            ...((id === '-' ? undefined : filesById.get(id)) ?? { id: '-', file: new File([], '.srt') }),
+            track,
+        }))
+    );
 
-    return [...resolvedFiles.filter(({ id }) => id === record.videoHandle?.id), ...subtitleFiles];
+    return [...resolvedFiles.filter(({ id }) => id === record.videoHandle?.id), ...subtitleSourceFiles];
 }
 
 export async function showFilePicker(extensions: {

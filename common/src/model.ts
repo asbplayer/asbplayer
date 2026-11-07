@@ -46,6 +46,16 @@ export interface Tokenization {
     error?: boolean;
 }
 
+/**
+ * One selected subtitle track. fileParts contains a single complete subtitle
+ * file or multiple fragments of that track; it never contains separate tracks.
+ * An empty array preserves an unfilled track slot. Each part keeps its own name;
+ * the first part's name is used to identify the track in the UI.
+ */
+export interface LoadableSubtitleTrack<TFilePart = File> {
+    fileParts: TFilePart[];
+}
+
 export interface SubtitleModel {
     readonly text: string;
     readonly originalText?: string;

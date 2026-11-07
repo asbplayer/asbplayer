@@ -320,6 +320,8 @@ export interface ShowAnkiUiAfterRerecordMessage extends Message {
 export interface SerializedSubtitleFile {
     name: string;
     base64: string;
+    /** Selected track index. Older extensions omit this and use `flatten`. */
+    track?: number;
 }
 
 export interface LegacyPlayerSyncMessage extends Message {
