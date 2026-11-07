@@ -2,7 +2,8 @@ import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import type { Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
-import Alert from '@project/common/app/components/Alert';
+import Alert, { AlertStack } from '@project/common/app/components/Alert';
+import MuiAlert from '@mui/material/Alert';
 
 jest.mock('react-i18next', () => ({
     useTranslation: () => ({
@@ -79,6 +80,31 @@ describe('Alert', () => {
         expect(alerts.map((alert) => alert.textContent)).toEqual(['Offset | playback rate', 'Repeat enabled']);
         expect(alerts[0].classList.contains('MuiAlert-standardInfo')).toBe(true);
         expect(alerts[1].classList.contains('MuiAlert-standardWarning')).toBe(true);
+    });
+
+    it('shares one stack with persistent notices while timed notifications expire independently', () => {
+        act(() =>
+            root.render(
+                <AlertStack anchor="top">
+                    <Alert inline open={true} useAppLogo={false} onClose={() => {}}>
+                        Subtitle copied
+                    </Alert>
+                    <Alert inline open={true} disableAutoHide useAppLogo={false} onClose={() => {}}>
+                        Resume playback
+                    </Alert>
+                    <MuiAlert severity="info">Converting audio</MuiAlert>
+                </AlertStack>
+            )
+        );
+        const alerts = Array.from(container.querySelectorAll('[role="alert"]'));
+        const stack = alerts[2].parentElement;
+        expect(alerts[0].parentElement!.parentElement).toBe(stack);
+        expect(alerts[1].parentElement!.parentElement).toBe(stack);
+        act(() => jest.advanceTimersByTime(3000));
+        act(() => jest.advanceTimersByTime(1000));
+        expect(container.textContent).not.toContain('Subtitle copied');
+        expect(container.textContent).toContain('Resume playback');
+        expect(container.textContent).toContain('Converting audio');
     });
 
     it('updates the top keyed notification without removing unrelated notifications', () => {

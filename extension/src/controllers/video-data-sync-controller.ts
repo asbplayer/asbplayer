@@ -5,6 +5,7 @@ import type {
     ActiveProfileMessage,
     ConfirmedVideoDataSubtitleTrack,
     OpenAsbplayerSettingsMessage,
+    LoadableSubtitleTrack,
     SerializedSubtitleFile,
     SettingsUpdatedMessage,
     VideoData,
@@ -558,10 +559,12 @@ export default class VideoDataSyncController {
                         dataWasSynced = await this._syncDataArray(data, confirmMessage.syncWithAsbplayerId);
                     } else if ('openFile' === message.command) {
                         const openFileMessage = message as VideoDataUiBridgeOpenFileMessage;
-                        const subtitles = openFileMessage.subtitles;
+                        const subtitleFiles = openFileMessage.subtitles;
 
                         try {
-                            await this._syncSubtitles(subtitles, false);
+                            await this._syncSubtitles(
+                                subtitleFiles.map((subtitleFile) => ({ fileParts: [subtitleFile] }))
+                            );
                             dataWasSynced = true;
                         } catch (e) {
                             if (e instanceof Error) {
@@ -658,26 +661,21 @@ export default class VideoDataSyncController {
 
     private async _syncData(data: VideoDataSubtitleTrack[]) {
         try {
-            const subtitles: SerializedSubtitleFile[] = [];
+            const tracks: LoadableSubtitleTrack<SerializedSubtitleFile>[] = [];
 
             for (let i = 0; i < data.length; i++) {
-                const { extension, url, language, file } = data[i];
-                const subtitleFiles = await this._subtitlesForUrl(
+                const { extension, url, language, file: localSubtitleFile } = data[i];
+                const fileParts = await this._subtitleFilePartsForUrl(
                     this._defaultVideoName(this._syncedData?.basename, data[i]),
                     language,
                     extension,
                     url!,
-                    file !== undefined
+                    localSubtitleFile !== undefined
                 );
-                if (subtitleFiles !== undefined) {
-                    subtitles.push(...subtitleFiles);
-                }
+                tracks.push({ fileParts: fileParts ?? [] });
             }
 
-            await this._syncSubtitles(
-                subtitles,
-                data.some((track) => typeof track.url === 'object')
-            );
+            await this._syncSubtitles(tracks);
             return true;
         } catch (error) {
             if (typeof (error as Error).message !== 'undefined') {
@@ -690,21 +688,21 @@ export default class VideoDataSyncController {
 
     private async _syncDataArray(data: ConfirmedVideoDataSubtitleTrack[], syncWithAsbplayerId?: string) {
         try {
-            const subtitles: SerializedSubtitleFile[] = [];
+            const tracks: LoadableSubtitleTrack<SerializedSubtitleFile>[] = [];
 
             for (let i = 0; i < data.length; i++) {
-                const { name, language, extension, url, file } = data[i];
-                const subtitleFiles = await this._subtitlesForUrl(name, language, extension, url!, file !== undefined);
-                if (subtitleFiles !== undefined) {
-                    subtitles.push(...subtitleFiles);
-                }
+                const { name, language, extension, url, file: localSubtitleFile } = data[i];
+                const fileParts = await this._subtitleFilePartsForUrl(
+                    name,
+                    language,
+                    extension,
+                    url!,
+                    localSubtitleFile !== undefined
+                );
+                tracks.push({ fileParts: fileParts ?? [] });
             }
 
-            await this._syncSubtitles(
-                subtitles,
-                data.some((track) => typeof track.url === 'object'),
-                syncWithAsbplayerId
-            );
+            await this._syncSubtitles(tracks, syncWithAsbplayerId);
             return true;
         } catch (error) {
             if (typeof (error as Error).message !== 'undefined') {
@@ -715,30 +713,51 @@ export default class VideoDataSyncController {
         }
     }
 
+    /**
+     * Decodes and loads selected tracks, preserving group order and empty slots.
+     * Each group's fileParts belong to one track, not separate tracks.
+     */
     private async _syncSubtitles(
-        serializedFiles: SerializedSubtitleFile[],
-        flatten: boolean,
+        serializedTracks: LoadableSubtitleTrack<SerializedSubtitleFile>[],
         syncWithAsbplayerId?: string
     ) {
-        const files: File[] = await Promise.all(
-            serializedFiles.map(async (f) => new File([base64ToBlob(f.base64, 'text/plain')], f.name))
+        const tracks = await Promise.all(
+            serializedTracks.map(async ({ fileParts }) => ({
+                fileParts: await Promise.all(
+                    fileParts.map(
+                        async (serializedSourceFile) =>
+                            new File(
+                                [base64ToBlob(serializedSourceFile.base64, 'text/plain')],
+                                serializedSourceFile.name
+                            )
+                    )
+                ),
+            }))
         );
+        const subtitleSourceFiles = tracks.flatMap((track) => track.fileParts);
         const startedAt = performance.now();
-        const fileCount = files.length;
-        const totalBytes = files.reduce((sum, file) => sum + file.size, 0);
+        const fileCount = subtitleSourceFiles.length;
+        const totalBytes = subtitleSourceFiles.reduce((sum, subtitleSourceFile) => sum + subtitleSourceFile.size, 0);
+        const trackFileDetails = tracks.map(({ fileParts }, track) => ({
+            track,
+            fileCount: fileParts.length,
+            fileNames: Array.from(new Set(fileParts.map((subtitleSourceFile) => subtitleSourceFile.name))),
+        }));
         try {
-            await this._context.loadSubtitles(files, flatten, syncWithAsbplayerId);
+            await this._context.loadSubtitles(tracks, syncWithAsbplayerId);
             asbTrace('subtitle/sync', 'Loaded retrieved subtitle files', {
                 fileCount,
                 totalBytes,
-                flatten,
+                trackCount: tracks.length,
+                tracks: trackFileDetails,
                 durationMs: performance.now() - startedAt,
             });
         } catch (error) {
             asbError('subtitle/error', 'Failed to load retrieved subtitle files', {
                 fileCount,
                 totalBytes,
-                flatten,
+                trackCount: tracks.length,
+                tracks: trackFileDetails,
                 durationMs: performance.now() - startedAt,
                 errorName: error instanceof Error ? error.name : typeof error,
             });
@@ -746,12 +765,13 @@ export default class VideoDataSyncController {
         }
     }
 
-    private async _subtitlesForUrl(
+    /** Retrieves one selected track: one complete file or multiple fragments. */
+    private async _subtitleFilePartsForUrl(
         name: string,
         language: string | undefined,
         extension: string,
         url: string | string[],
-        localFile: boolean | undefined
+        isLocalSubtitleFile: boolean | undefined
     ): Promise<SerializedSubtitleFile[] | undefined> {
         const startedAt = performance.now();
         if (url === '-') {
@@ -787,7 +807,11 @@ export default class VideoDataSyncController {
         }
 
         if (typeof url === 'string') {
-            const sourceKind = localFile ? 'local-object-url' : url.startsWith('data:') ? 'inline-data' : 'remote';
+            const sourceKind = isLocalSubtitleFile
+                ? 'local-object-url'
+                : url.startsWith('data:')
+                  ? 'inline-data'
+                  : 'remote';
             const response = await fetch(url)
                 .catch(async (error) => {
                     asbTrace('subtitle/error', 'Subtitle retrieval request failed', {
@@ -800,7 +824,7 @@ export default class VideoDataSyncController {
                     return undefined;
                 })
                 .finally(() => {
-                    if (localFile) {
+                    if (isLocalSubtitleFile) {
                         URL.revokeObjectURL(url);
                     }
                 });
@@ -831,10 +855,10 @@ export default class VideoDataSyncController {
 
         const firstUri = url[0];
         const partExtension = subtitleFileExtensionForUrl(firstUri, extension);
-        const fileName = `${name}.${partExtension}`;
+        const filePartName = `${name}.${partExtension}`;
         const partCount = url.length;
         const promises = url.map((u) => fetch(u));
-        const tracks = [];
+        const fileParts = [];
         const responseStatusCounts: Record<string, number> = {};
         let finishedPromises = 0;
         let responseBytes = 0;
@@ -852,13 +876,13 @@ export default class VideoDataSyncController {
 
                 ++finishedPromises;
                 this._context.subtitleController.notification({
-                    text: `${fileName} (${Math.floor((finishedPromises / partCount) * 100)}%)`,
+                    text: `${filePartName} (${Math.floor((finishedPromises / partCount) * 100)}%)`,
                 });
 
                 const body = await response.arrayBuffer();
                 responseBytes += body.byteLength;
-                tracks.push({
-                    name: fileName,
+                fileParts.push({
+                    name: filePartName,
                     base64: bufferToBase64(body),
                 });
             }
@@ -882,7 +906,7 @@ export default class VideoDataSyncController {
             responseBytes,
             durationMs: performance.now() - startedAt,
         });
-        return tracks;
+        return fileParts;
     }
 
     private async _reportError(error: string) {

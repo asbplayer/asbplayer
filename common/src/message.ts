@@ -33,10 +33,7 @@ import type {
 } from '@project/common/src/model';
 import type { AsbPlayerToVideoCommandV2 } from '@project/common/src/command';
 import type { LogLine, LogSnapshot } from '@project/common/util/log-utils';
-import type {
-    Response as WebSocketResponse,
-    WebSocketCommand,
-} from '@project/common/web-socket-client/web-socket-commands';
+import type { Response as ExternalResponse, ExternalCommand } from '@project/common/external-commands/commands';
 import type {
     DictionaryLocalTokenInput,
     DictionaryTokenKey,
@@ -323,6 +320,8 @@ export interface ShowAnkiUiAfterRerecordMessage extends Message {
 export interface SerializedSubtitleFile {
     name: string;
     base64: string;
+    /** Selected track index. Older extensions omit this and use `flatten`. */
+    track?: number;
 }
 
 export interface LegacyPlayerSyncMessage extends Message {
@@ -439,6 +438,28 @@ export interface AudioTrackSelectedFromVideoMessage extends Message {
 export interface AudioTrackSelectedToVideoMessage extends Message {
     readonly command: 'audioTrackSelected';
     readonly id: string;
+}
+
+/** Live conversion lifecycle and latest immutable encoded prefix shared with the playback document. */
+export type TranscodedAudioPayload = {
+    /** The original track must not be recorded, even if conversion is unavailable or fails. */
+    readonly required: boolean;
+    readonly codecName?: string;
+} & (
+    | { readonly state: 'idle' | 'failed'; readonly audio?: never }
+    | { readonly state: 'transcoding'; readonly audio?: Blob }
+    | { readonly state: 'ready'; readonly audio: Blob }
+);
+
+export type TranscodedAudioToVideoMessage = Message &
+    TranscodedAudioPayload & {
+        readonly command: 'transcodedAudio';
+    };
+
+export interface AudioBufferedFromVideoMessage extends Message {
+    readonly command: 'audioBuffered';
+    /** Milliseconds; undefined removes streaming seek limits after completion or detach. */
+    readonly range: { readonly start: number; readonly end: number } | undefined;
 }
 
 export interface ToggleSubtitleTrackInListFromVideoMessage extends Message {
@@ -851,6 +872,11 @@ export interface SetGlobalStateMessage extends MessageWithId {
     readonly state: Partial<GlobalState>;
 }
 
+export interface GlobalStateUpdatedMessage extends Message {
+    readonly command: 'global-state-updated';
+    readonly state: Partial<GlobalState>;
+}
+
 export interface ForwardCommandMessage extends Message {
     readonly command: 'forward-command';
     readonly commandToForward: AsbPlayerToVideoCommandV2<Message>;
@@ -881,14 +907,14 @@ export interface JumpToSubtitleMessage extends Message {
     readonly subtitleFileName: string;
 }
 
-export interface WebSocketCommandMessage extends MessageWithId {
-    readonly command: 'web-socket-command';
-    readonly webSocketCommand: WebSocketCommand;
+export interface ExternalCommandMessage extends MessageWithId {
+    readonly command: 'external-command';
+    readonly externalCommand: ExternalCommand;
 }
 
-export interface WebSocketCommandResponseMessage extends MessageWithId {
-    readonly command: 'web-socket-command-response';
-    readonly response?: WebSocketResponse<object>;
+export interface ExternalCommandResponseMessage extends MessageWithId {
+    readonly command: 'external-command-response';
+    readonly response?: ExternalResponse<object>;
 }
 
 export interface DownloadImageMessage extends Message, CardModel {
@@ -957,6 +983,10 @@ export interface DeleteCopyHistoryMessage extends MessageWithId {
 
 export interface ClearCopyHistoryMessage extends MessageWithId {
     readonly command: 'clear-copy-history';
+}
+
+export interface CopyHistoryChangedMessage extends Message {
+    readonly command: 'copy-history-changed';
 }
 
 export interface DictionaryGetBulkMessage extends MessageWithId {

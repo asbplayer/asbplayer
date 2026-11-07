@@ -16,29 +16,27 @@ import type { AsbplayerSettings, Recipe, RecipeSettings as Settings } from '@pro
 import React, { useEffect, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import DOMPurify from 'dompurify';
-import {
-    Alert,
-    Box,
-    Button,
-    ButtonGroup,
-    Checkbox,
-    Dialog,
-    DialogActions,
-    DialogContent,
-    DialogTitle,
-    FormControlLabel,
-    FormHelperText,
-    Link,
-    Stack,
-    TextField,
-    Typography,
-} from '@mui/material';
+import Alert from '@mui/material/Alert';
+import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
+import ButtonGroup from '@mui/material/ButtonGroup';
+import Checkbox from '@mui/material/Checkbox';
+import Dialog from '@mui/material/Dialog';
+import DialogActions from '@mui/material/DialogActions';
+import DialogContent from '@mui/material/DialogContent';
+import DialogTitle from '@mui/material/DialogTitle';
+import FormControlLabel from '@mui/material/FormControlLabel';
+import FormHelperText from '@mui/material/FormHelperText';
+import IconButton from '@mui/material/IconButton';
+import Link from '@mui/material/Link';
+import Stack from '@mui/material/Stack';
+import TextField from '@mui/material/TextField';
+import Typography from '@mui/material/Typography';
 import EditIcon from '@mui/icons-material/Edit';
 import SaveIcon from '@mui/icons-material/Save';
 import UploadIcon from '@mui/icons-material/Upload';
 import CloseIcon from '@mui/icons-material/Close';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
-import IconButton from '@mui/material/IconButton';
 
 import { PlayMode } from '@project/common';
 import RecipeSelect from '@project/common/components/RecipeSelect';

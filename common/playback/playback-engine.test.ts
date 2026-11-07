@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, jest } from '@jest/globals';
+import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { clearAutoPauseTokenSelectionInRoot, selectTokenInRoot } from '@project/common/annotations';
@@ -7,13 +7,15 @@ import type { IndexedSubtitleModel, PlaybackState } from '@project/common';
 import { AutoPauseResumeMode, defaultSettings, isSaveOnlySettings, SubtitleVisibility } from '@project/common/settings';
 import type { AsbplayerSettings, SettingsProvider } from '@project/common/settings';
 import PlaybackEngine, { formatPlaybackRateNotification } from '@project/common/playback/playback-engine';
-import Clock from '@project/common/playback/timing/clock';
+import Clock from '@project/common/playback/media/clock';
+import VideoFrameTimingDriver from '@project/common/playback/media/video-frame-timing-driver';
+import { makeSubtitle } from '@project/common/playback/playback-test-utils';
 import type { InitialPlaybackSettings, PlaybackEngineCallbacks } from '@project/common/playback/playback-engine';
 import type {
     InternalSeekCompletion,
     TimingDriver,
     TimingDriverCallbacks,
-} from '@project/common/playback/timing/timing-driver';
+} from '@project/common/playback/media/timing-driver';
 
 beforeEach(() => {
     localStorage.clear();
@@ -58,6 +60,22 @@ class FakeTimingDriver implements TimingDriver {
 
     setCallbacks(callbacks: TimingDriverCallbacks): void {
         this.callbacks = callbacks;
+    }
+
+    bindMedia(): void {}
+
+    unbindMedia(): void {}
+
+    mediaState() {
+        return {
+            currentTimeMs: this.currentTimeMs(),
+            paused: this.paused(),
+            ready: true,
+            playbackRate: this.playbackRate(),
+            preservesPitch: true,
+            volume: 1,
+            muted: false,
+        };
     }
 
     beginInternalSeek(): Promise<InternalSeekCompletion> {
@@ -165,7 +183,7 @@ async function makePlaybackEngine(
         clearAutoPauseTokenSelection: () => void;
         playbackStateChanged: (state: PlaybackState) => void;
         play: () => Promise<void>;
-        seek: (timestampMs: number) => Promise<void>;
+        seek: PlaybackEngineCallbacks['seek'];
         durationMs?: number;
         settings: Partial<AsbplayerSettings>;
         settingsReady: boolean;
@@ -265,6 +283,7 @@ async function makePlaybackEngine(
                     driver.timestampMs = targetTimestampMs;
                     return Promise.resolve();
                 }),
+            setMuted: () => {},
             setPlaybackRate: (playbackRate) => {
                 playbackRates.push(playbackRate);
                 driver.playbackRateValue = playbackRate;
@@ -544,8 +563,9 @@ describe('pause token selection', () => {
                     selectTokenInRoot(root, { subtitleIndex: 0, tokenStart: 4 });
                 };
                 if (!navigateDuringRetry) navigate();
-                if (event === 'pause') harness.driver.callbacks.onPlaybackPaused();
-                else {
+                if (event === 'pause') {
+                    harness.driver.callbacks.onPlaybackPaused();
+                } else {
                     harness.driver.callbacks.onSeekStarted('user-seek');
                     harness.driver.discontinuity(1500);
                 }
@@ -583,8 +603,9 @@ describe('pause token selection', () => {
                 },
             });
             try {
-                if (automatic) await harness.driver.time(2100);
-                else {
+                if (automatic) {
+                    await harness.driver.time(2100);
+                } else {
                     harness.driver.isPaused = true;
                     harness.driver.callbacks.onPlaybackPaused();
                 }
@@ -1547,6 +1568,7 @@ describe('PlaybackEngine', () => {
                 pause: () => {},
                 play: async () => {},
                 seek: async () => {},
+                setMuted: () => {},
                 setPlaybackRate: () => {},
                 setSubtitleOffset: () => {},
                 playbackStateChanged: () => {},
@@ -2645,6 +2667,7 @@ describe('PlaybackEngine', () => {
                 pause: () => {},
                 play: async () => {},
                 seek: async () => {},
+                setMuted: () => {},
                 setPlaybackRate,
                 setSubtitleOffset: () => {},
                 playbackStateChanged: () => {},
@@ -3377,8 +3400,7 @@ describe('PlaybackEngine', () => {
                 hiddenSubtitleIndexes: [0],
             });
 
-            jest.advanceTimersByTime(300);
-            await Promise.resolve();
+            await jest.advanceTimersByTimeAsync(300);
 
             expect(harness.driver.paused()).toBe(true);
             expect(harness.playbackStates.at(-1)?.showingSubtitleIndexes).toEqual([]);
@@ -3699,4 +3721,341 @@ describe('recipe playback', () => {
         expect(harness.driver.playbackRate()).toBe(1.3);
         expect(harness.playbackEngine.playbackModes).toEqual(new Set([PlayMode.repeat]));
     });
+});
+
+describe('external audio playback', () => {
+    let video: HTMLVideoElement;
+    let audio: HTMLAudioElement;
+    let videoPaused: boolean;
+    let audioPaused: boolean;
+    let ready: number;
+    let end: number;
+    let duration: number;
+    let engine: PlaybackEngine<IndexedSubtitleModel>;
+    let initialSubtitles: IndexedSubtitleModel[];
+    let initialized: boolean;
+    let onPlaybackError: jest.Mock<(error: unknown) => void>;
+    let requestPlayback: ((paused: boolean) => void) | undefined;
+    const createEngine = () =>
+        new PlaybackEngine<IndexedSubtitleModel>({
+            settingsProvider: {
+                getAll: async () => ({
+                    ...defaultSettings,
+                    lastPlaybackPositions: [{ fileName: 'video.mp4', position: 61_000 }],
+                }),
+                getSingle: async () => [],
+                activeProfile: async () => undefined,
+            } as unknown as SettingsProvider,
+            appIntegration: true,
+            autoPauseCorrectionDisabled: false,
+            subtitles: initialSubtitles,
+            playbackModesDisabled: false,
+            playbackModesSuppressed: false,
+            playbackPositionKeys: ['video.mp4'],
+            timingDriver: new VideoFrameTimingDriver(
+                {
+                    paused: () => video.paused,
+                    currentTimeMs: () => video.currentTime * 1000,
+                    ready: () => video.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA,
+                    preservesPitch: () => video.preservesPitch,
+                    volume: () => video.volume,
+                    muted: () => video.muted,
+                    subscribePlaybackRequests: (onRequest) => {
+                        requestPlayback = onRequest;
+                        return () => {
+                            requestPlayback = undefined;
+                        };
+                    },
+                    durationMs: () => video.duration * 1000,
+                    playbackRate: () => video.playbackRate,
+                    hasVideoTrack: () => false,
+                    frameTimestampMs: () => undefined,
+                    externalSeekEvents: false,
+                    requestVideoFrameCallback: () => 0,
+                    cancelVideoFrameCallback: () => {},
+                    addEventListener: (type, listener) => video.addEventListener(type, listener),
+                    removeEventListener: (type, listener) => video.removeEventListener(type, listener),
+                },
+                {
+                    onPlay: () => {},
+                    onPause: () => {},
+                    onSeeked: () => {},
+                    onPlaybackRateChanged: () => {},
+                    onDurationChanged: () => {},
+                    onError: () => {},
+                }
+            ),
+            callbacks: {
+                pause: () => video.pause(),
+                play: () => video.play(),
+                seek: async (timestampMs) => {
+                    video.currentTime = timestampMs / 1000;
+                    // HTMLMediaElement seeking is a browser boundary absent from jsdom.
+                    queueMicrotask(() => {
+                        video.dispatchEvent(new Event('seeking'));
+                        video.dispatchEvent(new Event('seeked'));
+                    });
+                },
+                selectToken: () => false,
+                clearAutoPauseTokenSelection: () => {},
+                setMuted: (muted) => {
+                    video.muted = muted;
+                },
+                setPlaybackRate: (rate) => {
+                    video.playbackRate = rate;
+                },
+                setSubtitleOffset: () => {},
+                playbackStateChanged: () => {},
+                playbackPositionChanged: () => {},
+                saveSettings: () => {},
+                recipeChanged: () => {},
+                settingChangeBlocked: () => {},
+                playbackModesChanged: () => {},
+                initialPlaybackSettingsChanged: () => {},
+                onError: (error) => {
+                    onPlaybackError(error);
+                },
+            },
+        });
+    const settle = async (operation: () => unknown) => {
+        await operation();
+        for (let index = 0; index < 10; index++) await Promise.resolve();
+    };
+    beforeEach(() => {
+        initialized = false;
+        onPlaybackError = jest.fn((error) => {
+            throw error;
+        });
+        video = document.createElement('video');
+        audio = document.createElement('audio');
+        videoPaused = false;
+        audioPaused = true;
+        ready = HTMLMediaElement.HAVE_NOTHING;
+        end = 0;
+        duration = NaN;
+        initialSubtitles = [];
+        localStorage.clear();
+        Object.defineProperties(video, {
+            paused: { get: () => videoPaused },
+            readyState: { value: HTMLMediaElement.HAVE_ENOUGH_DATA },
+        });
+        Object.defineProperties(audio, {
+            paused: { get: () => audioPaused },
+            readyState: { get: () => ready },
+            duration: { get: () => duration },
+            buffered: { get: () => ({ length: end > 0 ? 1 : 0, start: () => 0, end: () => end }) },
+        });
+        jest.spyOn(video, 'play').mockImplementation(async () => {
+            videoPaused = false;
+            video.dispatchEvent(new Event('play'));
+        });
+        jest.spyOn(video, 'pause').mockImplementation(() => {
+            if (videoPaused) return;
+            videoPaused = true;
+            queueMicrotask(() => video.dispatchEvent(new Event('pause')));
+        });
+        jest.spyOn(audio, 'play').mockImplementation(async () => {
+            audioPaused = false;
+        });
+        jest.spyOn(audio, 'pause').mockImplementation(() => {
+            audioPaused = true;
+        });
+    });
+    afterEach(async () => {
+        if (initialized) await settle(() => engine.unbind());
+        jest.restoreAllMocks();
+        jest.useRealTimers();
+    });
+    const render = async ({ source = 'blob:stream', active = true, streaming = true, onError = () => {} } = {}) => {
+        await settle(() => {
+            if (!initialized) {
+                engine = createEngine();
+                initialized = true;
+                engine.bind();
+            }
+            engine.externalAudioChanged({ element: audio, source, active, streaming, onError });
+        });
+    };
+    const available = async (seconds: number) => {
+        end = seconds;
+        ready = HTMLMediaElement.HAVE_FUTURE_DATA;
+        await settle(async () => audio.dispatchEvent(new Event('canplay')));
+    };
+
+    it('holds video during startup, resumes with audio, and holds both during an audio stall', async () => {
+        await render();
+        expect(videoPaused).toBe(true);
+        expect(video.muted).toBe(true);
+        await available(10);
+        expect(videoPaused).toBe(false);
+        expect(audioPaused).toBe(false);
+        ready = HTMLMediaElement.HAVE_CURRENT_DATA;
+        await settle(async () => audio.dispatchEvent(new Event('waiting')));
+        expect(videoPaused).toBe(true);
+        expect(audioPaused).toBe(true);
+        await available(20);
+        expect(videoPaused).toBe(false);
+        expect(audioPaused).toBe(false);
+    });
+
+    it('respects an explicit pause while buffering instead of resuming playback later', async () => {
+        await render();
+        requestPlayback!(true);
+        await available(10);
+        expect(videoPaused).toBe(true);
+        expect(audioPaused).toBe(true);
+    });
+
+    it('resumes after an internal audio hold without reporting the interrupted video play as an error', async () => {
+        await render();
+        onPlaybackError.mockImplementation(() => {});
+        let rejectPlay!: (error: unknown) => void;
+        jest.mocked(video.play).mockImplementationOnce(() => {
+            const pending = new Promise<void>((_resolve, reject) => {
+                rejectPlay = reject;
+            });
+            videoPaused = false;
+            video.dispatchEvent(new Event('play'));
+            return pending;
+        });
+        await settle(() => requestPlayback!(false));
+        expect(videoPaused).toBe(true);
+
+        // The browser may deliver the old rejection after the controller has already resumed playback.
+        await available(10);
+        await settle(() => rejectPlay(new DOMException('Interrupted by pause', 'AbortError')));
+        expect(onPlaybackError).not.toHaveBeenCalled();
+        expect(videoPaused).toBe(false);
+        expect(audioPaused).toBe(false);
+    });
+
+    it.each(['AbortError', 'NotAllowedError', 'NotSupportedError'])(
+        'still reports a video %s when no engine pause interrupted the play request',
+        async (name) => {
+            await render({ active: false });
+            onPlaybackError.mockImplementation(() => {});
+            const error = new DOMException('Playback failed', name);
+            jest.mocked(video.play).mockRejectedValueOnce(error);
+            await settle(() => requestPlayback!(false));
+            expect(onPlaybackError).toHaveBeenCalledWith(error);
+        }
+    );
+
+    it('keeps converted audio active when subtitle playback is disabled', async () => {
+        initialSubtitles = [makeSubtitle(0, 120_000, 0)];
+        await render();
+        await available(10);
+        await settle(async () => engine.subtitlesChanged([]));
+        expect(video.muted).toBe(true);
+        expect(audioPaused).toBe(false);
+        ready = HTMLMediaElement.HAVE_CURRENT_DATA;
+        await settle(async () => audio.dispatchEvent(new Event('waiting')));
+        expect(videoPaused).toBe(true);
+        await available(20);
+        expect(videoPaused).toBe(false);
+        expect(audioPaused).toBe(false);
+    });
+
+    it('restores video muting and stops buffering recovery when the engine is unbound', async () => {
+        jest.useFakeTimers();
+        await render();
+        await settle(async () => engine.unbind());
+        expect(video.muted).toBe(false);
+        await available(10);
+        await settle(async () => jest.advanceTimersByTime(1_000));
+        expect(videoPaused).toBe(true);
+        expect(audioPaused).toBe(true);
+    });
+
+    it('applies engine seek commands in milliseconds before native seeking events arrive', async () => {
+        await render();
+        await available(10);
+        await settle(async () => engine.seek(500_000));
+        expect(video.currentTime).toBeCloseTo(9.98);
+        await settle(async () => engine.seek(5_000));
+        expect(video.currentTime).toBe(5);
+    });
+
+    it('waits for a remembered position while continuing to bound deliberate seeks', async () => {
+        initialSubtitles = [makeSubtitle(60_000, 65_000, 0)];
+        await render();
+        await available(10);
+        await settle(async () => {
+            await engine.resumePlaybackPosition();
+            video.dispatchEvent(new Event('seeking'));
+            video.dispatchEvent(new Event('seeked'));
+        });
+        expect(video.currentTime).toBe(60);
+        expect(videoPaused).toBe(true);
+        await available(30);
+        expect(video.currentTime).toBe(60);
+        expect(videoPaused).toBe(true);
+        await available(70);
+        expect(video.currentTime).toBe(60);
+        expect(audio.currentTime).toBe(60);
+        expect(videoPaused).toBe(false);
+        video.currentTime = 500;
+        video.dispatchEvent(new Event('seeking'));
+        expect(video.currentTime).toBeCloseTo(69.98);
+    });
+
+    it('preserves play intent across source replacement and restores muting on detach', async () => {
+        await render();
+        await render({ source: 'blob:finished', streaming: false });
+        await available(180);
+        expect(videoPaused).toBe(false);
+        expect(audioPaused).toBe(false);
+        await render({ active: false });
+        expect(video.muted).toBe(false);
+        expect(audioPaused).toBe(true);
+    });
+
+    it('waits without a streaming source and resumes completed audio at the retained position', async () => {
+        video.currentTime = 60;
+        await render({ source: '' });
+        expect(videoPaused).toBe(true);
+        expect(video.currentTime).toBe(60);
+        await render({ source: 'blob:finished', streaming: false });
+        await available(180);
+        expect(video.currentTime).toBe(60);
+        expect(audio.currentTime).toBe(60);
+        expect(videoPaused).toBe(false);
+        expect(audioPaused).toBe(false);
+    });
+
+    it('synchronizes volume, rate and pitch through video observations', async () => {
+        await render();
+        await available(10);
+        video.volume = 0.4;
+        video.playbackRate = 1.5;
+        video.preservesPitch = false;
+        video.dispatchEvent(new Event('volumechange'));
+        video.dispatchEvent(new Event('ratechange'));
+        expect([audio.volume, audio.playbackRate, audio.preservesPitch]).toEqual([0.4, 1.5, false]);
+    });
+
+    it.each([false, true])(
+        'preserves the original muted=%s state through converted audio playback, source changes and detach',
+        async (muted) => {
+            video.muted = muted;
+            video.volume = 0.6;
+            await render();
+            expect(video.muted).toBe(true);
+            expect([audio.muted, audio.volume]).toEqual([muted, 0.6]);
+            await available(10);
+
+            video.volume = 0.4;
+            await settle(() => video.dispatchEvent(new Event('volumechange')));
+            expect([audio.muted, audio.volume]).toEqual([muted, 0.4]);
+
+            await render({ source: 'blob:finished', streaming: false });
+            await available(180);
+            expect(audioPaused).toBe(false);
+            expect([audio.muted, audio.volume]).toEqual([muted, 0.4]);
+
+            await render({ active: false });
+            expect(video.muted).toBe(muted);
+            expect(audioPaused).toBe(true);
+        }
+    );
 });

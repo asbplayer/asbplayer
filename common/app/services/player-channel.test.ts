@@ -1,9 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it } from '@jest/globals';
-import { PlayMode } from '@project/common';
-import type { Message } from '@project/common';
+import { PlayMode, PostMineAction } from '@project/common';
+import type { Message, SubtitleModel } from '@project/common';
 import PlayerChannel from '@project/common/app/services/player-channel';
 import { defaultSettings } from '@project/common/settings';
 import type { MiscSettings } from '@project/common/settings';
+import VideoChannel from '@project/common/app/services/video-channel';
+import type { VideoProtocol } from '@project/common/app/services/video-protocol';
 
 class TestBroadcastChannel {
     static instance?: TestBroadcastChannel;
@@ -37,6 +39,40 @@ afterEach(() => {
 });
 
 describe('PlayerChannel playback state', () => {
+    it('receives the latest conversion status before video readiness even when initial messages were missed', () => {
+        const player = new PlayerChannel('test-channel');
+        const broadcastChannel = TestBroadcastChannel.instance!;
+        const protocol: VideoProtocol = {
+            postMessage: (message) => broadcastChannel.onmessage?.(new MessageEvent('message', { data: message })),
+            close() {},
+        };
+        const owner = new VideoChannel(protocol);
+        const received: unknown[] = [];
+        const audio = new Blob(['converted audio']);
+
+        // Conversion can start and finish before the playback frame attaches its listener.
+        owner.transcodedAudio({ state: 'transcoding', required: true, codecName: 'E-AC-3' });
+        owner.transcodedAudio({ audio, state: 'ready', required: true, codecName: 'E-AC-3' });
+        player.onTranscodedAudio((message) => received.push(message));
+        player.requestTranscodedAudio();
+        protocol.onMessage?.({ data: broadcastChannel.sent[0] });
+
+        expect(received).toEqual([{ required: true, audio, state: 'ready', codecName: 'E-AC-3' }]);
+
+        owner.transcodedAudio({ state: 'failed', required: true, codecName: 'E-AC-3' });
+        expect(received.at(-1)).toEqual({ required: true, state: 'failed', codecName: 'E-AC-3' });
+
+        owner.transcodedAudio({ state: 'idle', required: false });
+        player.requestTranscodedAudio();
+        protocol.onMessage?.({ data: broadcastChannel.sent[1] });
+        expect(received.slice(2)).toEqual([
+            { required: false, state: 'idle' },
+            { required: false, state: 'idle' },
+        ]);
+        player.close();
+        owner.close();
+    });
+
     it('delivers recipe and playback setting changes until the subscription is removed', () => {
         const channel = new PlayerChannel('test-channel');
         const broadcastChannel = TestBroadcastChannel.instance!;
@@ -58,6 +94,30 @@ describe('PlayerChannel playback state', () => {
 
         expect(received).toEqual([settings, { ...settings, activeRecipeId: null }]);
         channel.close();
+    });
+
+    it('delivers the mined subtitle and timestamp through the player channel', () => {
+        const player = new PlayerChannel('test-channel');
+        const broadcastChannel = TestBroadcastChannel.instance!;
+        const protocol: VideoProtocol = { postMessage() {}, close() {} };
+        const video = new VideoChannel(protocol);
+        const received: { subtitle: SubtitleModel; timestamp: number | undefined }[] = [];
+        video.onCopy((subtitle, _surrounding, _fields, _audio, _image, _url, _action, _id, timestamp) => {
+            received.push({ subtitle, timestamp });
+        });
+        const subtitle: SubtitleModel = {
+            text: '',
+            start: 0,
+            end: 1000,
+            originalStart: 0,
+            originalEnd: 1000,
+            track: 0,
+        };
+        player.copy(subtitle, [], {}, 'video.mp4', 1000, PostMineAction.none);
+        protocol.onMessage?.({ data: broadcastChannel.sent[0] });
+        expect(received).toEqual([{ subtitle, timestamp: 1000 }]);
+        player.close();
+        video.close();
     });
 
     it('sends the timestamp, showing indexes, and paused state together', () => {
@@ -212,6 +272,41 @@ describe('PlayerChannel playback state', () => {
         );
 
         expect(received).toEqual([PlayMode.fastForward]);
+        channel.close();
+    });
+
+    it('receives the encoded prefix, completion state, and supports clearing it', () => {
+        const channel = new PlayerChannel('test-channel');
+        const broadcastChannel = TestBroadcastChannel.instance!;
+        const received: unknown[] = [];
+        const audio = new Blob(['audio']);
+        channel.onTranscodedAudio((value) => received.push(value));
+
+        broadcastChannel.onmessage?.(
+            new MessageEvent('message', {
+                data: {
+                    command: 'transcodedAudio',
+                    required: true,
+                    audio,
+                    state: 'transcoding',
+                    codecName: 'E-AC-3',
+                },
+            })
+        );
+        broadcastChannel.onmessage?.(
+            new MessageEvent('message', {
+                data: {
+                    command: 'transcodedAudio',
+                    required: false,
+                    state: 'idle',
+                },
+            })
+        );
+
+        expect(received).toEqual([
+            { required: true, audio, state: 'transcoding', codecName: 'E-AC-3' },
+            { required: false, state: 'idle' },
+        ]);
         channel.close();
     });
 });

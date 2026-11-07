@@ -373,8 +373,9 @@ describe('token jump navigation', () => {
                 '<span class="asb-token" data-asb-token-start="4">two</span></span>';
             document.body.append(root);
             try {
-                if (autoPause !== undefined)
+                if (autoPause !== undefined) {
                     selectTokenInRoot(root, { subtitleIndex: 0, tokenStart: 4 }, { autoPause });
+                }
                 expect(
                     selectTokenInRoot(
                         root,

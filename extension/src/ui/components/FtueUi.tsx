@@ -15,7 +15,7 @@ import React, { useEffect, useState } from 'react';
 import Tutorial from '@project/extension/src/ui/components/Tutorial';
 import { ExtensionSettingsStorage } from '@/services/extension-settings-storage';
 import { SettingsProvider } from '@project/common/settings';
-import type { PaletteMode } from '@mui/material';
+import type { PaletteMode } from '@mui/material/styles';
 
 const useStyles = makeStyles({
     container: {

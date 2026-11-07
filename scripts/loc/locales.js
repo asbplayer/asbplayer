@@ -51,8 +51,8 @@ async function updateWithFlattenedJson(path, locale, namespace, json) {
         delete untranslated[namespace][key];
     }
 
-    await writeFile(path, JSON.stringify(merge(existing, update), null, 4));
-    await writeFile(`${untranslatedPath}/${locale}.json`, JSON.stringify(untranslated, null, 4));
+    await writeFile(path, JSON.stringify(merge(existing, update), null, 4) + '\n');
+    await writeFile(`${untranslatedPath}/${locale}.json`, JSON.stringify(untranslated, null, 4) + '\n');
 }
 
 export async function updateWithFlattenedLocJsonByNamespace(locale, flattenedLocJsonByNamespace) {
@@ -87,5 +87,5 @@ export async function readFlattenedUntranslatedKeysByNamespace(locale) {
 export async function updateFlattenedUntranslatedKeys(locale, namespace, untranslated) {
     const current = await readFlattenedUntranslatedKeysByNamespace(locale);
     const updated = { ...current, [namespace]: { ...current[namespace], ...untranslated } };
-    await writeFile(`${untranslatedPath}/${locale}.json`, JSON.stringify(updated, null, 4));
+    await writeFile(`${untranslatedPath}/${locale}.json`, JSON.stringify(updated, null, 4) + '\n');
 }

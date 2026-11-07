@@ -1,6 +1,9 @@
 import 'core-js/stable/structured-clone'; // fake-indexeddb requires structured clone polyfill
 import 'fake-indexeddb/auto';
+import { IDBFactory } from 'fake-indexeddb';
 import { beforeEach, expect, it } from '@jest/globals';
+import Dexie from 'dexie';
+import { MediaSources } from '@project/common/app/services/media-sources';
 import type { FileWithId } from '@project/common/file-selector';
 import type { FileSystemFileHandleWithId } from '@project/common/file-system-access/file-system-access-repository';
 import {
@@ -10,12 +13,12 @@ import {
 } from '@project/common/file-system-access/file-system-access';
 import { IndexedDBFileSessionRepository } from '@project/common/file-system-access/file-system-access-repository';
 
-beforeEach(async () => {
+beforeEach(() => {
+    Dexie.dependencies.indexedDB = new IDBFactory();
     Object.defineProperty(navigator, 'storage', {
         configurable: true,
         value: { estimate: async () => ({ quota: 1024 ** 3, usage: 0 }) },
     });
-    await new IndexedDBFileSessionRepository().clear();
 });
 
 const readFile = (file: File) =>
@@ -47,7 +50,7 @@ it('retains only cached online subtitles that are still loaded', async () => {
         { id: 'replaced', file: new File(['replaced'], 'replaced.srt') },
     ]);
 
-    await repository.retain({ subtitleIds: ['selected'] });
+    await repository.retain({ subtitleTrackIds: [['selected']] });
 
     const record = await repository.fetch();
     expect(record?.cachedSubtitleFiles?.map((f) => f.id)).toEqual(['selected']);
@@ -119,7 +122,7 @@ it.each([[], ['local'], ['local', 'second-local'], ['-', 'local'], ['-'], ['-', 
     async ({ order }) => {
         const repository = new IndexedDBFileSessionRepository();
         // Directory loading retains the playback IDs without saving handles or file contents.
-        await repository.retain({ subtitleIds: order });
+        await repository.retain({ subtitleTrackIds: order.map((id) => [id]) });
 
         expect(canRestoreSession(await repository.fetch())).toBe(false);
     }
@@ -140,12 +143,15 @@ it.each(
     const repository = new IndexedDBFileSessionRepository();
     await repository.merge({ videoHandle: handleFor(video), subtitleHandles: [local, secondLocal].map(handleFor) });
     await repository.setCachedSubtitleFiles([online]);
-    await repository.retain({ videoId: 'video', subtitleIds: order });
+    await repository.retain({ videoId: 'video', subtitleTrackIds: order.map((id) => [id]) });
 
     const { record, files } = await reload();
     expect(canRestoreSession(record)).toBe(true);
-    expect(record.subtitleTrackIds).toEqual(order);
+    expect(record.subtitleTrackIds).toEqual(order.map((id) => [id]));
     expect(files.map(({ id }) => id)).toEqual(['video', ...order]);
+    expect(MediaSources.fromFiles(files).subtitleTracks.map(({ fileParts }) => fileParts.map(({ id }) => id))).toEqual(
+        order.map((id) => [id])
+    );
     expect(files[0].file).toBe(video.file);
     for (const slot of files.slice(1)) {
         if (slot.id === '-') {
@@ -166,15 +172,153 @@ it.each(
     }
 });
 
-it('restores older sessions in their original handle-then-cache order', async () => {
+it('restores sessions without a saved arrangement in handle-then-cache order', async () => {
     const repository = new IndexedDBFileSessionRepository();
     await repository.merge({ videoHandle: handleFor(video), subtitleHandles: [local, secondLocal].map(handleFor) });
-    await repository.setCachedSubtitleFiles([online]);
+    const cachedSource = { ...online, track: 0 };
+    await repository.setCachedSubtitleFiles([cachedSource]);
 
     const { record, files } = await reload();
     expect(canRestoreSession(record)).toBe(true);
     expect(record.subtitleTrackIds).toBeUndefined();
     expect(files.map(({ id }) => id)).toEqual(['video', 'local', 'second-local', 'online']);
+    expect(MediaSources.fromFiles(files).subtitleSourceFiles.map(({ track }) => track)).toEqual([0, 1, 2]);
+});
+
+it.each([
+    {
+        name: 'a flat arrangement',
+        savedTracks: ['online', '-', 'online'],
+        expectedTracks: [['online'], ['-'], ['online']],
+        expectedRestoredTracks: [['online'], ['-'], ['online']],
+    },
+    {
+        name: 'an already grouped arrangement with repeated parts and empty slots',
+        savedTracks: [['online', 'online'], [], ['online', 'online'], []],
+        expectedTracks: [['online', 'online'], [], ['online', 'online'], []],
+        expectedRestoredTracks: [['online', 'online'], ['-'], ['online', 'online'], ['-']],
+    },
+    {
+        name: 'an empty arrangement',
+        savedTracks: [],
+        expectedTracks: [],
+        expectedRestoredTracks: [],
+    },
+    {
+        name: 'no saved arrangement',
+        savedTracks: undefined,
+        expectedTracks: undefined,
+        expectedRestoredTracks: [['online']],
+    },
+])(
+    'migrates version 2 with $name and preserves it through later saves',
+    async ({ savedTracks, expectedTracks, expectedRestoredTracks }) => {
+        const database = new Dexie('FileSessionDatabase');
+        database.version(2).stores({ sessions: '++id,timestamp' });
+        try {
+            await database.table('sessions').put({
+                id: 1,
+                timestamp: 1,
+                subtitleHandles: [],
+                cachedSubtitleFiles: [{ ...online, track: 2 }],
+                subtitleTrackIds: savedTracks,
+            });
+        } finally {
+            database.close();
+        }
+
+        const repository = new IndexedDBFileSessionRepository();
+        expect((await repository.fetch())?.subtitleTrackIds).toEqual(expectedTracks);
+
+        // Verify the upgrade persisted the new format before a repository write can normalize it.
+        const migratedDatabase = new Dexie('FileSessionDatabase');
+        await migratedDatabase.open();
+        try {
+            expect(migratedDatabase.verno).toBe(3);
+            expect((await migratedDatabase.table('sessions').get(1)).subtitleTrackIds).toEqual(expectedTracks);
+        } finally {
+            migratedDatabase.close();
+        }
+
+        await repository.clearBuffered();
+        const { record, files } = await reload();
+        expect(record.subtitleTrackIds).toEqual(expectedTracks);
+        const sources = MediaSources.fromFiles(files);
+        expect(sources.subtitleTracks.map(({ fileParts }) => fileParts.map(({ id }) => id))).toEqual(
+            expectedRestoredTracks
+        );
+        expect(sources.subtitleSourceFiles.map(({ track }) => track)).toEqual(
+            expectedRestoredTracks.flatMap((ids, track) => ids.map(() => track))
+        );
+    }
+);
+
+it.each([
+    {
+        name: 'two segmented tracks',
+        savedTracks: [
+            ['japanese1', 'japanese2'],
+            ['english1', 'english2'],
+        ],
+        expectedTracks: [
+            ['japanese1', 'japanese2'],
+            ['english1', 'english2'],
+        ],
+        expectedIndexes: [0, 0, 1, 1],
+    },
+    {
+        name: 'a repeated segmented track with an empty middle and trailing slot',
+        savedTracks: [['japanese1', 'japanese2'], [], ['japanese1', 'japanese2'], []],
+        expectedTracks: [['japanese1', 'japanese2'], ['-'], ['japanese1', 'japanese2'], ['-']],
+        expectedIndexes: [0, 0, 1, 2, 2, 3],
+    },
+])(
+    'saves and restores $name without changing file contents',
+    async ({ savedTracks, expectedTracks, expectedIndexes }) => {
+        const repository = new IndexedDBFileSessionRepository();
+        // A source's cached track index must not control its position after restoration.
+        const parts = ['japanese1', 'japanese2', 'english1', 'english2'].map((id) => ({
+            id,
+            file: new File([`Original ${id}`], `${id}.vtt`),
+            track: 2,
+        }));
+        await repository.setCachedSubtitleFiles(parts);
+        await repository.retain({ subtitleTrackIds: savedTracks });
+
+        const { record, files } = await reload();
+        const sources = MediaSources.fromFiles(files);
+        expect(record.subtitleTrackIds).toEqual(savedTracks);
+        expect(record.cachedSubtitleFiles).toHaveLength(new Set(savedTracks.flat()).size);
+        expect(sources.subtitleTracks.map(({ fileParts }) => fileParts.map(({ id }) => id))).toEqual(expectedTracks);
+        expect(sources.subtitleSourceFiles.map(({ track }) => track)).toEqual(expectedIndexes);
+        for (const { id, file } of sources.subtitleSourceFiles) {
+            expect(await readFile(file)).toBe(id === '-' ? '' : `Original ${id}`);
+            expect(file.name).toBe(id === '-' ? '.srt' : `${id}.vtt`);
+        }
+    }
+);
+
+it('restores repeated local file groups and preserves their slots when a part is discarded', async () => {
+    const repository = new IndexedDBFileSessionRepository();
+    await repository.merge({ subtitleHandles: [local, secondLocal].map(handleFor) });
+    await repository.retain({ subtitleTrackIds: [['local', 'second-local'], [], ['local', 'second-local']] });
+
+    let restored = MediaSources.fromFiles((await reload()).files);
+    expect(restored.subtitleTracks.map(({ fileParts }) => fileParts.map(({ id }) => id))).toEqual([
+        ['local', 'second-local'],
+        ['-'],
+        ['local', 'second-local'],
+    ]);
+    expect(restored.subtitleTracks[0].fileParts.map(({ file }) => file)).toEqual([local.file, secondLocal.file]);
+    expect(restored.subtitleTracks[2].fileParts.map(({ file }) => file)).toEqual([local.file, secondLocal.file]);
+
+    await repository.merge({ subtitleHandles: [handleFor(local)] });
+    restored = MediaSources.fromFiles((await reload()).files);
+    expect(restored.subtitleTracks.map(({ fileParts }) => fileParts.map(({ id }) => id))).toEqual([
+        ['local', '-'],
+        ['-'],
+        ['local', '-'],
+    ]);
 });
 
 it.each(['video', 'subtitles'])('restores a session with only %s', async (kind) => {
@@ -184,7 +328,10 @@ it.each(['video', 'subtitles'])('restores a session with only %s', async (kind) 
         videoHandle: videoOnly ? handleFor(video) : undefined,
         subtitleHandles: videoOnly ? [] : [handleFor(local)],
     });
-    await repository.retain({ videoId: videoOnly ? 'video' : undefined, subtitleIds: videoOnly ? [] : ['local'] });
+    await repository.retain({
+        videoId: videoOnly ? 'video' : undefined,
+        subtitleTrackIds: videoOnly ? [] : [['local']],
+    });
 
     const { record, files } = await reload();
     expect(canRestoreSession(record)).toBe(true);
@@ -193,7 +340,7 @@ it.each(['video', 'subtitles'])('restores a session with only %s', async (kind) 
 
 it('preserves slot positions when a saved subtitle is unavailable', () => {
     const files = restoreSessionFiles(
-        { id: 1, timestamp: 1, subtitleHandles: [], subtitleTrackIds: ['missing', 'online'] },
+        { id: 1, timestamp: 1, subtitleHandles: [], subtitleTrackIds: [['missing'], ['online']] },
         [online]
     );
     expect(files.map(({ id }) => id)).toEqual(['-', 'online']);
@@ -204,12 +351,12 @@ it('preserves slot positions when a saved subtitle is unavailable', () => {
 it('saves the first mixed selection before its cache and buffered handles are persisted', async () => {
     const repository = new IndexedDBFileSessionRepository();
     await repository.merge({ subtitleHandles: [], bufferedSubtitleHandles: [handleFor(local)] });
-    await repository.retain({ subtitleIds: ['online', '-', 'local'] });
+    await repository.retain({ subtitleTrackIds: [['online'], ['-'], ['local']] });
     await repository.setCachedSubtitleFiles([online]);
     await repository.promoteBuffered(['online', '-', 'local']);
 
     const { record, files } = await reload();
-    expect(record.subtitleTrackIds).toEqual(['online', '-', 'local']);
+    expect(record.subtitleTrackIds).toEqual([['online'], ['-'], ['local']]);
     expect(record.bufferedSubtitleHandles).toBeUndefined();
     expect(files.map(({ id }) => id)).toEqual(['online', '-', 'local']);
     expect(files[2].file).toBe(local.file);
@@ -221,7 +368,7 @@ it.each(['new', 'cleared'])('records slots in a %s session before file contents 
         await repository.setCachedSubtitleFiles([online]);
         await repository.clear();
     }
-    await repository.retain({ subtitleIds: ['online', '-', 'local'] });
+    await repository.retain({ subtitleTrackIds: [['online'], ['-'], ['local']] });
     await repository.setCachedSubtitleFiles([online]);
     await repository.merge({ subtitleHandles: [handleFor(local)] });
 
@@ -232,10 +379,10 @@ it('replaces a saved arrangement when new subtitle files are loaded', async () =
     const repository = new IndexedDBFileSessionRepository();
     await repository.merge({ videoHandle: handleFor(video), subtitleHandles: [handleFor(local)] });
     await repository.setCachedSubtitleFiles([online]);
-    await repository.retain({ videoId: 'video', subtitleIds: ['online', '-', 'local'] });
+    await repository.retain({ videoId: 'video', subtitleTrackIds: [['online'], ['-'], ['local']] });
 
     // The active configuration is retained before the new handles are saved, as in App.
-    await repository.retain({ videoId: 'video', subtitleIds: ['second-local'] });
+    await repository.retain({ videoId: 'video', subtitleTrackIds: [['second-local']] });
     await repository.merge({ subtitleHandles: [handleFor(secondLocal)] });
 
     const { record, files } = await reload();
@@ -248,22 +395,22 @@ it('preserves slot order across unrelated repository mutations and removes disca
     const repository = new IndexedDBFileSessionRepository();
     await repository.merge({ subtitleHandles: [handleFor(local)] });
     await repository.setCachedSubtitleFiles([online]);
-    await repository.retain({ subtitleIds: ['online', '-', 'local'] });
+    await repository.retain({ subtitleTrackIds: [['online'], ['-'], ['local']] });
 
     await repository.merge({ videoHandle: handleFor(video), subtitleHandles: [] });
-    expect((await repository.fetch())?.subtitleTrackIds).toEqual(['online', '-', 'local']);
+    expect((await repository.fetch())?.subtitleTrackIds).toEqual([['online'], ['-'], ['local']]);
     await repository.merge({ subtitleHandles: [], bufferedSubtitleHandles: [handleFor(secondLocal)] });
     await repository.clearBuffered();
-    expect((await repository.fetch())?.subtitleTrackIds).toEqual(['online', '-', 'local']);
+    expect((await repository.fetch())?.subtitleTrackIds).toEqual([['online'], ['-'], ['local']]);
     await repository.setCachedSubtitleFiles([online]);
-    expect((await repository.fetch())?.subtitleTrackIds).toEqual(['online', '-', 'local']);
+    expect((await repository.fetch())?.subtitleTrackIds).toEqual([['online'], ['-'], ['local']]);
 
     await repository.setCachedSubtitleFiles([]);
-    expect((await repository.fetch())?.subtitleTrackIds).toEqual(['-', '-', 'local']);
+    expect((await repository.fetch())?.subtitleTrackIds).toEqual([['-'], ['-'], ['local']]);
     await repository.merge({ subtitleHandles: [handleFor(secondLocal)] });
-    expect((await repository.fetch())?.subtitleTrackIds).toEqual(['-', '-', '-']);
-    await repository.retain({ subtitleIds: ['second-local', 'second-local', '-'] });
-    await repository.retain({ subtitleIds: [] });
+    expect((await repository.fetch())?.subtitleTrackIds).toEqual([['-'], ['-'], ['-']]);
+    await repository.retain({ subtitleTrackIds: [['second-local'], ['second-local'], ['-']] });
+    await repository.retain({ subtitleTrackIds: [] });
     const record = await repository.fetch();
     expect(record?.subtitleTrackIds).toEqual([]);
     expect(record?.subtitleHandles).toEqual([]);
@@ -272,19 +419,21 @@ it('preserves slot order across unrelated repository mutations and removes disca
 
 it('stores downloaded bytes once for repeated slots and never caches empty placeholders', async () => {
     const repository = new IndexedDBFileSessionRepository();
-    await repository.retain({ subtitleIds: ['online', 'online', '-'] });
-    await repository.setCachedSubtitleFiles([online, online, { id: '-', file: new File([], '.srt') }]);
+    await repository.retain({ subtitleTrackIds: [['online'], ['online'], ['-']] });
+    const cachedSource = { ...online, track: 2 };
+    await repository.setCachedSubtitleFiles([cachedSource, cachedSource, { id: '-', file: new File([], '.srt') }]);
 
     const { record, files } = await reload();
     expect(record.cachedSubtitleFiles).toHaveLength(1);
     expect(files.map(({ id }) => id)).toEqual(['online', 'online', '-']);
     expect(files[0].file).toBe(files[1].file);
     expect(await readBytes(files[0].file)).toEqual(Array.from(bytes));
+    expect(MediaSources.fromFiles(files).subtitleSourceFiles.map(({ track }) => track)).toEqual([0, 1, 2]);
 });
 
 it('does not offer restoration for all-empty slots or store placeholder files', async () => {
     const repository = new IndexedDBFileSessionRepository();
-    await repository.retain({ subtitleIds: ['-', '-', '-'] });
+    await repository.retain({ subtitleTrackIds: [['-'], ['-'], ['-']] });
 
     const record = (await repository.fetch())!;
     expect(canRestoreSession(record)).toBe(false);
@@ -295,7 +444,7 @@ it('does not offer restoration for all-empty slots or store placeholder files', 
 it('keeps local and video slots when the downloaded subtitle cache exceeds its size limit', async () => {
     const repository = new IndexedDBFileSessionRepository();
     await repository.merge({ videoHandle: handleFor(video), subtitleHandles: [handleFor(local)] });
-    await repository.retain({ videoId: 'video', subtitleIds: ['online', '-', 'local'] });
+    await repository.retain({ videoId: 'video', subtitleTrackIds: [['online'], ['-'], ['local']] });
     Object.defineProperty(navigator, 'storage', {
         configurable: true,
         value: { estimate: async () => ({ quota: 2, usage: online.file.size }) },

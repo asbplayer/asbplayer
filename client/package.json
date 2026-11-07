@@ -12,6 +12,7 @@
         "@mui/styles": "^6.4.8",
         "@project/client": "workspace:^",
         "@project/common": "workspace:^",
+        "@project/ffmpeg": "workspace:^",
         "@types/node": "^24.13.3",
         "@types/react": "^19.1.8",
         "@types/react-dom": "^19.1.6",
@@ -23,7 +24,7 @@
         "react-dom": "^19.1.0",
         "react-i18next": "^15.6.1",
         "typescript": "catalog:",
-        "vite": "^8.2.2"
+        "vite": "^8.2.4"
     },
     "scripts": {
         "start": "VITE_APP_VERSION_REPO_PATH=\"commit/$(git rev-parse --short HEAD)\" vite",

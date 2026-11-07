@@ -3,7 +3,6 @@ import { asbError } from '@project/common/util/log';
 import {
     computeStyles,
     ensureStoragePersisted,
-    hex2ToPercent,
     humanReadableTime,
     localizeDateTime,
     percentToHex2,
@@ -20,7 +19,6 @@ import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import Autocomplete from '@mui/material/Autocomplete';
 import Box from '@mui/material/Box';
-import Button from '@mui/material/Button';
 import Checkbox from '@mui/material/Checkbox';
 import FormControl from '@mui/material/FormControl';
 import FormLabel from '@mui/material/FormLabel';
@@ -37,7 +35,7 @@ import Stack from '@mui/material/Stack';
 import Switch from '@mui/material/Switch';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
-import { useTheme } from '@mui/material/styles';
+import { alpha, useTheme } from '@mui/material/styles';
 import MuiAlert from '@mui/material/Alert';
 import type { AlertProps } from '@mui/material/Alert';
 import type {
@@ -102,6 +100,9 @@ import '@project/common/app/components/subtitles.css';
 import SettingsGroups from '@project/common/components/SettingsGroups';
 import Fade from '@mui/material/Fade';
 import KeyboardShortcutLink from '@project/common/components/KeyboardShortcutLink';
+import { hexToRgba, rgbToHex } from '@uiw/color-convert';
+import useMediaQuery from '@mui/material/useMediaQuery';
+import NoWrapButton from '@project/common/components/NoWrapButton';
 
 const yomitanInstallerUrl = 'https://github.com/yomidevs/yomitan-api';
 const yomitanMecabInstallerUrl = 'https://github.com/yomidevs/yomitan-mecab-installer';
@@ -1006,6 +1007,8 @@ const DictionarySettingsTab: React.FC<Props> = ({
     const selectedTokenAnnotationTargetIndex = tokenAnnotationTargets.findIndex(
         ({ target }) => target === tokenAnnotationTarget
     );
+    const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
+
     return (
         <>
             <DictionaryImport
@@ -1029,14 +1032,14 @@ const DictionarySettingsTab: React.FC<Props> = ({
                 <SettingsSection>{t('settings.manageWords')}</SettingsSection>
                 <Stack spacing={1}>
                     {supportsDictionaryBrowser && (
-                        <Button
+                        <NoWrapButton
                             variant="contained"
                             color="primary"
                             startIcon={<ManageSearchIcon />}
                             onClick={() => setWordBrowserOpen(true)}
                         >
                             {t('settings.dictionaryBrowser.title')}
-                        </Button>
+                        </NoWrapButton>
                     )}
                     <div>
                         <SettingsSubSection>
@@ -1044,7 +1047,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                             <KeyboardShortcutLink onClick={onViewKeyboardShortcuts} />
                         </SettingsSubSection>
                         <Stack direction="row" spacing={1} alignItems="center">
-                            <Button
+                            <NoWrapButton
                                 variant="contained"
                                 color="primary"
                                 style={{ flex: 1 }}
@@ -1052,8 +1055,8 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                 onClick={() => setDictionaryImportOpen(true)}
                             >
                                 {t('action.importDictionaryLocalRecords')}
-                            </Button>
-                            <Button
+                            </NoWrapButton>
+                            <NoWrapButton
                                 variant="contained"
                                 color="primary"
                                 style={{ flex: 1 }}
@@ -1062,7 +1065,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                 loading={exportingDictionaryDB}
                             >
                                 {t('action.exportDictionaryLocalRecords')}
-                            </Button>
+                            </NoWrapButton>
                         </Stack>
                         <Typography variant="caption" color="textSecondary">
                             <Trans
@@ -1075,7 +1078,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                     </div>
                     <Stack spacing={1}>
                         <SettingsSubSection>{t('settings.dictionaryAnkiWordDatabase')}</SettingsSubSection>
-                        <Button
+                        <NoWrapButton
                             variant="contained"
                             color="primary"
                             style={{ width: '100%' }}
@@ -1085,7 +1088,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                             startIcon={<RefreshIcon />}
                         >
                             {t('settings.buildAnkiCache')}
-                        </Button>
+                        </NoWrapButton>
                         <Typography variant="caption" color="textSecondary">
                             {t('settings.buildAnkiCacheHelperText')}{' '}
                             {!ankiFieldsEnabled && (
@@ -1110,7 +1113,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                     {supportsDictionaryWaniKani && (
                         <Stack spacing={1}>
                             <SettingsSubSection>{t('settings.dictionaryWaniKaniWordDatabase')}</SettingsSubSection>
-                            <Button
+                            <NoWrapButton
                                 variant="contained"
                                 color="primary"
                                 style={{ width: '100%' }}
@@ -1120,7 +1123,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                 startIcon={<RefreshIcon />}
                             >
                                 {t('settings.buildWaniKaniCache')}
-                            </Button>
+                            </NoWrapButton>
                             <Typography variant="caption" color="textSecondary">
                                 {t('settings.buildWaniKaniCacheHelperText')}{' '}
                                 {!waniKaniTokenEnabled && t('settings.buildWaniKaniCacheTokenEnableHelperText')}
@@ -2154,8 +2157,12 @@ const DictionarySettingsTab: React.FC<Props> = ({
                     <Stack spacing={1}>
                         {[...Array(NUM_TOKEN_STATUSES).keys()].map((i) => {
                             const tokenStatus: TokenStatus = NUM_TOKEN_STATUSES - 1 - i;
-                            const { display, color, alpha } =
-                                selectedDictionary.dictionaryTokenStatusConfig[tokenStatus];
+                            const {
+                                display,
+                                color,
+                                alpha: colorAlpha,
+                            } = selectedDictionary.dictionaryTokenStatusConfig[tokenStatus];
+                            const colorWithAlpha = `${color}${colorAlpha}`;
                             const updateTokenStatusConfig = (newConfig: TokenStatusConfig) => {
                                 const newConfigs = [...selectedDictionary.dictionaryTokenStatusConfig];
                                 newConfigs[tokenStatus] = newConfig;
@@ -2265,70 +2272,77 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                         }}
                                         spacing={1}
                                     >
-                                        <div
-                                            style={{
-                                                ...subtitleStyles,
-                                                fontSize: 24,
-                                                width: '100%',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'space-between',
-                                                flexShrink: 0,
-                                                backgroundImage: `linear-gradient(45deg, ${theme.palette.action.disabledBackground} 25%, transparent 25%), linear-gradient(-45deg, ${theme.palette.action.disabledBackground} 25%, transparent 25%), linear-gradient(45deg, transparent 75%, ${theme.palette.action.disabledBackground} 75%), linear-gradient(-45deg, transparent 75%,${theme.palette.action.disabledBackground} 75%)`,
-                                                backgroundSize: '20px 20px',
-                                                backgroundPosition: '0 0, 0 10px, 10px -10px, -10px 0px',
-                                            }}
-                                        >
+                                        <div style={{ width: '100%', position: 'relative' }}>
                                             <div
-                                                style={{ padding: theme.spacing(1) }}
-                                                className="asb-subtitles"
-                                                dangerouslySetInnerHTML={{
-                                                    __html: getAnnotationsHtml(text, richText, richTextOnHover),
+                                                style={{
+                                                    position: 'absolute',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    width: '100%',
+                                                    height: '100%',
                                                 }}
-                                            />
-                                            <Switch
-                                                sx={{ position: 'relative', left: 0 }}
-                                                checked={display}
-                                                onChange={(e) =>
-                                                    updateTokenStatusConfig({
-                                                        ...selectedDictionary.dictionaryTokenStatusConfig[tokenStatus],
-                                                        display: e.target.checked,
-                                                    })
-                                                }
-                                            />
+                                            >
+                                                <div style={{ flexGrow: 1 }} />
+                                                <ColorPickerField
+                                                    value={colorWithAlpha}
+                                                    showAlpha
+                                                    disabled={!display}
+                                                    onChange={(hex) => {
+                                                        const rgba = hexToRgba(hex);
+                                                        updateTokenStatusConfig({
+                                                            ...selectedDictionary.dictionaryTokenStatusConfig[
+                                                                tokenStatus
+                                                            ],
+                                                            color: rgbToHex(rgba), // Strips alpha value
+                                                            alpha: percentToHex2(rgba.a), // Extracts alpha value
+                                                        });
+                                                    }}
+                                                    sx={{
+                                                        width: isSmallScreen ? 50 : 150,
+                                                        backgroundColor: alpha(theme.palette.background.paper, 0.5),
+                                                    }}
+                                                    textFieldProps={{
+                                                        size: 'small',
+                                                    }}
+                                                />
+                                                <Switch
+                                                    checked={display}
+                                                    onChange={(e) =>
+                                                        updateTokenStatusConfig({
+                                                            ...selectedDictionary.dictionaryTokenStatusConfig[
+                                                                tokenStatus
+                                                            ],
+                                                            display: e.target.checked,
+                                                        })
+                                                    }
+                                                />
+                                            </div>
+                                            <div
+                                                style={{
+                                                    ...subtitleStyles,
+                                                    fontSize: 24,
+                                                    width: '100%',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'space-between',
+                                                    flexShrink: 0,
+                                                    backgroundImage: `linear-gradient(45deg, ${theme.palette.action.disabledBackground} 25%, transparent 25%), linear-gradient(-45deg, ${theme.palette.action.disabledBackground} 25%, transparent 25%), linear-gradient(45deg, transparent 75%, ${theme.palette.action.disabledBackground} 75%), linear-gradient(-45deg, transparent 75%,${theme.palette.action.disabledBackground} 75%)`,
+                                                    backgroundSize: '20px 20px',
+                                                    backgroundPosition: '0 0, 0 10px, 10px -10px, -10px 0px',
+                                                }}
+                                            >
+                                                <div
+                                                    style={{
+                                                        padding: theme.spacing(1),
+                                                        flexGrow: 1,
+                                                    }}
+                                                    className="asb-subtitles"
+                                                    dangerouslySetInnerHTML={{
+                                                        __html: getAnnotationsHtml(text, richText, richTextOnHover),
+                                                    }}
+                                                />
+                                            </div>
                                         </div>
-                                        <Stack direction="row" spacing={1} sx={{ flexGrow: 1, alignItems: 'end' }}>
-                                            <ColorPickerField
-                                                sx={{ width: '50%' }}
-                                                value={color}
-                                                disabled={!display}
-                                                onChange={(hex) =>
-                                                    updateTokenStatusConfig({
-                                                        ...selectedDictionary.dictionaryTokenStatusConfig[tokenStatus],
-                                                        color: hex,
-                                                    })
-                                                }
-                                            />
-                                            <NumericSettingInput
-                                                label={t('settings.dictionaryTokenStatusAlpha')}
-                                                sx={{ flexGrow: 1 }}
-                                                value={Math.round(hex2ToPercent(alpha) * 100)}
-                                                disabled={!display}
-                                                normalizeValue={(value) => Math.max(0, Math.min(100, value))}
-                                                onValueChange={(value) => {
-                                                    updateTokenStatusConfig({
-                                                        ...selectedDictionary.dictionaryTokenStatusConfig[tokenStatus],
-                                                        alpha: percentToHex2(value / 100),
-                                                    });
-                                                }}
-                                                slotProps={{
-                                                    htmlInput: { min: 0, max: 100, step: 1 },
-                                                    input: {
-                                                        endAdornment: <InputAdornment position="end">%</InputAdornment>,
-                                                    },
-                                                }}
-                                            />
-                                        </Stack>
                                     </Stack>
                                 </Stack>
                             );

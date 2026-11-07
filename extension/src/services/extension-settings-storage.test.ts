@@ -1,21 +1,17 @@
 import { ExtensionSettingsStorage } from '@project/extension/src/services/extension-settings-storage';
 import { defaultSettings } from '@project/common/settings';
 import { MockStorageArea } from '@project/extension/src/services/mock-storage-area';
-import { expect, it, beforeEach } from '@jest/globals';
-
-const settingsStorage = new ExtensionSettingsStorage(new MockStorageArea());
-
-beforeEach(async () => {
-    await settingsStorage.clear();
-});
+import { expect, it } from '@jest/globals';
 
 it('serializes and deserializes the default settings', async () => {
+    const settingsStorage = new ExtensionSettingsStorage(new MockStorageArea());
     await settingsStorage.set(defaultSettings);
 
     expect(await settingsStorage.get(defaultSettings)).toEqual(defaultSettings);
 });
 
 it('copies default profile when creating a new profile', async () => {
+    const settingsStorage = new ExtensionSettingsStorage(new MockStorageArea());
     await settingsStorage.set({ language: 'es' });
     await settingsStorage.addProfile('new profile');
     await settingsStorage.setActiveProfile('new profile');
@@ -23,6 +19,7 @@ it('copies default profile when creating a new profile', async () => {
 });
 
 it('changes separate keys for different profiles', async () => {
+    const settingsStorage = new ExtensionSettingsStorage(new MockStorageArea());
     await settingsStorage.addProfile('new profile');
     await settingsStorage.setActiveProfile('new profile');
 

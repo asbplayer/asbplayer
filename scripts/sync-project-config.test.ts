@@ -7,6 +7,7 @@ import { generatedProjectFiles, syncProjectConfig } from './sync-project-config.
 
 const project = { ...JSON.parse(readFileSync(new URL('../project.json', import.meta.url), 'utf8')), languages: [] };
 const ankiPyproject = readFileSync(new URL('../plugins/anki/pyproject.toml', import.meta.url), 'utf8');
+const packageManifest = readFileSync(new URL('../package.json', import.meta.url), 'utf8');
 
 for (const codes of [[], ['zz'], ['zz', 'xy']]) {
     test(`initializes ${codes.length} configured languages from English without overwriting translations`, (t) => {
@@ -31,6 +32,7 @@ for (const codes of [[], ['zz'], ['zz', 'xy']]) {
             languages: codes.map((code) => ({ code, version: 1 })),
         };
         write('project.json', config);
+        writeFileSync(join(root, 'package.json'), packageManifest);
         write('common/locales/en.json', common);
         write('common/locales/unconfigured.json', { unused: true });
         write('extension/public/_locales/en/messages.json', extension);
@@ -196,9 +198,10 @@ test('check mode reports missing or stale outputs without writing and synchroniz
         mkdirSync(join(root, 'common'));
         mkdirSync(join(root, 'plugins/anki'), { recursive: true });
         writeFileSync(join(root, 'project.json'), JSON.stringify(project));
+        writeFileSync(join(root, 'package.json'), packageManifest);
         writeFileSync(join(root, 'plugins/anki/pyproject.toml'), ankiPyproject);
-        assert.equal(syncProjectConfig(root, true).length, 6);
-        assert.equal(syncProjectConfig(root).length, 6);
+        assert.ok(syncProjectConfig(root, true).includes('common/extension.json'));
+        syncProjectConfig(root);
         assert.deepEqual(syncProjectConfig(root, true), []);
         assert.deepEqual(syncProjectConfig(root), []);
         const path = join(root, 'plugins/anki/asbplayer-addon/config.json');
@@ -221,6 +224,7 @@ test('syncs the Python project name and version and checks drift without changin
         config.releases.ankiAddon.package = 'example-addon';
         config.releases.ankiAddon.version = '2.3.4';
         writeFileSync(join(root, 'project.json'), JSON.stringify(config));
+        writeFileSync(join(root, 'package.json'), packageManifest);
         const path = join(root, 'plugins/anki/pyproject.toml');
         const original = [
             '# Local development environment',
@@ -275,5 +279,68 @@ test('syncs the Python project name and version and checks drift without changin
         }
     } finally {
         rmSync(root, { recursive: true, force: true });
+    }
+});
+
+test('syncs development versions and detects drift without changing unrelated package settings', (t) => {
+    const root = mkdtempSync(join(tmpdir(), 'asbplayer-tool-versions-'));
+    t.after(() => rmSync(root, { recursive: true, force: true }));
+    mkdirSync(join(root, 'plugins/anki'), { recursive: true });
+    writeFileSync(join(root, 'plugins/anki/pyproject.toml'), ankiPyproject);
+    const config = structuredClone(project);
+    const original = {
+        name: 'example-project',
+        scripts: { build: 'tsc' },
+        dependencies: { example: '1.0.0' },
+        engines: { npm: '>=10' },
+        devEngines: {
+            cpu: { name: 'x64' },
+            runtime: { name: 'node', version: '^20.0.0', onFail: 'warn' },
+            packageManager: { name: 'pnpm', version: '10.0.0', onFail: 'download' },
+        },
+    };
+    const manifestPath = join(root, 'package.json');
+    const nvmrcPath = join(root, '.nvmrc');
+    writeFileSync(manifestPath, JSON.stringify(original));
+    writeFileSync(join(root, 'project.json'), JSON.stringify(config));
+    syncProjectConfig(root);
+
+    for (const [node, pnpm, stale] of [
+        ['26.1.2', '12.3.4', ['.nvmrc', 'package.json']],
+        ['26.1.2', '12.3.5', ['package.json']],
+        ['26.1.3', '12.3.5', ['.nvmrc', 'package.json']],
+    ] as const) {
+        config.development.node = node;
+        config.development.pnpm = pnpm;
+        writeFileSync(join(root, 'project.json'), JSON.stringify(config));
+        const previousManifest = readFileSync(manifestPath, 'utf8');
+        const previousNvmrc = readFileSync(nvmrcPath, 'utf8');
+        assert.deepEqual(syncProjectConfig(root, true), stale);
+        assert.equal(readFileSync(manifestPath, 'utf8'), previousManifest);
+        assert.equal(readFileSync(nvmrcPath, 'utf8'), previousNvmrc);
+        syncProjectConfig(root);
+        assert.equal(readFileSync(nvmrcPath, 'utf8'), `${node}\n`);
+        assert.deepEqual(JSON.parse(readFileSync(manifestPath, 'utf8')), {
+            ...original,
+            devEngines: {
+                ...original.devEngines,
+                runtime: { name: 'node', version: `^${node}`, onFail: 'error' },
+                packageManager: { name: 'pnpm', version: pnpm, onFail: 'error' },
+            },
+        });
+        assert.deepEqual(syncProjectConfig(root, true), []);
+        assert.deepEqual(syncProjectConfig(root), []);
+    }
+});
+
+test('requires exact development tool versions for nvm and package-manager setup', () => {
+    for (const tool of ['node', 'pnpm'] as const) {
+        for (const version of ['', '24', '^24.0.0', 'v24.0.0', '24.0.0-beta.1', '024.0.0']) {
+            const config = structuredClone(project);
+            config.development[tool] = version;
+            assert.throws(() => generatedProjectFiles(config), {
+                message: `development.${tool} must use an exact major.minor.patch version`,
+            });
+        }
     }
 });

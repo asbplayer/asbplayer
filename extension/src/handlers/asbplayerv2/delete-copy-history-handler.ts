@@ -1,11 +1,15 @@
 import type { Command, DeleteCopyHistoryMessage, Message } from '@project/common';
 import { asbError } from '@project/common/util/log';
-import { IndexedDBCopyHistoryRepository } from '@project/common/copy-history';
+import { ExtensionCopyHistoryRepository } from '@project/extension/src/services/copy-history-repository';
 import type { SettingsProvider } from '@project/common/settings';
+import type TabRegistry from '@project/extension/src/services/tab-registry';
 
 export default class DeleteCopyHistoryHandler {
     private readonly _settings: SettingsProvider;
-    constructor(settings: SettingsProvider) {
+    constructor(
+        settings: SettingsProvider,
+        private readonly _tabRegistry: TabRegistry
+    ) {
         this._settings = settings;
     }
 
@@ -21,7 +25,7 @@ export default class DeleteCopyHistoryHandler {
         const message = command.message as DeleteCopyHistoryMessage;
         void this._settings
             .getSingle('miningHistoryStorageLimit')
-            .then((limit) => new IndexedDBCopyHistoryRepository(limit))
+            .then((limit) => new ExtensionCopyHistoryRepository(limit, this._tabRegistry))
             .then((copyHistoryRepository) => Promise.all(message.ids.map((id) => copyHistoryRepository.delete(id))))
             .then(() => sendResponse({}))
             .catch((error) => asbError('copy-history', 'Failed to delete copy history items:', error));

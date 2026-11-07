@@ -4,7 +4,7 @@ import { makeStyles } from '@mui/styles';
 import type { CreateCSSProperties } from '@mui/styles';
 import { createTheme, ThemeProvider, useTheme } from '@mui/material/styles';
 import Box from '@mui/material/Box';
-import type { Theme } from '@mui/material';
+import type { Theme } from '@mui/material/styles';
 import type { CardModel } from '@project/common';
 import type { AsbplayerSettings, PageConfig, PageSettings, Profile } from '@project/common/settings';
 import { isMobile } from 'react-device-detect';
@@ -203,7 +203,6 @@ interface Props {
     extensionSupportsSubtitleTrackSelectorInWebApp: boolean;
     extensionSupportsSubtitleListCustomization: boolean;
     extensionSupportsUpdateLastWithSameSubtitleText: boolean;
-    extensionSupportsAnimatedMediaFragment?: boolean;
     insideApp?: boolean;
     appVersionRepoPath?: string;
     dictionaryProvider: DictionaryProvider;
@@ -669,6 +668,7 @@ export default function SettingsForm({
                     <About
                         appVersionRepoPath={insideApp ? appVersionRepoPath : undefined}
                         extensionVersion={extensionInstalled ? extensionVersion : undefined}
+                        insideApp={insideApp}
                     />
                 </TabPanel>
             </div>

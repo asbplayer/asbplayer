@@ -19,7 +19,7 @@ As a progressive web app, the website can be added to the home screen of your An
 ## Extension {#extension}
 
 :::warning
-**Many features are missing**: the **side panel**, **screenshots**, and the **WebSocket interface**. See the [compatibility](../compatibility#browsers-and-features) section for a table of supported and unsupported features on each browser.
+**Many features are missing**: the **side panel**, **screenshots**, and the **WebSocket interface**. See the [compatibility](../compatibility.md#browsers-and-features) section for a table of supported and unsupported features on each browser.
 :::
 
 As with the website, the primary way to interact with asbplayer extension is through the **Overlay UI**. The side panel is missing, so instead **subtitles are loaded by selecting the asbplayer button from the browser's extension menu.**. Using a (bluetooth) keyboard is not necessary but can be very useful for those who prefer to use the [keyboard shortcuts](../reference/settings.md#keyboard-shortcuts) with the extension.

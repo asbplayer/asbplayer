@@ -112,7 +112,7 @@ describe('subtitle reader security', () => {
         });
 
         try {
-            const subtitles = await reader(options).subtitles([input]);
+            const subtitles = await reader(options).subtitles([{ fileParts: [input] }]);
 
             expect(activeImages).toEqual([]);
             expect(onError).not.toHaveBeenCalled();
@@ -126,10 +126,14 @@ describe('subtitle reader security', () => {
 
     it('preserves line breaks, entities, and ruby base text when safely removing HTML', async () => {
         const [subtitle] = await reader({ subtitleHtml: SubtitleHtml.remove }).subtitles([
-            file(
-                'formatting.vtt',
-                'WEBVTT\n\n00:00.000 --> 00:01.000\n<b>Hello</b><br> &amp; <ruby>語<rt>ご</rt><rp>(ご)</rp></ruby>\n\n'
-            ),
+            {
+                fileParts: [
+                    file(
+                        'formatting.vtt',
+                        'WEBVTT\n\n00:00.000 --> 00:01.000\n<b>Hello</b><br> &amp; <ruby>語<rt>ご</rt><rp>(ご)</rp></ruby>\n\n'
+                    ),
+                ],
+            },
         ]);
 
         expect(subtitle).toEqual({ start: 0, end: 1000, text: 'Hello\n & 語', track: 0 });
@@ -145,7 +149,7 @@ describe('subtitle reader security', () => {
         '<img src="https://attacker.invalid/x">',
         '<b><i>malformed',
     ])('sanitizes dangerous markup in parsed SRT cue text (%s)', async (payload) => {
-        const subtitles = await reader().subtitles([srt(payload)]);
+        const subtitles = await reader().subtitles([{ fileParts: [srt(payload)] }]);
 
         expect(subtitles).toHaveLength(1);
         expect(assertSafeSink(subtitles[0].text).textContent).toContain('safe');
@@ -155,11 +159,15 @@ describe('subtitle reader security', () => {
         const [subtitle] = await reader({
             regexFilter: 'SAFE',
             replacement: '<img src=x onerror=alert(1)>safe',
-        }).subtitles([file('replace.srt', '1\n00:00:00,000 --> 00:00:01,000\nSAFE')]);
+        }).subtitles([{ fileParts: [file('replace.srt', '1\n00:00:00,000 --> 00:00:01,000\nSAFE')] }]);
         expect(assertSafeSink(subtitle.text).textContent).toBe('safe');
 
         const [plain] = await reader({ subtitleHtml: SubtitleHtml.remove }).subtitles([
-            file('encoded.srt', '1\n00:00:00,000 --> 00:00:01,000\n&lt;img src=x onerror=alert(1)&gt;safe'),
+            {
+                fileParts: [
+                    file('encoded.srt', '1\n00:00:00,000 --> 00:00:01,000\n&lt;img src=x onerror=alert(1)&gt;safe'),
+                ],
+            },
         ]);
         expect(assertSafeSink(plain.text).textContent).toBe('safe');
     });
@@ -175,7 +183,7 @@ describe('subtitle reader security', () => {
 
     it('sanitizes dialogue text parsed from ASS files', async () => {
         const ass = `[Script Info]\nScriptType: v4.00+\n[V4+ Styles]\nFormat: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\nStyle: Default,Arial,20,&H00FFFFFF,&H00FFFFFF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,2,0,2,10,10,10,1\n[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\nDialogue: 0,0:00:00.00,0:00:01.00,Default,,0,0,0,,{\\b1}safe{\\b0} <img src=https://attacker.invalid/x onerror=alert(1)>`;
-        const [subtitle] = await reader().subtitles([file('attack.ass', ass)]);
+        const [subtitle] = await reader().subtitles([{ fileParts: [file('attack.ass', ass)] }]);
         const sink = assertSafeSink(subtitle.text);
         expect(sink.textContent).toContain('safe');
     });
@@ -189,7 +197,7 @@ describe('subtitle reader security', () => {
     ])('keeps ASS output formatting-only for %s', async (payload) => {
         const ass = `[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\nDialogue: 0,0:00:00.00,0:00:01.00,Default,,0,0,0,,REPLACE`;
         const subtitles = await reader({ regexFilter: 'REPLACE', replacement: `safe${payload}` }).subtitles([
-            file('attack.ass', ass),
+            { fileParts: [file('attack.ass', ass)] },
         ]);
         expect(subtitles).toHaveLength(1);
         expect(assertSafeSink(subtitles[0].text).textContent).toContain('safe');
@@ -204,7 +212,7 @@ describe('subtitle reader security', () => {
             '<tt xmlns="http://www.w3.org/ns/ttml"><body><div>' +
             `<p begin="0s" end="1s">safe${payload}</p>` +
             '</div></body></tt>';
-        const [subtitle] = await reader().subtitles([file('attack.dfxp', dfxp)]);
+        const [subtitle] = await reader().subtitles([{ fileParts: [file('attack.dfxp', dfxp)] }]);
 
         expect(assertSafeSink(subtitle.text).textContent).toContain('safe');
     });
@@ -215,7 +223,7 @@ describe('subtitle reader security', () => {
             '<text start="0" dur="1">safe&lt;img src=x onerror=alert(1)&gt;</text>' +
             '<text start="1" dur="1">safe&lt;svg onload=alert(1)&gt;x&lt;/svg&gt;</text>' +
             '</transcript>';
-        const subtitles = await reader().subtitles([file('attack.ytxml', ytxml)]);
+        const subtitles = await reader().subtitles([{ fileParts: [file('attack.ytxml', ytxml)] }]);
 
         expect(subtitles).toHaveLength(2);
         for (const subtitle of subtitles) {
@@ -227,13 +235,13 @@ describe('subtitle reader security', () => {
         const bbjson = JSON.stringify({
             body: [{ from: 0, to: 1, content: 'safe<img src=x onerror=alert(1)><span style="color:red">x</span>' }],
         });
-        const [subtitle] = await reader().subtitles([file('attack.bbjson', bbjson)]);
+        const [subtitle] = await reader().subtitles([{ fileParts: [file('attack.bbjson', bbjson)] }]);
 
         expect(assertSafeSink(subtitle.text).textContent).toContain('safe');
     });
 
     it('keeps text and extracted readings formatting-only through Netflix ruby conversion', async () => {
-        const [subtitle] = await reader({ convertNetflixRuby: true }).subtitles([srt('語(ご<b>x)')]);
+        const [subtitle] = await reader({ convertNetflixRuby: true }).subtitles([{ fileParts: [srt('語(ご<b>x)')] }]);
 
         expect(assertSafeSink(subtitle.text).textContent).toContain('safe');
         expect(subtitle.tokenization?.tokens).toHaveLength(1);

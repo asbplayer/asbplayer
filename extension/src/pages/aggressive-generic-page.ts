@@ -576,9 +576,11 @@ export class AggressiveGenericPageDiscovery implements VideoDataProvider {
                         if (!shouldObserveResource(request.url, contentType, request.page)) return;
                         let text: string | undefined;
                         try {
-                            if (this.responseType === '' || this.responseType === 'text') text = this.responseText;
-                            else if (this.responseType === 'json') text = JSON.stringify(this.response);
-                            else if (
+                            if (this.responseType === '' || this.responseType === 'text') {
+                                text = this.responseText;
+                            } else if (this.responseType === 'json') {
+                                text = JSON.stringify(this.response);
+                            } else if (
                                 this.responseType === 'arraybuffer' &&
                                 this.response?.byteLength <= maximumCapturedBodyLength
                             ) {

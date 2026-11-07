@@ -11,4 +11,5 @@ module.exports = {
         '^uuid$': require.resolve('uuid'),
     },
     testEnvironment: 'jsdom',
+    setupFiles: ['<rootDir>/../ffmpeg/jest.setup.cjs'],
 };

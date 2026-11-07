@@ -104,7 +104,7 @@ Thank you to all those who have contributed to asbplayer:
 [@artjomsR](https://github.com/artjomsR),
 [@iam6lake](https://github.com/iam6lake),
 [@bpwhelan](https://github.com/bpwhelan),
-[@pooky-programs](https://github.com/pooky-programs),
+[@pooksh](https://github.com/pooksh),
 [@m-edlund](https://github.com/m-edlund),
 [@nekorushi](https://github.com/nekorushi),
 [@Viterkim](https://github.com/Viterkim),
@@ -150,11 +150,23 @@ Thank you to all those who have contributed to asbplayer:
 [@gpressutto5](https://github.com/gpressutto5),
 [@chadzimmerman](https://github.com/chadzimmerman),
 [@awelotta](https://github.com/awelotta),
-[@0xSm0ky](https://github.com/0xSm0ky)
+[@0xSm0ky](https://github.com/0xSm0ky),
+[@Hawkheart](https://github.com/Hawkheart),
+[@JSchoreels](https://github.com/JSchoreels),
+[@JayXT](https://github.com/JayXT),
+[@MironPascalCaseFan](https://github.com/MironPascalCaseFan),
+[@N-akashiya](https://github.com/N-akashiya),
+[@NalinGHub](https://github.com/NalinGHub),
+[@cbgmvinicius](https://github.com/cbgmvinicius),
+[@dajiaohuang](https://github.com/dajiaohuang),
+[@ilyankin](https://github.com/ilyankin),
+[@joaquinmuzzi](https://github.com/joaquinmuzzi),
+[@mvanhorn](https://github.com/mvanhorn)
 
 Thank you to all those who have translated asbplayer:
 
 **Mana Tsutsumi** (Japanese, initial translation),
+**kasader** (Japanese),
 **Kai Böse** (German),
 **Triline**, **[@nekorushi](https://github.com/nekorushi)** (Polish),
 **NeverWinterSwor** (Simplified Chinese),
@@ -169,7 +181,7 @@ Thank you to all those who have translated asbplayer:
 **[@825i](https://github.com/825i)** (Finnish),
 **[@Jaybird1291](https://github.com/jaybird1291)** (French),
 **Tigerbabe aka Gyaru Jinsei Juku** (Korean),
-**yaacha** (Indonesian),
+**[@yaaacha](https://github.com/yaaacha)** (Indonesian),
 **[@NeriSal](https://github.com/nerisal)** (Italian)
 
 If you are a non-English native, and would like to help translate asbplayer, join the [Crowdin project](https://crowdin.com/project/asbplayer). If your language isn't there, feel free to create an issue to add it on the [issues page](https://github.com/asbplayer/asbplayer/issues).
@@ -208,8 +220,7 @@ Submit bugs or feature requests from the [issues page](https://github.com/asbpla
 
 ### Environment
 
-- node 24.22.1
-- pnpm 11.27.0
+Use the Node.js and pnpm versions specified by `development.node` and `development.pnpm` in [`project.json`](./project.json).
 
 ### Building
 
