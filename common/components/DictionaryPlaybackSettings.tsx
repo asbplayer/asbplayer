@@ -154,36 +154,34 @@ const DictionaryPlaybackSettings: React.FC<Props> = ({ config, onChange, disable
                         )}
                         <Stack spacing={1}>
                             {renderWordSelection(feature)}
-                            <Box sx={{ '& .MuiFormLabel-root': { minHeight: '3em' } }}>
-                                <ResponsiveSettingsStack>
-                                    <NumericSettingInput
-                                        fullWidth
-                                        color="primary"
-                                        label={t('settings.dictionaryPlaybackMinWords')}
-                                        disabled={disabled || !selected.length}
-                                        value={rules.minWords}
-                                        commitOnBlur
-                                        normalizeValue={(value) =>
-                                            Math.min(rules.maxWords || Infinity, Math.max(0, Math.floor(value)))
-                                        }
-                                        onValueChange={(value) => updateRules(feature, { minWords: value })}
-                                        slotProps={{ htmlInput: { min: 0, max: rules.maxWords || undefined, step: 1 } }}
-                                    />
-                                    <NumericSettingInput
-                                        fullWidth
-                                        color="primary"
-                                        label={t('settings.dictionaryPlaybackMaxWords')}
-                                        disabled={disabled || !selected.length}
-                                        value={rules.maxWords}
-                                        commitOnBlur
-                                        normalizeValue={(value) =>
-                                            value <= 0 ? 0 : Math.max(rules.minWords, Math.floor(value))
-                                        }
-                                        onValueChange={(value) => updateRules(feature, { maxWords: value })}
-                                        slotProps={{ htmlInput: { min: 0, step: 1 } }}
-                                    />
-                                </ResponsiveSettingsStack>
-                            </Box>
+                            <ResponsiveSettingsStack>
+                                <NumericSettingInput
+                                    fullWidth
+                                    color="primary"
+                                    label={t('settings.dictionaryPlaybackMinWords')}
+                                    disabled={disabled || !selected.length}
+                                    value={rules.minWords}
+                                    commitOnBlur
+                                    normalizeValue={(value) =>
+                                        Math.min(rules.maxWords || Infinity, Math.max(0, Math.floor(value)))
+                                    }
+                                    onValueChange={(value) => updateRules(feature, { minWords: value })}
+                                    slotProps={{ htmlInput: { min: 0, max: rules.maxWords || undefined, step: 1 } }}
+                                />
+                                <NumericSettingInput
+                                    fullWidth
+                                    color="primary"
+                                    label={t('settings.dictionaryPlaybackMaxWords')}
+                                    disabled={disabled || !selected.length}
+                                    value={rules.maxWords}
+                                    commitOnBlur
+                                    normalizeValue={(value) =>
+                                        value <= 0 ? 0 : Math.max(rules.minWords, Math.floor(value))
+                                    }
+                                    onValueChange={(value) => updateRules(feature, { maxWords: value })}
+                                    slotProps={{ htmlInput: { min: 0, step: 1 } }}
+                                />
+                            </ResponsiveSettingsStack>
                             <Typography variant="caption" color="textSecondary">
                                 {t('settings.dictionaryPlaybackWordsHelper')}
                             </Typography>
