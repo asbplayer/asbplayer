@@ -13,7 +13,7 @@ import MuiTableCell from '@mui/material/TableCell';
 import TableContainer from '@mui/material/TableContainer';
 import Typography from '@mui/material/Typography';
 import { useTheme, withStyles } from '@mui/styles';
-import type { Theme } from '@mui/material';
+import type { Theme } from '@mui/material/styles';
 import { useTranslation } from 'react-i18next';
 import SettingsSection from '@project/common/components/SettingsSection';
 import { releaseUrl as ffmpegReleaseUrl } from '@project/ffmpeg/artifact-lock.json';

@@ -1,6 +1,6 @@
 import FormControlLabel from '@mui/material/FormControlLabel';
 import styled from '@mui/styles/styled';
-import type { Theme } from '@mui/material';
+import type { Theme } from '@mui/material/styles';
 
 const LabelWithHoverEffect = styled(FormControlLabel)<Theme>(({ theme }) => ({
     '&:hover .MuiSwitch-thumb': {

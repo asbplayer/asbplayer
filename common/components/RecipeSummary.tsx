@@ -1,18 +1,16 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-    Stack,
-    Typography,
-    IconButton,
-    TableContainer,
-    Paper,
-    Table,
-    TableBody,
-    TableRow,
-    TableCell,
-    MenuItem,
-    Chip,
-} from '@mui/material';
+import Stack from '@mui/material/Stack';
+import Typography from '@mui/material/Typography';
+import IconButton from '@mui/material/IconButton';
+import TableContainer from '@mui/material/TableContainer';
+import Paper from '@mui/material/Paper';
+import Table from '@mui/material/Table';
+import TableBody from '@mui/material/TableBody';
+import TableRow from '@mui/material/TableRow';
+import TableCell from '@mui/material/TableCell';
+import MenuItem from '@mui/material/MenuItem';
+import Chip from '@mui/material/Chip';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import { recipeSettingGroups, dictionaryPlaybackFeatures, NUM_DICTIONARY_TRACKS } from '@project/common/settings';
 import type { Recipe, SubtitleVisibility, AutoPauseResumeMode } from '@project/common/settings';
