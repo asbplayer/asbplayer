@@ -8,8 +8,12 @@ on:
     merge_group:
         branches: [main]
 
+concurrency:
+    group: verify-${{ github.event_name == 'pull_request' && github.event.number || github.ref }}
+    cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
-    build:
+    verify:
         name: Verify
         runs-on: ubuntu-latest
 
@@ -34,7 +38,8 @@ jobs:
 
             - run: pnpm install --frozen-lockfile --filter @project/extension --filter @project/common --filter @project/client --filter @project/ffmpeg
 
-            - run: pnpm --filter @project/extension run zip
-            - run: pnpm --filter @project/client run build
-            - run: pnpm --filter @project/ffmpeg run verify:code
+            - run: pnpm run verify
 
+            - run: pnpm --filter @project/extension exec wxt zip
+
+            - run: pnpm --filter @project/client run buildFast
