@@ -37,5 +37,5 @@ for (const f of files) {
     const localePath = `${localesPath}/${f}`;
     const locale = JSON.parse(fs.readFileSync(localePath, 'utf8'));
     removeKeys(locale, keysToRemove);
-    fs.writeFileSync(localePath, JSON.stringify(locale, null, 4), 'utf8');
+    fs.writeFileSync(localePath, JSON.stringify(locale, null, 4) + '\n', 'utf8');
 }
