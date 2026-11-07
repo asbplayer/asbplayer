@@ -46,6 +46,11 @@ module.exports = [
                             group: ['./*', '../*'],
                             message: 'Use @project imports instead of relative imports.',
                         },
+                        {
+                            regex: '^@mui/(material|icons-material)$',
+                            message:
+                                'Import MUI exports from their deep path (e.g. @mui/material/Button) so bundlers can tree-shake.',
+                        },
                     ],
                 },
             ],

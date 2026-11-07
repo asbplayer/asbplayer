@@ -2,7 +2,7 @@ import { effectiveSettings } from '@project/common/settings/settings-recipes';
 import type { ForwardedRef, ReactNode, Ref } from 'react';
 import React, { useCallback, useEffect, useMemo, useState, useRef, useImperativeHandle } from 'react';
 import { makeStyles } from '@mui/styles';
-import type { Theme } from '@mui/material';
+import type { Theme } from '@mui/material/styles';
 import type {
     ContextProp,
     ItemProps,

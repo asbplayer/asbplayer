@@ -1,4 +1,4 @@
-import type { ButtonBaseActions } from '@mui/material';
+import type { ButtonBaseActions } from '@mui/material/ButtonBase';
 import type { ButtonProps } from '@mui/material/Button';
 import Button from '@mui/material/Button';
 import type { ForwardedRef } from 'react';

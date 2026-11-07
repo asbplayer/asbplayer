@@ -36,8 +36,9 @@ import Tooltip from '@project/common/components/Tooltip';
 import { useCurrentTabId } from '@project/extension/src/ui/hooks/use-current-tab-id';
 import ExternalConnections from '@/ui/components/ExternalConnections';
 import { activePendingExternalConnections } from '@project/common/global-state';
-import { ToggleButton, ToggleButtonGroup } from '@mui/material';
-import type { ToggleButtonProps } from '@mui/material';
+import ToggleButton from '@mui/material/ToggleButton';
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
+import type { ToggleButtonProps } from '@mui/material/ToggleButton';
 import ExtensionIcon from '@mui/icons-material/Extension';
 import Badge from '@mui/material/Badge';
 
