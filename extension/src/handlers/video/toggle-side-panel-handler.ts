@@ -1,4 +1,4 @@
-import { asbError } from '@project/common/util/log';
+import { asbError, asbTrace } from '@project/common/util/log';
 import type {
     CloseSidePanelMessage,
     Command,
@@ -69,6 +69,14 @@ export default class ToggleSidePanelHandler {
             );
             if (!isFirefoxBuild) {
                 browser.windows.getLastFocused((w) => {
+                    const error = browser.runtime.lastError;
+
+                    if (error) {
+                        asbError('side-panel', 'Failed to get the last focused window:', error);
+                        return;
+                    }
+
+                    asbTrace('side-panel', 'About to open side panel in window', w);
                     const windowId = w.id;
                     void browser.sidePanel
                         .open({ windowId: windowId! })
