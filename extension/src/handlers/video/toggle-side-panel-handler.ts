@@ -28,7 +28,7 @@ export default class ToggleSidePanelHandler {
      * If a location is not specified, toggles the side panel open or closed.
      * Otherwise, sets the app-requested location state, which will update the side panel's location.
      */
-    handle(command: Command<Message>) {
+    handle(command: Command<Message>, sender: Browser.runtime.MessageSender) {
         const toggleSidePanelMessage = command.message as ToggleSidePanelMessage;
 
         // Currently we do not support the extension specifying a location inside the side panel.
@@ -68,20 +68,15 @@ export default class ToggleSidePanelHandler {
                 asbError('side-panel', 'Failed to save the requested panel location:', error)
             );
             if (!isFirefoxBuild) {
-                browser.windows.getLastFocused((w) => {
-                    const error = browser.runtime.lastError;
+                const windowId = sender.tab?.windowId;
+                if (windowId === undefined) {
+                    return false;
+                }
 
-                    if (error) {
-                        asbError('side-panel', 'Failed to get the last focused window:', error);
-                        return;
-                    }
-
-                    asbTrace('side-panel', 'About to open side panel in window', w);
-                    const windowId = w.id;
-                    void browser.sidePanel
-                        .open({ windowId: windowId! })
-                        .catch((error) => asbError('side-panel', 'Failed to open the side panel:', error));
-                });
+                asbTrace('side-panel', 'About to open side panel in window', { windowId });
+                void browser.sidePanel
+                    .open({ windowId })
+                    .catch((error) => asbError('side-panel', 'Failed to open the side panel:', error));
             }
         }
 
