@@ -1211,7 +1211,7 @@ export class AsyncSemaphore {
     }
 }
 
-export const minimumPlaybackRate = 0.01;
+export const minimumPlaybackRate = 0.0625;
 export const maximumPlaybackRate = 16;
 
 export const roundPlaybackRate = (playbackRate: number): number => Math.round(playbackRate * 1000) / 1000;

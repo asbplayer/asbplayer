@@ -1,4 +1,4 @@
-import { formatAsSignedMs, minimumPlaybackRate, normalizePlaybackRate } from '@project/common/util';
+import { formatAsSignedMs, normalizePlaybackRate } from '@project/common/util';
 import PlaybackModeController, {
     playbackModesFromSettings,
 } from '@project/common/playback/controllers/playback-mode-controller';
@@ -53,6 +53,7 @@ import { CachedLocalStorage } from '@project/common/app/services/cached-local-st
 const internalSeekWatchdogMs = 10_000;
 const subtitleOffsetStorageKey = 'offset';
 const initialPlaybackSettingsAutoHideDurationMs = 6000;
+const playbackRateMismatchTolerance = 0.01;
 const subtitleOffsetNotificationKey = 'subtitle-offset';
 
 const playbackPlanTraceDetails = <T extends IndexedSubtitleModel>(plan: PlaybackPlan<T>) => ({
@@ -343,7 +344,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
                 if (
                     actualPlaybackRate !== undefined &&
                     (!Number.isFinite(actualPlaybackRate) ||
-                        Math.abs(actualPlaybackRate - playbackRate) > minimumPlaybackRate)
+                        Math.abs(actualPlaybackRate - playbackRate) > playbackRateMismatchTolerance)
                 ) {
                     asbWarn('playback/rate', 'Playback rate command was not respected', {
                         requestedPlaybackRate: playbackRate,
