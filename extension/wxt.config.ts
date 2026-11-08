@@ -29,6 +29,10 @@ const addToPublicPathsType = (srcPath: string, destPath: string, paths: PublicPa
 
 const extName = project.names.short;
 const releaseInfo = extensionReleaseInfo(project);
+const extTitle = (isDev: boolean) => {
+    const devLabel = isDev ? ' (Dev)' : '';
+    return `${extName}${devLabel}`;
+};
 
 // See https://wxt.dev/api/config.html
 export default defineConfig({
@@ -89,12 +93,20 @@ export default defineConfig({
             }
             paths.push('content-scripts/video.css');
         },
+        'build:manifestGenerated': (wxt: Wxt, manifest: Browser.runtime.Manifest) => {
+            const isDev = wxt.config.mode === 'development';
+            const title = extTitle(isDev);
+            if (manifest.sidebar_action) {
+                // Workaround wxt automatically assigning the raw __PROJECT_NAME__ token in side-panel/index.html
+                // to the default_title.
+                manifest.sidebar_action.default_title = title;
+            }
+        },
     },
     manifest: ({ browser, mode }) => {
         const { version } = project;
         const isDev = mode === 'development';
-        const devLabel = isDev ? ' (Dev)' : '';
-        const title = `${extName}${devLabel}`;
+        const title = extTitle(isDev);
         const name = `${title}: Language-learning with subtitles`;
 
         let manifest: UserManifest = {
