@@ -44,6 +44,7 @@ import DragOverlay from '@project/common/app/components/DragOverlay';
 import Bar from '@project/common/app/components/Bar';
 import type { ExtensionMessage } from '@project/common/app/services/chrome-extension';
 import type ChromeExtension from '@project/common/app/services/chrome-extension';
+import { createAppYomitanFetcher } from '@project/common/app/services/app-extension-yomitan-fetcher';
 import CopyHistory from '@project/common/app/components/CopyHistory';
 import StatisticsDrawer from '@project/common/components/StatisticsDrawer';
 import LandingPage from '@project/common/app/components/LandingPage';
@@ -342,6 +343,7 @@ function App({
     const theme = useMemo<Theme>(() => createTheme(settings.themeType), [settings.themeType]);
     const anki = useAnki({ settings, fetcher });
     const searchParams = useMemo(() => new URLSearchParams(location.search), []);
+    const yomitanFetcher = useMemo(() => createAppYomitanFetcher(extension), [extension]);
     const inVideoPlayer = useMemo(() => searchParams.get('video') !== null, [searchParams]);
     const externalCommands = useAppExternalCommands({ settings, extension, inVideoPlayer });
     const [videoFullscreen, setVideoFullscreen] = useState<boolean>(false);
@@ -2061,6 +2063,7 @@ function App({
                                     />
                                 </Paper>
                                 <Player
+                                    yomitanFetcher={yomitanFetcher}
                                     supportsDictionaryPlayback={supportsDictionaryPlayback}
                                     audioTranscodeHost={audioTranscodeHost}
                                     ref={playerRef}

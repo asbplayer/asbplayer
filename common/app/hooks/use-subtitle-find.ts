@@ -3,9 +3,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ListRange, TableVirtuosoHandle } from 'react-virtuoso';
 import type { DisplaySubtitleModel } from '@project/common';
 import { dictionaryTrackEnabled } from '@project/common/settings';
-import type { DictionaryTrack } from '@project/common/settings';
+import type { DictionaryTrack, YomitanFetcherSettings } from '@project/common/settings';
 import { normalizedLookupTerms, normalizeSearchText } from '@project/common/util';
 import { Yomitan } from '@project/common/yomitan';
+import type { YomitanFetcher } from '@project/common/yomitan/yomitan-fetcher';
 import { findTokenContainingSearch } from '@project/common/annotations/token-navigation';
 import type { TokenSelectionLocation } from '@project/common/annotations/token-navigation';
 import type { TokenSelectionRequestOptions } from '@project/common/app/hooks/use-token-selection';
@@ -38,6 +39,7 @@ const subtitleSearchableText = (subtitle: DisplaySubtitleModel): string => {
 interface UseSubtitleFindParams {
     subtitles?: DisplaySubtitleModel[];
     dictionaryTracks: DictionaryTrack[];
+    yomitanFetcher: (settings: YomitanFetcherSettings) => YomitanFetcher;
     disableKeyEventsRef: MutableRefObject<boolean>;
     hiddenRef: MutableRefObject<boolean>;
     lastScrollTimestampRef: MutableRefObject<number>;
@@ -52,6 +54,7 @@ interface UseSubtitleFindParams {
 export const useSubtitleFind = ({
     subtitles,
     dictionaryTracks,
+    yomitanFetcher,
     disableKeyEventsRef,
     hiddenRef,
     lastScrollTimestampRef,
@@ -71,8 +74,8 @@ export const useSubtitleFind = ({
         () =>
             dictionaryTracks
                 .filter((dictionaryTrack) => dictionaryTrackEnabled(dictionaryTrack))
-                .map((dictionaryTrack) => new Yomitan(dictionaryTrack)),
-        [dictionaryTracks]
+                .map((dictionaryTrack) => new Yomitan(dictionaryTrack, yomitanFetcher)),
+        [dictionaryTracks, yomitanFetcher]
     );
     const yomitanVersionPromisesRef = useRef<WeakMap<Yomitan, Promise<unknown>>>(new WeakMap());
     const ensureYomitanVersion = useCallback(async () => {

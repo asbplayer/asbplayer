@@ -93,9 +93,9 @@ const waitForTokenization = async (annotations: ReturnType<typeof makeSubtitleAn
 };
 
 const makeFetcher = () => ({
-    fetch: jest.fn(async (url: string) => {
-        if (url.endsWith('/yomitanVersion')) return { version: '0.0.0.0' };
-        if (url.endsWith('/tokenize')) {
+    fetch: jest.fn(async (action: string) => {
+        if (action === 'yomitanVersion') return { version: '0.0.0.0' };
+        if (action === 'tokenize') {
             return [
                 {
                     id: 'id',
@@ -106,8 +106,8 @@ const makeFetcher = () => ({
                 },
             ];
         }
-        if (url.endsWith('/termEntries')) return { dictionaryEntries: [] };
-        throw new Error(`unexpected request: ${url}`);
+        if (action === 'termEntries') return { dictionaryEntries: [] };
+        throw new Error(`unexpected request: ${action}`);
     }),
 });
 

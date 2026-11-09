@@ -16,10 +16,12 @@ import type {
     SettingsProvider,
     TokenState,
     TokenStatus,
+    YomitanFetcherSettings,
 } from '@project/common/settings';
 import type { DictionaryProvider } from '@project/common/dictionary-db';
 import type { SubtitleCollectionOptions } from '@project/common/subtitle-collection';
 import { SubtitleCollection } from '@project/common/subtitle-collection';
+import type { YomitanFetcher } from '@project/common/yomitan/yomitan-fetcher';
 import type { InternalToken } from '@project/common/annotations/render-annotations';
 import { BuildAnnotations } from '@project/common/annotations/build-annotations';
 import type { InternalSubtitleModel } from '@project/common/annotations/build-annotations';
@@ -86,8 +88,9 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
             updatedSubtitles: readonly IndexedSubtitleModel[],
             dt: readonly DictionaryTrack[]
         ) => void,
-        getMediaTimeMs?: () => number,
-        fetcher?: Fetcher
+        getMediaTimeMs: (() => number) | undefined,
+        fetcher: Fetcher | undefined,
+        yomitanFetcher: (settings: YomitanFetcherSettings) => YomitanFetcher
     ) {
         super({ ...options, returnNextToShow: true });
         this.dictionaryProvider = dictionaryProvider;
@@ -99,6 +102,7 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
             subtitleAnnotationsUpdated,
             getMediaTimeMs,
             fetcher,
+            yomitanFetcher,
         });
     }
 

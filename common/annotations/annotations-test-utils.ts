@@ -1,5 +1,25 @@
-import type { Fetcher, IndexedSubtitleModel, Token } from '@project/common';
+import type { IndexedSubtitleModel, Token } from '@project/common';
+import type { YomitanFetcher } from '@project/common/yomitan/yomitan-fetcher';
 import { jest } from '@jest/globals';
+
+const makeFetcher = (): YomitanFetcher => ({
+    fetch: jest.fn(async (action: string) => {
+        if (action === 'yomitanVersion') return { version: '0.0.0.0' };
+        if (action === 'tokenize') {
+            return [
+                {
+                    id: 'id',
+                    source: 'source',
+                    dictionary: 'dictionary',
+                    index: 0,
+                    content: [[{ text: 'word', reading: '', frequency: 7 }]],
+                },
+            ];
+        }
+        if (action === 'termEntries') return { dictionaryEntries: [] };
+        throw new Error(`unexpected request: ${action}`);
+    }),
+});
 import { DictionaryProvider } from '@project/common/dictionary-db';
 import {
     defaultSettings,
@@ -153,7 +173,7 @@ export const makeStorage = () => ({
     _removeCallback: jest.fn(),
 });
 
-export const makeSubtitleAnnotations = (settings = makeSettings(), fetcher?: Fetcher) => {
+export const makeSubtitleAnnotations = (settings = makeSettings(), fetcher: YomitanFetcher = makeFetcher()) => {
     const storage = makeStorage();
     const provider = new DictionaryProvider(storage as any);
     const settingsStorage = new MockSettingsStorage();
@@ -167,7 +187,8 @@ export const makeSubtitleAnnotations = (settings = makeSettings(), fetcher?: Fet
         'media-id',
         subtitleAnnotationsUpdated,
         undefined,
-        fetcher
+        undefined,
+        () => fetcher
     );
 
     return { subtitleAnnotations, storage, settingsProvider, subtitleAnnotationsUpdated };

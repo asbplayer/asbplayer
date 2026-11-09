@@ -25,6 +25,7 @@ import type {
     SetActiveProfileMessage,
     SetGlobalStateMessage,
     SetSettingsMessage,
+    YomitanExecuteMessage,
     ExtensionVersionMessage,
     DictionaryUpdateRecordsMessage,
     DictionaryDeleteRecordsMessage,
@@ -285,6 +286,15 @@ export default defineContentScript({
                                 response: await browser.runtime.sendMessage(command),
                                 messageId: requestCopyHistoryRequest.messageId,
                                 count: requestCopyHistoryRequest.count,
+                            });
+                            break;
+                        }
+                        case 'yomitan-execute': {
+                            const yomitanExecuteMessage = command.message as YomitanExecuteMessage;
+                            const response = await browser.runtime.sendMessage(command);
+                            sendMessageToPlayer({
+                                response,
+                                messageId: yomitanExecuteMessage.messageId,
                             });
                             break;
                         }

@@ -23,6 +23,7 @@ import type {
     DictionaryTrack,
     SettingsProvider,
     TokenStatus,
+    YomitanFetcherSettings,
 } from '@project/common/settings';
 import {
     areDictionaryTracksEqual,
@@ -38,6 +39,7 @@ import type { DictionaryProvider, TokenResults } from '@project/common/dictionar
 import { DictionaryStatistics } from '@project/common/dictionary-statistics';
 import type { SubtitleSlice } from '@project/common/subtitle-collection';
 import { Yomitan } from '@project/common/yomitan';
+import type { YomitanFetcher } from '@project/common/yomitan/yomitan-fetcher';
 import type { InternalToken } from '@project/common/annotations/render-annotations';
 import { TrackState } from '@project/common/annotations/track-state';
 import { resolveTokenStatus } from '@project/common/annotations/token-collection';
@@ -70,6 +72,7 @@ export interface BuildAnnotationsOptions {
     ) => void;
     getMediaTimeMs?: () => number;
     fetcher?: Fetcher;
+    yomitanFetcher: (settings: YomitanFetcherSettings) => YomitanFetcher;
 }
 
 function untokenize(s: InternalSubtitleModel) {
@@ -565,7 +568,7 @@ export class BuildAnnotations {
                     continue;
                 }
                 try {
-                    const yt = new Yomitan(ts.dt, this.options.fetcher, {
+                    const yt = new Yomitan(ts.dt, this.options.yomitanFetcher, {
                         lemmaTokenFallback: true,
                         tokensWereModified: (token) => {
                             const indexes = this.tokenToIndexesCache.get(normalizeToken(token)) ?? [];

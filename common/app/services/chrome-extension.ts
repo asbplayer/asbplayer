@@ -16,6 +16,7 @@ import type {
     GetLogsResponse,
     Message,
     MessageWithId,
+    YomitanExecuteMessage,
     ToggleSidePanelMessage,
     PublishCardMessage,
     SetSettingsMessage,
@@ -88,6 +89,7 @@ import type {
     SettingsFormPageConfig,
     TokenState,
     TokenStatus,
+    YomitanFetcherSettings,
 } from '@project/common/settings';
 import { isSaveOnlySettings } from '@project/common/settings';
 import type { GlobalState } from '@project/common/global-state';
@@ -275,6 +277,10 @@ export default class ChromeExtension {
 
     get supportsDictionaryYomitanMecab() {
         return this.installed && gte(this.version, '1.15.0');
+    }
+
+    get supportsYomitanExtensionMessaging() {
+        return this.installed && gte(this.version, '1.24.0');
     }
 
     get supportsDictionaryTokenStatusDisplayAlpha() {
@@ -685,6 +691,35 @@ export default class ChromeExtension {
         };
         window.postMessage(command);
         return this._createResponsePromise<void>(messageId);
+    }
+
+    /**
+     * Relays a Yomitan action to the background, which serves it through its
+     * runtime port; the web client cannot open runtime ports itself.
+     */
+    executeYomitanAction(action: string, body: any, yomitanFetcherSettings: YomitanFetcherSettings): Promise<any> {
+        const messageId = uuidv4();
+        const command: AsbPlayerCommand<YomitanExecuteMessage> = {
+            sender: 'asbplayerv2',
+            message: {
+                command: 'yomitan-execute',
+                action,
+                body,
+                yomitanFetcherSettings,
+                messageId,
+            },
+        };
+        window.postMessage(command);
+        // Yomitan batch lookups on large subtitle files can exceed the default
+        // 5s response timeout.
+        return this._createResponsePromise(messageId, 60000).then((response) => {
+            // Yomitan payloads can be strings (e.g. batch-size failures), so
+            // only an object with an error key is a handler failure.
+            if (response && typeof response === 'object' && 'error' in response) {
+                throw new Error(response.error as string);
+            }
+            return response;
+        });
     }
 
     getLogs(): Promise<LogSnapshot> {

@@ -47,6 +47,7 @@ import type {
     TokenAnnotationTriggerOptions,
     EnabledAnnotations,
     TokenAnnotationConfigTarget,
+    YomitanFetcherSettings,
 } from '@project/common/settings';
 import {
     TokenMatchStrategy,
@@ -68,6 +69,7 @@ import type { Anki } from '@project/common/anki';
 import type { WaniKaniUser } from '@project/common/wanikani';
 import { WaniKani } from '@project/common/wanikani';
 import { Yomitan } from '@project/common/yomitan';
+import type { YomitanFetcher } from '@project/common/yomitan/yomitan-fetcher';
 import SwitchLabelWithHoverEffect from '@project/common/components/SwitchLabelWithHoverEffect';
 import SettingsTextField from '@project/common/components/SettingsTextField';
 import ColorPickerField from '@project/common/components/ColorPickerField';
@@ -104,7 +106,6 @@ import { hexToRgba, rgbToHex } from '@uiw/color-convert';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import NoWrapButton from '@project/common/components/NoWrapButton';
 
-const yomitanInstallerUrl = 'https://github.com/yomidevs/yomitan-api';
 const yomitanMecabInstallerUrl = 'https://github.com/yomidevs/yomitan-mecab-installer';
 const waniKaniApiTokenSetupUrl = `${project.urls.docs}/docs/guides/annotation#setup`;
 const maskApiToken = (apiToken: string) => '•'.repeat(Array.from(apiToken).length);
@@ -517,6 +518,8 @@ interface Props {
     supportsDictionaryMatchAcrossScripts: boolean;
     supportsDictionaryTokenStatusDisplayAlpha: boolean;
     supportsDictionaryYomitanMecab: boolean;
+    extensionSupportsYomitanExtensionMessaging: boolean;
+    yomitanFetcher: (settings: YomitanFetcherSettings) => YomitanFetcher;
     supportsDictionaryPlayback: boolean;
     selectedDictionaryTrack: number;
     onSelectedDictionaryTrackChanged: (track: number) => void;
@@ -537,6 +540,8 @@ const DictionarySettingsTab: React.FC<Props> = ({
     supportsDictionaryMatchAcrossScripts,
     supportsDictionaryTokenStatusDisplayAlpha,
     supportsDictionaryYomitanMecab,
+    extensionSupportsYomitanExtensionMessaging,
+    yomitanFetcher,
     supportsDictionaryPlayback,
     selectedDictionaryTrack,
     onSelectedDictionaryTrackChanged,
@@ -708,6 +713,8 @@ const DictionarySettingsTab: React.FC<Props> = ({
     );
 
     const [dictionaryYomitanUrlError, setDictionaryYomitanUrlError] = useState<string>();
+    const [dictionaryYomitanExtensionIdError, setDictionaryYomitanExtensionIdError] = useState<string>();
+
     const [dictionaryYomitanMecabError, setDictionaryYomitanMecabError] = useState<React.ReactNode>();
     const [dictionaryWaniKaniError, setDictionaryWaniKaniError] = useState<string>();
     const [waniKaniUserInfo, setWaniKaniUserInfo] = useState<WaniKaniUser>();
@@ -814,9 +821,10 @@ const DictionarySettingsTab: React.FC<Props> = ({
     );
     const dictionaryRequestYomitan = useCallback(async () => {
         try {
-            const yomitan = new Yomitan(selectedDictionary);
+            const yomitan = new Yomitan(selectedDictionary, yomitanFetcher);
             await yomitan.version();
             setDictionaryYomitanUrlError(undefined);
+            setDictionaryYomitanExtensionIdError(undefined);
             if (!supportsDictionaryYomitanMecab) {
                 setDictionaryYomitanMecabError(undefined);
                 return;
@@ -842,15 +850,15 @@ const DictionarySettingsTab: React.FC<Props> = ({
             );
         } catch (e) {
             asbError('dictionary/yomitan', e);
-            if (e instanceof Error) {
-                setDictionaryYomitanUrlError(e.message);
-            } else if (typeof e === 'string') {
-                setDictionaryYomitanUrlError(e);
+            const errorMessage = e instanceof Error ? e.message : String(e);
+
+            if (selectedDictionary.dictionaryYomitanTransport === 'api') {
+                setDictionaryYomitanUrlError(errorMessage);
             } else {
-                setDictionaryYomitanUrlError(String(e));
+                setDictionaryYomitanExtensionIdError(errorMessage);
             }
         }
-    }, [selectedDictionary, supportsDictionaryYomitanMecab]);
+    }, [selectedDictionary, supportsDictionaryYomitanMecab, yomitanFetcher]);
 
     useEffect(() => {
         let canceled = false;
@@ -1019,6 +1027,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                 dictionaryProvider={dictionaryProvider}
                 activeProfile={activeProfile}
                 profiles={profiles}
+                yomitanFetcher={yomitanFetcher}
             />
             <WordBrowserDialog
                 open={wordBrowserOpen}
@@ -1026,6 +1035,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                 activeProfile={activeProfile}
                 dictionaryTracks={dictionaryTracks}
                 supportsDictionaryWaniKani={supportsDictionaryWaniKani}
+                yomitanFetcher={yomitanFetcher}
                 onClose={() => setWordBrowserOpen(false)}
             />
             <Stack spacing={1}>
@@ -1614,44 +1624,94 @@ const DictionarySettingsTab: React.FC<Props> = ({
                 </FormControl>
                 {showSentenceMatchAcrossScripts && renderDictionaryMatchAcrossScripts()}
                 <SettingsSection ref={yomitanSectionRef}>{t('settings.dictionaryYomitanSection')}</SettingsSection>
-                {dictionaryYomitanUrlError && (
+                {(dictionaryYomitanUrlError || dictionaryYomitanExtensionIdError) && (
                     <Alert severity="info">
                         <Trans
                             i18nKey={t('settings.yomitanHelperText')}
-                            components={[<Link key={0} target="_blank" href={yomitanInstallerUrl} />]}
+                            components={[
+                                <Link
+                                    key={0}
+                                    target="_blank"
+                                    href={`${project.urls.docs}/docs/guides/annotation#setup`}
+                                />,
+                            ]}
                         />
                     </Alert>
                 )}
-                <SettingsTextField
-                    label={t('settings.dictionaryYomitanUrl')}
-                    value={selectedDictionary.dictionaryYomitanUrl}
-                    error={Boolean(dictionaryYomitanUrlError)}
-                    helperText={getHelperTextForCacheSettingsDependencies(
-                        t('settings.dictionaryYomitanUrl'),
-                        'dictionaryYomitanUrl',
-                        dictionaryYomitanUrlError
+                {extensionSupportsYomitanExtensionMessaging && (
+                    <SettingsTextField
+                        select
+                        label={t('settings.dictionaryYomitanTransport')}
+                        value={selectedDictionary.dictionaryYomitanTransport}
+                        color="primary"
+                        onChange={(e) => {
+                            const newTracks = [...dictionaryTracks];
+                            newTracks[selectedDictionaryTrack] = {
+                                ...newTracks[selectedDictionaryTrack],
+                                dictionaryYomitanTransport: e.target
+                                    .value as DictionaryTrack['dictionaryYomitanTransport'],
+                            };
+                            void onSettingChanged('dictionaryTracks', newTracks);
+                        }}
+                    >
+                        <MenuItem value="api">{t('settings.dictionaryYomitanTransportApi')}</MenuItem>
+                        <MenuItem value="extension">{t('settings.dictionaryYomitanTransportExtension')}</MenuItem>
+                    </SettingsTextField>
+                )}
+                {selectedDictionary.dictionaryYomitanTransport === 'api' && (
+                    <SettingsTextField
+                        label={t('settings.dictionaryYomitanUrl')}
+                        value={selectedDictionary.dictionaryYomitanUrl}
+                        error={Boolean(dictionaryYomitanUrlError)}
+                        helperText={getHelperTextForCacheSettingsDependencies(
+                            t('settings.dictionaryYomitanUrl'),
+                            'dictionaryYomitanUrl',
+                            dictionaryYomitanUrlError
+                        )}
+                        color="primary"
+                        onChange={(e) => {
+                            const newTracks = [...dictionaryTracks];
+                            newTracks[selectedDictionaryTrack] = {
+                                ...newTracks[selectedDictionaryTrack],
+                                dictionaryYomitanUrl: e.target.value,
+                            };
+                            void onSettingChanged('dictionaryTracks', newTracks);
+                        }}
+                        slotProps={{
+                            input: {
+                                endAdornment: (
+                                    <InputAdornment position="end">
+                                        <IconButton onClick={dictionaryRequestYomitan}>
+                                            <RefreshIcon />
+                                        </IconButton>
+                                    </InputAdornment>
+                                ),
+                            },
+                        }}
+                    />
+                )}
+                {extensionSupportsYomitanExtensionMessaging &&
+                    selectedDictionary.dictionaryYomitanTransport === 'extension' && (
+                        <SettingsTextField
+                            label={t('settings.dictionaryYomitanExtensionId')}
+                            value={selectedDictionary.dictionaryYomitanExtensionId}
+                            error={Boolean(dictionaryYomitanExtensionIdError)}
+                            helperText={getHelperTextForCacheSettingsDependencies(
+                                t('settings.dictionaryYomitanUrl'),
+                                'dictionaryYomitanExtensionId',
+                                dictionaryYomitanExtensionIdError
+                            )}
+                            color="primary"
+                            onChange={(e) => {
+                                const newTracks = [...dictionaryTracks];
+                                newTracks[selectedDictionaryTrack] = {
+                                    ...newTracks[selectedDictionaryTrack],
+                                    dictionaryYomitanExtensionId: e.target.value,
+                                };
+                                void onSettingChanged('dictionaryTracks', newTracks);
+                            }}
+                        />
                     )}
-                    color="primary"
-                    onChange={(e) => {
-                        const newTracks = [...dictionaryTracks];
-                        newTracks[selectedDictionaryTrack] = {
-                            ...newTracks[selectedDictionaryTrack],
-                            dictionaryYomitanUrl: e.target.value,
-                        };
-                        void onSettingChanged('dictionaryTracks', newTracks);
-                    }}
-                    slotProps={{
-                        input: {
-                            endAdornment: (
-                                <InputAdornment position="end">
-                                    <IconButton onClick={dictionaryRequestYomitan}>
-                                        <RefreshIcon />
-                                    </IconButton>
-                                </InputAdornment>
-                            ),
-                        },
-                    }}
-                />
                 {dictionaryYomitanMecabError && <Alert severity="info">{dictionaryYomitanMecabError}</Alert>}
                 {supportsDictionaryYomitanMecab && (
                     <SettingsTextField

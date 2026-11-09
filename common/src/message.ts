@@ -8,6 +8,7 @@ import type {
     SubtitleSettings,
     TokenState,
     TokenStatus,
+    YomitanFetcherSettings,
 } from '@project/common/settings';
 import type { GenericParseType, GlobalState, OnlineSubtitleSourceConfig } from '@project/common/global-state';
 import type { DictionaryStatisticsSnapshot } from '@project/common/dictionary-statistics';
@@ -108,6 +109,19 @@ export interface HttpPostMessage extends MessageWithId {
     readonly command: 'http-post';
     readonly messageId: string;
     readonly url: string;
+    readonly body: any;
+}
+
+/**
+ * Relays a Yomitan API action from a foreground context to the background's
+ * runtime port; http-post is deliberately not reused so the background's
+ * plain-HTTP fetch is never exposed to relayed requests.
+ */
+export interface YomitanExecuteMessage extends MessageWithId {
+    readonly command: 'yomitan-execute';
+    readonly messageId: string;
+    readonly yomitanFetcherSettings: YomitanFetcherSettings;
+    readonly action: string;
     readonly body: any;
 }
 
