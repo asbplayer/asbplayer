@@ -36,8 +36,7 @@ import Switch from '@mui/material/Switch';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import { alpha, useTheme } from '@mui/material/styles';
-import MuiAlert from '@mui/material/Alert';
-import type { AlertProps } from '@mui/material/Alert';
+import Alert from '@mui/material/Alert';
 import type {
     AsbplayerSettings,
     Profile,
@@ -492,20 +491,6 @@ const useBuildWaniKaniCacheState: () => {
         msg,
         setBuildWaniKaniCacheState,
     };
-};
-
-const Alert: React.FC<AlertProps> = ({ children, ...props }) => {
-    return (
-        <MuiAlert
-            style={{
-                // SettingsDialog applies height: 100dvh to .MuiPaper-root - override it here
-                height: 'auto',
-            }}
-            {...props}
-        >
-            {children}
-        </MuiAlert>
-    );
 };
 
 interface Props {

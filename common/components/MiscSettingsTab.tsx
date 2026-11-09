@@ -1,6 +1,7 @@
 import project from '@project/common/project';
 import { asbError } from '@project/common/util/log';
 import type { LogProvider } from '@project/common/util/log';
+import Alert from '@mui/material/Alert';
 import FormControl from '@mui/material/FormControl';
 import FormLabel from '@mui/material/FormLabel';
 import MenuItem from '@mui/material/MenuItem';
@@ -156,8 +157,10 @@ const MiscSettingTab: React.FC<Props> = ({
     }
 
     const settingsFileInputRef = useRef<HTMLInputElement>(null);
+    const [importError, setImportError] = useState<string | undefined>();
     const handleSettingsFileInputChange = useCallback(async () => {
         try {
+            setImportError(undefined);
             const file = settingsFileInputRef.current?.files?.[0];
 
             if (file === undefined) {
@@ -169,6 +172,7 @@ const MiscSettingTab: React.FC<Props> = ({
             onSettingsChanged(validatedSettings);
         } catch (e) {
             asbError('settings/import', e);
+            setImportError(e instanceof Error ? e.message : String(e));
         }
     }, [onSettingsChanged, settings]);
 
@@ -200,6 +204,7 @@ const MiscSettingTab: React.FC<Props> = ({
                         {t('settings.logs')}
                     </NoWrapButton>
                 </ButtonGroup>
+                {importError && <Alert severity="error">{importError}</Alert>}
 
                 <SettingsSection>{t('settings.ui')}</SettingsSection>
                 <FormControl>
