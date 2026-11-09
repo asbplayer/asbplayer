@@ -15,19 +15,71 @@ import {
 import { defaultSettings } from '@project/common/settings/settings-provider';
 import { describe, expect, it } from '@jest/globals';
 import { PlayMode } from '@project/common';
+import fs from 'node:fs';
+import path from 'node:path';
 
 it('validates the default settings', () => {
     validateSettings(defaultSettings);
 });
 
 it('fails validation when an unknown key is encountered', () => {
-    expect(() => validateSettings({ ...defaultSettings, asdf: 'jkl;' })).toThrow("Unknown key 'asdf'");
+    expect(() => validateSettings({ ...defaultSettings, asdf: 'jkl;' })).toThrow('Unrecognized key: "asdf"');
 });
 
 it('fails validation when an unknown key bind key is encountered', () => {
     expect(() =>
         validateSettings({ ...defaultSettings, keyBindSet: { ...defaultSettings.keyBindSet, asdf: { keys: 'a' } } })
-    ).toThrow("Unknown key 'keyBindSet.asdf'");
+    ).toThrow('Unrecognized key: "asdf"\n  → at keyBindSet');
+});
+
+it('fails validation when an unknown key is encountered inside an Anki field setting', () => {
+    expect(() =>
+        validateSettings({
+            ...defaultSettings,
+            ankiFieldSettings: { ...defaultSettings.ankiFieldSettings, sentence: { order: 0, display: true, asdf: 1 } },
+        })
+    ).toThrow('Unrecognized key: "asdf"\n  → at ankiFieldSettings.sentence');
+});
+
+it('preserves unknown keys inside dictionary track settings for forward compatibility', () => {
+    // Settings exported by newer asbplayer versions may carry extra keys.
+    const settings = {
+        ...defaultSettings,
+        dictionaryTracks: defaultSettings.dictionaryTracks.map((track) => ({ ...track, newKeyFromNewerVersion: 1 })),
+    };
+    const imported = validateSettings(settings);
+    expect(imported.dictionaryTracks?.[0]).toHaveProperty('newKeyFromNewerVersion', 1);
+});
+
+it('validates custom Anki field settings', () => {
+    const settings = {
+        ...defaultSettings,
+        customAnkiFieldSettings: { myCustomField: { order: 99, display: false } },
+    };
+    const imported = validateSettings(settings);
+    expect(imported.customAnkiFieldSettings).toEqual({ myCustomField: { order: 99, display: false } });
+});
+
+it('fails validation when a custom Anki field setting is malformed', () => {
+    const settings = {
+        ...defaultSettings,
+        customAnkiFieldSettings: { myCustomField: { order: 'not-a-number', display: true } },
+    };
+    expect(() => validateSettings(settings)).toThrow('Settings validation failed');
+});
+
+it('validates a settings export from version 1.22.0', () => {
+    // Real export produced by the v1.22.0 code (default settings plus custom
+    // Anki field entries), kept to catch import regressions for old releases.
+    const legacyExport = JSON.parse(
+        fs.readFileSync(path.join(__dirname, '__fixtures__', 'v1.22.0-settings-export.json'), 'utf-8')
+    );
+
+    expect(() => validateSettings(legacyExport)).not.toThrow();
+
+    const imported = validateSettings(legacyExport);
+    expect(imported.customAnkiFieldSettings).toEqual({ MyCustomField: { order: 99, display: true } });
+    expect(imported.customAnkiFields).toEqual({ MyCustomField: 'カスタム' });
 });
 
 it('validates last languages synced', () => {
@@ -439,7 +491,6 @@ it('validates exported settings', () => {
         preferMp3: true,
         tabName: 'asbplayer',
         miningHistoryStorageLimit: 25,
-        preCacheSubtitleDom: true,
         clickToMineDefaultAction: 1,
         postMiningPlaybackState: 0,
         themeType: 'dark',
