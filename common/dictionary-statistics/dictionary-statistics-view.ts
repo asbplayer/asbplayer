@@ -1,4 +1,5 @@
 import type { IndexedSubtitleModel, Progress } from '@project/common';
+import type { SubtitleSourceStatus } from '@project/common/subtitle-reader/subtitle-stream';
 import {
     getFullyKnownTokenStatus,
     isTokenStatusKnown,
@@ -193,6 +194,7 @@ export interface DictionaryStatisticsRewatchSnapshot {
 }
 
 export interface DictionaryStatisticsTrackSnapshot {
+    sourceStatus: SubtitleSourceStatus;
     track: number;
     progress: Progress;
     progressPercent: number;
@@ -1218,7 +1220,9 @@ function rewatchSnapshotsFromRaw(
         for (const tokenKey of Array.from(tokensToPromote).sort()) {
             const currentStatus =
                 sentenceFilterProjectedStatuses.get(tokenKey) ?? sentenceFilterTokens.get(tokenKey)?.status;
-            if (currentStatus !== undefined && currentStatus < fullyKnownTokenStatus) {
+            // Propagate the merged status even if another occurrence is already fully known.
+            // Otherwise an uncollected occurrence stays eligible on every iteration.
+            if (currentStatus !== undefined) {
                 sentenceFilterProjectedStatuses.set(
                     tokenKey,
                     Math.max(promoteTokenStatus(currentStatus), TokenStatus.LEARNING)
@@ -1331,6 +1335,7 @@ function processDictionaryStatisticsTrackSnapshot(
     return {
         track: trackSnapshot.track,
         progress: trackSnapshot.progress,
+        sourceStatus: trackSnapshot.sourceStatus ?? 'complete',
         progressPercent: percent(trackSnapshot.progress.current, trackSnapshot.progress.total),
         statusColors: trackSnapshot.statusColors,
         numDictionaryKnownTokens: dictionaryCounts.numKnownTokens,
@@ -1765,6 +1770,7 @@ export function processDictionaryStatisticsWaniKaniTrackSnapshot(
 }
 
 export interface DictionarySimplifiedStatisticsTrackSnapshot {
+    sourceStatus: SubtitleSourceStatus;
     numConsideredTokens: number;
     comprehensionPercent: number;
     sentenceBuckets: DictionaryStatisticsSentenceBuckets;
@@ -1796,5 +1802,11 @@ function processSimplifiedDictionaryStatisticsTrackSnapshot(
     const sentenceBuckets = buildSentenceBucketData(evaluatedSentenceSnapshots, sentenceFilterTokens);
     const comprehensionPercent = comprehensionFromStatusOccurrences(statusCounts);
     const progress = trackSnapshot.progress;
-    return { numConsideredTokens, comprehensionPercent, sentenceBuckets, progress };
+    return {
+        numConsideredTokens,
+        comprehensionPercent,
+        sentenceBuckets,
+        progress,
+        sourceStatus: trackSnapshot.sourceStatus ?? 'complete',
+    };
 }

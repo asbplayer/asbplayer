@@ -8,6 +8,7 @@ const makeTimeline = () => {
         durationMs: 5000,
     });
     return PlaybackTimeline.fromSubtitles({
+        sourceStatus: 'complete',
         actionBlocks: [],
         hiddenSubtitleIndexes: [],
         durationMs: timeline.durationMs,
@@ -57,6 +58,7 @@ describe('PlaybackTimelineRunner', () => {
             subtitleTriggerEndOffset: -499,
         });
         const actionTimeline = PlaybackTimeline.fromSubtitles({
+            sourceStatus: 'complete',
             actionBlocks: [],
             hiddenSubtitleIndexes: [],
             durationMs: timeline.durationMs,

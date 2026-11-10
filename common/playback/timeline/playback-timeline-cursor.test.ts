@@ -10,6 +10,7 @@ describe('PlaybackTimelineCursor', () => {
             subtitleTriggerEndOffset: -499,
         });
         const actionTimeline = PlaybackTimeline.fromSubtitles({
+            sourceStatus: 'complete',
             actionBlocks: [],
             hiddenSubtitleIndexes: [],
             durationMs: result.durationMs,

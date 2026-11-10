@@ -11,9 +11,9 @@ import { SubtitleHtml } from '@project/common';
 import DOMPurify from 'dompurify';
 
 /**
- * Subtitle files are untrusted input.  Keep this list deliberately small: subtitle
+ * Subtitle files are untrusted input. Keep this list deliberately small: subtitle
  * markup is for presentation only and must not be able to navigate, fetch, or run
- * code.  In particular, do not add `style` or URL-bearing attributes here.
+ * code. In particular, do not add `style` or URL-bearing attributes here.
  */
 export const sanitizeSubtitleHtml = (html: string) =>
     DOMPurify.sanitize(html, {

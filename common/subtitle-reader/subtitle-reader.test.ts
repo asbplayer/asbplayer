@@ -15,7 +15,6 @@ jest.mock('@qgustavor/srt-parser', () => ({
         }
     },
 }));
-jest.mock('ass-compiler', () => ({ compile: () => ({ dialogues: [] }) }));
 
 import SubtitleReader from '@project/common/subtitle-reader/subtitle-reader';
 import { SubtitleHtml } from '@project/common';

@@ -252,6 +252,19 @@ describe('buildPlaybackPlan', () => {
         expect(plan.timelineSubtitles.blocks[0].endAction?.repeat?.count).toBe(0);
     });
 
+    it.each(['loading', 'failed'] as const)('does not fast-forward beyond a %s subtitle prefix', (sourceStatus) => {
+        const plan = makePlan([PlayMode.fastForward], { sourceStatus });
+        const timeline = PlaybackTimeline.fromSubtitles(plan.timelineSubtitles);
+        expect(fastForwardingForPlanState(plan, timeline.lookupAt(2500).state)).toBe(false);
+        const completed = makePlan([PlayMode.fastForward]);
+        expect(
+            fastForwardingForPlanState(
+                completed,
+                PlaybackTimeline.fromSubtitles(completed.timelineSubtitles).lookupAt(2500).state
+            )
+        ).toBe(true);
+    });
+
     it('uses the configured playback rate inside subtitles and throughout qualifying gaps', () => {
         const plan = makePlan([PlayMode.fastForward], {
             subtitles: [

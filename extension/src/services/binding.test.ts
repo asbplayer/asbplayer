@@ -1,18 +1,34 @@
+import { File as NodeFile, Blob as NodeBlob } from 'node:buffer';
+import { ReadableStream } from 'node:stream/web';
+import { TextDecoder, TextEncoder } from 'node:util';
 import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
-import { AutoPausePreference, PlayMode, PostMineAction, SubtitleHtml } from '@project/common';
-import type { ExtensionSyncMessage, IndexedSubtitleModel, LoadableSubtitleTrack } from '@project/common';
+import { AutoPausePreference, PlayMode, PostMineAction, SubtitleHtml, VideoDataUiOpenReason } from '@project/common';
+import type {
+    ExtensionSyncMessage,
+    ConfirmedVideoDataSubtitleTrack,
+    Message,
+    VideoDataUiBridgeConfirmMessage,
+    VideoDataUiModel,
+    IndexedSubtitleModel,
+    LoadableSubtitleTrack,
+    SubtitleSourceMessage,
+} from '@project/common';
 import { defaultSettings, SubtitleListPreference, TokenStatus } from '@project/common/settings';
 import type { DictionaryTrack } from '@project/common/settings';
 import Binding from '@project/extension/src/services/binding';
 import type { BindingOptions } from '@project/extension/src/services/binding';
+import type ActualVideoDataSyncController from '@project/extension/src/controllers/video-data-sync-controller';
 import { MockStorageArea } from '@project/extension/src/services/mock-storage-area';
+import { uiFrameForHtml } from '@project/extension/src/services/ui-frame';
+
+let mockUseRealSyncController = false;
 
 const bindingOptions = (hasPageScript: boolean, videoSrcChangesIndicateNewVideo: boolean): BindingOptions => ({
     hasPageScript,
     videoSrcChangesIndicateNewVideo,
 });
 
-// The tests parse WebVTT with the real SubtitleReader. This unused dependency
+// The tests parse WebVTT and ASS with the real SubtitleReader. This unused dependency
 // ships as ESM, which the extension's Jest configuration does not transform.
 jest.mock('@qgustavor/srt-parser', () => ({
     __esModule: true,
@@ -81,16 +97,31 @@ jest.mock('@project/extension/src/controllers/bulk-export-controller', () => ({
 jest.mock('@project/extension/src/controllers/video-data-sync-controller', () => ({
     __esModule: true,
     default: class VideoDataSyncController {
+        constructor(...args: ConstructorParameters<typeof ActualVideoDataSyncController>) {
+            if (mockUseRealSyncController) {
+                const Controller = jest.requireActual<{ default: typeof ActualVideoDataSyncController }>(
+                    '@project/extension/src/controllers/video-data-sync-controller'
+                ).default;
+                return new Controller(...args);
+            }
+        }
         pickerVisible = false;
-        openedLocation = undefined;
-        async requestSubtitles() {}
-        updateSettings() {}
+        openedLocation: string | undefined = undefined;
+        requestSubtitles: ActualVideoDataSyncController['requestSubtitles'] = async () => {};
+        cancelSubtitleLoad: ActualVideoDataSyncController['cancelSubtitleLoad'] = () => {};
+        updateSettings: ActualVideoDataSyncController['updateSettings'] = () => {};
         unbind() {}
     },
 }));
+jest.mock('@project/extension/src/services/ui-frame', () => ({ uiFrameForHtml: jest.fn() }));
+jest.mock('@project/extension/src/services/pages', () => ({
+    currentPageDelegate: async () => ({ config: {}, isVideoPage: () => true, canAutoSync: () => false }),
+}));
+
 jest.mock('@project/extension/src/services/key-bindings', () => ({
     __esModule: true,
     default: class KeyBindings {
+        bind() {}
         setKeyBindSet() {}
         unbind() {}
     },
@@ -115,6 +146,12 @@ describe('Binding playback mode integration', () => {
     const runtimeListeners = new Set<(request: any, sender: any, sendResponse: (response?: any) => void) => void>();
     let storage: MockStorageArea;
     let sendRuntimeMessage: jest.Mock<() => Promise<void>>;
+    let pickerMessage: (message: Message) => void;
+    let pickerStates: Partial<VideoDataUiModel>[];
+    const originalFetch = globalThis.fetch;
+    const originalDecoder = globalThis.TextDecoder;
+    const originalFile = globalThis.File;
+    const originalBlob = globalThis.Blob;
 
     type FrameTestVideo = HTMLVideoElement & { presentFrame(timestampMs: number): void };
 
@@ -249,6 +286,34 @@ describe('Binding playback mode integration', () => {
     };
 
     beforeEach(() => {
+        mockUseRealSyncController = false;
+        pickerStates = [];
+        const client = {
+            onMessage: (listener: (message: Message) => void) => {
+                pickerMessage = listener;
+            },
+            updateState: (state: Partial<VideoDataUiModel>) => {
+                pickerStates.push(state);
+            },
+        };
+        const frame = {
+            hidden: true,
+            bind: async () => true,
+            client: async () => client,
+            show() {
+                frame.hidden = false;
+            },
+            hide() {
+                frame.hidden = true;
+            },
+            unbind() {},
+        };
+        jest.mocked(uiFrameForHtml).mockReturnValue(frame as unknown as ReturnType<typeof uiFrameForHtml>);
+        if (!AbortSignal.prototype.throwIfAborted) {
+            AbortSignal.prototype.throwIfAborted = function () {
+                if (this.aborted) throw this.reason;
+            };
+        }
         jest.useFakeTimers();
         jest.spyOn(console, 'warn').mockImplementation(() => undefined);
         jest.spyOn(console, 'error').mockImplementation(() => undefined);
@@ -271,10 +336,350 @@ describe('Binding playback mode integration', () => {
     });
 
     afterEach(() => {
+        globalThis.fetch = originalFetch;
+        globalThis.TextDecoder = originalDecoder;
+        globalThis.File = originalFile;
+        globalThis.Blob = originalBlob;
         jest.restoreAllMocks();
         jest.useRealTimers();
         delete (globalThis as any).browser;
         document.body.replaceChildren();
+    });
+
+    const progressiveChoice: ConfirmedVideoDataSubtitleTrack = {
+        id: 'internal',
+        name: 'Internal',
+        label: 'Internal',
+        extension: 'ass',
+        url: 'https://example.test/progressive',
+        progressive: true,
+    };
+    const assHeader =
+        '[Script Info]\nScriptType: v4.00+\n[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n';
+    const assDialogue = (text: string, second: number) =>
+        `Dialogue: 0,0:00:${second.toString().padStart(2, '0')}.00,0:00:${(second + 1).toString().padStart(2, '0')}.00,Default,,0,0,0,,${text}\n`;
+
+    async function openProgressivePicker() {
+        mockUseRealSyncController = true;
+        Object.assign(globalThis, { TextDecoder, File: NodeFile, Blob: NodeBlob });
+        const video = createVideo();
+        Object.defineProperty(video, 'paused', { configurable: true, value: true });
+        const binding = new Binding(video, bindingOptions(false, false));
+        binding.bind();
+        await flushPlaybackTiming();
+        await binding.videoDataSyncController.show({ reason: VideoDataUiOpenReason.userRequested });
+        const responses: { controller: ReadableStreamDefaultController<Uint8Array>; cancelled: () => boolean }[] = [];
+        const openResponse = () => {
+            let responseController!: ReadableStreamDefaultController<Uint8Array>;
+            let cancelled = false;
+            const body = new ReadableStream<Uint8Array>({
+                start(controller) {
+                    responseController = controller;
+                },
+                cancel() {
+                    cancelled = true;
+                },
+            });
+            responses.push({ controller: responseController, cancelled: () => cancelled });
+            return { ok: true, body, headers: { get: () => 'text/x-ssa' } } as unknown as Response;
+        };
+        const fetcher = jest.fn<typeof fetch>(async () => openResponse());
+        globalThis.fetch = fetcher;
+        const confirm = async (data: ConfirmedVideoDataSubtitleTrack[]) => {
+            if (!binding.videoDataSyncController.pickerVisible) {
+                await binding.videoDataSyncController.show({ reason: VideoDataUiOpenReason.userRequested });
+            }
+            const message: VideoDataUiBridgeConfirmMessage = {
+                command: 'confirm',
+                data,
+                shouldRememberTrackChoices: false,
+            };
+            pickerMessage(message);
+            await flushPlaybackTiming();
+        };
+        const append = async (text: string) => {
+            responses.at(-1)!.controller.enqueue(new TextEncoder().encode(text));
+            await jest.advanceTimersByTimeAsync(100);
+        };
+        return {
+            binding,
+            confirm,
+            append,
+            fetcher,
+            openResponse,
+            get response() {
+                return responses.at(-1)!.controller;
+            },
+            cancelled: () => responses[0].cancelled(),
+        };
+    }
+
+    it.each(['download', 'network', 'parse'] as const)(
+        'discards the previous progressive source even if replacement %s fails',
+        async (failure) => {
+            const stream = await openProgressivePicker();
+            const { binding } = stream;
+            try {
+                await stream.confirm([progressiveChoice]);
+                await stream.append(assHeader + assDialogue('First', 1));
+                const loadId = binding.subtitleController.subtitles[0].source!.loadId;
+                if (failure === 'download') {
+                    stream.fetcher.mockResolvedValueOnce({ ok: false, status: 500 } as Response);
+                } else if (failure === 'network') {
+                    stream.fetcher.mockRejectedValueOnce(new Error('Network unavailable'));
+                } else {
+                    stream.fetcher.mockResolvedValueOnce({
+                        ok: true,
+                        arrayBuffer: async () => new TextEncoder().encode('invalid').buffer,
+                    } as Response);
+                }
+                await stream.confirm([
+                    {
+                        id: 'external',
+                        name: 'External',
+                        label: 'External',
+                        extension: failure === 'parse' ? 'invalid' : 'vtt',
+                        url: 'https://example.test/file',
+                    },
+                ]);
+                expect(pickerStates.at(-1)?.error).toBeTruthy();
+                expect(stream.cancelled()).toBe(true);
+                expect(binding.subtitleController.subtitles).toEqual([]);
+                binding.updateSubtitleSource({
+                    type: 'cues',
+                    track: 0,
+                    loadId,
+                    cues: [{ cueId: 1, start: 3000, end: 4000, text: 'Late' }],
+                });
+                expect(binding.subtitleController.subtitles).toEqual([]);
+            } finally {
+                binding.unbind();
+            }
+        }
+    );
+
+    it('replaces a progressive source without waiting for the first cue', async () => {
+        const stream = await openProgressivePicker();
+        const { binding } = stream;
+        try {
+            await stream.confirm([progressiveChoice]);
+            await stream.append(assHeader + assDialogue('Original', 1));
+            await stream.confirm([{ ...progressiveChoice, url: 'https://example.test/replacement' }]);
+            expect(stream.cancelled()).toBe(true);
+            expect(binding.subtitleController.subtitles).toEqual([]);
+            expect(binding.videoDataSyncController.pickerVisible).toBe(false);
+            await stream.append(assHeader + assDialogue('Replacement', 1));
+            expect(binding.subtitleController.subtitles.map((cue) => cue.text)).toEqual(['Replacement']);
+        } finally {
+            binding.unbind();
+        }
+    });
+
+    it('restarts the selected progressive and companion URLs when parsing settings change, including after EOF', async () => {
+        const stream = await openProgressivePicker();
+        const { binding } = stream;
+        try {
+            await storage.set({ subtitleRegexFilter: 'speaker: ' });
+            sendSettingsUpdated(binding);
+            await flushPlaybackTiming();
+            const external = {
+                id: 'external',
+                name: 'External',
+                label: 'External',
+                extension: 'vtt',
+                url: 'https://example.test/file',
+            };
+            stream.fetcher.mockImplementation(async (url) =>
+                url === external.url
+                    ? ({
+                          ok: true,
+                          arrayBuffer: async () =>
+                              new TextEncoder().encode('WEBVTT\n\n00:00:01.000 --> 00:00:02.000\nspeaker: Companion\n')
+                                  .buffer,
+                      } as Response)
+                    : stream.openResponse()
+            );
+            await stream.confirm([progressiveChoice, external]);
+            await stream.append(assHeader + assDialogue('speaker: First', 1));
+            expect(binding.subtitleController.subtitles.map((cue) => cue.text)).toEqual(['First', 'Companion']);
+            const loadId = binding.subtitleController.subtitles[0].source!.loadId;
+            await storage.set({ subtitleRegexFilter: '' });
+            sendSettingsUpdated(binding);
+            await flushPlaybackTiming();
+            expect(stream.cancelled()).toBe(true);
+            expect(stream.fetcher).toHaveBeenCalledTimes(4);
+            await stream.append(assHeader + assDialogue('speaker: First', 1));
+            expect(binding.subtitleController.subtitles.map((cue) => cue.text)).toEqual([
+                'speaker: First',
+                'speaker: Companion',
+            ]);
+            expect(binding.subtitleController.subtitles[0].source!.loadId).not.toBe(loadId);
+            await stream.append(assDialogue('speaker: Second', 3));
+            stream.response.close();
+            await flushPlaybackTiming();
+            await storage.set({ subtitleRegexFilter: 'speaker: ' });
+            sendSettingsUpdated(binding);
+            await flushPlaybackTiming();
+            expect(stream.fetcher).toHaveBeenCalledTimes(6);
+            await stream.append(assHeader + assDialogue('speaker: First', 1) + assDialogue('speaker: Second', 3));
+            expect(binding.subtitleController.subtitles.map((cue) => cue.text)).toEqual([
+                'First',
+                'Companion',
+                'Second',
+            ]);
+            await storage.set({ subtitlePositionOffset: 80 });
+            sendSettingsUpdated(binding);
+            await flushPlaybackTiming();
+            expect(stream.fetcher).toHaveBeenCalledTimes(6);
+        } finally {
+            binding.unbind();
+        }
+    });
+
+    it.each(['timeout', 'dismiss'] as const)('handles a progressive resume offer after %s', async (action) => {
+        await storage.set({
+            lastPlaybackPositions: [{ fileName: 'progressive.srt', position: 63_000 }],
+        });
+        const binding = new Binding(createVideo(), bindingOptions(false, false));
+        const showSnackbar = jest.spyOn(binding.notificationController, 'showSnackbar');
+        binding.bind();
+        await flushPlaybackTiming();
+        try {
+            binding.updateSubtitleSource({ type: 'start', track: 0, loadId: 'stream', name: 'progressive.srt' });
+            binding.updateSubtitleSource({
+                type: 'cues',
+                track: 0,
+                loadId: 'stream',
+                cues: [{ cueId: 0, start: 1000, end: 2000, text: 'First' }],
+            });
+            expect(showSnackbar).toHaveBeenCalledTimes(1);
+            if (action === 'timeout') binding.notificationController.onTimeout?.();
+            else binding.notificationController.onClose?.();
+            binding.updateSubtitleSource({
+                type: 'cues',
+                track: 0,
+                loadId: 'stream',
+                cues: [{ cueId: 1, start: 65_000, end: 66_000, text: 'Later' }],
+            });
+            expect(showSnackbar).toHaveBeenCalledTimes(action === 'timeout' ? 2 : 1);
+            if (action === 'timeout') binding.notificationController.onTimeout?.();
+            expect(binding.notificationController.onAction).toBeUndefined();
+        } finally {
+            binding.unbind();
+        }
+    });
+
+    it('loads progressive cues, replays their source on attachment, and ignores them after file replacement', async () => {
+        const binding = new Binding(createVideo(), bindingOptions(false, false));
+        binding.bind();
+        await flushPlaybackTiming();
+        try {
+            binding.updateSubtitleSource({ type: 'start', track: 0, loadId: 'stream', name: 'progressive.srt' });
+            binding.updateSubtitleSource({
+                type: 'cues',
+                track: 0,
+                loadId: 'stream',
+                cues: [{ cueId: 0, start: 1000, end: 2000, text: 'First' }],
+            });
+            expect(binding.subtitleController.subtitles).toMatchObject([
+                { text: 'First', source: { loadId: 'stream', cueId: 0 } },
+            ]);
+            const requestSource = () => {
+                for (const listener of runtimeListeners) {
+                    listener(
+                        {
+                            sender: 'asbplayer-extension-to-video',
+                            src: binding.registeredVideoSrc,
+                            message: { command: 'requestSubtitleSource' },
+                        },
+                        {},
+                        () => undefined
+                    );
+                }
+            };
+            requestSource();
+            const calls = sendRuntimeMessage.mock.calls as unknown as [{ message?: SubtitleSourceMessage }][];
+            const replay = calls
+                .map(([command]) => command.message)
+                .findLast((message) => message?.command === 'subtitleSource');
+            expect(replay?.update).toMatchObject({
+                type: 'snapshot',
+                tracks: [{ name: 'progressive.srt', status: 'loading', loadId: 'stream' }],
+                subtitles: [{ text: 'First' }],
+            });
+            sendSubtitles(binding, [
+                { text: 'File', start: 0, end: 1000, originalStart: 0, originalEnd: 1000, track: 0, index: 0 },
+            ]);
+            binding.updateSubtitleSource({
+                type: 'cues',
+                track: 0,
+                loadId: 'stream',
+                cues: [{ cueId: 1, start: 3000, end: 4000, text: 'Stale' }],
+            });
+            expect(binding.subtitleController.subtitles.map((cue) => cue.text)).toEqual(['File']);
+            requestSource();
+            expect(
+                calls.map(([command]) => command.message).findLast((message) => message?.command === 'subtitleSource')
+            ).toMatchObject({
+                update: { type: 'snapshot', subtitles: [{ text: 'File' }] },
+            });
+        } finally {
+            binding.unbind();
+        }
+    });
+
+    it('attaches a progressive source and keeps complete companion tracks without placeholder files', async () => {
+        await storage.set({ streamingSubtitleListPreference: SubtitleListPreference.app });
+        const binding = new Binding(createVideo(), bindingOptions(false, false));
+        binding.bind();
+        await flushPlaybackTiming();
+        try {
+            await binding.loadProgressiveSubtitles(
+                [{ fileParts: [] }, { fileParts: [vttFile('External', 'external.vtt')] }],
+                [{ track: 0, loadId: 'progressive', name: 'embedded.ass' }],
+                new AbortController().signal,
+                'selected-app'
+            );
+            const calls = sendRuntimeMessage.mock.calls as unknown as [{ message?: ExtensionSyncMessage }][];
+            const sync = calls.map(([command]) => command.message).findLast((message) => message?.command === 'sync');
+            expect(sync).toMatchObject({
+                subtitles: [],
+                withSyncedAsbplayerOnly: false,
+                withAsbplayerId: 'selected-app',
+                subtitleSource: {
+                    tracks: [
+                        { track: 0, status: 'loading', loadId: 'progressive', name: 'embedded.ass' },
+                        { track: 1, status: 'complete', name: 'external.vtt' },
+                    ],
+                },
+            });
+            expect(sync?.subtitleSource).not.toHaveProperty('subtitles');
+            expect(binding.subtitleController.subtitles.map((cue) => cue.text)).toEqual(['External']);
+        } finally {
+            binding.unbind();
+        }
+    });
+
+    it('does not replace the current subtitles when progressive setup has been cancelled', async () => {
+        const binding = new Binding(createVideo(), bindingOptions(false, false));
+        binding.bind();
+        await flushPlaybackTiming();
+        try {
+            sendSubtitles(binding, [makeSubtitle({ text: 'Current' })], ['current.srt']);
+            const abort = new AbortController();
+            abort.abort();
+            await expect(
+                binding.loadProgressiveSubtitles(
+                    [{ fileParts: [] }],
+                    [{ track: 0, loadId: 'cancelled', name: 'cancelled.ass' }],
+                    abort.signal
+                )
+            ).rejects.toMatchObject({ name: 'AbortError' });
+            expect(binding.subtitleController.subtitleFileNames).toEqual(['current.srt']);
+            expect(binding.subtitleController.subtitles.map((cue) => cue.text)).toEqual(['Current']);
+        } finally {
+            binding.unbind();
+        }
     });
 
     it('updates visible subtitles when a filter or replacement changes and restores the original text', async () => {

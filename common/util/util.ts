@@ -1010,6 +1010,7 @@ function areSubtitleTextImagesEqual(a: SubtitleTextImage | undefined, b: Subtitl
 }
 
 const subtitleModelComparators: FieldComparators<SubtitleModel> = {
+    source: (a, b) => a?.loadId === b?.loadId && a?.cueId === b?.cueId,
     text: (a, b) => a === b,
     originalText: (a, b) => a === b,
     textImage: (a, b) => areSubtitleTextImagesEqual(a, b),

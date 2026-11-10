@@ -1,5 +1,5 @@
-import { asbError } from '@project/common/util/log';
 import type {
+    SubtitleSourceMessage,
     AlertMessage,
     AnkiSettingsToVideoMessage,
     AppBarToggleMessageToVideoMessage,
@@ -43,6 +43,8 @@ import type {
     SaveTokenLocalToVideoMessage,
     IndexedSubtitleModel,
 } from '@project/common';
+import type { SubtitleSourceUpdate } from '@project/common/subtitle-reader/subtitle-stream';
+import { asbError } from '@project/common/util/log';
 import { PlayMode, PostMineAction } from '@project/common';
 import type {
     AnkiSettings,
@@ -86,6 +88,7 @@ export default class VideoChannel {
     private appBarToggleCallbacks: (() => void)[];
     private ankiDialogRequestCallbacks: (() => void)[];
     private toggleSubtitleTrackInListCallbacks: ((track: number) => void)[];
+    private subtitleSourceCallbacks: ((update: SubtitleSourceUpdate) => void)[] = [];
     private subtitlesUpdatedCallbacks: ((updatedSubtitles: readonly IndexedSubtitleModel[]) => void)[];
     private saveTokenLocalCallbacks: ((
         track: number,
@@ -139,6 +142,7 @@ export default class VideoChannel {
         this.ankiDialogRequestCallbacks = [];
         this.toggleSubtitleTrackInListCallbacks = [];
         this.subtitlesUpdatedCallbacks = [];
+        this.subtitleSourceCallbacks = [];
         this.saveTokenLocalCallbacks = [];
         this.loadFilesCallbacks = [];
         this.loadSubtitlesCallbacks = [];
@@ -150,7 +154,6 @@ export default class VideoChannel {
             switch (event.data.command) {
                 case 'ready': {
                     const readyMessage = event.data as ReadyFromVideoMessage;
-
                     this.duration = readyMessage.duration;
                     this.paused = readyMessage.paused;
                     this.isReady = true;
@@ -307,6 +310,11 @@ export default class VideoChannel {
                     for (const callback of this.toggleSubtitleTrackInListCallbacks) {
                         callback(toggleSubtitleTrackInListMessage.track);
                     }
+                    break;
+                }
+                case 'subtitleSource': {
+                    const { update } = event.data as SubtitleSourceMessage;
+                    for (const callback of this.subtitleSourceCallbacks) callback(update);
                     break;
                 }
                 case 'subtitlesUpdated': {
@@ -482,6 +490,20 @@ export default class VideoChannel {
     onToggleSubtitleTrackInList(callback: (track: number) => void) {
         this.toggleSubtitleTrackInListCallbacks.push(callback);
         return () => this._remove(callback, this.toggleSubtitleTrackInListCallbacks);
+    }
+
+    onSubtitleSource(callback: (update: SubtitleSourceUpdate) => void) {
+        this.subtitleSourceCallbacks.push(callback);
+        return () => this._remove(callback, this.subtitleSourceCallbacks);
+    }
+
+    requestSubtitleSource() {
+        this.protocol.postMessage({ command: 'requestSubtitleSource' });
+    }
+
+    subtitleSource(update: SubtitleSourceUpdate) {
+        const message: SubtitleSourceMessage = { command: 'subtitleSource', update };
+        this.protocol.postMessage(message);
     }
 
     onSubtitlesUpdated(callback: (updatedSubtitles: readonly IndexedSubtitleModel[]) => void) {
@@ -913,6 +935,7 @@ export default class VideoChannel {
         this.ankiDialogRequestCallbacks = [];
         this.toggleSubtitleTrackInListCallbacks = [];
         this.subtitlesUpdatedCallbacks = [];
+        this.subtitleSourceCallbacks = [];
         this.loadFilesCallbacks = [];
         this.playModesCallbacks = [];
         this.cardUpdatedDialogCallbacks = [];

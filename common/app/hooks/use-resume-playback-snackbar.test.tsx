@@ -22,14 +22,16 @@ interface Props {
     conversion: TranscodedAudioPayload;
     source: string;
     onDismiss: () => void;
+    subtitlesReady: boolean;
 }
 
-const Harness = ({ conversion, source, onDismiss }: Props) => {
+const Harness = ({ conversion, source, onDismiss, subtitlesReady }: Props) => {
     const [position, setPosition] = useState<number | undefined>(600_000);
     const snackbar = useResumePlaybackSnackbar({
         position,
         source,
         conversion,
+        subtitlesReady,
         onDismiss: () => {
             setPosition(undefined);
             onDismiss();
@@ -51,9 +53,14 @@ let container: HTMLDivElement;
 let onDismiss: jest.Mock;
 const render = async (
     conversion: TranscodedAudioPayload = { state: 'transcoding', required: true },
-    source = 'video'
+    source = 'video',
+    subtitlesReady = true
 ) => {
-    await act(async () => root.render(<Harness conversion={conversion} source={source} onDismiss={onDismiss} />));
+    await act(async () =>
+        root.render(
+            <Harness conversion={conversion} source={source} onDismiss={onDismiss} subtitlesReady={subtitlesReady} />
+        )
+    );
 };
 const advance = async (ms: number) => {
     await act(async () => jest.advanceTimersByTimeAsync(ms));
@@ -87,6 +94,27 @@ it('reoffers a timed-out position when encoded audio reaches it, beyond the play
     expect(button().dataset.open).toBe('false');
     expect(button().dataset.position).toBeUndefined();
     expect(onDismiss).toHaveBeenCalledTimes(1);
+});
+
+it('retains a timed-out offer until subtitles catch up and gives it a fresh timeout', async () => {
+    await render({ state: 'idle', required: false }, 'video', false);
+    await advance(6_000);
+    expect(button().dataset.open).toBe('false');
+    expect(onDismiss).not.toHaveBeenCalled();
+    await render({ state: 'idle', required: false }, 'video', true);
+    expect(button().dataset.open).toBe('true');
+    await advance(6_000);
+    expect(onDismiss).toHaveBeenCalledTimes(1);
+});
+
+it('waits for both subtitle coverage and encoded audio before reoffering', async () => {
+    await render({ state: 'transcoding', required: true }, 'video', false);
+    await advance(6_000);
+    await render({ state: 'transcoding', required: true }, 'video', true);
+    expect(button().dataset.open).toBe('false');
+    await render({ state: 'transcoding', required: true, audio: prefix(600_000) }, 'video', true);
+    await advance(1_000);
+    expect(button().dataset.open).toBe('true');
 });
 
 it('gives a visible offer six fresh seconds once audio reaches the position, without resetting on later chunks', async () => {

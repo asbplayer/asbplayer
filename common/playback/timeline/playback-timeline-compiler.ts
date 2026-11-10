@@ -1,4 +1,6 @@
 import type { IndexedSubtitleModel } from '@project/common';
+import { subtitleKey } from '@project/common/subtitle-reader/subtitle-stream';
+import type { SubtitleSourceStatus } from '@project/common/subtitle-reader/subtitle-stream';
 import { advanceTimestampIndex, firstTimestampIndex } from '@project/common/playback/timeline/playback-timeline';
 import type {
     PlaybackTimelineBlock,
@@ -13,6 +15,8 @@ import { clamp, normalizeFinite, normalizeNonNegative, normalizeNonPositive } fr
 
 export interface PlaybackTimelineSubtitles<T extends IndexedSubtitleModel> {
     readonly durationMs: number;
+    /** Until the selected source completes, the trailing gap is unknown. */
+    readonly sourceStatus: SubtitleSourceStatus;
     readonly blocks: readonly PlaybackTimelineBlock[];
     /** Playback actions with boundaries independent of the merged state blocks. */
     readonly actionBlocks: readonly PlaybackTimelineBlock[];
@@ -54,7 +58,7 @@ type MutableBlock<T extends IndexedSubtitleModel> = {
 };
 
 const blockId = <T extends IndexedSubtitleModel>(block: MutableBlock<T>): string =>
-    JSON.stringify(block.subtitles.map(({ index }) => index).sort((left, right) => left - right));
+    JSON.stringify(block.subtitles.map(subtitleKey).sort());
 
 const blocksFromSubtitles = <T extends IndexedSubtitleModel>(
     subtitles: readonly T[],
@@ -144,6 +148,7 @@ export const compilePlaybackTimelineSubtitles = <T extends IndexedSubtitleModel>
         ? Math.max(0, options.durationMs)
         : Math.max(0, inferredDurationMs);
     const compiled: PlaybackTimelineSubtitles<T> = {
+        sourceStatus: 'complete',
         durationMs,
         blocks: blocksFromSubtitles(
             subtitles,
@@ -431,7 +436,7 @@ export const compilePlaybackTimeline = <T extends IndexedSubtitleModel>(
         }
     }
 
-    if (subtitles.condensedBlocks !== undefined) {
+    if (subtitles.sourceStatus === 'complete' && subtitles.condensedBlocks !== undefined) {
         const gapStartMs = condensedBlocks.at(-1)?.subtitleTriggerGapStartOffsetMs ?? 0;
         if (gapStartMs < subtitles.durationMs) {
             condensedGaps.push({ startMs: gapStartMs, targetMs: subtitles.durationMs });

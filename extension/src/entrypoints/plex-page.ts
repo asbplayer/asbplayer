@@ -31,7 +31,7 @@ function buildPlexLabel(stream: Element, codec: string | null, isExternal: boole
     } else {
         label = (stream.getAttribute('displayTitle') ?? 'Unknown').replace('SDH', ' · SDH');
     }
-    const location = isExternal ? 'External' : 'Internal';
+    const location = isExternal ? 'External' : 'Embedded';
     label += codec ? ` (${codec.toUpperCase()} ${location})` : ` (${location})`;
     return label;
 }
@@ -40,8 +40,8 @@ export default defineUnlistedScript(() => {
     let serverUrl: string | undefined;
     let plexToken: string | undefined;
     let ratingKey: string | undefined; // Unique identifier for the video
-    let decisionUrl: string | undefined; // URL to get transcoding decision as it's sent too early to hijack (used for internal subs)
-    let selectedSubUrl: string | undefined; // URL to transcode selected subtitle (used for internal subs)
+    let decisionUrl: string | undefined; // URL to get transcoding decision as it's sent too early to hijack (used for embedded subs)
+    let selectedSubUrl: string | undefined; // URL to transcode selected subtitle (used for embedded subs)
 
     const originalFetch = window.fetch;
     window.fetch = (...args) => {
@@ -170,8 +170,8 @@ export default defineUnlistedScript(() => {
                 const response: VideoData = { error: '', basename: '', subtitles: [] };
                 const miniPlayerWarn =
                     'Automatic detection does not work for Plex if you resume playing your previous session from the mini player. Try stopping the video and hitting play on the media directly.';
-                const internalSubWarn =
-                    'To use an internal subtitle, it must be selected on Plex. You can unselect it once asbplayer has it loaded after Plex transcodes it in the background which may take a few minutes. Set Plex to the lowest video quality before choosing internal here for a quicker load, 4K or HDR videos will take longer. If an error appears, try stopping the video and waiting a few minutes before refreshing the page.';
+                const embeddedSubWarn =
+                    'To use an embedded subtitle, select it in Plex first. asbplayer loads text cues as Plex produces them which may take a few minutes to complete. If loading fails, stop playback and refresh the page before trying again.';
                 const parser = new DOMParser();
 
                 if (!serverUrl || !plexToken) {
@@ -257,24 +257,24 @@ export default defineUnlistedScript(() => {
                             return;
                         }
                         if (!response.error) {
-                            response.error = internalSubWarn; // Always display if internal subs are present
+                            response.error = embeddedSubWarn; // Always display if embedded subs are present
                         }
-                        if (stream.getAttribute('selected') !== '1') return; // Internal subtitles must be selected in Plex
+                        if (stream.getAttribute('selected') !== '1') return; // Embedded subtitles must be selected in Plex
 
                         if (selectedSubId && stream.getAttribute('id') !== selectedSubId) {
                             return; // Multiple versions of the media, each has its own selected audio/subtitle
                         }
                         if (!selectedSubUrl) {
-                            response.error = `Could not get transcoding url for internal subtitle. ${internalSubWarn}`;
+                            response.error = `Could not get transcoding url for embedded subtitle. ${embeddedSubWarn}`;
                             return;
                         }
                         const codec = stream.getAttribute('codec');
                         if (codec && SUBTITLE_IMAGE_CODECS.includes(codec)) {
-                            response.error = `${codec.toUpperCase()} subtitles are not supported, Plex always burns in image formats. ${internalSubWarn}`;
+                            response.error = `${codec.toUpperCase()} subtitles are not supported, Plex always burns in image formats. ${embeddedSubWarn}`;
                             return;
                         }
                         if (isBurn) {
-                            response.error = `Plex is burning in the selected subtitle, set "Only image formats" for Plex Settings > Player > Burn Subtitles. ${internalSubWarn}`;
+                            response.error = `Plex is burning in the selected subtitle, set "Only image formats" for Plex Settings > Player > Burn Subtitles. ${embeddedSubWarn}`;
                             return;
                         }
                         subtitles.push(
@@ -282,6 +282,7 @@ export default defineUnlistedScript(() => {
                                 label: buildPlexLabel(stream, codec, false),
                                 language: stream.getAttribute('languageCode') ?? undefined,
                                 url: selectedSubUrl,
+                                progressive: true,
                                 extension: 'ass', // Plex always transcode to ass it seems
                             })
                         );

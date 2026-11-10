@@ -4,6 +4,7 @@ import { Dexie } from 'dexie';
 import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { DictionaryBuildAnkiCacheStateType, DictionaryBuildWaniKaniCacheStateType } from '@project/common';
 import type { Fetcher } from '@project/common';
+import type { SubtitleSourceStatus } from '@project/common/subtitle-reader/subtitle-stream';
 import { DictionaryProvider } from '@project/common/dictionary-db';
 import { DictionaryDB } from '@project/common/dictionary-db/dictionary-db';
 import { makeAnkiCardRecord, makeTokenRecord, privateDb } from '@project/common/dictionary-db/dictionary-db-test-utils';
@@ -97,12 +98,220 @@ const makeBuiltSubtitles = async (
     const { build, settings, subtitles } = result;
     build.updateSettings(settings);
     subtitles.push(...Array.from({ length: count }, (_, index) => makeSubtitle({ index })));
-    build.setSubtitles(subtitles, true);
+    build.setSubtitles(subtitles, { shouldReset: true, sources: [] });
     await build.buildInitial();
     return result;
 };
 
 describe('BuildAnnotations public boundary', () => {
+    describe('progressive scheduling', () => {
+        beforeEach(() => {
+            jest.useFakeTimers();
+            jest.spyOn(Yomitan.prototype, 'version').mockResolvedValue('0.0.0.0');
+            jest.spyOn(Yomitan.prototype, 'tokenizeBulk').mockImplementation(async (texts) =>
+                texts.map((text) => [{ text, reading: '' }])
+            );
+            jest.spyOn(Yomitan.prototype, 'tokenize').mockImplementation(async (text) => [[{ text, reading: '' }]]);
+            jest.spyOn(Yomitan.prototype, 'lemmatize').mockImplementation(async (text) => [text]);
+            jest.spyOn(Yomitan.prototype, 'getSupportsBulkFrequency').mockReturnValue(true);
+            jest.spyOn(Yomitan.prototype, 'frequency').mockResolvedValue(7);
+            jest.spyOn(Yomitan.prototype, 'getSupportsBulkPitchAccent').mockReturnValue(true);
+            jest.spyOn(Yomitan.prototype, 'pitchAccent').mockResolvedValue(null);
+        });
+
+        afterEach(() => {
+            jest.restoreAllMocks();
+        });
+
+        const source = { track: 0, loadId: 'stream', name: 'subtitles', status: 'loading' } as const;
+        const cue = (index: number): InternalSubtitleModel =>
+            makeSubtitle({
+                index,
+                source: { loadId: source.loadId, cueId: index },
+                start: index * 2000,
+                end: index * 2000 + 1000,
+            });
+
+        it.each(['complete', 'failed'] as const)(
+            'waits for 100 pending cues and drains the remainder when %s',
+            async (status) => {
+                let current = [cue(0)];
+                const { build, storage } = makeBuild(
+                    makeDictionaryTracks(
+                        makeDictionaryTrack({
+                            dictionaryColorizeSubtitles: true,
+                            dictionaryAutoGenerateStatistics: true,
+                        })
+                    ),
+                    undefined,
+                    {
+                        getMediaTimeMs: () => 0,
+                        subtitlesAt: () => ({ showing: [current[0]] }),
+                    }
+                );
+                build.setSubtitles(current, { shouldReset: true, sources: [source] });
+                await build.buildInitial();
+                await jest.advanceTimersByTimeAsync(1);
+                await build.refresh();
+                await jest.advanceTimersByTimeAsync(0);
+                const tokenizeBulk = jest.mocked(Yomitan.prototype.tokenizeBulk);
+                tokenizeBulk.mockClear();
+
+                current = [{ ...current[0] }, ...Array.from({ length: 98 }, (_, index) => cue(index + 1))];
+                build.setSubtitles(current, { shouldReset: false, sources: [source] });
+                await build.refresh();
+                await jest.advanceTimersByTimeAsync(0);
+                expect(tokenizeBulk).not.toHaveBeenCalled();
+
+                for (let tick = 0; tick < 12; tick++) {
+                    await jest.advanceTimersByTimeAsync(1000);
+                    await build.refresh();
+                    await jest.advanceTimersByTimeAsync(0);
+                }
+                const processedCounts = storage.publishStatisticsSnapshot.mock.calls.flatMap((call) => {
+                    const snapshot = call[1] as { snapshots: { progress: { current: number } }[] } | undefined;
+                    return snapshot?.snapshots.map((track) => track.progress.current) ?? [];
+                });
+                expect(processedCounts.every((count) => count === 0)).toBe(true);
+                tokenizeBulk.mockClear();
+
+                current = [...current.map((subtitle) => ({ ...subtitle })), cue(99)];
+                build.setSubtitles(current, { shouldReset: false, sources: [source] });
+                await build.refresh();
+                await jest.advanceTimersByTimeAsync(1000);
+                expect(tokenizeBulk.mock.calls.map(([texts]) => texts.length)).toEqual([100]);
+                const snapshot = () =>
+                    storage.publishStatisticsSnapshot.mock.calls.findLast((call) => call[1] !== undefined)?.[1] as {
+                        snapshots: {
+                            sourceStatus: SubtitleSourceStatus;
+                            progress: { current: number; total: number };
+                        }[];
+                    };
+                expect(snapshot().snapshots[0]).toMatchObject({
+                    sourceStatus: 'loading',
+                    progress: { current: 100, total: 100 },
+                });
+
+                current = [...current.map((subtitle) => ({ ...subtitle })), cue(100)];
+                build.setSubtitles(current, { shouldReset: false, sources: [source] });
+                await build.refresh();
+                await jest.advanceTimersByTimeAsync(0);
+                expect(tokenizeBulk).toHaveBeenCalledTimes(1);
+
+                build.setSubtitles(current, { shouldReset: false, sources: [{ ...source, status }] });
+                await build.refresh();
+                await jest.advanceTimersByTimeAsync(1000);
+                expect(tokenizeBulk.mock.calls.map(([texts]) => texts.length)).toEqual([100, 1]);
+                expect(snapshot().snapshots[0].sourceStatus).toBe(status);
+                expect(snapshot().snapshots[0].progress).toMatchObject({ current: 101, total: 101 });
+                build.setSubtitles([], { shouldReset: true, sources: [] });
+            }
+        );
+
+        it('builds foreground annotations below the statistics batch threshold', async () => {
+            let currentIndex = 0;
+            let current = [cue(0)];
+            const { build } = makeBuild(
+                makeDictionaryTracks(
+                    makeDictionaryTrack({ dictionaryColorizeSubtitles: true, dictionaryAutoGenerateStatistics: true })
+                ),
+                undefined,
+                {
+                    getMediaTimeMs: () => currentIndex * 2000,
+                    subtitlesAt: () => ({ showing: [current[currentIndex]] }),
+                }
+            );
+            build.setSubtitles(current, { shouldReset: true, sources: [source] });
+            await build.buildInitial();
+            await jest.advanceTimersByTimeAsync(1);
+            await build.refresh();
+            await jest.advanceTimersByTimeAsync(0);
+
+            current = [{ ...current[0] }, ...Array.from({ length: 98 }, (_, index) => cue(index + 1))];
+            build.setSubtitles(current, { shouldReset: false, sources: [source] });
+            currentIndex = 90;
+            await build.refresh();
+            await jest.advanceTimersByTimeAsync(0);
+            expect(current.slice(90).every((subtitle) => subtitle.__tokenized)).toBe(true);
+            expect(current[1].tokenization).toBeUndefined();
+            build.setSubtitles([], { shouldReset: true, sources: [] });
+        });
+
+        it('makes arriving cues eligible on the existing cadence and keeps processing within lookahead', async () => {
+            let currentIndex = 0;
+            let current = [cue(0)];
+            const { build } = makeBuild(
+                makeDictionaryTracks(
+                    makeDictionaryTrack({ dictionaryColorizeSubtitles: true, dictionaryAutoGenerateStatistics: false })
+                ),
+                undefined,
+                {
+                    getMediaTimeMs: () => currentIndex * 2000,
+                    subtitlesAt: () => ({ showing: [current[currentIndex]] }),
+                }
+            );
+            build.setSubtitles(current, { shouldReset: true, sources: [source] });
+            await build.buildInitial();
+            await build.refresh();
+            await jest.advanceTimersByTimeAsync(0);
+
+            current = [{ ...current[0] }, ...Array.from({ length: 300 }, (_, index) => cue(index + 1))];
+            build.setSubtitles(current, { shouldReset: false, sources: [source] });
+            await build.refresh();
+            await jest.advanceTimersByTimeAsync(9999);
+            await build.refresh();
+            expect(current.filter((subtitle) => subtitle.__tokenized)).toHaveLength(1);
+
+            await jest.advanceTimersByTimeAsync(1);
+            await build.refresh();
+            await jest.advanceTimersByTimeAsync(0);
+            expect(current.filter((subtitle) => subtitle.__tokenized)).toHaveLength(101);
+            expect(current[101].tokenization).toBeUndefined();
+
+            currentIndex = 200;
+            await build.refresh();
+            await jest.advanceTimersByTimeAsync(0);
+            expect(current.slice(200).every((subtitle) => subtitle.__tokenized)).toBe(true);
+            expect(current[199].tokenization).toBeUndefined();
+            build.setSubtitles([], { shouldReset: true, sources: [] });
+        });
+
+        it('continues the next statistics batch after cues arrive without restarting the processed prefix', async () => {
+            const { build, storage } = makeBuild(
+                makeDictionaryTracks(
+                    makeDictionaryTrack({ dictionaryColorizeSubtitles: true, dictionaryAutoGenerateStatistics: true })
+                )
+            );
+            let current = [cue(0)];
+            build.setSubtitles(current, { shouldReset: true, sources: [source] });
+            await build.buildInitial();
+            await jest.advanceTimersByTimeAsync(1);
+
+            current = [{ ...current[0] }, ...Array.from({ length: 300 }, (_, index) => cue(index + 1))];
+            build.setSubtitles(current, { shouldReset: false, sources: [source] });
+            await build.refresh();
+            await jest.advanceTimersByTimeAsync(1000);
+            const snapshot = () =>
+                storage.publishStatisticsSnapshot.mock.calls.findLast((call) => call[1] !== undefined)?.[1] as {
+                    snapshots: { sourceStatus: SubtitleSourceStatus; progress: { current: number; total: number } }[];
+                };
+            expect(snapshot().snapshots[0]).toMatchObject({
+                sourceStatus: 'loading',
+                progress: { current: 100, total: 301 },
+            });
+
+            const publicationCount = storage.publishStatisticsSnapshot.mock.calls.length;
+            current = [...current.map((subtitle) => ({ ...subtitle })), cue(301)];
+            build.setSubtitles(current, { shouldReset: false, sources: [source] });
+            await jest.advanceTimersByTimeAsync(0);
+            expect(storage.publishStatisticsSnapshot).toHaveBeenCalledTimes(publicationCount);
+            await build.refresh();
+            await jest.advanceTimersByTimeAsync(1000);
+            expect(snapshot().snapshots[0].progress).toMatchObject({ current: 200, total: 302 });
+            build.setSubtitles([], { shouldReset: true, sources: [] });
+        });
+    });
+
     it.each([
         [DictionaryTokenSource.LOCAL, TokenStatus.UNCOLLECTED],
         [DictionaryTokenSource.ANKI_WORD, TokenStatus.UNKNOWN],
@@ -120,7 +329,7 @@ describe('BuildAnnotations public boundary', () => {
         });
         build.updateSettings(settings);
         subtitles.push(makeSubtitle());
-        build.setSubtitles(subtitles, true);
+        build.setSubtitles(subtitles, { shouldReset: true, sources: [] });
         await build.buildInitial();
         expect(subtitles[0].tokenization?.tokens[0]).toMatchObject({
             status: TokenStatus.MATURE,
@@ -177,7 +386,7 @@ describe('BuildAnnotations public boundary', () => {
                 );
                 build.updateSettings(settings);
                 subtitles.push(...Array.from({ length: 301 }, (_, index) => makeSubtitle({ index })));
-                build.setSubtitles(subtitles, true);
+                build.setSubtitles(subtitles, { shouldReset: true, sources: [] });
                 for (currentIndex = 0; currentIndex < subtitles.length; currentIndex += 11) {
                     await build.buildInitial();
                 }
@@ -241,13 +450,13 @@ describe('BuildAnnotations public boundary', () => {
                         makeDictionaryTracks(makeDictionaryTrack({ dictionaryColorizeSubtitles: true }))
                     );
                     subtitles.push(makeSubtitle(), makeSubtitle({ index: 1, text: 'second', originalText: 'second' }));
-                    build.setSubtitles(subtitles, true);
+                    build.setSubtitles(subtitles, { shouldReset: true, sources: [] });
                     const building = build.buildInitial();
                     await secondStarted.promise;
                     expect(subtitles[0].__tokenized).toBe(true);
                     await jest.advanceTimersByTimeAsync(1000);
                     expect(updated).not.toHaveBeenCalled();
-                    if (reset) build.setSubtitles([makeSubtitle({ start: 5000 })], true);
+                    if (reset) build.setSubtitles([makeSubtitle({ start: 5000 })], { shouldReset: true, sources: [] });
                     secondResult.resolve();
                     await expect(building).resolves.toBe(!reset);
                     await jest.advanceTimersByTimeAsync(1000);
@@ -297,7 +506,7 @@ describe('BuildAnnotations public boundary', () => {
             expect(build.dictionaryTracks).toEqual(settings.dictionaryTracks);
             expect(updated).not.toHaveBeenCalled();
             const current = subtitles.map((subtitle) => ({ ...subtitle, start: subtitle.start + 500 }));
-            build.setSubtitles(current, false);
+            build.setSubtitles(current, { shouldReset: false, sources: [] });
             await jest.advanceTimersByTimeAsync(3000);
 
             const published = updated.mock.calls.flatMap(([batch]) => batch as InternalSubtitleModel[]);
@@ -323,7 +532,7 @@ describe('BuildAnnotations public boundary', () => {
             );
             build.updateSettings(settings);
             subtitles.push(...Array.from({ length: 201 }, (_, index) => makeSubtitle({ index })));
-            build.setSubtitles(subtitles, true);
+            build.setSubtitles(subtitles, { shouldReset: true, sources: [] });
             for (currentIndex = 0; currentIndex < subtitles.length; currentIndex += 11) await build.buildInitial();
             currentIndex = 0;
             await jest.advanceTimersByTimeAsync(3000);
@@ -383,7 +592,7 @@ describe('BuildAnnotations public boundary', () => {
             await jest.advanceTimersByTimeAsync(0);
             updated.mockClear();
             const replacement: InternalSubtitleModel[] = [makeSubtitle({ start: 5000 })];
-            build.setSubtitles(replacement, true);
+            build.setSubtitles(replacement, { shouldReset: true, sources: [] });
             await expect(build.buildInitial()).resolves.toBe(true);
             await jest.advanceTimersByTimeAsync(3000);
 
@@ -394,7 +603,7 @@ describe('BuildAnnotations public boundary', () => {
         it('cancels publication when the subtitle source is cleared', async () => {
             const { build, updated } = await makeBuiltSubtitles(201);
             await jest.advanceTimersByTimeAsync(0);
-            build.setSubtitles([], true);
+            build.setSubtitles([], { shouldReset: true, sources: [] });
             updated.mockClear();
             await jest.advanceTimersByTimeAsync(3000);
 
@@ -439,7 +648,7 @@ describe('BuildAnnotations public boundary', () => {
             };
             settingsStorage.setData(disabledSettings);
             build.updateSettings(disabledSettings);
-            build.setSubtitles([makeSubtitle()], true);
+            build.setSubtitles([makeSubtitle()], { shouldReset: true, sources: [] });
             await build.buildInitial();
             storage.publishStatisticsSnapshot.mockClear();
             await jest.advanceTimersByTimeAsync(1);
@@ -465,7 +674,7 @@ describe('BuildAnnotations public boundary', () => {
         const { build, subtitles, updated } = makeBuild(makeDictionaryTracks(enabledTrack));
         subtitles.push(makeSubtitle({ text: 'word' }));
 
-        build.setSubtitles(subtitles, true);
+        build.setSubtitles(subtitles, { shouldReset: true, sources: [] });
         await expect(build.buildInitial()).resolves.toBe(true);
         await waitForPublication();
 
@@ -489,7 +698,7 @@ describe('BuildAnnotations public boundary', () => {
             })
         );
 
-        build.setSubtitles(subtitles, true);
+        build.setSubtitles(subtitles, { shouldReset: true, sources: [] });
         await expect(build.buildInitial()).resolves.toBe(true);
         await waitForPublication();
 
@@ -502,7 +711,7 @@ describe('BuildAnnotations public boundary', () => {
         const enabledTrack = makeDictionaryTrack({ dictionaryColorizeSubtitles: true });
         const { build, settings, subtitles, updated } = makeBuild(makeDictionaryTracks(enabledTrack));
         subtitles.push(makeSubtitle({ text: 'word' }));
-        build.setSubtitles(subtitles, true);
+        build.setSubtitles(subtitles, { shouldReset: true, sources: [] });
         await build.buildInitial();
         await waitForPublication();
         build.updateSettings(settings);
@@ -524,7 +733,7 @@ describe('BuildAnnotations public boundary', () => {
         const enabledTrack = makeDictionaryTrack({ dictionaryColorizeSubtitles: true });
         const { build, settings, subtitles, updated } = makeBuild(makeDictionaryTracks(enabledTrack));
         subtitles.push(makeSubtitle({ text: 'word' }));
-        build.setSubtitles(subtitles, true);
+        build.setSubtitles(subtitles, { shouldReset: true, sources: [] });
         await build.buildInitial();
         await waitForPublication();
         updated.mockClear();
@@ -539,7 +748,7 @@ describe('BuildAnnotations public boundary', () => {
         const initialTrack = makeDictionaryTrack({ dictionaryColorizeSubtitles: true });
         const { build, settings, subtitles, updated } = makeBuild(makeDictionaryTracks(initialTrack));
         subtitles.push(makeSubtitle({ text: 'word' }));
-        build.setSubtitles(subtitles, true);
+        build.setSubtitles(subtitles, { shouldReset: true, sources: [] });
         await build.buildInitial();
         await waitForPublication();
         updated.mockClear();
@@ -558,7 +767,7 @@ describe('BuildAnnotations public boundary', () => {
         initialTrack.dictionaryTokenAnnotationConfig.onStates[0].reading = true;
         const { build, settings, subtitles, updated } = makeBuild(makeDictionaryTracks(initialTrack));
         subtitles.push(makeSubtitle({ text: 'word' }));
-        build.setSubtitles(subtitles, true);
+        build.setSubtitles(subtitles, { shouldReset: true, sources: [] });
         await build.buildInitial();
         await waitForPublication();
         updated.mockClear();
@@ -577,7 +786,7 @@ describe('BuildAnnotations public boundary', () => {
         const enabledTrack = makeDictionaryTrack({ dictionaryColorizeSubtitles: true });
         const { build, subtitles, updated } = makeBuild(makeDictionaryTracks(enabledTrack));
         subtitles.push(makeSubtitle({ text: 'word' }));
-        build.setSubtitles(subtitles, true);
+        build.setSubtitles(subtitles, { shouldReset: true, sources: [] });
         await build.buildInitial();
         await waitForPublication();
         updated.mockClear();
@@ -662,7 +871,7 @@ describe('BuildAnnotations public boundary', () => {
         };
         const { build, subtitles } = makeBuild(makeDictionaryTracks(glossTrack), fetcher);
         subtitles.push(makeSubtitle({ text: 'word' }));
-        build.setSubtitles(subtitles, true);
+        build.setSubtitles(subtitles, { shouldReset: true, sources: [] });
 
         await build.buildInitial();
         await waitForPublication();
@@ -782,7 +991,7 @@ describe('BuildAnnotations public boundary', () => {
                     ]);
                 };
                 try {
-                    build.setSubtitles(subtitles, true);
+                    build.setSubtitles(subtitles, { shouldReset: true, sources: [] });
                     await build.buildInitial();
                     expectTokens(expectedStatus, false);
 
@@ -816,7 +1025,7 @@ describe('BuildAnnotations public boundary', () => {
                         )
                     ).toBe(false);
                 } finally {
-                    build.setSubtitles([], true);
+                    build.setSubtitles([], { shouldReset: true, sources: [] });
                 }
             }
         );
@@ -851,13 +1060,13 @@ describe('BuildAnnotations public boundary', () => {
             fetcher
         );
         subtitles.push(makeSubtitle({ text: 'word' }));
-        build.setSubtitles(subtitles, true);
+        build.setSubtitles(subtitles, { shouldReset: true, sources: [] });
 
         const firstBuild = build.buildInitial();
         await versionStarted.promise;
         await expect(build.buildInitial()).resolves.toBe(false);
 
-        build.setSubtitles(subtitles, true);
+        build.setSubtitles(subtitles, { shouldReset: true, sources: [] });
         version.resolve({ version: '0.0.0.0' });
         await expect(firstBuild).resolves.toBe(false);
         expect(updated).not.toHaveBeenCalled();
@@ -885,7 +1094,7 @@ describe('BuildAnnotations public boundary', () => {
             fetcher
         );
         subtitles.push(makeSubtitle({ text: 'word' }));
-        build.setSubtitles(subtitles, true);
+        build.setSubtitles(subtitles, { shouldReset: true, sources: [] });
 
         const firstBuild = build.buildInitial();
         await versionStarted.promise;
@@ -928,11 +1137,11 @@ describe('BuildAnnotations public boundary', () => {
             fetcher
         );
         subtitles.push(makeSubtitle({ text: 'word' }));
-        build.setSubtitles(subtitles, true);
+        build.setSubtitles(subtitles, { shouldReset: true, sources: [] });
 
         const initialBuild = build.buildInitial();
         await tokenizeStarted.promise;
-        build.setSubtitles(subtitles, true);
+        build.setSubtitles(subtitles, { shouldReset: true, sources: [] });
         tokenization.resolve([
             {
                 id: 'id',
@@ -975,7 +1184,7 @@ describe('BuildAnnotations public boundary', () => {
             fetcher
         );
         subtitles.push(makeSubtitle({ text: 'word' }));
-        build.setSubtitles(subtitles, true);
+        build.setSubtitles(subtitles, { shouldReset: true, sources: [] });
 
         await expect(build.buildInitial()).resolves.toBe(true);
         await waitForPublication();
@@ -994,7 +1203,7 @@ describe('BuildAnnotations public boundary', () => {
             makeDictionaryTracks(makeDictionaryTrack({ dictionaryColorizeSubtitles: true }))
         );
         subtitles.push(makeSubtitle({ text: 'word' }));
-        build.setSubtitles(subtitles, true);
+        build.setSubtitles(subtitles, { shouldReset: true, sources: [] });
         await build.buildInitial();
         await waitForPublication();
         updated.mockClear();
@@ -1015,7 +1224,7 @@ describe('BuildAnnotations public boundary', () => {
         const { build, subtitles, updated } = makeBuild(dictionaryTracks);
         subtitles.push(makeSubtitle({ index: 0, track: 0, text: 'word' }));
         subtitles.push(makeSubtitle({ index: 1, track: 1, text: 'word' }));
-        build.setSubtitles(subtitles, true);
+        build.setSubtitles(subtitles, { shouldReset: true, sources: [] });
 
         await build.buildInitial();
         await waitForPublication();
@@ -1057,7 +1266,7 @@ describe('BuildAnnotations public boundary', () => {
                 tokenization: { tokens: [makeToken({ pos: [6, 10], readings: [{ pos: [6, 10], reading: 'よみ' }] })] },
             })
         );
-        build.setSubtitles(subtitles, true);
+        build.setSubtitles(subtitles, { shouldReset: true, sources: [] });
 
         await build.buildInitial();
         await waitForPublication();
@@ -1079,7 +1288,7 @@ describe('BuildAnnotations public boundary', () => {
         });
         const { build, storage, subtitles } = makeBuild(makeDictionaryTracks(track));
         subtitles.push(makeSubtitle({ index: 0, text: 'word' }), makeSubtitle({ index: 1, text: 'word' }));
-        build.setSubtitles(subtitles, true);
+        build.setSubtitles(subtitles, { shouldReset: true, sources: [] });
         await build.buildInitial();
         await waitForPublication();
 
@@ -1142,7 +1351,7 @@ describe('BuildAnnotations public boundary', () => {
             waniKaniSubjectRecords: {},
         });
         subtitles.push(makeSubtitle({ text: 'word' }));
-        build.setSubtitles(subtitles, true);
+        build.setSubtitles(subtitles, { shouldReset: true, sources: [] });
         await build.buildInitial();
         await waitForPublication();
 
@@ -1247,7 +1456,7 @@ describe('BuildAnnotations public boundary', () => {
             fetcher
         );
         subtitles.push(makeSubtitle({ text: 'word' }));
-        build.setSubtitles(subtitles, true);
+        build.setSubtitles(subtitles, { shouldReset: true, sources: [] });
 
         await build.buildInitial();
         await waitForPublication();
@@ -1290,7 +1499,7 @@ describe('BuildAnnotations public boundary', () => {
         });
         const { build, storage, subtitles } = makeBuild(makeDictionaryTracks(track), fetcher);
         subtitles.push(makeSubtitle({ text: 'word' }));
-        build.setSubtitles(subtitles, true);
+        build.setSubtitles(subtitles, { shouldReset: true, sources: [] });
         await build.buildInitial();
         await waitForPublication();
 
@@ -1320,7 +1529,7 @@ describe('BuildAnnotations public boundary', () => {
         });
         const { build, storage, subtitles } = makeBuild(makeDictionaryTracks(track));
         subtitles.push(makeSubtitle({ text: 'word' }));
-        build.setSubtitles(subtitles, true);
+        build.setSubtitles(subtitles, { shouldReset: true, sources: [] });
         await build.buildInitial();
         await waitForPublication();
 
@@ -1386,7 +1595,7 @@ describe('BuildAnnotations public boundary', () => {
             return { tokenRecords: [], ankiCardRecords: {}, waniKaniSubjectRecords: {} };
         });
         subtitles.push(makeSubtitle({ text: 'word', track: 0 }));
-        build.setSubtitles(subtitles, true);
+        build.setSubtitles(subtitles, { shouldReset: true, sources: [] });
         await build.buildInitial();
         await waitForPublication();
 
