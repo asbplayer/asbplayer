@@ -35,7 +35,7 @@ tools:
   bash: true # Sandboxed by the AWF firewall; read-only usage only
   web-fetch:
   github:
-    toolsets: [issues, repos] # Used only to check for an existing open docs-drift issue
+    toolsets: [repos]
 
 timeout-minutes: 90
 
@@ -74,6 +74,17 @@ pre-agent-steps:
       } > release-info.md
       echo "--- release-info.md ---"
       cat release-info.md
+  - name: List existing docs-drift issues
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    run: |
+      set -euo pipefail
+      # Lockdown filters issue content in the agent's GitHub MCP tools, so the
+      # duplicate-report check runs here instead. number/url only: issue titles
+      # are user-generated and must not reach the agent's context.
+      gh issue list --repo "${GITHUB_REPOSITORY}" --state open --search '"Docs drift report" in:title' --json number,url > existing-docs-drift-issues.json
+      echo "--- existing-docs-drift-issues.json ---"
+      cat existing-docs-drift-issues.json
 
 ---
 
@@ -87,6 +98,7 @@ Pre-generated files in the workspace root:
 
 - `merged-pr-authors.txt`: sorted GitHub logins of everyone who authored a merged pull request, with bots excluded.
 - `release-info.md`: latest extension version from `project.json`, newest release blog posts, newest git tags.
+- `existing-docs-drift-issues.json`: numbers and URLs of open issues whose title contains `Docs drift report` (may be an empty array).
 
 The full git history is available locally.
 
@@ -133,7 +145,7 @@ Record every finding with evidence from BOTH sides (file:line for the doc, file:
 
 ## Output
 
-First, use the GitHub tools to check for an existing OPEN issue whose title contains `Docs drift report`. If one exists, do NOT create a new issue: end the run and state that an open report already exists.
+First, read `existing-docs-drift-issues.json`. If it contains any issue, do NOT call `create_issue`: end the run and state that an open report already exists.
 
 Otherwise call the `create_issue` tool exactly once, titled `Docs drift report (<today's date>)`, with a body structured as:
 
