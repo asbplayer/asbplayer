@@ -7,7 +7,6 @@ import Fade from '@mui/material/Fade';
 import Paper from '@mui/material/Paper';
 import Link from '@mui/material/Link';
 import Typography from '@mui/material/Typography';
-import Button from '@mui/material/Button';
 import type ChromeExtension from '@project/common/app/services/chrome-extension';
 import { useTheme } from '@mui/material/styles';
 import type { Theme } from '@mui/material/styles';
@@ -17,6 +16,7 @@ import type { VideoTabModel } from '@project/common';
 import VideoElementSelector from '@project/common/app/components/VideoElementSelector';
 import LoadSubtitlesIcon from '@project/common/components/LoadSubtitlesIcon';
 import RestoreIcon from '@mui/icons-material/Restore';
+import NoWrapButton from '@project/common/components/NoWrapButton';
 
 interface StylesProps {
     appBarHidden: boolean;
@@ -145,7 +145,7 @@ export default function LandingPage({
                                     gap: 1.5,
                                 }}
                             >
-                                <Button
+                                <NoWrapButton
                                     variant="outlined"
                                     color="primary"
                                     startIcon={<LoadSubtitlesIcon fontSize="small" />}
@@ -153,9 +153,9 @@ export default function LandingPage({
                                     fullWidth
                                 >
                                     {t('action.loadSubtitles')}
-                                </Button>
+                                </NoWrapButton>
                                 {canRestoreLastSession && (
-                                    <Button
+                                    <NoWrapButton
                                         variant="outlined"
                                         color="primary"
                                         startIcon={<RestoreIcon />}
@@ -163,7 +163,7 @@ export default function LandingPage({
                                         fullWidth
                                     >
                                         {t('landing.restoreLastSession')}
-                                    </Button>
+                                    </NoWrapButton>
                                 )}
                                 {showVideoElementSelector &&
                                     extension.supportsLandingPageStreamingVideoElementSelector &&
