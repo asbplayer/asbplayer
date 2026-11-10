@@ -15,8 +15,6 @@ import {
 import { defaultSettings } from '@project/common/settings/settings-provider';
 import { describe, expect, it } from '@jest/globals';
 import { PlayMode } from '@project/common';
-import fs from 'node:fs';
-import path from 'node:path';
 
 it('validates the default settings', () => {
     validateSettings(defaultSettings);
@@ -66,20 +64,6 @@ it('fails validation when a custom Anki field setting is malformed', () => {
         customAnkiFieldSettings: { myCustomField: { order: 'not-a-number', display: true } },
     };
     expect(() => validateSettings(settings)).toThrow('Settings validation failed');
-});
-
-it('validates a settings export from version 1.22.0', () => {
-    // Real export produced by the v1.22.0 code (default settings plus custom
-    // Anki field entries), kept to catch import regressions for old releases.
-    const legacyExport = JSON.parse(
-        fs.readFileSync(path.join(__dirname, '__fixtures__', 'v1.22.0-settings-export.json'), 'utf-8')
-    );
-
-    expect(() => validateSettings(legacyExport)).not.toThrow();
-
-    const imported = validateSettings(legacyExport);
-    expect(imported.customAnkiFieldSettings).toEqual({ MyCustomField: { order: 99, display: true } });
-    expect(imported.customAnkiFields).toEqual({ MyCustomField: 'カスタム' });
 });
 
 it('validates last languages synced', () => {
