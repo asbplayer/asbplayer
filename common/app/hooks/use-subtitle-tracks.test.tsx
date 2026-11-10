@@ -20,15 +20,23 @@ import SubtitleReader from '@project/common/subtitle-reader/subtitle-reader';
 import VideoChannel from '@project/common/app/services/video-channel';
 import type { VideoProtocol, VideoProtocolMessage } from '@project/common/app/services/video-protocol';
 import { useSubtitleTracks } from '@project/common/app/hooks/use-subtitle-tracks';
+import { SubtitleStream } from '@project/common/subtitle-reader/subtitle-stream';
+import type { SubtitleSourceSnapshot, SubtitleSourceUpdate } from '@project/common/subtitle-reader/subtitle-stream';
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 class TestVideoProtocol implements VideoProtocol {
     readonly sent: Message[] = [];
+    source?: SubtitleSourceSnapshot;
     onMessage?: (message: VideoProtocolMessage) => void;
 
     postMessage(message: Message) {
         this.sent.push(message);
+        if (message.command === 'requestSubtitleSource' && this.source) {
+            this.onMessage?.({
+                data: { command: 'subtitleSource', update: { type: 'snapshot', ...this.source } },
+            });
+        }
     }
 
     close() {}
@@ -53,7 +61,8 @@ const vttText = (text: string) => `WEBVTT\n\n00:01.000 --> 00:02.000\n${text}\n\
 const track = (text: string, readText = async () => vttText(text)): LoadableSubtitleTrack<FileWithId> => ({
     fileParts: [{ id: text, file: { name: `${text}.vtt`, text: readText } as File }],
 });
-const getSubtitleOffset = () => 500;
+let subtitleOffset = 500;
+const getSubtitleOffset = () => subtitleOffset;
 
 describe('useSubtitleTracks source transitions', () => {
     let root: Root;
@@ -61,6 +70,7 @@ describe('useSubtitleTracks source transitions', () => {
     let protocol: TestVideoProtocol;
     let channel: VideoChannel;
     let reader: SubtitleReader;
+    let annotate: () => void;
     const onLoaded = jest.fn<(subtitleSourceFiles: File[]) => void>();
     const onError = jest.fn<(error: unknown) => void>();
 
@@ -68,14 +78,20 @@ describe('useSubtitleTracks source transitions', () => {
         tracks,
         activeChannel = channel,
         initialSubtitles,
+        progressive = false,
+        ownership = 'local',
     }: {
         tracks: LoadableSubtitleTrack<FileWithId>[] | undefined;
         activeChannel?: VideoChannel;
         initialSubtitles?: DisplaySubtitleModel[];
+        progressive?: boolean;
+        ownership?: 'local' | 'remote';
     }) {
         const [subtitles, setSubtitles] = useState<DisplaySubtitleModel[] | undefined>(initialSubtitles);
-        const { loadingSubtitles } = useSubtitleTracks({
+        const result = useSubtitleTracks({
+            sourceOwnership: ownership,
             subtitleTracks: tracks,
+            supportsProgressiveSubtitles: progressive,
             subtitleReader: reader,
             subtitles,
             channel: activeChannel,
@@ -84,10 +100,21 @@ describe('useSubtitleTracks source transitions', () => {
             onLoaded,
             onError,
         });
+        annotate = () =>
+            setSubtitles((previous) =>
+                previous?.map((cue) => ({
+                    ...cue,
+                    originalText: cue.text,
+                    text: `<b>${cue.text}</b>`,
+                    tokenization: { tokens: [] },
+                }))
+            );
         return (
-            <div data-loading={loadingSubtitles}>
+            <div data-loading={result.loadingSubtitles}>
                 {subtitles?.map((subtitle) => (
-                    <span key={subtitle.index}>{subtitle.text}</span>
+                    <span key={subtitle.index} data-start={subtitle.start}>
+                        {subtitle.text}
+                    </span>
                 ))}
             </div>
         );
@@ -98,6 +125,7 @@ describe('useSubtitleTracks source transitions', () => {
     };
 
     beforeEach(() => {
+        subtitleOffset = 500;
         onLoaded.mockClear();
         onError.mockClear();
         protocol = new TestVideoProtocol();
@@ -199,6 +227,34 @@ describe('useSubtitleTracks source transitions', () => {
         });
     });
 
+    it('includes existing annotations when the video attaches after file processing', async () => {
+        await render([track('Loaded')]);
+        await act(async () => annotate());
+        await act(async () => protocol.ready());
+        expect(protocol.subtitleMessages[0].value).toMatchObject([
+            { text: '<b>Loaded</b>', originalText: 'Loaded', tokenization: { tokens: [] } },
+        ]);
+    });
+
+    it('does not send the previous file when a video becomes ready during a replacement parse', async () => {
+        let finish!: (text: string) => void;
+        await render([track('Old')]);
+        await render([
+            track(
+                'New',
+                () =>
+                    new Promise<string>((resolve) => {
+                        finish = resolve;
+                    })
+            ),
+        ]);
+        await act(async () => protocol.ready());
+        expect(protocol.subtitleMessages).toEqual([]);
+        await act(async () => finish(vttText('New')));
+        expect(protocol.subtitleMessages).toMatchObject([{ names: ['New.vtt'], value: [{ text: 'New' }] }]);
+        expect(container.textContent).toBe('New');
+    });
+
     it('sends the loaded subtitles to a replacement channel without reloading files', async () => {
         const tracks = [track('Loaded')];
         protocol.ready();
@@ -214,5 +270,132 @@ describe('useSubtitleTracks source transitions', () => {
             value: [expect.objectContaining({ text: 'Loaded' })],
         });
         expect(onLoaded).toHaveBeenCalledTimes(1);
+    });
+    it('applies the current offset to both retained and newly received remote cues', async () => {
+        await act(async () => root.render(<Player tracks={undefined} ownership="remote" progressive />));
+        const receive = (update: SubtitleSourceUpdate) =>
+            protocol.onMessage?.({ data: { command: 'subtitleSource', update } });
+        await act(async () => {
+            receive({ type: 'start', track: 0, loadId: 'stream', name: 'progressive.srt' });
+            receive({
+                type: 'cues',
+                track: 0,
+                loadId: 'stream',
+                cues: [{ cueId: 0, start: 1000, end: 2000, text: 'First' }],
+            });
+        });
+        subtitleOffset = 1250;
+        await act(async () =>
+            receive({
+                type: 'cues',
+                track: 0,
+                loadId: 'stream',
+                cues: [{ cueId: 1, start: 3000, end: 4000, text: 'Second' }],
+            })
+        );
+        expect(Array.from(container.querySelectorAll('span'), (element) => element.dataset.start)).toEqual([
+            '2250',
+            '4250',
+        ]);
+    });
+
+    it('accepts an existing remote stream and retains partial results on failure without echoing it', async () => {
+        const remote = new SubtitleStream();
+        remote.update({ type: 'start', track: 0, loadId: 'remote', name: 'remote.srt' });
+        remote.update({
+            type: 'cues',
+            track: 0,
+            loadId: 'remote',
+            cues: [{ cueId: 0, start: 1000, end: 2000, text: 'Remote' }],
+        });
+        protocol.source = remote.snapshot;
+        protocol.ready();
+        await act(async () => root.render(<Player tracks={undefined} ownership="remote" progressive />));
+        expect(container.textContent).toBe('Remote');
+        await act(async () => {
+            protocol.onMessage?.({
+                data: {
+                    command: 'subtitleSource',
+                    update: { type: 'failed', track: 0, loadId: 'remote', error: 'Disconnected' },
+                },
+            });
+        });
+        expect(container.textContent).toBe('Remote');
+        expect(container.firstElementChild?.getAttribute('data-loading')).toBe('false');
+        expect(onError).toHaveBeenCalledWith(expect.objectContaining({ message: 'Disconnected' }));
+        expect(protocol.sent.filter((message) => message.command === 'subtitleSource')).toEqual([]);
+        expect(protocol.sent.filter((message) => message.command === 'requestSubtitleSource')).toHaveLength(1);
+    });
+
+    it('keeps local files authoritative when a video replays a remote source', async () => {
+        protocol.ready();
+        await render([track('Local')]);
+        await act(async () =>
+            protocol.onMessage?.({
+                data: { command: 'subtitleSource', update: { type: 'snapshot', tracks: [], subtitles: [] } },
+            })
+        );
+        expect(container.textContent).toBe('Local');
+        expect(protocol.sent.some((message) => message.command === 'requestSubtitleSource')).toBe(false);
+    });
+
+    it('requests a remote snapshot on reconnection without echoing it or losing annotations', async () => {
+        const remote = new SubtitleStream();
+        remote.update({ type: 'start', track: 0, loadId: 'remote', name: 'remote.ass' });
+        remote.update({
+            type: 'cues',
+            track: 0,
+            loadId: 'remote',
+            cues: [{ cueId: 0, start: 1000, end: 2000, text: 'First' }],
+        });
+        protocol.source = remote.snapshot;
+        protocol.ready();
+        await act(async () => root.render(<Player tracks={undefined} ownership="remote" progressive />));
+        await act(async () => annotate());
+
+        remote.update({
+            type: 'cues',
+            track: 0,
+            loadId: 'remote',
+            cues: [{ cueId: 1, start: 3000, end: 4000, text: 'Second' }],
+        });
+        const nextProtocol = new TestVideoProtocol();
+        nextProtocol.source = remote.snapshot;
+        const nextChannel = new VideoChannel(nextProtocol);
+        await act(async () =>
+            root.render(<Player tracks={undefined} ownership="remote" activeChannel={nextChannel} progressive />)
+        );
+        await act(async () => nextProtocol.ready());
+
+        expect(container.textContent).toBe('<b>First</b>Second');
+        expect(nextProtocol.sent.map((message) => message.command)).toEqual(['requestSubtitleSource']);
+    });
+
+    it('switches a pending file load to a remote source without replacing the channel', async () => {
+        let finish!: (text: string) => void;
+        const pending = track(
+            'Old',
+            () =>
+                new Promise((resolve) => {
+                    finish = resolve;
+                })
+        );
+        protocol.ready();
+        await act(async () => root.render(<Player tracks={[pending]} progressive />));
+        const source = new SubtitleStream();
+        source.update({ type: 'start', track: 0, loadId: 'remote', name: 'remote.ass' });
+        source.update({
+            type: 'cues',
+            track: 0,
+            loadId: 'remote',
+            cues: [{ cueId: 0, start: 1000, end: 2000, text: 'Remote' }],
+        });
+        protocol.source = source.snapshot;
+        await act(async () => root.render(<Player tracks={undefined} ownership="remote" progressive />));
+        expect(container.textContent).toBe('Remote');
+        await act(async () => finish(vttText('Old')));
+        expect(container.textContent).toBe('Remote');
+        expect(onLoaded).not.toHaveBeenCalled();
+        expect(protocol.sent.filter((message) => message.command === 'requestSubtitleSource')).toHaveLength(1);
     });
 });

@@ -255,6 +255,7 @@ async function makePlaybackEngine(
         appIntegration: overrides.appIntegration ?? true,
         autoPauseCorrectionDisabled: overrides.autoPauseCorrectionDisabled ?? false,
         subtitles,
+        sources: [],
         playbackModesDisabled: overrides.playbackModesDisabled ?? false,
         playbackModesSuppressed: false,
         playbackPositionKeys: overrides.playbackPositionKeys ?? [],
@@ -614,7 +615,7 @@ describe('pause token selection', () => {
 
                 harness.playbackEngine.subtitlesChanged(
                     [{ ...subtitle, tokenization: { tokens: [{ pos: [0, 8], states: [], status: 1, readings: [] }] } }],
-                    { timingChanged: false }
+                    { sources: [], timingChanged: false }
                 );
                 jest.advanceTimersByTime(200);
                 expect(selected).toEqual([0]);
@@ -655,7 +656,7 @@ describe('pause token selection', () => {
                 if (action === 'seek') harness.driver.discontinuity(4500);
                 harness.playbackEngine.subtitlesChanged(
                     [{ ...subtitle, tokenization: { tokens: [{ pos: [0, 3], states: [], status: 1, readings: [] }] } }],
-                    { timingChanged: action === 'timing-change' }
+                    { sources: [], timingChanged: action === 'timing-change' }
                 );
                 jest.advanceTimersByTime(32); // Annotations can precede their rendered tokens.
                 if (action !== 'manual-before-update') root.innerHTML = html;
@@ -945,7 +946,7 @@ describe('pause token selection', () => {
                         harness.playbackEngine.toggleSubtitleVisibility();
                         break;
                     case 'subtitles-change':
-                        harness.playbackEngine.subtitlesChanged([{ ...annotated }]);
+                        harness.playbackEngine.subtitlesChanged([{ ...annotated }], { sources: [] });
                         break;
                 }
                 rendered = true;
@@ -1316,12 +1317,12 @@ describe('PlaybackEngine', () => {
             },
         });
 
-        harness.playbackEngine.subtitlesChanged([]);
+        harness.playbackEngine.subtitlesChanged([], { sources: [] });
 
         expect(harness.playbackEngine.playbackModes).toEqual(new Set([PlayMode.normal]));
         expect(harness.playbackRates).toEqual([]);
 
-        harness.playbackEngine.subtitlesChanged([subtitle]);
+        harness.playbackEngine.subtitlesChanged([subtitle], { sources: [] });
 
         expect(harness.playbackRates).not.toContain(1.4);
         expect(harness.playbackRates.at(-1)).toBe(2.7);
@@ -1558,6 +1559,7 @@ describe('PlaybackEngine', () => {
             appIntegration: true,
             autoPauseCorrectionDisabled: false,
             subtitles: [],
+            sources: [],
             playbackModesDisabled: false,
             playbackModesSuppressed: false,
             playbackPositionKeys: [],
@@ -1594,7 +1596,7 @@ describe('PlaybackEngine', () => {
 
         await flushPlaybackInitialization();
         playbackEngine.durationChanged(6000);
-        playbackEngine.subtitlesChanged([subtitle]);
+        playbackEngine.subtitlesChanged([subtitle], { sources: [] });
         expect(driver.bound).toBe(true);
         expect(driver.bindCalls).toBe(1);
 
@@ -1605,7 +1607,7 @@ describe('PlaybackEngine', () => {
     it('does not report a playback-mode reset when subtitles were already empty', async () => {
         const harness = await makePlaybackEngine([PlayMode.repeat], { timestampMs: 0, subtitles: [] });
 
-        harness.playbackEngine.subtitlesChanged([]);
+        harness.playbackEngine.subtitlesChanged([], { sources: [] });
 
         expect(harness.modeChanges).toEqual([]);
     });
@@ -1613,7 +1615,7 @@ describe('PlaybackEngine', () => {
     it('reports a playback-mode reset when loaded subtitles are cleared', async () => {
         const harness = await makePlaybackEngine([PlayMode.repeat]);
 
-        harness.playbackEngine.subtitlesChanged([]);
+        harness.playbackEngine.subtitlesChanged([], { sources: [] });
 
         expect(harness.modeChanges).toEqual([
             {
@@ -1889,7 +1891,9 @@ describe('PlaybackEngine', () => {
         const harness = await makePlaybackEngine([PlayMode.normal], { timestampMs: 1500, subtitles: [subtitle] });
         harness.playbackEngine.bind();
 
-        harness.playbackEngine.subtitlesChanged([{ ...subtitle, start: 2000, end: 3000 }]);
+        harness.playbackEngine.subtitlesChanged([{ ...subtitle, start: 2000, end: 3000 }], {
+            sources: [],
+        });
 
         expect(harness.playbackStates.at(-1)).toEqual({
             timestampMs: 1500,
@@ -2212,7 +2216,9 @@ describe('PlaybackEngine', () => {
             settings: { autoPausePreference: AutoPausePreference.atStart },
         });
 
-        harness.playbackEngine.subtitlesChanged([{ ...subtitle, start: 2000, end: 3000 }]);
+        harness.playbackEngine.subtitlesChanged([{ ...subtitle, start: 2000, end: 3000 }], {
+            sources: [],
+        });
         await harness.driver.time(1500);
         expect(harness.pauses).toEqual([]);
 
@@ -2335,7 +2341,7 @@ describe('PlaybackEngine', () => {
         });
 
         await harness.driver.time(2100);
-        harness.playbackEngine.subtitlesChanged([secondSubtitle]);
+        harness.playbackEngine.subtitlesChanged([secondSubtitle], { sources: [] });
 
         expect(harness.playbackStates.at(-1)).toEqual({
             timestampMs: 2100,
@@ -2372,7 +2378,7 @@ describe('PlaybackEngine', () => {
                 ...annotated,
                 tokenization: { tokens: [{ pos: [0, 4], states: [], status: changePlan ? 5 : 1, readings: [] }] },
             };
-            harness.playbackEngine.subtitlesChanged([updated], { timingChanged: false });
+            harness.playbackEngine.subtitlesChanged([updated], { sources: [], timingChanged: false });
             await harness.driver.time(2100);
 
             expect(harness.playbackStates.at(-1)).toEqual({
@@ -2418,7 +2424,10 @@ describe('PlaybackEngine', () => {
             expect(harness.driver.isPaused).toBe(true);
             // The extension updates annotations while retaining subtitle object references.
             later.tokenization!.tokens[0].status = 1;
-            harness.playbackEngine.subtitlesChanged([annotated, later], { timingChanged: false });
+            harness.playbackEngine.subtitlesChanged([annotated, later], {
+                sources: [],
+                timingChanged: false,
+            });
             await harness.driver.start();
 
             expect(harness.seeks).toEqual([1000]);
@@ -2440,7 +2449,7 @@ describe('PlaybackEngine', () => {
         });
 
         await harness.driver.time(2100);
-        harness.playbackEngine.subtitlesChanged([{ ...subtitle }]);
+        harness.playbackEngine.subtitlesChanged([{ ...subtitle }], { sources: [] });
 
         expect(harness.playbackStates.at(-1)).toEqual({
             timestampMs: 2100,
@@ -2602,7 +2611,7 @@ describe('PlaybackEngine', () => {
         expect(harness.modeChanges).toEqual([]);
         expect(harness.initialPlaybackSettings).toEqual([]);
 
-        harness.playbackEngine.subtitlesChanged([subtitle]);
+        harness.playbackEngine.subtitlesChanged([subtitle], { sources: [] });
 
         expect(harness.initialPlaybackSettings.at(-1)?.playbackModeTransition).toEqual({
             modes: new Set([PlayMode.repeat]),
@@ -2614,13 +2623,13 @@ describe('PlaybackEngine', () => {
     it('does not persist automatic mode resets while remembering is disabled', async () => {
         const resetHarness = await makePlaybackEngine([PlayMode.repeat]);
         resetHarness.playbackEngine.settingsChanged({ ...resetHarness.settings, rememberPlaybackModes: false });
-        resetHarness.playbackEngine.subtitlesChanged([]);
+        resetHarness.playbackEngine.subtitlesChanged([], { sources: [] });
 
         expect(resetHarness.savedSettings.at(-1)?.lastPlaybackModes).toEqual([PlayMode.repeat]);
 
         const unloadingHarness = await makePlaybackEngine([PlayMode.normal]);
         unloadingHarness.playbackEngine.togglePlaybackMode(PlayMode.repeat);
-        unloadingHarness.playbackEngine.subtitlesChanged([]);
+        unloadingHarness.playbackEngine.subtitlesChanged([], { sources: [] });
 
         expect(unloadingHarness.savedSettings).toContainEqual({ lastPlaybackModes: [PlayMode.repeat] });
 
@@ -2636,8 +2645,8 @@ describe('PlaybackEngine', () => {
     it('restores remembered playback modes when subtitles are loaded again', async () => {
         const harness = await makePlaybackEngine([PlayMode.repeat]);
 
-        harness.playbackEngine.subtitlesChanged([]);
-        harness.playbackEngine.subtitlesChanged([subtitle]);
+        harness.playbackEngine.subtitlesChanged([], { sources: [] });
+        harness.playbackEngine.subtitlesChanged([subtitle], { sources: [] });
 
         expect(harness.initialPlaybackSettings.at(-1)?.playbackModeTransition.modes).toEqual(
             new Set([PlayMode.repeat])
@@ -2657,6 +2666,7 @@ describe('PlaybackEngine', () => {
             appIntegration: true,
             autoPauseCorrectionDisabled: false,
             subtitles: [subtitle],
+            sources: [],
             playbackModesDisabled: false,
             playbackModesSuppressed: false,
             playbackPositionKeys: [],
@@ -2935,7 +2945,7 @@ describe('PlaybackEngine', () => {
             },
         });
 
-        harness.playbackEngine.subtitlesChanged([subtitle, subtitleWithLongEnd]);
+        harness.playbackEngine.subtitlesChanged([subtitle, subtitleWithLongEnd], { sources: [] });
 
         expect(harness.playbackPositionChanges).toEqual([63_000]);
         expect(harness.savedSettings).toEqual([]);
@@ -2976,6 +2986,116 @@ describe('PlaybackEngine', () => {
         harness.playbackEngine.bind();
         harness.playbackEngine.playbackPositionKeysChanged(['first.srt', 'second.srt'], { isNewSource: true });
         expect(harness.playbackPositionChanges).toEqual([63_000]);
+    });
+
+    it('keeps a remembered position beyond the received prefix of an incomplete subtitle source', async () => {
+        const harness = await makePlaybackEngine([PlayMode.normal], {
+            timestampMs: 0,
+            subtitles: [],
+            durationMs: 70_000,
+            playbackPositionKeys: ['video.mp4'],
+            settings: { lastPlaybackPositions: [{ fileName: 'video.mp4', position: 63_000 }] },
+        });
+        harness.playbackEngine.subtitlesChanged([subtitle], {
+            sources: [{ track: 0, loadId: 'stream', name: 'stream.ass', status: 'loading' }],
+        });
+        await flushPlaybackSaves();
+        expect(harness.savedSettings).toEqual([]);
+        expect(harness.playbackPositionChanges).toEqual([63_000]);
+        harness.playbackEngine.unbind();
+    });
+
+    it.each(['later cue', 'completion', 'failure'] as const)(
+        'settles a requested progressive resume on %s',
+        async (event) => {
+            const harness = await makePlaybackEngine([PlayMode.normal], {
+                timestampMs: 0,
+                paused: true,
+                subtitles: [],
+                durationMs: 90_000,
+                playbackPositionKeys: ['video.mp4'],
+                settings: { lastPlaybackPositions: [{ fileName: 'video.mp4', position: 63_000 }] },
+            });
+            harness.playbackEngine.subtitlesChanged([subtitle], {
+                sources: [{ track: 0, loadId: 'stream', name: 'stream.ass', status: 'loading' }],
+            });
+            await harness.playbackEngine.resumePlaybackPosition();
+            expect(harness.seeks).toEqual([]);
+            expect(harness.plays).toEqual([]);
+
+            // Merely reaching a cue containing the position does not establish coverage beyond it.
+            const coveringCue = { ...subtitle, start: 62_000, end: 64_000, index: 1 };
+            harness.playbackEngine.subtitlesChanged([subtitle, coveringCue], {
+                sources: [{ track: 0, loadId: 'stream', name: 'stream.ass', status: 'loading' }],
+            });
+            await flushPlaybackSaves();
+            expect(harness.seeks).toEqual([]);
+
+            const laterCue = { ...subtitle, start: 65_000, end: 66_000, index: 2 };
+            harness.playbackEngine.subtitlesChanged(
+                event === 'later cue' ? [subtitle, coveringCue, laterCue] : [subtitle, coveringCue],
+                {
+                    sources: [
+                        {
+                            track: 0,
+                            loadId: 'stream',
+                            name: 'stream.ass',
+                            status: event === 'failure' ? 'failed' : event === 'completion' ? 'complete' : 'loading',
+                        },
+                    ],
+                }
+            );
+            await flushPlaybackSaves();
+            expect(harness.seeks).toEqual(event === 'failure' ? [] : [coveringCue.start]);
+            expect(harness.plays).toHaveLength(event === 'failure' ? 0 : 1);
+            harness.playbackEngine.unbind();
+        }
+    );
+
+    it.each(['complete', 'loading'] as const)(
+        'waits for every loading track before resuming with a %s companion track',
+        async (companionStatus) => {
+            const harness = await makePlaybackEngine([PlayMode.normal], {
+                timestampMs: 0,
+                paused: true,
+                subtitles: [],
+                durationMs: 90_000,
+                playbackPositionKeys: ['video.mp4'],
+                settings: { lastPlaybackPositions: [{ fileName: 'video.mp4', position: 63_000 }] },
+            });
+            const sources = [
+                { track: 0, loadId: 'primary', name: 'primary.ass', status: 'loading' as const },
+                { track: 1, loadId: 'companion', name: 'companion.ass', status: companionStatus },
+            ];
+            const primaryCue = { ...subtitle, start: 62_000, end: 64_000, index: 0 };
+            const companionCue = { ...subtitle, track: 1, start: 80_000, end: 81_000, index: 1 };
+            harness.playbackEngine.subtitlesChanged([primaryCue, companionCue], { sources });
+            await harness.playbackEngine.resumePlaybackPosition();
+            expect(harness.seeks).toEqual([]);
+            expect(harness.plays).toEqual([]);
+
+            const laterPrimaryCue = { ...subtitle, start: 65_000, end: 66_000, index: 1 };
+            harness.playbackEngine.subtitlesChanged([primaryCue, laterPrimaryCue, { ...companionCue, index: 2 }], {
+                sources,
+            });
+            await flushPlaybackSaves();
+            expect(harness.seeks).toEqual([primaryCue.start]);
+            expect(harness.plays).toHaveLength(1);
+            harness.playbackEngine.unbind();
+        }
+    );
+
+    it('allows an ordinary seek beyond the progressive subtitle prefix', async () => {
+        const harness = await makePlaybackEngine([PlayMode.normal], {
+            subtitles: [],
+            durationMs: 90_000,
+        });
+        harness.playbackEngine.subtitlesChanged([subtitle], {
+            sources: [{ track: 0, loadId: 'stream', name: 'stream.ass', status: 'loading' }],
+        });
+        await harness.playbackEngine.seek(63_000);
+        expect(harness.seeks).toEqual([63_000]);
+        harness.playbackEngine.unbind();
     });
 
     it('removes a remembered position at or beyond the last subtitle end', async () => {
@@ -3660,7 +3780,7 @@ describe('recipe playback', () => {
                 harness.playbackEngine.settingsChanged(harness.settings);
                 const settings = { ...harness.settings, recipes: [recipe], activeRecipeId: 0 };
                 harness.playbackEngine.settingsChanged(settings);
-                harness.playbackEngine.subtitlesChanged([subtitle]);
+                harness.playbackEngine.subtitlesChanged([subtitle], { sources: [] });
                 expect(harness.playbackEngine.playbackModes).toEqual(new Set([PlayMode.autoPause]));
 
                 harness.playbackEngine.settingsChanged({ ...settings, activeRecipeId: null });
@@ -3678,10 +3798,10 @@ describe('recipe playback', () => {
         const harness = await makePlaybackEngine([PlayMode.repeat]);
         await flushPlaybackInitialization();
         try {
-            harness.playbackEngine.subtitlesChanged([]);
+            harness.playbackEngine.subtitlesChanged([], { sources: [] });
             const settings = { ...harness.settings, recipes: [recipe], activeRecipeId: 0 };
             harness.playbackEngine.settingsChanged(settings);
-            harness.playbackEngine.subtitlesChanged([subtitle]);
+            harness.playbackEngine.subtitlesChanged([subtitle], { sources: [] });
             expect(harness.playbackEngine.playbackModes).toEqual(new Set([PlayMode.autoPause]));
 
             harness.playbackEngine.settingsChanged({ ...settings, activeRecipeId: null });
@@ -3749,6 +3869,7 @@ describe('external audio playback', () => {
             appIntegration: true,
             autoPauseCorrectionDisabled: false,
             subtitles: initialSubtitles,
+            sources: [],
             playbackModesDisabled: false,
             playbackModesSuppressed: false,
             playbackPositionKeys: ['video.mp4'],
@@ -3945,7 +4066,7 @@ describe('external audio playback', () => {
         initialSubtitles = [makeSubtitle(0, 120_000, 0)];
         await render();
         await available(10);
-        await settle(async () => engine.subtitlesChanged([]));
+        await settle(async () => engine.subtitlesChanged([], { sources: [] }));
         expect(video.muted).toBe(true);
         expect(audioPaused).toBe(false);
         ready = HTMLMediaElement.HAVE_CURRENT_DATA;

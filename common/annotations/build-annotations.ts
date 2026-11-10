@@ -1,3 +1,9 @@
+import {
+    subtitleKey,
+    sameSubtitleText,
+    originalTokenizationsEqual,
+} from '@project/common/subtitle-reader/subtitle-stream';
+import type { SubtitleSourceState } from '@project/common/subtitle-reader/subtitle-stream';
 import { asbError, asbTrace } from '@project/common/util/log';
 import {
     arrayEquals,
@@ -92,12 +98,14 @@ export class BuildAnnotations {
     private static tokenCacheRefreshInterval = TOKEN_CACHE_DEFAULT_REFRESH_INTERVAL; // Preserve the original process-wide refresh cadence shared by annotation instances.
     private readonly options: BuildAnnotationsOptions;
     private subtitles: InternalSubtitleModel[] = [];
+    private sources: readonly SubtitleSourceState[] = [];
+    private pendingSubtitles?: { subtitles: InternalSubtitleModel[]; sources: readonly SubtitleSourceState[] };
     private readonly dictionaryStatistics: DictionaryStatistics;
     private totalSubtitlesPerTrack = new Map<number, number>();
     private statisticsBatchProcessedIndex = 0;
     private statisticsProcessedSubtitleIndexesByTrack = new Map<number, Set<number>>();
     private generateStatistics?: boolean; // A manual trigger will keep this a true for the remainder of this class's lifetime, unless auto is toggled off.
-    private generateStatisticsRequested = false; // Prevent premature cancellation during statistics generation
+    private statisticsBatchRequested = false; // Protect runnable statistics work from foreground cancellation.
     private profile: string | undefined | null = null;
     private readonly ankiAnnotations: AnkiAnnotations;
     private readonly waniKaniAnnotations: WaniKaniAnnotations;
@@ -154,13 +162,51 @@ export class BuildAnnotations {
         return this.trackStates.map((ts) => ts.dt);
     }
 
-    setSubtitles(subtitles: InternalSubtitleModel[], shouldReset: boolean): void {
+    setSubtitles(
+        subtitles: InternalSubtitleModel[],
+        { shouldReset, sources }: { shouldReset: boolean; sources: readonly SubtitleSourceState[] }
+    ): void {
+        const collectionChanged =
+            subtitles.length !== this.subtitles.length ||
+            subtitles.some((cue, index) => {
+                const previous = this.subtitles[index];
+                return (
+                    previous === undefined ||
+                    subtitleKey(cue) !== subtitleKey(previous) ||
+                    !sameSubtitleText(cue, previous) ||
+                    cue.tokenization !== previous.tokenization
+                );
+            });
+        const timingChanged =
+            !collectionChanged &&
+            subtitles.some(
+                (cue, index) => cue.start !== this.subtitles[index].start || cue.end !== this.subtitles[index].end
+            );
+        if (!shouldReset && this.annotationsBuilding && (collectionChanged || this.pendingSubtitles)) {
+            this.pendingSubtitles = { subtitles, sources }; // Finish against the current indexes, then reconcile the latest collection by cue identity.
+            return;
+        }
+        if (shouldReset) this.pendingSubtitles = undefined;
+        if (!shouldReset && collectionChanged) this.reconcileSubtitles(subtitles, sources);
+        if (!shouldReset && timingChanged) {
+            this.dictionaryStatistics.reconcileSubtitles(
+                subtitles,
+                new Map(subtitles.map((cue) => [cue.index, cue.index])),
+                sources,
+                this.statisticsProcessedSubtitleIndexesByTrack
+            );
+        }
         this.subtitles = subtitles;
+        this.sources = sources;
         this.totalSubtitlesPerTrack.clear();
         for (const subtitle of subtitles) {
             this.totalSubtitlesPerTrack.set(subtitle.track, (this.totalSubtitlesPerTrack.get(subtitle.track) ?? 0) + 1);
         }
-        if (!shouldReset) return;
+        this.updateExternalTokenReadings(subtitles);
+        if (!shouldReset) {
+            this.dictionaryStatistics.setSourceStates(sources);
+            return;
+        }
 
         this.reset();
         this.refreshCache.clear();
@@ -168,6 +214,9 @@ export class BuildAnnotations {
         this.erroredCache.clear();
         this.tokenToIndexesCache.clear();
         this.tokensForRefresh.clear();
+    }
+
+    private updateExternalTokenReadings(subtitles: readonly InternalSubtitleModel[]): void {
         this.externalTokenReadings.clear();
         for (const subtitle of subtitles) {
             if (!subtitle.tokenization) continue;
@@ -182,6 +231,65 @@ export class BuildAnnotations {
                 externalReadings.set(subtitle.track, token.readings);
             }
         }
+    }
+
+    private reconcileSubtitles(subtitles: InternalSubtitleModel[], sources: readonly SubtitleSourceState[]) {
+        const byKey = new Map(subtitles.map((cue) => [subtitleKey(cue), cue]));
+        const oldToNewIndexes = new Map<number, number>();
+        for (const old of this.subtitles) {
+            const cue = byKey.get(subtitleKey(old));
+            if (cue && sameSubtitleText(cue, old) && originalTokenizationsEqual(cue.tokenization, old.tokenization)) {
+                cue.text = old.text;
+                cue.tokenization = old.tokenization;
+                cue.__tokenized = old.__tokenized;
+                oldToNewIndexes.set(old.index, cue.index);
+            }
+        }
+        const remap = (values: Iterable<number>) =>
+            new Set(
+                [...values].flatMap((index) => {
+                    const mapped = oldToNewIndexes.get(index);
+                    return mapped === undefined ? [] : [mapped];
+                })
+            );
+        this.refreshCache = remap(this.refreshCache);
+        this.deferredRefreshCache = remap(this.deferredRefreshCache);
+        this.erroredCache = remap(this.erroredCache);
+        this.pendingPublicationIndexes = remap(this.pendingPublicationIndexes);
+        for (const [token, values] of this.tokenToIndexesCache) this.tokenToIndexesCache.set(token, remap(values));
+        for (const [track, values] of this.statisticsProcessedSubtitleIndexesByTrack) {
+            this.statisticsProcessedSubtitleIndexesByTrack.set(track, remap(values));
+        }
+        for (const state of this.trackStates) {
+            const occurrences = [...state.indexTokenOccurrences];
+            state.indexTokenOccurrences.clear();
+            for (const [index, tokens] of occurrences) {
+                const mapped = oldToNewIndexes.get(index);
+                if (mapped !== undefined) state.indexTokenOccurrences.set(mapped, tokens);
+            }
+        }
+        this.dictionaryStatistics.reconcileSubtitles(
+            subtitles,
+            oldToNewIndexes,
+            sources,
+            this.statisticsProcessedSubtitleIndexesByTrack
+        );
+        // Positional lookahead coverage may no longer include newly inserted or corrected cues.
+        this.buildLowerThreshold = 0;
+        this.buildUpperThreshold = 0;
+        const firstUnprocessed = subtitles.findIndex((cue) => {
+            const state = this.trackStates[cue.track];
+            return (
+                state &&
+                dictionaryTrackEnabled(state.dt) &&
+                !this.statisticsProcessedSubtitleIndexesByTrack.get(cue.track)?.has(cue.index)
+            );
+        });
+        this.statisticsBatchProcessedIndex = firstUnprocessed === -1 ? subtitles.length : firstUnprocessed;
+        this.showingSubtitles = this.showingSubtitles?.flatMap((cue) => {
+            const index = oldToNewIndexes.get(cue.index);
+            return index === undefined ? [] : [subtitles[index]];
+        });
     }
 
     private reset(): void {
@@ -205,7 +313,7 @@ export class BuildAnnotations {
         this.dictionaryStatistics.reset();
         this.statisticsBatchProcessedIndex = 0;
         this.statisticsProcessedSubtitleIndexesByTrack.clear();
-        this.generateStatisticsRequested = false;
+        this.statisticsBatchRequested = false;
         this.annotationsLastRefresh = Date.now();
         this.subtitles.forEach(untokenize);
         this.buildLowerThreshold = 0;
@@ -298,13 +406,17 @@ export class BuildAnnotations {
 
     private queuePublication(subtitles: readonly IndexedSubtitleModel[]): void {
         for (const subtitle of subtitles) this.pendingPublicationIndexes.add(subtitle.index);
+        this.schedulePublication();
+    }
+
+    private schedulePublication(): void {
         if (!this.pendingPublicationIndexes.size || this.publicationTimeout !== undefined) return;
         this.publicationTimeout = setTimeout(() => this.publishQueuedAnnotations(), 0);
     }
 
     private publishQueuedAnnotations(): void {
         this.publicationTimeout = undefined;
-        if (!this.pendingPublicationIndexes.size) return;
+        if (this.pendingSubtitles || !this.pendingPublicationIndexes.size) return;
 
         const batch: InternalSubtitleModel[] = [];
         if (this.options.getMediaTimeMs) {
@@ -398,20 +510,16 @@ export class BuildAnnotations {
     }
 
     async refresh(): Promise<void> {
-        if (!this.subtitles.length) return;
+        if (!this.subtitles.length || this.pendingSubtitles) return;
         if (this.pendingBuild && !this.annotationsBuilding) {
             const { annotationsStartIndex, annotationsEndIndex, init } = this.pendingBuild;
             this.pendingBuild = undefined;
             await this.build(annotationsStartIndex, annotationsEndIndex, init);
             return;
         }
-        if (
-            this.generateStatistics === true &&
-            this.statisticsBatchProcessedIndex < this.subtitles.length &&
-            this.initialized
-        ) {
-            if (this.annotationsBuilding && !this.generateStatisticsRequested) this.shouldCancelBuild = true;
-            this.generateStatisticsRequested = true;
+        if (this.generateStatistics === true && this.initialized && this.statisticsBatch().length) {
+            if (this.annotationsBuilding && !this.statisticsBatchRequested) this.shouldCancelBuild = true;
+            this.statisticsBatchRequested = true;
             const { annotationsStartIndex, annotationsEndIndex } = this.getAnnotationsIndexes();
             void this.build(annotationsStartIndex, annotationsEndIndex);
             this.annotationsLastRefresh = Date.now();
@@ -426,11 +534,12 @@ export class BuildAnnotations {
                 this.showingNeedsRefreshCount++;
                 if (
                     this.annotationsBuilding &&
-                    !this.generateStatisticsRequested &&
+                    !this.statisticsBatchRequested &&
                     this.initialized &&
                     slice.showing.some(
                         (s) =>
-                            !this.subtitles[s.index].__tokenized && !this.annotationsBuildingCurrentIndexes.has(s.index)
+                            !this.subtitles[s.index]?.__tokenized &&
+                            !this.annotationsBuildingCurrentIndexes.has(s.index)
                     )
                 ) {
                     this.shouldCancelBuild = true;
@@ -448,7 +557,7 @@ export class BuildAnnotations {
             (this.tokensForRefresh.size || // Don't force a build for this.refreshCache.size as it may update too frequently for token.frequency
                 (this.deferredRefreshCache.size &&
                     this.initialized &&
-                    !(this.generateStatistics && this.statisticsBatchProcessedIndex < this.subtitles.length)) ||
+                    !(this.generateStatistics && this.statisticsBatch().length)) ||
                 Date.now() - this.annotationsLastRefresh >= BuildAnnotations.tokenCacheRefreshInterval) &&
             !this.showingNeedsRefreshCount
         ) {
@@ -469,6 +578,35 @@ export class BuildAnnotations {
         const nowEnabled = this.shouldAutoGenerateStatistics(newTracks);
         if (wasEnabled && !nowEnabled) this.generateStatistics = false;
         else this.generateStatistics = this.generateStatistics || nowEnabled;
+    }
+
+    /**
+     * Background statistics wait for full batches while loading to avoid repeated small dictionary requests.
+     * Terminal sources flush the remainder; foreground annotations do not wait for this threshold.
+     */
+    private statisticsBatch(): InternalSubtitleModel[] {
+        const batch: InternalSubtitleModel[] = [];
+        let sourceFinished = false;
+        for (
+            let index = this.statisticsBatchProcessedIndex;
+            index < this.subtitles.length && batch.length < TOKEN_CACHE_BUILD_AHEAD;
+            index++
+        ) {
+            const subtitle = this.subtitles[index];
+            const state = this.trackStates[subtitle.track];
+            if (
+                !state ||
+                !dictionaryTrackEnabled(state.dt) ||
+                this.statisticsProcessedSubtitleIndexesByTrack.get(subtitle.track)?.has(index)
+            ) {
+                continue;
+            }
+            batch.push(subtitle);
+            if (this.sources.find((source) => source.track === subtitle.track)?.status !== 'loading') {
+                sourceFinished = true;
+            }
+        }
+        return batch.length === TOKEN_CACHE_BUILD_AHEAD || sourceFinished ? batch : [];
     }
 
     private getAnnotationsIndexes(init?: boolean, subtitles?: IndexedSubtitleModel[]) {
@@ -588,22 +726,25 @@ export class BuildAnnotations {
                 }
             }
 
-            const generatingStatistics = this.generateStatistics === true && this.initialized;
+            const statisticsSubtitles =
+                this.generateStatistics === true && this.initialized ? this.statisticsBatch() : [];
+            const generatingStatistics =
+                this.generateStatistics === true &&
+                this.initialized &&
+                (statisticsSubtitles.length > 0 || this.sources.every((source) => source.status !== 'loading'));
             if (generatingStatistics) {
-                statisticsBatching = this.statisticsBatchProcessedIndex < this.subtitles.length;
+                statisticsBatching = statisticsSubtitles.length > 0;
                 if (statisticsBatching) {
-                    annotationsStartIndex = this.statisticsBatchProcessedIndex;
-                    annotationsEndIndex = Math.min(
-                        this.subtitles.length,
-                        annotationsStartIndex + TOKEN_CACHE_BUILD_AHEAD
-                    );
-                    for (let i = annotationsStartIndex; i < annotationsEndIndex; i++) this.refreshCache.add(i);
+                    annotationsStartIndex = statisticsSubtitles[0].index;
+                    annotationsEndIndex = statisticsSubtitles[statisticsSubtitles.length - 1].index + 1;
+                    for (const subtitle of statisticsSubtitles) this.refreshCache.add(subtitle.index);
                 }
                 if (!this.dictionaryStatistics.hasStatistics()) {
-                    this.generateStatisticsRequested = true;
+                    this.statisticsBatchRequested = statisticsBatching;
                     for (const ts of this.trackStates) {
                         if (!dictionaryTrackEnabled(ts.dt)) continue;
                         this.dictionaryStatistics.init(ts.track, this.totalSubtitlesPerTrack.get(ts.track) ?? 0);
+                        this.dictionaryStatistics.setSourceStates(this.sources);
                         this.statisticsProcessedSubtitleIndexesByTrack.set(ts.track, new Set());
                     }
                     void this.dictionaryStatistics.refreshDictionaryTokens(profile).catch((error) => {
@@ -620,11 +761,10 @@ export class BuildAnnotations {
                 });
             }
 
-            const subtitlesToBuild = !skipTracks.length
-                ? this.subtitles.slice(annotationsStartIndex, annotationsEndIndex)
-                : this.subtitles
-                      .slice(annotationsStartIndex, annotationsEndIndex)
-                      .filter((s) => !skipTracks.includes(s.track));
+            const batch = statisticsBatching
+                ? statisticsSubtitles
+                : this.subtitles.slice(annotationsStartIndex, annotationsEndIndex);
+            const subtitlesToBuild = !skipTracks.length ? batch : batch.filter((s) => !skipTracks.includes(s.track));
             selectedSubtitleCount = subtitlesToBuild.length;
             if (!subtitlesToBuild.length) {
                 buildOutcome = skipTracks.length ? 'retry' : 'skipped';
@@ -633,7 +773,7 @@ export class BuildAnnotations {
             if (
                 this.deferredRefreshCache.size &&
                 this.initialized &&
-                !this.generateStatisticsRequested &&
+                !this.statisticsBatchRequested &&
                 subtitlesToBuild.every(
                     (subtitle) => subtitle.__tokenized || !dictionaryTrackEnabled(this.trackStates[subtitle.track].dt)
                 )
@@ -704,7 +844,7 @@ export class BuildAnnotations {
                                 if (this.shouldCancelBuild) return;
                                 if (
                                     areTokenizationsEqual(tokenizationModel?.tokenization, existingTokenization) &&
-                                    !this.generateStatisticsRequested
+                                    !this.statisticsBatchRequested
                                 ) {
                                     return;
                                 }
@@ -758,7 +898,9 @@ export class BuildAnnotations {
                 },
                 { batchSize: TOKEN_CACHE_BATCH_SIZE }
             );
-            if (this.trackStates === buildTrackStates) this.queuePublication(updatedSubtitles);
+            if (!this.shouldCancelBuild && this.trackStates === buildTrackStates) {
+                this.queuePublication(updatedSubtitles);
+            }
 
             if (statisticsTracksToUpdate.size) {
                 for (const track of statisticsTracksToUpdate) {
@@ -796,7 +938,7 @@ export class BuildAnnotations {
                 this.initialized = true;
                 if (statisticsBatching) {
                     this.statisticsBatchProcessedIndex = annotationsEndIndex;
-                    if (annotationsEndIndex >= this.subtitles.length) this.generateStatisticsRequested = false;
+                    if (!this.statisticsBatch().length) this.statisticsBatchRequested = false;
                 }
             }
             if (updateThresholds && !init) {
@@ -812,6 +954,12 @@ export class BuildAnnotations {
             }
             this.shouldCancelBuild = false;
             this.annotationsBuilding = false;
+            if (this.pendingSubtitles) {
+                const pending = this.pendingSubtitles;
+                this.pendingSubtitles = undefined;
+                this.setSubtitles(pending.subtitles, { shouldReset: false, sources: pending.sources });
+                this.schedulePublication();
+            }
             asbTrace('annotations/build', 'Finished annotation build', {
                 buildOutcome,
                 durationMs: Date.now() - startedAt,
@@ -891,7 +1039,7 @@ export class BuildAnnotations {
                     !ts.yt.getSupportsBulkGloss() &&
                     ts.yt.getSupportsTermEntriesBulk() &&
                     this.initialized &&
-                    !this.generateStatisticsRequested
+                    !this.statisticsBatchRequested
                 ) {
                     const tokenTexts = tokenizeBulkRes.map((tokenParts) =>
                         tokenParts
@@ -1226,7 +1374,7 @@ export class BuildAnnotations {
     private async updateGloss(token: Token, trimmedToken: string, index: number, ts: TrackState): Promise<void> {
         if (!ts.yt) throw new Error('Yomitan uninitialized - cannot update token gloss');
         if (token.status == null || !shouldUseAnnotation('gloss', token.status, token.states, ts.dt)) return; // gloss is not always in tokenize so prevent unnecessary requests
-        if ((this.initialized && !this.generateStatisticsRequested) || ts.yt.getSupportsBulkGloss()) {
+        if ((this.initialized && !this.statisticsBatchRequested) || ts.yt.getSupportsBulkGloss()) {
             token.gloss = await ts.yt.gloss(trimmedToken);
             if (token.gloss === undefined) this.glossUpdateCounts.pending++;
             else if (token.gloss === null) this.glossUpdateCounts.missing++;
@@ -1239,7 +1387,7 @@ export class BuildAnnotations {
 
     private async updatePitchAccent(token: Token, trimmedToken: string, index: number, ts: TrackState): Promise<void> {
         if (!ts.yt) throw new Error('Yomitan uninitialized - cannot update token pitch accent');
-        if ((this.initialized && !this.generateStatisticsRequested) || ts.yt.getSupportsBulkPitchAccent()) {
+        if ((this.initialized && !this.statisticsBatchRequested) || ts.yt.getSupportsBulkPitchAccent()) {
             token.pitchAccent = await ts.yt.pitchAccent(trimmedToken);
         } else {
             this.deferredRefreshCache.add(index);

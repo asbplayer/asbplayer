@@ -40,7 +40,7 @@ export const upsertPlaybackPositions = (
 
 export interface PlaybackPositionControllerCallbacks<T extends IndexedSubtitleModel> {
     readonly saveSettings: (settings: Partial<AsbplayerSettings>) => void;
-    readonly playbackPositionChanged: (position: number | undefined) => void;
+    readonly playbackPositionChanged: (position: number | undefined, ready: boolean) => void;
     readonly seek: (timestampMs: number) => Promise<void>;
     readonly play: () => Promise<void>;
     readonly showingSubtitlesAt: (timestampMs: number) => readonly T[];
@@ -52,6 +52,7 @@ export interface PlaybackPositionControllerOptions<T extends IndexedSubtitleMode
     readonly playbackPositionKeys: readonly string[];
     readonly currentTimeMs: () => number;
     readonly lastSubtitleEndMs: () => number | undefined;
+    readonly subtitlesReadyAt: (timestampMs: number) => boolean;
     readonly settingsProvider: SettingsProvider;
     readonly callbacks: PlaybackPositionControllerCallbacks<T>;
 }
@@ -61,12 +62,16 @@ export default class PlaybackPositionController<T extends IndexedSubtitleModel> 
     private settings?: AsbplayerSettings;
     private readonly currentTimeMs: () => number;
     private readonly lastSubtitleEndMs: () => number | undefined;
+    private readonly subtitlesReadyAt: (timestampMs: number) => boolean;
     private readonly settingsProvider: SettingsProvider;
     private readonly callbacks: PlaybackPositionControllerCallbacks<T>;
     private restoreKeys: readonly string[];
     private lastSavedTimestampMs?: number;
     private hasOfferedRestorePosition = false;
     private pendingTimestampMs?: number;
+    private resumeRequested = false; // The user accepted the offer before subtitle coverage was ready.
+    private resumeReady = true; // Last announced readiness; repeated cue batches must not reopen the offer.
+    private resumeOperationId = 0;
     private skipInitialDiscontinuity = true;
     private playbackPositionSaveTimer?: ReturnType<typeof setInterval>;
     private saveOperation: Promise<void> = Promise.resolve();
@@ -76,12 +81,14 @@ export default class PlaybackPositionController<T extends IndexedSubtitleModel> 
         playbackPositionKeys,
         currentTimeMs,
         lastSubtitleEndMs,
+        subtitlesReadyAt,
         settingsProvider,
         callbacks,
     }: PlaybackPositionControllerOptions<T>) {
         this.restoreKeys = this.normalizePlaybackPositionKeys(playbackPositionKeys);
         this.currentTimeMs = currentTimeMs;
         this.lastSubtitleEndMs = lastSubtitleEndMs;
+        this.subtitlesReadyAt = subtitlesReadyAt;
         this.settingsProvider = settingsProvider;
         this.callbacks = callbacks;
     }
@@ -98,6 +105,7 @@ export default class PlaybackPositionController<T extends IndexedSubtitleModel> 
     }
 
     unbind(): void {
+        this.dismissPlaybackPosition();
         if (this.playbackPositionSaveTimer === undefined) return;
         asbTrace('playback/position', 'Unbound playback position controller');
         clearInterval(this.playbackPositionSaveTimer);
@@ -133,6 +141,10 @@ export default class PlaybackPositionController<T extends IndexedSubtitleModel> 
         { isNewSource }: { isNewSource: boolean }
     ): void {
         const restoreKeys = this.normalizePlaybackPositionKeys(playbackPositionKeys);
+        if (isNewSource) {
+            this.resumeRequested = false;
+            ++this.resumeOperationId;
+        }
         if (this.samePlaybackPositionKeys(this.restoreKeys, restoreKeys)) return;
 
         asbTrace('playback/position', 'Changed playback position restore keys', {
@@ -192,27 +204,46 @@ export default class PlaybackPositionController<T extends IndexedSubtitleModel> 
     }
 
     dismissPlaybackPosition(): void {
+        this.resumeRequested = false;
+        ++this.resumeOperationId;
         if (this.pendingTimestampMs === undefined) return;
         asbTrace('playback/position', 'Dismissed remembered playback position', {
             timestampMs: this.pendingTimestampMs,
         });
         this.pendingTimestampMs = undefined;
-        this.callbacks.playbackPositionChanged(undefined);
+        this.callbacks.playbackPositionChanged(undefined, true);
+    }
+
+    subtitlesChanged(): void {
+        const position = this.pendingTimestampMs;
+        if (position === undefined) return;
+        const ready = this.subtitlesReadyAt(position);
+        if (this.resumeRequested && ready) {
+            void this.resumePlaybackPosition().catch(this.callbacks.onError);
+        } else if (ready !== this.resumeReady) {
+            this.resumeReady = ready;
+            this.callbacks.playbackPositionChanged(position, ready);
+        }
     }
 
     async resumePlaybackPosition(): Promise<void> {
         const position = this.pendingTimestampMs;
         if (position === undefined) return;
+        if (!this.subtitlesReadyAt(position)) {
+            this.resumeRequested = true;
+            return;
+        }
 
         asbTrace('playback/position', 'Resuming remembered playback position from controller', {
             timestampMs: position,
         });
         this.dismissPlaybackPosition();
+        const operationId = this.resumeOperationId;
         const subtitle = this.callbacks.showingSubtitlesAt(position)[0];
         const targetTimestampMs = subtitle?.start ?? position;
         asbTrace('playback/position', 'Seeking to remembered playback position', { targetTimestampMs });
         await this.callbacks.seek(targetTimestampMs);
-        await this.callbacks.play();
+        if (operationId === this.resumeOperationId) await this.callbacks.play();
     }
 
     private normalizePlaybackPositionKeys(keys: readonly string[]): string[] {
@@ -312,8 +343,9 @@ export default class PlaybackPositionController<T extends IndexedSubtitleModel> 
         }
 
         this.pendingTimestampMs = position;
+        this.resumeReady = this.subtitlesReadyAt(position);
         asbTrace('playback/position', 'Offered remembered playback position', { position });
-        this.callbacks.playbackPositionChanged(position);
+        this.callbacks.playbackPositionChanged(position, this.resumeReady);
     }
 
     private isAtOrBeyondLastSubtitleEnd(timestampMs: number): boolean {

@@ -6,6 +6,7 @@ import { defaultSettings } from '@project/common/settings';
 import type { MiscSettings } from '@project/common/settings';
 import VideoChannel from '@project/common/app/services/video-channel';
 import type { VideoProtocol } from '@project/common/app/services/video-protocol';
+import { SubtitleStream } from '@project/common/subtitle-reader/subtitle-stream';
 
 class TestBroadcastChannel {
     static instance?: TestBroadcastChannel;
@@ -39,6 +40,32 @@ afterEach(() => {
 });
 
 describe('PlayerChannel playback state', () => {
+    it('transports progressive source updates through the video and player channels', () => {
+        const player = new PlayerChannel('subtitles');
+        const broadcast = TestBroadcastChannel.instance!;
+        const video = new VideoChannel({
+            postMessage: (message) => broadcast.onmessage?.(new MessageEvent('message', { data: message })),
+            close() {},
+        });
+        const received = new SubtitleStream();
+        const remove = player.onSubtitleSource((update) => received.update(update));
+        video.subtitleSource({ type: 'start', track: 0, loadId: 'stream', name: 'progressive.srt' });
+        video.subtitleSource({
+            type: 'cues',
+            track: 0,
+            loadId: 'stream',
+            cues: [{ cueId: 0, text: 'First', start: 1000, end: 2000 }],
+        });
+        expect(received.snapshot.subtitles).toMatchObject([{ text: 'First', source: { loadId: 'stream', cueId: 0 } }]);
+        expect(received.sourceStates[0].status).toBe('loading');
+        video.subtitleSource({ type: 'complete', track: 0, loadId: 'stream' });
+        expect(received.sourceStates[0].status).toBe('complete');
+        remove();
+        video.subtitleSource({ type: 'start', track: 0, loadId: 'new', name: 'new.srt' });
+        expect(received.sourceStates[0].loadId).toBe('stream');
+        player.close();
+    });
+
     it('receives the latest conversion status before video readiness even when initial messages were missed', () => {
         const player = new PlayerChannel('test-channel');
         const broadcastChannel = TestBroadcastChannel.instance!;

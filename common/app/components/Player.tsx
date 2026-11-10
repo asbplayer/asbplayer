@@ -1,3 +1,5 @@
+import { mergeSubtitleAnnotations } from '@project/common/subtitle-reader/subtitle-stream';
+import type { SubtitleSourceState } from '@project/common/subtitle-reader/subtitle-stream';
 import { effectiveSettings } from '@project/common/settings/settings-recipes';
 import { AudioClip } from '@project/common/audio-clip';
 import { canMineWithAudio } from '@project/common/audio-transcode/mining-audio';
@@ -19,7 +21,6 @@ import type {
     PostMineAction,
     SubtitleModel,
     DisplaySubtitleModel,
-    TokenizedSubtitleModel,
     VideoTabModel,
     TranscodedAudioPayload,
 } from '@project/common';
@@ -218,6 +219,20 @@ function toTranscodedAudioPayload(conversion: ReturnType<typeof useTranscodedAud
     }
 }
 
+// Apply offsets to the latest state so late offset messages preserve newly loaded subtitles.
+const subtitleOffsetUpdate = (offset: number) => (subtitles: DisplaySubtitleModel[] | undefined) => {
+    if (subtitles === undefined) return subtitles;
+    const length = subtitles.reduce((end, subtitle) => Math.max(end, subtitle.originalEnd + offset), 0);
+    return subtitles.map((subtitle, index) => ({
+        ...subtitle,
+        start: subtitle.originalStart + offset,
+        end: subtitle.originalEnd + offset,
+        displayTime: timeDurationDisplay(subtitle.originalStart + offset, length),
+        displayEndTime: timeDurationDisplay(subtitle.originalEnd + offset, length),
+        index,
+    }));
+};
+
 function PlayerComponent(
     {
         sources,
@@ -278,6 +293,7 @@ function PlayerComponent(
     const playModesRef = useRef<Set<PlayMode>>(playModes);
     playModesRef.current = playModes;
     const subtitlesRef = useRef<DisplaySubtitleModel[]>(undefined);
+    const sourceStatesRef = useRef<readonly SubtitleSourceState[]>([]);
     const annotationSubtitlesRef = useRef<DisplaySubtitleModel[]>(undefined);
     subtitlesRef.current = subtitles;
     const [subtitleCollection, setSubtitleCollection] = useState<
@@ -301,6 +317,8 @@ function PlayerComponent(
     const [subtitlePlayerResizing, setSubtitlePlayerResizing] = useState<boolean>(false);
     const [lastJumpToTopTimestamp, setLastJumpToTopTimestamp] = useState<number>(0);
     const [offset, setOffset] = useState<number>(0);
+    const offsetRef = useRef(offset);
+    offsetRef.current = offset;
     const [playbackRate, setPlaybackRate] = useState<number>(settings.playbackRate);
     const [alert, setAlert] = useState<{ open: boolean; notifications: AlertNotification[] }>({
         open: false,
@@ -337,14 +355,22 @@ function PlayerComponent(
     const clockRef = useRef<Clock>(clock);
     clockRef.current = clock;
     const syntheticPlaybackEngineRef = useRef<PlaybackEngine<DisplaySubtitleModel>>(undefined);
-    const getSubtitleOffset = useCallback(() => syntheticPlaybackEngineRef.current?.lastSubtitleOffset ?? 0, []);
+    const getSubtitleOffset = useCallback(
+        () => syntheticPlaybackEngineRef.current?.lastSubtitleOffset ?? offsetRef.current,
+        []
+    );
     const subtitlePlayerRef = useRef<SubtitlePlayerHandle>(null);
     const profileRef = useRef(profile);
     const applyOffsetRef = useRef<(offset: number, forwardToVideo: boolean) => void>(undefined);
     const [pendingPlaybackPosition, setPendingPlaybackPosition] = useState<number>();
+    const [resumeSubtitlesReady, setResumeSubtitlesReady] = useState(true);
     const resumePlaybackSnackbar = useSnackbar({
         open: pendingPlaybackPosition !== undefined,
+        refreshKey: resumeSubtitlesReady,
         onClose: () => syntheticPlaybackEngineRef.current?.dismissPlaybackPosition(),
+        onTimeout: () => {
+            if (resumeSubtitlesReady) syntheticPlaybackEngineRef.current?.dismissPlaybackPosition();
+        },
     });
     const [playbackState, setPlaybackState] = useState<PlaybackState>();
     const appBarHeight = useAppBarHeight();
@@ -409,10 +435,6 @@ function PlayerComponent(
         playbackTimelineModeLabels,
         playbackTimelineOptionLabels,
         playbackSettings,
-    ]);
-
-    useImperativeHandle(ref, () => ({ downloadSubtitleTimeline: handleDownloadSubtitleTimeline }), [
-        handleDownloadSubtitleTimeline,
     ]);
 
     const seek = useCallback(
@@ -502,6 +524,7 @@ function PlayerComponent(
             appIntegration: extension.supportsAppIntegration,
             autoPauseCorrectionDisabled: false,
             subtitles: subtitlesRef.current ?? [],
+            sources: sourceStatesRef.current,
             playbackModesDisabled: true,
             playbackModesSuppressed: false,
             playbackPositionKeys: playbackPositionKey ? [playbackPositionKey] : [],
@@ -562,7 +585,10 @@ function PlayerComponent(
                     if (options.notifyPlayer) notifyOffset(offset, notificationKey);
                 },
                 playbackStateChanged: setPlaybackState,
-                playbackPositionChanged: setPendingPlaybackPosition,
+                playbackPositionChanged: (position, ready) => {
+                    setPendingPlaybackPosition(position);
+                    setResumeSubtitlesReady(ready);
+                },
                 saveSettings: onSettingsChanged,
                 settingChangeBlocked: (settingLocKey) => {
                     const notification = formatRecipeSettingLockedNotification(settingLocKey);
@@ -672,18 +698,13 @@ function PlayerComponent(
     }, [settings, syntheticPlayback]);
 
     useEffect(() => {
-        if (!syntheticPlayback) return;
-        syntheticPlaybackEngineRef.current?.subtitlesChanged(subtitles, {
-            timingChanged: subtitles !== annotationSubtitlesRef.current,
-        });
-    }, [subtitles, syntheticPlayback]);
-
-    useEffect(() => {
         if (syntheticPlayback || !tab || subtitles.length === 0) return;
         setOffset(subtitles[0].start - subtitles[0].originalStart);
     }, [subtitles, syntheticPlayback, tab]);
 
-    const { loadingSubtitles, subtitleFileNames } = useSubtitleTracks({
+    const { loadingSubtitles, subtitleFileNames, sourceStates } = useSubtitleTracks({
+        sourceOwnership: tab && sources === undefined ? 'remote' : 'local',
+        supportsProgressiveSubtitles: !tab || extension.supportsProgressiveSubtitles,
         subtitleTracks,
         subtitleReader,
         subtitles,
@@ -694,28 +715,25 @@ function PlayerComponent(
         onError,
     });
 
+    sourceStatesRef.current = sourceStates;
+    useEffect(() => {
+        if (!syntheticPlayback) return;
+        syntheticPlaybackEngineRef.current?.subtitlesChanged(subtitles, {
+            timingChanged: subtitles !== annotationSubtitlesRef.current,
+            sources: sourceStates,
+        });
+    }, [subtitles, sourceStates, syntheticPlayback]);
+
+    useImperativeHandle(ref, () => ({ downloadSubtitleTimeline: handleDownloadSubtitleTimeline }), [
+        handleDownloadSubtitleTimeline,
+    ]);
+
     const applyOffset = useCallback(
         (offset: number, forwardToVideo: boolean) => {
+            offsetRef.current = offset;
             setOffset(offset);
-            if (!subtitles) {
-                return;
-            }
-
-            const length = subtitles.length > 0 ? subtitles[subtitles.length - 1].end + offset : 0;
-
-            const newSubtitles = subtitles.map((s, i) => ({
-                text: s.text,
-                textImage: s.textImage,
-                start: s.originalStart + offset,
-                originalStart: s.originalStart,
-                end: s.originalEnd + offset,
-                originalEnd: s.originalEnd,
-                displayTime: timeDurationDisplay(s.originalStart + offset, length),
-                displayEndTime: timeDurationDisplay(s.originalEnd + offset, length),
-                track: s.track,
-                index: i,
-                tokenization: s.tokenization,
-            }));
+            const update = subtitleOffsetUpdate(offset);
+            onSubtitles(update);
 
             if (forwardToVideo) {
                 if (channel !== undefined) {
@@ -723,14 +741,13 @@ function PlayerComponent(
 
                     // Older versions of extension don't support the offset message
                     if (tab !== undefined && extension.installed && !extension.supportsOffsetMessage) {
-                        channel.subtitles(newSubtitles, subtitleFileNames);
+                        const newSubtitles = update(subtitlesRef.current);
+                        if (newSubtitles) channel.subtitles(newSubtitles, subtitleFileNames);
                     }
                 }
             }
-
-            onSubtitles(newSubtitles);
         },
-        [subtitleFileNames, subtitles, extension, tab, channel, onSubtitles]
+        [subtitleFileNames, extension, tab, channel, onSubtitles]
     );
     applyOffsetRef.current = applyOffset;
 
@@ -813,21 +830,14 @@ function PlayerComponent(
                 if (channel) channel.subtitlesUpdated(updatedSubtitles);
                 onSubtitles((prevSubtitles) => {
                     if (!prevSubtitles?.length) return prevSubtitles;
-                    const allSubtitles = prevSubtitles.slice();
-                    for (const s of playerSubtitles) {
-                        allSubtitles[s.index] = {
-                            ...allSubtitles[s.index],
-                            text: s.text,
-                            tokenization: s.tokenization,
-                        };
-                    }
+                    const allSubtitles = mergeSubtitleAnnotations(prevSubtitles, playerSubtitles);
                     annotationSubtitlesRef.current = allSubtitles;
                     return allSubtitles;
                 });
             },
             () => clockRef.current.time({ maxMs: calculateLengthMs(videoDurationRef) })
         );
-        if (subtitlesRef.current) subtitleAnnotations.setSubtitles(subtitlesRef.current);
+        if (subtitlesRef.current) subtitleAnnotations.setSourceSubtitles(subtitlesRef.current, sourceStatesRef.current);
         subtitleAnnotations.bind();
         asbTrace('playback/player', 'Bound subtitle annotation collection', {
             subtitleCount: subtitlesRef.current?.length ?? 0,
@@ -844,8 +854,12 @@ function PlayerComponent(
 
     useEffect(() => {
         if (!subtitleCollectionRef.current) return;
-        subtitleCollectionRef.current.setSubtitles(subtitles);
-    }, [subtitles]);
+        if (subtitleCollectionRef.current instanceof SubtitleAnnotations) {
+            subtitleCollectionRef.current.setSourceSubtitles(subtitles, sourceStates);
+        } else {
+            subtitleCollectionRef.current.setSubtitles(subtitles);
+        }
+    }, [subtitles, sourceStates]);
 
     useEffect(() => {
         if (!(subtitleCollectionRef.current instanceof SubtitleAnnotations)) return;
@@ -857,21 +871,7 @@ function PlayerComponent(
             const playerSubtitles = subtitlesForPlayer(updatedSubtitles);
             onSubtitles((prevSubtitles) => {
                 if (!prevSubtitles?.length) return prevSubtitles;
-                const allSubtitles = prevSubtitles.slice();
-                for (const s of playerSubtitles) {
-                    // FIXME: Primitive check to ensure we don't apply a color update from a completely different subtitle or subtitle file.
-                    // We should probably have a hash or ID associated with the subtitle file this color update is for.
-                    const updatedText = (s as TokenizedSubtitleModel).originalText ?? s.text;
-                    const prevText =
-                        (allSubtitles[s.index] as TokenizedSubtitleModel)?.originalText ?? allSubtitles[s.index]?.text;
-                    if (updatedText === prevText) {
-                        allSubtitles[s.index] = {
-                            ...allSubtitles[s.index],
-                            text: s.text,
-                            tokenization: s.tokenization,
-                        };
-                    }
-                }
+                const allSubtitles = mergeSubtitleAnnotations(prevSubtitles, playerSubtitles);
                 annotationSubtitlesRef.current = allSubtitles;
                 return allSubtitles;
             });

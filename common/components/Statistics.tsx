@@ -1471,7 +1471,8 @@ function TrackSnapshot({
                 (rewatchProjection.ankiLearningOrAboveIsMature ?? false))) ||
         (waniKaniAvailable && rewatchProjection.waniKaniLevel !== undefined && rewatchProjection.waniKaniLevel > 0);
     const hideProjectedStats = selectedRewatchSnapshot?.rewatch === 0 && !hasProjectedKnowledge;
-    const miningEnabled = trackSnapshot.progress.current >= trackSnapshot.progress.total;
+    const miningEnabled =
+        trackSnapshot.sourceStatus === 'complete' && trackSnapshot.progress.current >= trackSnapshot.progress.total;
     const ankiHasStats = ankiTrackSnapshot.deckSnapshots.length > 0;
     const waniKaniHasStats = waniKaniTrackSnapshot.uniqueWords > 0;
     const defaultReviewStatisticsSource: ReviewStatisticsSource =
@@ -1496,13 +1497,19 @@ function TrackSnapshot({
 
     return (
         <Box key={trackSnapshot.track} sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            {(!trackSnapshot.progress.current || trackSnapshot.progress.current < totalSentences) && (
+            {(trackSnapshot.sourceStatus === 'loading' || trackSnapshot.progress.current < totalSentences) && (
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
                     <Typography variant="caption" color="text.secondary">
-                        {`${trackSnapshot.progress.current} / ${totalSentences} · ${percentDisplay(trackSnapshot.progressPercent)}`}
+                        {trackSnapshot.sourceStatus !== 'complete'
+                            ? `${trackSnapshot.progress.current} / ${totalSentences}`
+                            : `${trackSnapshot.progress.current} / ${totalSentences} · ${percentDisplay(trackSnapshot.progressPercent)}`}
                     </Typography>
                     <LinearProgress
-                        variant={totalSentences > 0 ? 'determinate' : 'indeterminate'}
+                        variant={
+                            trackSnapshot.sourceStatus !== 'loading' && totalSentences > 0
+                                ? 'determinate'
+                                : 'indeterminate'
+                        }
                         value={trackSnapshot.progressPercent}
                         sx={{ height: 6, borderRadius: 999 }}
                     />
@@ -1879,11 +1886,13 @@ export default function Statistics({
     trackSnapshotsRef.current = trackSnapshots;
     const hasSnapshots = trackSnapshots && trackSnapshots.length > 0;
     const loadingSnapshots = !statisticsSnapshotLoaded;
-    const allTrackProgressComplete = useMemo(
-        () => hasSnapshots && trackSnapshots.every((s) => s.progress.current >= s.progress.total),
+    const allTracksProcessed = useMemo(
+        () =>
+            hasSnapshots &&
+            trackSnapshots.every((s) => s.sourceStatus !== 'loading' && s.progress.current >= s.progress.total),
         [hasSnapshots, trackSnapshots]
     );
-    const isGenerating = generationRequested && (!hasSnapshots || !allTrackProgressComplete);
+    const isGenerating = generationRequested && (!hasSnapshots || !allTracksProcessed);
 
     useEffect(() => {
         setMediaInfo(undefined);
@@ -1940,8 +1949,8 @@ export default function Statistics({
     }, [dictionaryProvider, mediaInfoFetcher, mediaId]);
 
     useEffect(() => {
-        if (allTrackProgressComplete) setGenerationRequested(false);
-    }, [allTrackProgressComplete]);
+        if (allTracksProcessed) setGenerationRequested(false);
+    }, [allTracksProcessed]);
 
     const handleGenerate = useCallback(() => {
         setGenerationRequested(true);
@@ -1979,7 +1988,13 @@ export default function Statistics({
         async (sentence: DictionaryStatisticsSentence) => {
             if (mediaId === undefined) return;
             const trackSnapshot = trackSnapshotsRef.current?.find((candidate) => candidate.track === sentence.track);
-            if (!trackSnapshot || trackSnapshot.progress.current < trackSnapshot.progress.total) return;
+            if (
+                !trackSnapshot ||
+                trackSnapshot.sourceStatus !== 'complete' ||
+                trackSnapshot.progress.current < trackSnapshot.progress.total
+            ) {
+                return;
+            }
             await onMineWasRequested?.(mediaId);
             await Promise.resolve(dictionaryProvider.requestStatisticsMineSentences(mediaId, [sentence.index]));
         },

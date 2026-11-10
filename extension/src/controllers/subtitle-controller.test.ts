@@ -3,10 +3,14 @@ import { ASB_TOKEN_SELECTED_CLASS } from '@project/common/annotations';
 import {
     makeDictionaryTrack,
     makeDictionaryTracks,
+    makeSettings,
     makeSubtitle,
+    makeSubtitleAnnotations,
     makeToken,
 } from '@project/common/annotations/annotations-test-utils';
 import type { DictionaryProvider } from '@project/common/dictionary-db';
+import type { DictionaryStatisticsSnapshot } from '@project/common/dictionary-statistics';
+import { Yomitan } from '@project/common/yomitan';
 import { defaultSettings, TokenStatus } from '@project/common/settings';
 import type { SettingsProvider, SubtitlesWidthUnit } from '@project/common/settings';
 import SubtitleController from '@project/extension/src/controllers/subtitle-controller';
@@ -19,6 +23,7 @@ describe('SubtitleController appearance rendering', () => {
         for (const controller of controllers) controller.unbind();
         controllers.length = 0;
         document.body.replaceChildren();
+        jest.restoreAllMocks();
         jest.useRealTimers();
         Reflect.deleteProperty(document, 'fullscreenElement');
     });
@@ -43,6 +48,115 @@ describe('SubtitleController appearance rendering', () => {
         controllers.push(controller);
         return controller;
     };
+
+    it('keeps the visible cue node and selection when another track inserts earlier cues', () => {
+        const controller = controllerForVideo();
+        controller.setSubtitleSettings(defaultSettings);
+        const first = makeSubtitle({
+            text: 'selected word',
+            originalText: 'selected word',
+            source: { loadId: 'stream', cueId: 0 },
+        });
+        const sources = [{ track: 0, loadId: 'stream', name: 'subtitles.srt', status: 'loading' as const }];
+        controller.setSourceSubtitles([first], sources);
+        controller.playbackStateChanged({ timestampMs: 0, showingSubtitleIndexes: [0], paused: true });
+        const span = document.querySelector<HTMLElement>('span[data-asb-subtitle-index="0"]')!;
+        const range = document.createRange();
+        range.selectNodeContents(span);
+        window.getSelection()?.addRange(range);
+        controller.setSourceSubtitles(
+            [
+                makeSubtitle({ text: 'earlier', track: 1, source: { loadId: 'translation', cueId: 0 } }),
+                { ...first, index: 1 },
+            ],
+            sources
+        );
+        controller.playbackStateChanged({ timestampMs: 0, showingSubtitleIndexes: [1], paused: true });
+        expect(document.querySelector('span[data-asb-subtitle-index="1"]')).toBe(span);
+        expect(window.getSelection()?.toString()).toBe('selected word');
+    });
+
+    it('preserves progressive identity and annotations through repeated offset changes', () => {
+        jest.useFakeTimers();
+        const controller = controllerForVideo();
+        controller.setSubtitleSettings(defaultSettings);
+        const subtitle = makeSubtitle({
+            text: '<span>word</span>',
+            originalText: 'word',
+            source: { loadId: 'stream', cueId: 7 },
+            tokenization: { tokens: [makeToken()] },
+        });
+        controller.setSourceSubtitles(
+            [subtitle],
+            [{ track: 0, loadId: 'stream', name: 'subtitles.srt', status: 'loading' }]
+        );
+        const initial = { ...controller.subtitles[0] };
+
+        controller.offset(500, true);
+        controller.offset(-250, true);
+
+        expect(controller.subtitles).toEqual([
+            { ...initial, start: initial.originalStart - 250, end: initial.originalEnd - 250 },
+        ]);
+        expect(subtitle.start).toBe(subtitle.originalStart);
+    });
+
+    it('keeps statistics loading when an offset changes during progressive loading', async () => {
+        jest.useFakeTimers();
+        jest.spyOn(Yomitan.prototype, 'version').mockResolvedValue('0.0.0.0');
+        jest.spyOn(Yomitan.prototype, 'tokenizeBulk').mockImplementation(async (texts) =>
+            texts.map((text) => [{ text, reading: '' }])
+        );
+        jest.spyOn(Yomitan.prototype, 'tokenize').mockImplementation(async (text) => [[{ text, reading: '' }]]);
+        jest.spyOn(Yomitan.prototype, 'lemmatize').mockImplementation(async (text) => [text]);
+        jest.spyOn(Yomitan.prototype, 'getSupportsBulkFrequency').mockReturnValue(true);
+        jest.spyOn(Yomitan.prototype, 'frequency').mockResolvedValue(7);
+        jest.spyOn(Yomitan.prototype, 'getSupportsBulkPitchAccent').mockReturnValue(true);
+        jest.spyOn(Yomitan.prototype, 'pitchAccent').mockResolvedValue(null);
+        const controller = controllerForVideo();
+        const { subtitleAnnotations, storage } = makeSubtitleAnnotations(
+            makeSettings(
+                makeDictionaryTracks(
+                    makeDictionaryTrack({
+                        dictionaryColorizeSubtitles: true,
+                        dictionaryAutoGenerateStatistics: true,
+                    })
+                )
+            )
+        );
+        controller.subtitleAnnotations.unbind();
+        controller.subtitleAnnotations = subtitleAnnotations;
+        controller.setSubtitleSettings(defaultSettings);
+        subtitleAnnotations.bind();
+        controller.setSourceSubtitles(
+            Array.from({ length: 100 }, (_, index) =>
+                makeSubtitle({
+                    index,
+                    source: { loadId: 'stream', cueId: index },
+                    start: index * 2000,
+                    end: index * 2000 + 1000,
+                    originalStart: index * 2000,
+                    originalEnd: index * 2000 + 1000,
+                })
+            ),
+            [{ track: 0, loadId: 'stream', name: 'subtitles.ass', status: 'loading' }]
+        );
+        const snapshot = () =>
+            storage.publishStatisticsSnapshot.mock.calls
+                .map((call) => call[1] as DictionaryStatisticsSnapshot | undefined)
+                .findLast((snapshot) => snapshot !== undefined)?.snapshots[0];
+        await jest.advanceTimersByTimeAsync(1000);
+        expect(snapshot()).toMatchObject({ sourceStatus: 'loading', progress: { current: 100, total: 100 } });
+
+        controller.offset(500, true);
+        await jest.advanceTimersByTimeAsync(1000);
+
+        expect(snapshot()).toMatchObject({
+            sourceStatus: 'loading',
+            progress: { current: 100, total: 100 },
+            stats: { sentences: { 0: { start: 500, end: 1500 } } },
+        });
+    });
 
     it('keeps cached image subtitle width responsive and rebuilds its ratio when image scale changes', () => {
         const controller = controllerForVideo();

@@ -110,6 +110,7 @@ import {
 } from '@project/common/app/services/media-sources';
 
 const extensionUrl = project.extension.chrome.storeUrl;
+const fileExtensionPattern = /\.[^.]+$/;
 
 const useContentStyles = makeStyles<Theme, ContentProps>((theme) => ({
     content: {
@@ -381,6 +382,9 @@ function App({
     const [jumpToSubtitle, setJumpToSubtitle] = useState<SubtitleModel>();
     const [rewindSubtitle, setRewindSubtitle] = useState<SubtitleModel>();
     const [sources, setSources] = useState(() => new MediaSources());
+    const [tabSubtitleFileNames, setTabSubtitleFileNames] = useState<string[]>();
+    const { firstSubtitleSourceFiles } = sources;
+    const subtitleFileNames = tabSubtitleFileNames ?? sources.subtitleFileNames;
     useEffect(() => {
         if (!sources.videoFile) {
             return;
@@ -436,7 +440,6 @@ function App({
     const playerRef = useRef<PlayerRef>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const bufferedFileInputRef = useRef<HTMLInputElement>(null);
-    const { firstSubtitleSourceFiles, subtitleFileNames } = sources;
 
     const handleError = useCallback(
         (message: any) => {
@@ -1025,6 +1028,7 @@ function App({
 
     const handleFiles = useCallback(
         (files: MediaSourceFile[]): boolean => {
+            setTabSubtitleFileNames(undefined);
             try {
                 const mediaSources = MediaSources.fromFiles(files);
                 let videoFile = mediaSources.videoFile;
@@ -1105,6 +1109,18 @@ function App({
             return true;
         },
         [handleFiles, openSubtitleTrackSelectorWithFiles]
+    );
+
+    const attachToVideoSubtitles = useCallback(
+        (video: VideoTabModel, names: string[]) => {
+            if (sources.videoFileUrl) handleUnloadVideo(sources.videoFileUrl);
+            handleFiles([]);
+            setSources(new MediaSources());
+            setTabSubtitleFileNames(names);
+            setFileName(names.find((name) => name)?.replace(fileExtensionPattern, ''));
+            setTab((previous) => (previous?.id === video.id && previous.src === video.src ? previous : video));
+        },
+        [sources.videoFileUrl, handleUnloadVideo, handleFiles]
     );
 
     const persistFileSessionHandles = useCallback(
@@ -1293,6 +1309,17 @@ function App({
                 }
 
                 const tab = tabs[0];
+                const subtitleSource =
+                    message.data.command === 'syncv2' ? (message.data as PlayerSyncMessage).subtitleSource : undefined;
+                if (subtitleSource) {
+                    const names: string[] = [];
+                    for (const { track, name } of subtitleSource.tracks) {
+                        while (names.length <= track) names.push('');
+                        names[track] = name;
+                    }
+                    attachToVideoSubtitles(tab, names);
+                    return;
+                }
                 let subtitleSourceFiles: MediaSourceFile[];
 
                 if (message.data.command === 'sync') {
@@ -1355,6 +1382,7 @@ function App({
         statisticsOverlayOpen,
         tab,
         handleFiles,
+        attachToVideoSubtitles,
         handleAnki,
         handleCloseStatisticsOverlay,
         handleUnloadVideo,
@@ -1535,8 +1563,7 @@ function App({
                     const { subtitles, subtitleFileNames } = response;
 
                     if (subtitleFileNames.length > 0) {
-                        const subtitleFileName = subtitleFileNames[0];
-                        setFileName(subtitleFileName.substring(0, subtitleFileName.lastIndexOf('.')));
+                        attachToVideoSubtitles(videoElement, subtitleFileNames);
                         const length = subtitles.length > 0 ? subtitles[subtitles.length - 1].end : 0;
                         setSubtitles(
                             subtitles.map((s, i) => ({
@@ -1546,14 +1573,13 @@ function App({
                                 index: i,
                             }))
                         );
-                        setTab(videoElement);
                     }
                 }
             } else {
                 extension.loadSubtitles(tabId, src);
             }
         },
-        [extension]
+        [extension, attachToVideoSubtitles]
     );
 
     const handleDownloadSubtitleFilesAsSrt = useCallback(async () => {
@@ -2105,7 +2131,7 @@ function App({
                                     onLoadSubtitles={openSubtitleTrackSelector}
                                     tab={tab}
                                     availableTabs={availableTabs ?? []}
-                                    sources={sources}
+                                    sources={tabSubtitleFileNames ? undefined : sources}
                                     jumpToSubtitle={jumpToSubtitle}
                                     onJumpToSubtitleHandled={handleJumpToSubtitleHandled}
                                     rewindSubtitle={rewindSubtitle}

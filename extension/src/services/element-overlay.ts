@@ -153,6 +153,10 @@ export class CachingElementOverlay implements ElementOverlay {
         this.domCache.add(key, html);
     }
 
+    cachedHtmlElement(key: string): HTMLElement | undefined {
+        return this.domCache.has(key) ? this.domCache.get(key) : undefined;
+    }
+
     hasCachedHtml(key: string) {
         return this.domCache.has(key);
     }
@@ -381,12 +385,13 @@ export class CachingElementOverlay implements ElementOverlay {
     }
 
     private _setChildren(containerElement: HTMLElement, contentElements: HTMLElement[]) {
-        while (containerElement.firstChild) {
-            this.domCache.return(containerElement.lastChild! as HTMLElement);
+        const next = new Set(contentElements);
+        for (const child of [...containerElement.children]) {
+            if (!next.has(child as HTMLElement)) this.domCache.return(child as HTMLElement);
         }
-
-        for (const contentElement of contentElements) {
-            containerElement.appendChild(contentElement);
+        for (const [index, element] of contentElements.entries()) {
+            const current = containerElement.children[index];
+            if (current !== element) containerElement.insertBefore(element, current ?? null);
         }
     }
 

@@ -53,7 +53,12 @@ const NotificationUi = ({ bridge }: Props) => {
     const [showAlert, setShowAlert] = useState<boolean>(false);
     const resumeSnackbar = useSnackbar({
         open: snackbar !== undefined,
+        refreshKey: snackbar,
         onClose: handleClose,
+        onTimeout: () => {
+            setSnackbar(undefined);
+            bridge.sendMessageFromServer({ command: 'timeout' });
+        },
     });
 
     useEffect(() => {

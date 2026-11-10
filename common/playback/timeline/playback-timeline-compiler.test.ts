@@ -13,6 +13,13 @@ const compile = (
 ) => compilePlaybackTimelineSubtitles(makeTimelineOptions(subtitles, options));
 
 describe('compilePlaybackTimelineSubtitles', () => {
+    it('keeps block identity when a progressive cue moves to another array index', () => {
+        const cue = makeSubtitle({ source: { loadId: 'stream', cueId: 0 } });
+        const original = compile([cue]).blocks[0];
+        const updated = compile([makeSubtitle(0, 500, 0), { ...cue, index: 1 }]);
+        expect(updated.blocks[1].id).toBe(original.id);
+    });
+
     it('has no blocks for zero subtitles', () => {
         expect(compile([]).blocks).toEqual([]);
     });
@@ -146,10 +153,10 @@ describe('compilePlaybackTimelineSubtitles', () => {
         expect(compile([first, second]).blocks[0].id).toBe(compile([second, first]).blocks[0].id);
     });
 
-    it('keys block IDs by the sorted indexes of all overlapping subtitles', () => {
+    it('keys block IDs by the sorted identities of all overlapping subtitles', () => {
         const result = compile([makeSubtitle(1000, 3000, 12), makeSubtitle(2000, 4000, 3)]);
 
-        expect(result.blocks[0].id).toBe('[3,12]');
+        expect(result.blocks[0].id).toBe('["legacy:12","legacy:3"]');
     });
 
     it('keeps display-only subtitles out of playback blocks', () => {
@@ -166,6 +173,18 @@ describe('compilePlaybackTimelineSubtitles', () => {
 });
 
 describe('compilePlaybackTimeline', () => {
+    it.each(['loading', 'failed'] as const)('keeps the trailing gap unknown for a %s source', (sourceStatus) => {
+        const prefix = compile([makeSubtitle(1000, 2000, 0)]);
+        const completed = { ...prefix, condensedBlocks: prefix.blocks };
+        expect(compilePlaybackTimeline(completed).condensedGaps).toContainEqual({
+            startMs: 2000,
+            targetMs: completed.durationMs,
+        });
+        expect(compilePlaybackTimeline({ ...completed, sourceStatus }).condensedGaps).toEqual([
+            { startMs: 0, targetMs: 999 },
+        ]);
+    });
+
     it('compiles runtime indexes and segment annotations from timeline subtitles', () => {
         const subtitles = [makeSubtitle(1000, 2000, 0), makeSubtitle(4000, 5000, 1)];
         const compiledSubtitles = compile(subtitles);

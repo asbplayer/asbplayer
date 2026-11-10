@@ -1,12 +1,15 @@
-import { arrayEquals } from '@project/common/util';
+import {
+    subtitleKey,
+    sameSubtitleText,
+    originalTokenizationsEqual,
+} from '@project/common/subtitle-reader/subtitle-stream';
+import type { SubtitleSourceState } from '@project/common/subtitle-reader/subtitle-stream';
 import { asbTrace } from '@project/common/util/log';
 import type {
     DictionaryBuildAnkiCacheState,
     DictionaryBuildWaniKaniCacheState,
     Fetcher,
     IndexedSubtitleModel,
-    Token,
-    Tokenization,
     TokenizedSubtitleModel,
 } from '@project/common';
 import type {
@@ -20,38 +23,8 @@ import type {
 import type { DictionaryProvider } from '@project/common/dictionary-db';
 import type { SubtitleCollectionOptions } from '@project/common/subtitle-collection';
 import { SubtitleCollection } from '@project/common/subtitle-collection';
-import type { InternalToken } from '@project/common/annotations/render-annotations';
 import { BuildAnnotations } from '@project/common/annotations/build-annotations';
 import type { InternalSubtitleModel } from '@project/common/annotations/build-annotations';
-
-const isOriginalToken = (token: Token) => !(token as InternalToken).__internal;
-
-/** Compares only source-provided tokens (positions and readings) without copying them. */
-function originalTokenizationsEqual(a: Tokenization | undefined, b: Tokenization | undefined): boolean {
-    if (a === b) return true;
-    const left = a?.tokens ?? [];
-    const right = b?.tokens ?? [];
-    let leftIndex = 0;
-    let rightIndex = 0;
-    while (true) {
-        while (leftIndex < left.length && !isOriginalToken(left[leftIndex])) leftIndex++;
-        while (rightIndex < right.length && !isOriginalToken(right[rightIndex])) rightIndex++;
-        const leftToken = left[leftIndex++];
-        const rightToken = right[rightIndex++];
-        if (leftToken === undefined || rightToken === undefined) return leftToken === rightToken;
-        if (leftToken === rightToken) continue;
-        if (!arrayEquals(leftToken.pos, rightToken.pos)) return false;
-        if (
-            !arrayEquals(
-                leftToken.readings,
-                rightToken.readings,
-                (l, r) => l.reading === r.reading && arrayEquals(l.pos, r.pos)
-            )
-        ) {
-            return false;
-        }
-    }
-}
 
 export function needsReset(subtitles: TokenizedSubtitleModel[], previousSubtitles: TokenizedSubtitleModel[]) {
     return (
@@ -107,17 +80,30 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
     }
 
     override setSubtitles(subtitles: TokenizedSubtitleModel[]) {
+        this.setSourceSubtitles(subtitles, []);
+    }
+
+    setSourceSubtitles(subtitles: TokenizedSubtitleModel[], sources: readonly SubtitleSourceState[]) {
         const previousSubtitleCount = this._subtitles.length;
         for (const s of subtitles) {
             if (s.originalText === undefined) s.originalText = s.text;
         }
-        const shouldReset = needsReset(subtitles, this._subtitles);
+        const previousByKey = new Map(this._subtitles.map((cue) => [subtitleKey(cue), cue]));
+        const identified = subtitles.length > 0 && subtitles.every((cue) => cue.source !== undefined);
+        const continuation = identified && subtitles.some((cue) => previousByKey.has(subtitleKey(cue)));
+        const shouldReset = identified ? !continuation : needsReset(subtitles, this._subtitles);
         if (!shouldReset) {
-            // Preserve the existing tokenization cache here so callers don't need to be aware of it.
-            for (const s of subtitles) {
-                (s as InternalSubtitleModel).text = this._subtitles[s.index].text;
-                s.tokenization = this._subtitles[s.index].tokenization;
-                (s as InternalSubtitleModel).__tokenized = this._subtitles[s.index].__tokenized;
+            for (const cue of subtitles) {
+                const previous = previousByKey.get(subtitleKey(cue));
+                if (
+                    previous &&
+                    sameSubtitleText(cue, previous) &&
+                    originalTokenizationsEqual(cue.tokenization, previous.tokenization)
+                ) {
+                    (cue as InternalSubtitleModel).text = previous.text;
+                    cue.tokenization = previous.tokenization;
+                    (cue as InternalSubtitleModel).__tokenized = previous.__tokenized;
+                }
             }
         }
         this._subtitles = subtitles.map((s) => ({ ...s })); // Separate internals from react state changes
@@ -133,7 +119,7 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
                 subtitleCount: this._subtitles.length,
             });
         }
-        this.buildAnnotations.setSubtitles(this._subtitles, shouldReset);
+        this.buildAnnotations.setSubtitles(this._subtitles, { shouldReset, sources });
         if (shouldReset) void this.buildAnnotations.buildInitial();
     }
 

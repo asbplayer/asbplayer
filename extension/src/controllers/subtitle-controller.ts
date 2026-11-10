@@ -1,3 +1,5 @@
+import type { SubtitleSourceState } from '@project/common/subtitle-reader/subtitle-stream';
+import { subtitleKey } from '@project/common/subtitle-reader/subtitle-stream';
 import type {
     CopyToClipboardMessage,
     OffsetFromVideoMessage,
@@ -109,6 +111,7 @@ export default class SubtitleController {
     private invisibleSubtitles?: IndexedSubtitleModel[];
     private timelineShowingSubtitles: readonly IndexedSubtitleModel[] = [];
     private timelineInvisibleSubtitles: readonly IndexedSubtitleModel[] = [];
+    private subtitleSources: readonly SubtitleSourceState[] = [];
     private lastOffsetChangeTimestamp: number;
     private showingOffset?: number;
     private loadedMessageHideTimeout?: ReturnType<typeof setTimeout>;
@@ -191,7 +194,44 @@ export default class SubtitleController {
         return this.subtitleAnnotations.subtitles;
     }
 
+    setSourceSubtitles(subtitles: IndexedSubtitleModel[], sources: readonly SubtitleSourceState[]): void {
+        this.subtitleSources = sources;
+        const previous = new Map(this.subtitles.map((cue) => [subtitleKey(cue), cue]));
+        this.subtitleAnnotations.setSourceSubtitles(subtitles, sources);
+        const keys = new Set(subtitles.map(subtitleKey));
+        for (const overlay of [this.bottomSubtitlesElementOverlay, this.topSubtitlesElementOverlay]) {
+            if (!(overlay instanceof CachingElementOverlay)) continue;
+            for (const key of overlay.cachedHtmlKeys()) if (!keys.has(key)) overlay.removeCachedHtml(key);
+        }
+        for (const cue of this.subtitles) {
+            const key = subtitleKey(cue);
+            const old = previous.get(key);
+            const overlay =
+                this._getSubtitleTrackAlignment(cue.track) === 'bottom'
+                    ? this.bottomSubtitlesElementOverlay
+                    : this.topSubtitlesElementOverlay;
+            if (!(overlay instanceof CachingElementOverlay)) continue;
+            if (
+                !old ||
+                old.text !== cue.text ||
+                old.tokenization !== cue.tokenization ||
+                old.textImage !== cue.textImage
+            ) {
+                const html = this._buildSubtitlesHtml([cue])[0];
+                overlay.cacheHtml(key, html.html());
+            } else if (old.index !== cue.index) {
+                for (const element of overlay
+                    .cachedHtmlElement(key)
+                    ?.querySelectorAll(`[${ASB_SUBTITLE_INDEX_ATTRIBUTE}]`) ?? []) {
+                    element.setAttribute(ASB_SUBTITLE_INDEX_ATTRIBUTE, String(cue.index));
+                }
+            }
+        }
+        this.refreshCurrentSubtitle = true;
+    }
+
     set subtitles(subtitles) {
+        this.subtitleSources = [];
         this.subtitleAnnotations.setSubtitles(subtitles);
     }
 
@@ -694,7 +734,7 @@ export default class SubtitleController {
                         );
                     }
                 },
-                key: String(subtitle.index),
+                key: subtitleKey(subtitle),
             };
         });
     }
@@ -796,16 +836,14 @@ export default class SubtitleController {
         const previousOffset = this._computeOffset();
         if (previousOffset === offset) return;
 
-        this.subtitles = this.subtitles.map((s) => ({
-            text: s.text,
-            textImage: s.textImage,
-            start: s.originalStart + offset,
-            originalStart: s.originalStart,
-            end: s.originalEnd + offset,
-            originalEnd: s.originalEnd,
-            track: s.track,
-            index: s.index,
-        }));
+        this.subtitleAnnotations.setSourceSubtitles(
+            this.subtitles.map((s) => ({
+                ...s,
+                start: s.originalStart + offset,
+                end: s.originalEnd + offset,
+            })),
+            this.subtitleSources
+        );
 
         this.lastOffsetChangeTimestamp = Date.now();
         if (this.offsetHideTimeout) clearTimeout(this.offsetHideTimeout);

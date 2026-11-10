@@ -92,7 +92,7 @@ describe('TokenSelectionController', () => {
         jest.runAllTimers();
         expect(selected).toEqual([]);
         state.paused = paused;
-        controller.replacePlan({ onPause: new Map([[1, 4]]) });
+        controller.replacePlan({ onPause: new Map([[1, 4]]) }, { preservePending: false });
         jest.runAllTimers();
         expect(selected).toEqual([]);
         controller.reevaluatePausedSelection(1500);
@@ -172,6 +172,40 @@ describe('TokenSelectionController', () => {
         expect(selected).toEqual([{ subtitleIndex: 0, tokenStart: 0 }]);
     });
 
+    it('retargets a pending selection when progressive cues change array positions', () => {
+        const { controller, state, selected } = makeController();
+        state.rendered = false;
+        controller.playbackPaused(1500);
+        jest.advanceTimersByTime(0);
+        const previous = makeSubtitle({ source: { loadId: 'stream', cueId: 0 } });
+        controller.subtitlesChanged(
+            [previous],
+            [makeSubtitle({ source: { loadId: 'other', cueId: 0 } }), { ...previous, index: 1 }]
+        );
+        controller.replacePlan({ onPause: new Map([[1, 0]]) }, { preservePending: true });
+        state.rendered = true;
+        jest.runAllTimers();
+        expect(selected).toEqual([{ subtitleIndex: 1, tokenStart: 0 }]);
+    });
+
+    it.each(['load', 'text', 'timing'] as const)('cancels a pending selection when its cue changes %s', (change) => {
+        const { controller, state, selected } = makeController();
+        state.rendered = false;
+        controller.playbackPaused(1500);
+        jest.advanceTimersByTime(0);
+        const previous = makeSubtitle({ source: { loadId: 'stream', cueId: 0 } });
+        const next = {
+            ...previous,
+            ...(change === 'load' ? { source: { loadId: 'new', cueId: 0 } } : {}),
+            ...(change === 'text' ? { text: 'changed' } : {}),
+            ...(change === 'timing' ? { start: 900 } : {}),
+        };
+        controller.subtitlesChanged([previous], [next]);
+        state.rendered = true;
+        jest.runAllTimers();
+        expect(selected).toEqual([]);
+    });
+
     it('stops retrying when the rendering budget is exhausted', () => {
         const { controller, state, selected, attempts } = makeController();
         state.rendered = false;
@@ -195,7 +229,9 @@ describe('TokenSelectionController', () => {
             if (cancellation === 'cancel') controller.cancel();
             if (cancellation === 'resume') controller.playbackStarted();
             if (cancellation === 'seek-start') controller.seekStarted();
-            if (cancellation === 'replace-plan') controller.replacePlan({ onPause: new Map([[1, 4]]) });
+            if (cancellation === 'replace-plan') {
+                controller.replacePlan({ onPause: new Map([[1, 4]]) }, { preservePending: false });
+            }
             if (cancellation === 'hidden') state.subtitlesVisible = false;
             if (cancellation === 'playing') state.paused = false;
             state.rendered = true;
@@ -225,7 +261,7 @@ describe('TokenSelectionController', () => {
         jest.runAllTimers();
         controller.playbackStarted();
         expect(cleared()).toBe(1);
-        controller.replacePlan({ onPause: new Map([[1, 4]]) });
+        controller.replacePlan({ onPause: new Map([[1, 4]]) }, { preservePending: false });
         controller.playbackPaused(1500);
         jest.runAllTimers();
         expect(selected).toEqual([

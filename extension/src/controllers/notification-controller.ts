@@ -9,6 +9,7 @@ import { frameColorSchemeStyleBlock } from '@/services/frame-color-scheme';
 export default class NotificationController {
     public onClose?: () => void;
     public onAction?: () => void;
+    public onTimeout?: () => void;
 
     private readonly _context: Binding;
     private readonly _frame: UiFrame;
@@ -109,12 +110,13 @@ export default class NotificationController {
                     this.onAction?.();
                     return;
                 }
-                if (message.command === 'close') {
+                if (message.command === 'close' || message.command === 'timeout') {
                     this._context.subtitleController.forceHideSubtitles = false;
                     this._context.mobileVideoOverlayController.forceHide = false;
                     this._context.controlsController.show();
                     this.hide();
-                    this.onClose?.();
+                    if (message.command === 'timeout') (this.onTimeout ?? this.onClose)?.();
+                    else this.onClose?.();
                 }
             });
         }
