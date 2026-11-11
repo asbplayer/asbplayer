@@ -288,6 +288,17 @@
             "autoSync": {
                 "enabled": true
             }
+        },
+        {
+            "key": "reanime",
+            "host": "flixcloud\\.cc",
+            "pageScript": "reanime-page.js",
+            "subtitleDiscoveryRequestTarget": "video",
+            "syncAllowedAtPath": "^/e/",
+            "refreshSubtitleDataOnPickerOpen": true,
+            "autoSync": {
+                "enabled": true
+            }
         }
     ]
 }

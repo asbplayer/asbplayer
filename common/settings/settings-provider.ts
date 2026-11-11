@@ -279,6 +279,7 @@ export const defaultSettings: AsbplayerSettings = {
         okru: {},
         vkvideo: {},
         dreaming: {},
+        reanime: {},
     },
     webSocketClientEnabled: false,
     webSocketServerUrl: `ws://${project.services.webSocket.host}:${project.services.webSocket.port}${project.services.webSocket.path}`,

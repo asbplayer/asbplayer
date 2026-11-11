@@ -157,6 +157,7 @@ export default defineConfig({
                         'okru-page.js',
                         'vkvideo-page.js',
                         'dreaming-page.js',
+                        'reanime-page.js',
                         'anki-ui.js',
                         'mp3-encoder-worker.js',
                         'pgs-parser-worker.js',
