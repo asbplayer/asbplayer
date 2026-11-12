@@ -118,24 +118,56 @@ function metadataString(value: JsonRecord, keys: readonly string[]) {
     return;
 }
 
+// encodingFormat and inLanguage are the schema.org MediaObject names.
+const contentTypeKeys = ['mimetype', 'contenttype', 'encodingformat', 'type'];
+
 function subtitleContentType(value: JsonRecord) {
-    const contentType = normalizedContentType(metadataString(value, ['mimetype', 'contenttype', 'type']));
+    const contentType = normalizedContentType(metadataString(value, contentTypeKeys));
     return subtitleExtensionsByContentType[contentType ?? ''] === undefined ? undefined : contentType;
 }
 
+const languageKeys = ['srclang', 'language', 'languagecodename', 'lang', 'locale', 'inlanguage'] as const;
+// Some players put a display name such as "English (Full Subtitles)" in the language field.
+const descriptiveLanguage = /[\s()[\]]/;
+
 function metadataLanguage(value: JsonRecord) {
-    return metadataString(value, ['srclang', 'language', 'languagecodename', 'lang', 'locale'])?.toLowerCase();
+    const language = metadataString(value, languageKeys) ?? nestedLanguageCode(value);
+    return language === undefined || descriptiveLanguage.test(language) ? undefined : language.toLowerCase();
+}
+
+// APIs often describe the language as an object, e.g. `language: { name: 'English', bcp47: 'en' }`.
+function nestedLanguageCode(value: JsonRecord) {
+    for (const [key, candidate] of Object.entries(value)) {
+        if (!languageKeys.includes(normalizedMetadataKey(key) as (typeof languageKeys)[number])) continue;
+        if (candidate === null || typeof candidate !== 'object' || Array.isArray(candidate)) continue;
+        return metadataString(candidate as JsonRecord, ['bcp47', 'code', 'languagecode', 'srclang', 'tag', 'locale']);
+    }
+    return;
 }
 
 function metadataLabel(value: JsonRecord) {
-    return metadataString(value, ['label', 'name', 'display', 'filename']);
+    const label = metadataString(value, ['label', 'name', 'display', 'filename']);
+    if (label !== undefined) return label;
+    const language = metadataString(value, languageKeys);
+    return language !== undefined && descriptiveLanguage.test(language) ? language : undefined;
 }
 
 function metadataSource(value: JsonRecord, subtitleContext: boolean, declaredKind?: string) {
     const source = metadataString(value, ['src', 'file', 'url', 'source', 'text']);
     if (source !== undefined) return source;
     if (subtitleContext || declaredKind === 'subtitles' || declaredKind === 'captions') {
-        return metadataString(value, ['baseurl']);
+        return metadataString(value, ['baseurl', 'contenturl']) ?? formatSpecificSource(value);
+    }
+    return;
+}
+
+// e.g. `vttSrc` or `srtUrl`; only consulted for entries already known to describe subtitles.
+function formatSpecificSource(value: JsonRecord) {
+    for (const [key, candidate] of Object.entries(value)) {
+        if (/^(?:vtt|srt|ass|ssa|ttml|dfxp)(?:src|url)$/.test(normalizedMetadataKey(key))) {
+            const source = nonEmptyString(candidate);
+            if (source !== undefined) return source;
+        }
     }
     return;
 }
@@ -157,7 +189,7 @@ function trackDefinitionFromMetadata(
     const semanticType = metadataString(value, ['type'])?.toLowerCase();
     const declaredKind =
         kind ?? (semanticType === 'subtitles' || semanticType === 'captions' ? semanticType : undefined);
-    const declaredContentType = normalizedContentType(metadataString(value, ['mimetype', 'contenttype', 'type']));
+    const declaredContentType = normalizedContentType(metadataString(value, contentTypeKeys));
     const declaredContentTypeExtension = subtitleExtensionsByContentType[declaredContentType ?? ''];
     const contentTypeExtension =
         declaredContentTypeExtension ?? subtitleExtensionsByContentType[inheritedContentType ?? ''];
@@ -264,7 +296,7 @@ export function tracksFromJson(value: unknown, baseUrl: string, options: JsonDis
                 tracks.push(trackFromDef(definition));
             } else if (contextual && current.subtitleContext) {
                 const kind = metadataString(record, ['kind'])?.toLowerCase();
-                const declaredType = normalizedContentType(metadataString(record, ['mimetype', 'contenttype', 'type']));
+                const declaredType = normalizedContentType(metadataString(record, contentTypeKeys));
                 const hasExplicitSubtitleMetadata = Object.keys(record).some((key) => {
                     const normalizedKey = normalizedMetadataKey(key);
                     return (

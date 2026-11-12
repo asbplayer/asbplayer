@@ -21,11 +21,17 @@ import {
     tracksFromJson,
 } from '@project/extension/src/pages/subtitle-discovery';
 import type { JsonDiscovery, VideoDataProvider } from '@project/extension/src/pages/subtitle-discovery';
+import { nextFlightText, subtitleArraysFromScript } from '@project/extension/src/pages/script-literal';
 import { trackFromDef } from '@project/extension/src/pages/util';
 
 export const maximumInlineJsonScripts = 5;
 export const maximumInlineJsonLength = 128_000;
 const maximumInlineJsonTotalLength = 256_000;
+const maximumInlineScripts = 50;
+const maximumInlineScriptLength = 512_000;
+const maximumFlightLength = 2_000_000;
+// Also matches the escaped `\"captions\":[` form found inside Next.js flight strings.
+const inlineScriptSubtitleHint = /(?:caption|subtit|texttrack|tracks)\w*\\?["']?\s*:\s*\[/i;
 export const maximumTextTrackCues = 10_000;
 export const maximumTextTrackTextLength = 1_000_000;
 export const capturedDuringPlaybackLabelSuffix = ' (captured during playback)';
@@ -67,6 +73,83 @@ function tracksFromInlineJson(): JsonDiscovery {
     }
 
     return { tracks, manifestUrls, metadataUrls: new Set(), extensionlessTracks: [] };
+}
+
+// Inline scripts describe the page as it was first loaded. After client-side navigation (pushState) to
+// another path they belong to a different video, so they must not be used.
+function navigatedAwayFromLoadedPage() {
+    try {
+        const navigation = performance.getEntriesByType('navigation')[0];
+        return navigation !== undefined && new URL(navigation.name).pathname !== window.location.pathname;
+    } catch {
+        return false;
+    }
+}
+
+function tracksFromInlineScriptLiterals(): VideoDataSubtitleTrack[] {
+    if (navigatedAwayFromLoadedPage()) return [];
+    const sources: string[] = [];
+    // Next.js splits its data into chunks wherever the stream happened to flush, one `<script>` per chunk, so an
+    // array can start in one script and end in the next. The chunks are joined in order, as Next.js does.
+    const flightScripts: string[] = [];
+    let flightHinted = false;
+    let scannedScripts = 0;
+    for (const script of Array.from(document.querySelectorAll<HTMLScriptElement>('script:not([src])'))) {
+        const type = normalizedContentType(script.type);
+        if (type && type !== 'module' && !type.endsWith('javascript') && !type.endsWith('ecmascript')) continue;
+
+        const text = script.textContent;
+        if (!text || text.length > maximumInlineScriptLength) continue;
+        if (text.includes('self.__next_f.push(')) {
+            flightScripts.push(text);
+            flightHinted ||= inlineScriptSubtitleHint.test(text);
+        } else if (scannedScripts++ < maximumInlineScripts && inlineScriptSubtitleHint.test(text)) {
+            // Cheap check on the raw text first, so scripts without subtitle keys are never converted.
+            sources.push(text);
+        }
+    }
+    if (flightHinted) {
+        let flight = '';
+        for (const text of flightScripts) {
+            const decoded = nextFlightText(text);
+            if (decoded === undefined) continue;
+            if (flight.length + decoded.length > maximumFlightLength) break;
+            flight += decoded;
+        }
+        sources.push(flight);
+    }
+
+    const tracks: VideoDataSubtitleTrack[] = [];
+    for (const source of sources) {
+        for (const value of subtitleArraysFromScript(source)) {
+            // The array was found under a subtitle-like key, so its entries are read as subtitle metadata.
+            const discovered = tracksFromJson(value, document.baseURI, { contextual: true, rootSubtitleContext: true });
+            tracks.push(...discovered.tracks);
+        }
+    }
+    return collapseAlternateFormats(tracks);
+}
+
+const formatPreference = ['vtt', 'srt', 'ass', 'ttml2', 'dfxp'];
+
+// Page data often lists the same subtitle twice (with and without a language) and in several formats.
+// Keep the entry that carries a language, and one format per subtitle.
+function collapseAlternateFormats(tracks: readonly VideoDataSubtitleTrack[]) {
+    const rank = (track: VideoDataSubtitleTrack) => {
+        const index = formatPreference.indexOf(track.extension);
+        return index < 0 ? formatPreference.length : index;
+    };
+    const withLanguageFirst = [...tracks].sort((a, b) => Number(!a.language) - Number(!b.language));
+    const kept: VideoDataSubtitleTrack[] = [];
+    for (const track of deduplicateTracks(withLanguageFirst)) {
+        const index = kept.findIndex(
+            (other) =>
+                other.label === track.label && other.language === track.language && other.extension !== track.extension
+        );
+        if (index < 0) kept.push(track);
+        else if (rank(track) < rank(kept[index])) kept[index] = track;
+    }
+    return kept;
 }
 
 function directSubtitleTracksFromPerformance(): VideoDataSubtitleTrack[] {
@@ -309,7 +392,11 @@ export class BaseGenericPageDiscovery implements VideoDataProvider {
         const tracks = nativeSubtitleTracks(video, this.cueProvider);
         tracks.push(...directSubtitleTracksFromPerformance());
         const inlineJson = tracksFromInlineJson();
-        tracks.push(...inlineJson.tracks, ...(await tracksFromInlineManifests(inlineJson.manifestUrls)));
+        tracks.push(
+            ...inlineJson.tracks,
+            ...tracksFromInlineScriptLiterals(),
+            ...(await tracksFromInlineManifests(inlineJson.manifestUrls))
+        );
 
         return {
             error: '',

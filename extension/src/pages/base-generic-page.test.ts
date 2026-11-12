@@ -217,6 +217,99 @@ it('discovers strict subtitle metadata from small explicitly typed inline JSON',
     });
 });
 
+it('discovers subtitle arrays declared as object literals in executable inline scripts', async () => {
+    const video = appendVideo();
+    const config = document.createElement('script');
+    config.textContent = `
+        window.playerConfig = { file: '/video.m3u8', tracks: [{ file: '/subs/ja.vtt', label: '日本語', kind: 'captions', srclang: 'ja' },], };
+    `;
+    const hydration = document.createElement('script');
+    hydration.textContent =
+        'window.hydration = { data: [{ subtitles: [{ url: "https://cdn.example/s/abc_eng_3.ass", language: "English (Full Subtitles)", format: "ass", default: !1 }], title: void 0 }] };';
+    const ignored = document.createElement('script');
+    ignored.type = 'text/template';
+    ignored.textContent = 'tracks: [{ file: "/subs/template.vtt", kind: "captions" }]';
+    document.body.append(config, hydration, ignored);
+
+    await expect(new BaseGenericPageDiscovery().videoData(video)).resolves.toMatchObject({
+        subtitles: [
+            { label: '日本語', language: 'ja', url: 'http://localhost/subs/ja.vtt', extension: 'vtt' },
+            {
+                label: 'English (Full Subtitles)',
+                language: undefined,
+                url: 'https://cdn.example/s/abc_eng_3.ass',
+                extension: 'ass',
+            },
+        ],
+    });
+});
+
+it('discovers subtitle metadata in Next.js flight data and keeps one format per subtitle', async () => {
+    const video = appendVideo();
+    const payload = JSON.stringify({
+        closed_captions: [
+            { url: 'https://cdn.example/c/en.dfxp', profile: 'DFXP' },
+            { url: 'https://cdn.example/c/en.srt', profile: 'SRT' },
+        ],
+        captions_language: [
+            { url: 'https://cdn.example/c/en.dfxp', profile: 'DFXP', language: 'en' },
+            { url: 'https://cdn.example/c/en.srt', profile: 'SRT', language: 'en' },
+            { url: 'https://cdn.example/c/en.vtt', profile: 'WebVTT', language: 'en' },
+        ],
+        subtitles: [{ language: { name: 'Español', bcp47: 'es' }, vttSrc: 'https://cdn.example/c/es.vtt' }],
+        caption: [{ '@type': 'MediaObject', contentUrl: '/c/fr', encodingFormat: 'text/vtt', inLanguage: 'fr' }],
+    });
+    const flight = document.createElement('script');
+    const chunk = JSON.stringify(`5:${payload}\n`);
+    flight.textContent = `(self.__next_f = self.__next_f || []).push([0]); self.__next_f.push([1,${chunk}])`;
+    document.body.append(flight);
+
+    const { subtitles } = await new BaseGenericPageDiscovery().videoData(video);
+    expect(subtitles).toEqual([
+        expect.objectContaining({ language: 'en', url: 'https://cdn.example/c/en.vtt', extension: 'vtt' }),
+        expect.objectContaining({ language: 'es', url: 'https://cdn.example/c/es.vtt', extension: 'vtt' }),
+        expect.objectContaining({ language: 'fr', url: 'http://localhost/c/fr', extension: 'vtt' }),
+    ]);
+});
+
+it('joins Next.js flight chunks split across scripts before reading them', async () => {
+    const video = appendVideo();
+    const payload = `7:${JSON.stringify({
+        subtitles: [
+            { language: { bcp47: 'sq' }, vttSrc: 'https://cdn.example/c/sq.vtt' },
+            { language: { bcp47: 'ja' }, vttSrc: 'https://cdn.example/c/ja.vtt' },
+        ],
+    })}\n`;
+    const middle = payload.indexOf('"vttSrc"');
+    for (const chunk of [payload.slice(0, middle), payload.slice(middle)]) {
+        const script = document.createElement('script');
+        script.textContent = `self.__next_f.push([1,${JSON.stringify(chunk)}])`;
+        document.body.append(script);
+    }
+
+    const { subtitles } = await new BaseGenericPageDiscovery().videoData(video);
+    expect(subtitles).toEqual([
+        expect.objectContaining({ language: 'sq', url: 'https://cdn.example/c/sq.vtt' }),
+        expect.objectContaining({ language: 'ja', url: 'https://cdn.example/c/ja.vtt' }),
+    ]);
+});
+
+it('ignores inline script metadata after client-side navigation to another path', async () => {
+    const video = appendVideo();
+    const script = document.createElement('script');
+    script.textContent = 'window.config = { tracks: [{ file: "/subs/ja.vtt", kind: "captions", srclang: "ja" }] };';
+    document.body.append(script);
+    const restore = mockPerformanceEntries([{ name: 'http://localhost/watch/episode-1' } as PerformanceEntry]);
+    try {
+        history.replaceState(null, '', '/watch/episode-1');
+        expect((await new BaseGenericPageDiscovery().videoData(video)).subtitles).toHaveLength(1);
+        history.replaceState(null, '', '/watch/episode-2');
+        expect((await new BaseGenericPageDiscovery().videoData(video)).subtitles).toEqual([]);
+    } finally {
+        restore();
+    }
+});
+
 it('does not scan a large late hydration payload in base mode', async () => {
     const video = appendVideo();
     for (let index = 0; index < 7; index++) appendJson({ analytics: { index } });
