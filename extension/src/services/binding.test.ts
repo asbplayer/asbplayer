@@ -604,8 +604,14 @@ describe('Binding playback mode integration', () => {
                 .findLast((message) => message?.command === 'subtitleSource');
             expect(replay?.update).toMatchObject({
                 type: 'snapshot',
-                tracks: [{ name: 'progressive.srt', status: 'loading', loadId: 'stream' }],
-                subtitles: [{ text: 'First' }],
+                tracks: [
+                    {
+                        name: 'progressive.srt',
+                        status: 'loading',
+                        loadId: 'stream',
+                        cues: [{ cueId: 0, text: 'First', start: 1000, end: 2000 }],
+                    },
+                ],
             });
             sendSubtitles(binding, [
                 { text: 'File', start: 0, end: 1000, originalStart: 0, originalEnd: 1000, track: 0, index: 0 },
@@ -621,7 +627,7 @@ describe('Binding playback mode integration', () => {
             expect(
                 calls.map(([command]) => command.message).findLast((message) => message?.command === 'subtitleSource')
             ).toMatchObject({
-                update: { type: 'snapshot', subtitles: [{ text: 'File' }] },
+                update: { type: 'snapshot', tracks: [{ cues: [{ text: 'File' }] }] },
             });
         } finally {
             binding.unbind();
@@ -654,6 +660,7 @@ describe('Binding playback mode integration', () => {
                 },
             });
             expect(sync?.subtitleSource).not.toHaveProperty('subtitles');
+            for (const track of sync?.subtitleSource?.tracks ?? []) expect(track).not.toHaveProperty('cues');
             expect(binding.subtitleController.subtitles.map((cue) => cue.text)).toEqual(['External']);
         } finally {
             binding.unbind();

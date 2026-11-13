@@ -101,6 +101,33 @@ describe('SubtitleController appearance rendering', () => {
         expect(subtitle.start).toBe(subtitle.originalStart);
     });
 
+    it('renders corrected and replacement cues and clears removed cues', () => {
+        const controller = controllerForVideo();
+        controller.setSubtitleSettings(defaultSettings);
+        const first = makeSubtitle({
+            text: 'original',
+            originalText: 'original',
+            source: { loadId: 'stream', cueId: 0 },
+        });
+        const sources = [{ track: 0, loadId: 'stream', name: 'subtitles.ass', status: 'loading' as const }];
+        const showFirst = () =>
+            controller.playbackStateChanged({ timestampMs: 0, showingSubtitleIndexes: [0], paused: true });
+        controller.setSourceSubtitles([first], sources);
+        showFirst();
+        controller.setSourceSubtitles([{ ...first, text: 'corrected', originalText: 'corrected' }], sources);
+        showFirst();
+        expect(document.querySelector('span[data-asb-subtitle-index="0"]')?.textContent).toBe('corrected');
+        controller.setSourceSubtitles(
+            [{ ...first, text: 'replacement', originalText: 'replacement', source: { loadId: 'new', cueId: 0 } }],
+            [{ ...sources[0], loadId: 'new' }]
+        );
+        showFirst();
+        expect(document.querySelector('span[data-asb-subtitle-index="0"]')?.textContent).toBe('replacement');
+        controller.setSourceSubtitles([], []);
+        controller.playbackStateChanged({ timestampMs: 0, showingSubtitleIndexes: [], paused: true });
+        expect(document.querySelector('span[data-asb-subtitle-index]')).toBeNull();
+    });
+
     it('keeps statistics loading when an offset changes during progressive loading', async () => {
         jest.useFakeTimers();
         jest.spyOn(Yomitan.prototype, 'version').mockResolvedValue('0.0.0.0');

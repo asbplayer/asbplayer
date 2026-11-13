@@ -1,5 +1,5 @@
 import type { SubtitleSourceState } from '@project/common/subtitle-reader/subtitle-stream';
-import { subtitleKey } from '@project/common/subtitle-reader/subtitle-stream';
+import { diffCues, sameSubtitleAppearance, subtitleKey } from '@project/common/subtitle-reader/subtitle-stream';
 import type {
     CopyToClipboardMessage,
     OffsetFromVideoMessage,
@@ -196,35 +196,35 @@ export default class SubtitleController {
 
     setSourceSubtitles(subtitles: IndexedSubtitleModel[], sources: readonly SubtitleSourceState[]): void {
         this.subtitleSources = sources;
-        const previous = new Map(this.subtitles.map((cue) => [subtitleKey(cue), cue]));
+        const previous = this.subtitles;
         this.subtitleAnnotations.setSourceSubtitles(subtitles, sources);
-        const keys = new Set(subtitles.map(subtitleKey));
+        const diff = diffCues(previous, this.subtitles, sameSubtitleAppearance);
         for (const overlay of [this.bottomSubtitlesElementOverlay, this.topSubtitlesElementOverlay]) {
             if (!(overlay instanceof CachingElementOverlay)) continue;
-            for (const key of overlay.cachedHtmlKeys()) if (!keys.has(key)) overlay.removeCachedHtml(key);
+            for (const key of diff.removedKeys) overlay.removeCachedHtml(key);
         }
-        for (const cue of this.subtitles) {
-            const key = subtitleKey(cue);
-            const old = previous.get(key);
+        const cacheCue = (cue: IndexedSubtitleModel) => {
             const overlay =
                 this._getSubtitleTrackAlignment(cue.track) === 'bottom'
                     ? this.bottomSubtitlesElementOverlay
                     : this.topSubtitlesElementOverlay;
+            if (overlay instanceof CachingElementOverlay) {
+                overlay.cacheHtml(subtitleKey(cue), this._buildSubtitlesHtml([cue])[0].html());
+            }
+        };
+        for (const cue of diff.added) cacheCue(cue);
+        for (const { next } of diff.changed) cacheCue(next);
+        for (const { previous, next } of diff.retained) {
+            if (previous.index === next.index) continue;
+            const overlay =
+                this._getSubtitleTrackAlignment(next.track) === 'bottom'
+                    ? this.bottomSubtitlesElementOverlay
+                    : this.topSubtitlesElementOverlay;
             if (!(overlay instanceof CachingElementOverlay)) continue;
-            if (
-                !old ||
-                old.text !== cue.text ||
-                old.tokenization !== cue.tokenization ||
-                old.textImage !== cue.textImage
-            ) {
-                const html = this._buildSubtitlesHtml([cue])[0];
-                overlay.cacheHtml(key, html.html());
-            } else if (old.index !== cue.index) {
-                for (const element of overlay
-                    .cachedHtmlElement(key)
-                    ?.querySelectorAll(`[${ASB_SUBTITLE_INDEX_ATTRIBUTE}]`) ?? []) {
-                    element.setAttribute(ASB_SUBTITLE_INDEX_ATTRIBUTE, String(cue.index));
-                }
+            for (const element of overlay
+                .cachedHtmlElement(subtitleKey(next))
+                ?.querySelectorAll(`[${ASB_SUBTITLE_INDEX_ATTRIBUTE}]`) ?? []) {
+                element.setAttribute(ASB_SUBTITLE_INDEX_ATTRIBUTE, String(next.index));
             }
         }
         this.refreshCurrentSubtitle = true;

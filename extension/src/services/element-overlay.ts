@@ -165,10 +165,6 @@ export class CachingElementOverlay implements ElementOverlay {
         this.domCache.delete(key);
     }
 
-    cachedHtmlKeys() {
-        return this.domCache.keys();
-    }
-
     setHtml(htmls: KeyedHtml[]) {
         if (document.fullscreenElement) {
             this._displayFullscreenContentElementsWithHtml(htmls);

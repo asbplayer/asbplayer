@@ -1,4 +1,3 @@
-import { File as NodeFile } from 'node:buffer';
 import { ReadableStream } from 'node:stream/web';
 import { TextDecoder, TextEncoder } from 'node:util';
 import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
@@ -13,7 +12,6 @@ jest.mock('@qgustavor/srt-parser', () => ({ __esModule: true, default: class {} 
 
 const originalFetch = globalThis.fetch;
 const originalDecoder = globalThis.TextDecoder;
-const originalFile = globalThis.File;
 const encoder = new TextEncoder();
 const url = 'https://media.example/subtitles?id=track';
 const header = `[Script Info]
@@ -79,13 +77,12 @@ beforeEach(() => {
             if (this.aborted) throw this.reason;
         };
     }
-    Object.assign(globalThis, { TextDecoder, File: NodeFile });
+    Object.assign(globalThis, { TextDecoder });
 });
 afterEach(() => {
     jest.useRealTimers();
     globalThis.fetch = originalFetch;
     globalThis.TextDecoder = originalDecoder;
-    globalThis.File = originalFile;
 });
 
 describe('progressive subtitle responses', () => {

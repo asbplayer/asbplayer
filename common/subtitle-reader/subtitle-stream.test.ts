@@ -1,19 +1,89 @@
 import { describe, expect, it } from '@jest/globals';
 import {
     displaySubtitleSnapshot,
+    diffCues,
     mergeSubtitleAnnotations,
     originalTokenizationsEqual,
     SubtitleStream,
     subtitleKey,
     subtitleSourceStatus,
+    sameSubtitleSourceContent,
+    sameSubtitleAppearance,
 } from '@project/common/subtitle-reader/subtitle-stream';
 import type { SubtitleSourceStatus } from '@project/common/subtitle-reader/subtitle-stream';
 import type { Token, Tokenization } from '@project/common';
 import { TokenState, TokenStatus } from '@project/common/settings';
+import { makeSubtitle } from '@project/common/playback/playback-test-utils';
 
 const cue = (cueId: number, start: number, text = 'word') => ({ cueId, start, end: start + 1000, text });
 const start = (stream: SubtitleStream, track = 0, loadId = 'first') =>
     stream.update({ type: 'start', track, loadId, name: `track-${track}.srt` });
+
+describe('diffCues', () => {
+    const identified = (cueId: number) => makeSubtitle({ source: { loadId: 'source', cueId } });
+
+    it('handles empty collections, the first cue, and clearing the collection', () => {
+        const first = identified(0);
+        expect(diffCues([], [], sameSubtitleSourceContent)).toEqual({
+            added: [],
+            retained: [],
+            changed: [],
+            removedKeys: [],
+        });
+        expect(diffCues([], [first], sameSubtitleSourceContent)).toEqual({
+            added: [first],
+            retained: [],
+            changed: [],
+            removedKeys: [],
+        });
+        expect(diffCues([first], [], sameSubtitleSourceContent)).toEqual({
+            added: [],
+            retained: [],
+            changed: [],
+            removedKeys: [subtitleKey(first)],
+        });
+    });
+
+    it('matches identities across reindexing and separates corrections, additions, and removals', () => {
+        const retained = identified(0);
+        const changed = identified(1);
+        const removed = identified(2);
+        const added = identified(3);
+        const reindexed = { ...retained, index: 2 };
+        const corrected = { ...changed, text: 'corrected' };
+        expect(
+            diffCues([retained, changed, removed], [added, corrected, reindexed], sameSubtitleSourceContent)
+        ).toEqual({
+            added: [added],
+            retained: [{ previous: retained, next: reindexed }],
+            changed: [{ previous: changed, next: corrected }],
+            removedKeys: [subtitleKey(removed)],
+        });
+    });
+
+    it('keeps cue IDs scoped to their track and load', () => {
+        const first = identified(0);
+        const otherTrack = { ...first, track: 1 };
+        const replacement = { ...first, source: { loadId: 'replacement', cueId: 0 } };
+        expect(diffCues([first, otherTrack], [otherTrack, replacement], sameSubtitleSourceContent)).toEqual({
+            added: [replacement],
+            retained: [{ previous: otherTrack, next: otherTrack }],
+            changed: [],
+            removedKeys: [subtitleKey(first)],
+        });
+    });
+
+    it('lets consumers distinguish source content from rendered appearance', () => {
+        const first = identified(0);
+        const annotated = { ...first, originalText: first.text, text: '<b>subtitle</b>' };
+        expect(diffCues([first], [annotated], sameSubtitleSourceContent).retained).toEqual([
+            { previous: first, next: annotated },
+        ]);
+        expect(diffCues([first], [annotated], sameSubtitleAppearance).changed).toEqual([
+            { previous: first, next: annotated },
+        ]);
+    });
+});
 
 describe('originalTokenizationsEqual', () => {
     const token = (): Token => ({ pos: [0, 4], readings: [{ pos: [0, 4], reading: 'wa' }], states: [] });
@@ -107,14 +177,15 @@ describe('SubtitleStream', () => {
         const stream = new SubtitleStream();
         for (let track = 0; track < 3; track++) start(stream, track, `load-${track}`);
         stream.update({ type: 'cues', track: 0, loadId: 'load-0', cues: [cue(7, 1000)] });
+        stream.update({ type: 'cues', track: 2, loadId: 'load-2', cues: [cue(7, 2000, 'partial')] });
         stream.update({ type: 'complete', track: 1, loadId: 'load-1' });
         stream.update({ type: 'failed', track: 2, loadId: 'load-2', error: 'Interrupted' });
         const receiver = new SubtitleStream();
-        receiver.update({ type: 'snapshot', ...stream.snapshot });
+        receiver.update({ type: 'snapshot', ...stream.sourceSnapshot });
         expect(receiver.snapshot).toEqual(stream.snapshot);
         receiver.update({ type: 'cues', track: 0, loadId: 'load-0', cues: [cue(8, 3000)] });
-        expect(receiver.snapshot.subtitles).toHaveLength(2);
-        receiver.update({ type: 'snapshot', tracks: [], subtitles: [] });
+        expect(receiver.snapshot.subtitles).toHaveLength(3);
+        receiver.update({ type: 'snapshot', tracks: [] });
         expect(receiver.snapshot).toEqual({ tracks: [], subtitles: [] });
     });
 
@@ -133,7 +204,90 @@ describe('SubtitleStream', () => {
             stream.update({ type: 'cues', track: 0, loadId: 'first', cues: [cue(1, 2000), cue(-1, 3000)] })
         ).toThrow();
         expect(stream.snapshot).toEqual(previous);
-        expect(() => stream.update({ type: 'snapshot', tracks: [], subtitles: previous.subtitles })).toThrow();
+        expect(() =>
+            stream.update({
+                type: 'snapshot',
+                tracks: [previous.tracks[0], previous.tracks[0]].map((state) => ({ ...state, cues: [] })),
+            })
+        ).toThrow();
+        expect(stream.snapshot).toEqual(previous);
+    });
+
+    it('transports compact source cues with original timing, images, and readings per track', () => {
+        const stream = new SubtitleStream();
+        const textImage = {
+            dataUrl: 'data:image/png;base64,AA==',
+            screen: { width: 640, height: 360 },
+            image: { width: 100, height: 20 },
+        };
+        const tokenization = {
+            tokens: [
+                {
+                    pos: [0, 4] as [number, number],
+                    states: [],
+                    readings: [{ pos: [0, 4] as [number, number], reading: 'word' }],
+                },
+            ],
+        };
+        stream.replace(
+            [
+                makeSubtitle({
+                    start: 1500,
+                    end: 2500,
+                    originalStart: 1000,
+                    originalEnd: 2000,
+                    index: 8,
+                    text: 'word',
+                    source: { loadId: 'first', cueId: 7 },
+                    textImage,
+                    tokenization,
+                }),
+            ],
+            ['source.ass', 'empty.srt']
+        );
+        const wire = JSON.parse(JSON.stringify(stream.sourceSnapshot));
+        expect(wire).toEqual({
+            tracks: [
+                {
+                    track: 0,
+                    loadId: 'first',
+                    name: 'source.ass',
+                    status: 'complete',
+                    cues: [{ cueId: 7, start: 1000, end: 2000, text: 'word', textImage, tokenization }],
+                },
+                { track: 1, loadId: expect.any(String), name: 'empty.srt', status: 'complete', cues: [] },
+            ],
+        });
+        const receiver = new SubtitleStream();
+        receiver.update({ type: 'snapshot', ...wire });
+        expect(displaySubtitleSnapshot(receiver.snapshot, [], 1250)).toMatchObject([
+            {
+                index: 0,
+                start: 2250,
+                end: 3250,
+                originalStart: 1000,
+                originalEnd: 2000,
+                source: { loadId: 'first', cueId: 7 },
+                textImage,
+                tokenization,
+            },
+        ]);
+    });
+
+    it('rejects a malformed snapshot without replacing an existing source', () => {
+        const stream = new SubtitleStream();
+        start(stream);
+        stream.update({ type: 'cues', track: 0, loadId: 'first', cues: [cue(0, 1000)] });
+        const previous = stream.snapshot;
+        expect(() =>
+            stream.update({
+                type: 'snapshot',
+                tracks: [
+                    { track: 0, loadId: 'replacement', name: 'valid', status: 'complete', cues: [cue(1, 2000)] },
+                    { track: 1, loadId: 'other', name: 'invalid', status: 'loading', cues: [cue(-1, 3000)] },
+                ],
+            })
+        ).toThrow('Invalid subtitle cue');
         expect(stream.snapshot).toEqual(previous);
     });
 

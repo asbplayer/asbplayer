@@ -1,6 +1,5 @@
 import type SubtitleReader from '@project/common/subtitle-reader/subtitle-reader';
 import type { SubtitleSourceCue, SubtitleSourceUpdate } from '@project/common/subtitle-reader/subtitle-stream';
-import { ProgressiveSubtitleReader } from '@project/common/subtitle-reader/progressive-subtitle-reader';
 import { asbTrace } from '@project/common/util/log';
 
 const publicationIntervalMs = 100;
@@ -9,7 +8,7 @@ const publicationIntervalMs = 100;
 export async function streamSubtitles(
     url: string,
     extension: string,
-    subtitleReader: Pick<SubtitleReader, 'subtitles'>,
+    subtitleReader: Pick<SubtitleReader, 'createProgressiveReader'>,
     source: { readonly track: number; readonly loadId: string },
     signal: AbortSignal,
     update: (update: SubtitleSourceUpdate) => void
@@ -60,7 +59,7 @@ export async function streamSubtitles(
     };
 
     try {
-        const parser = new ProgressiveSubtitleReader(subtitleReader, extension);
+        const parser = subtitleReader.createProgressiveReader(extension);
         const response = await fetch(url, { signal });
         if (!response.ok) {
             throw new Error(`Progressive subtitle retrieval failed: ${response.status} ${response.statusText}`);
@@ -80,7 +79,7 @@ export async function streamSubtitles(
             const { value, done } = await body.read();
             if (publicationError !== undefined) throw publicationError;
             bytes += value?.byteLength ?? 0;
-            const cues = await parser.read(done ? decoder.decode() : decoder.decode(value, { stream: true }), done);
+            const cues = parser.read(done ? decoder.decode() : decoder.decode(value, { stream: true }), done);
             signal.throwIfAborted();
             publish(cues);
             if (done) break;
