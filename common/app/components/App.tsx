@@ -35,6 +35,7 @@ import type { AsbplayerSettings, DictionaryTrack, Profile, SettingsProvider } fr
 import { AudioClip, Mp3Encoder } from '@project/common/audio-clip';
 import type { ExportParams } from '@project/common/anki';
 import { SubtitleReader } from '@project/common/subtitle-reader';
+import { subtitleSourceNames } from '@project/common/subtitle-reader/subtitle-stream';
 import { v4 as uuidv4 } from 'uuid';
 import clsx from 'clsx';
 import Alert from '@project/common/app/components/Alert';
@@ -1312,12 +1313,7 @@ function App({
                 const subtitleSource =
                     message.data.command === 'syncv2' ? (message.data as PlayerSyncMessage).subtitleSource : undefined;
                 if (subtitleSource) {
-                    const names: string[] = [];
-                    for (const { track, name } of subtitleSource.tracks) {
-                        while (names.length <= track) names.push('');
-                        names[track] = name;
-                    }
-                    attachToVideoSubtitles(tab, names);
+                    attachToVideoSubtitles(tab, subtitleSourceNames(subtitleSource.tracks));
                     return;
                 }
                 let subtitleSourceFiles: MediaSourceFile[];

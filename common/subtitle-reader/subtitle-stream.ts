@@ -12,6 +12,16 @@ export interface SubtitleSourceState {
     readonly error?: string;
 }
 
+/** Keeps file names aligned with track slots, including unselected slots. */
+export const subtitleSourceNames = (sources: readonly Pick<SubtitleSourceState, 'track' | 'name'>[]): string[] => {
+    const names: string[] = [];
+    for (const { track, name } of sources) {
+        while (names.length <= track) names.push('');
+        names[track] = name;
+    }
+    return names;
+};
+
 /** A failed track marks the selection failed; otherwise it is loading until all tracks complete. */
 export const subtitleSourceStatus = (sources: readonly SubtitleSourceState[]): SubtitleSourceStatus => {
     if (sources.some((source) => source.status === 'failed')) return 'failed';
@@ -62,8 +72,41 @@ export type SubtitleSourceUpdate =
     | { readonly type: 'failed'; readonly track: number; readonly loadId: string; readonly error: string }
     | ({ readonly type: 'snapshot' } & SubtitleSourceSnapshot);
 
+/**
+ * Starts with a snapshot of the selected tracks, then delivers ordered updates until it settles.
+ * The player aborts the signal on replacement or teardown; the producer owns stopping its I/O.
+ */
+export type SubtitleSourceProducer = (
+    update: (update: SubtitleSourceUpdate) => void,
+    signal: AbortSignal
+) => Promise<void>;
+
 export const subtitleKey = (cue: Pick<SubtitleModel, 'source' | 'index' | 'track'>): string =>
     cue.source ? `${cue.track}:${cue.source.loadId}:${cue.source.cueId}` : `legacy:${cue.index}`;
+
+/** Numeric indexes are accepted from older extensions that do not send cue identities. */
+export type SubtitleReference = number | Pick<IndexedSubtitleModel, 'index' | 'track' | 'source'>;
+
+export const resolveSubtitleReference = <T extends IndexedSubtitleModel>(
+    subtitles: readonly T[],
+    reference: SubtitleReference
+): T | undefined => {
+    if (typeof reference === 'number') return subtitles[reference];
+    if (!reference.source) return subtitles[reference.index];
+    const key = subtitleKey(reference);
+    return subtitles.find((subtitle) => subtitleKey(subtitle) === key);
+};
+
+/** Strip sentence text and annotations before sending mining requests. */
+export const subtitleReference = ({
+    index,
+    track,
+    source,
+}: Pick<IndexedSubtitleModel, 'index' | 'track' | 'source'>): SubtitleReference => ({
+    index,
+    track,
+    source,
+});
 
 export const sameSubtitleText = (a: SubtitleModel, b: SubtitleModel) =>
     (a.originalText ?? a.text) === (b.originalText ?? b.text);

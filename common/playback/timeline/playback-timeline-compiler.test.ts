@@ -173,14 +173,25 @@ describe('compilePlaybackTimelineSubtitles', () => {
 });
 
 describe('compilePlaybackTimeline', () => {
-    it.each(['loading', 'failed'] as const)('keeps the trailing gap unknown for a %s source', (sourceStatus) => {
+    it('caps condensed destinations at coverage and stops skipping at the boundary', () => {
+        const compiled = compile([makeSubtitle(1000, 2000, 0), makeSubtitle(4000, 5000, 1)]);
+        const result = compilePlaybackTimeline({ ...compiled, gapActionEndMs: 3000 });
+        expect(result.condensedGaps).toEqual([
+            { startMs: 0, targetMs: 999 },
+            { startMs: 2000, targetMs: 3000 },
+        ]);
+        expect(result.segments.find((segment) => segment.startMs === 3000)?.condensedTarget).toBeUndefined();
+        expect(compilePlaybackTimeline({ ...compiled, gapActionEndMs: 0 }).condensedGaps).toEqual([]);
+    });
+
+    it('keeps gap actions within the confirmed subtitle prefix', () => {
         const prefix = compile([makeSubtitle(1000, 2000, 0)]);
         const completed = { ...prefix, condensedBlocks: prefix.blocks };
         expect(compilePlaybackTimeline(completed).condensedGaps).toContainEqual({
             startMs: 2000,
             targetMs: completed.durationMs,
         });
-        expect(compilePlaybackTimeline({ ...completed, sourceStatus }).condensedGaps).toEqual([
+        expect(compilePlaybackTimeline({ ...completed, gapActionEndMs: 1000 }).condensedGaps).toEqual([
             { startMs: 0, targetMs: 999 },
         ]);
     });

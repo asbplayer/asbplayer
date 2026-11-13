@@ -86,6 +86,7 @@ export const makePlaybackPlanInput = <T extends IndexedSubtitleModel>(
     subtitles: readonly T[],
     options?: Partial<PlaybackPlanInput<T>>
 ): PlaybackPlanInput<T> => ({
+    sources: [],
     subtitles,
     durationMs: 6000,
     playModes: new Set([PlayMode.normal]),

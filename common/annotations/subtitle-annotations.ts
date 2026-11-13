@@ -39,8 +39,9 @@ export function needsReset(subtitles: TokenizedSubtitleModel[], previousSubtitle
     );
 }
 
-export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel> {
+export class SubtitleAnnotations {
     private _subtitles: InternalSubtitleModel[] = [];
+    private readonly collection: SubtitleCollection<IndexedSubtitleModel>;
     private readonly dictionaryProvider: DictionaryProvider;
     private readonly buildAnnotations: BuildAnnotations;
     private subtitlesInterval?: ReturnType<typeof setInterval>;
@@ -62,7 +63,7 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
         getMediaTimeMs?: () => number,
         fetcher?: Fetcher
     ) {
-        super({ ...options, returnNextToShow: true });
+        this.collection = new SubtitleCollection({ ...options, returnNextToShow: true });
         this.dictionaryProvider = dictionaryProvider;
         this.buildAnnotations = new BuildAnnotations({
             dictionaryProvider,
@@ -79,11 +80,15 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
         return this._subtitles;
     }
 
-    override setSubtitles(subtitles: TokenizedSubtitleModel[]) {
-        this.setSourceSubtitles(subtitles, []);
+    subtitlesAt(timestamp: number) {
+        return this.collection.subtitlesAt(timestamp);
     }
 
-    setSourceSubtitles(subtitles: TokenizedSubtitleModel[], sources: readonly SubtitleSourceState[]) {
+    subtitlesIn(startTimestamp: number, endTimestamp: number) {
+        return this.collection.subtitlesIn(startTimestamp, endTimestamp);
+    }
+
+    setSubtitles(subtitles: TokenizedSubtitleModel[], sources: readonly SubtitleSourceState[]) {
         const previousSubtitleCount = this._subtitles.length;
         for (const s of subtitles) {
             if (s.originalText === undefined) s.originalText = s.text;
@@ -100,7 +105,7 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
             }
         }
         this._subtitles = subtitles.map((s) => ({ ...s })); // Separate internals from react state changes
-        super.setSubtitles(this._subtitles);
+        this.collection.setSubtitles(this._subtitles);
         asbTrace('annotations/subtitles', 'Subtitle collection updated', {
             previousSubtitleCount,
             subtitleCount: subtitles.length,
@@ -117,7 +122,7 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
     }
 
     reset() {
-        this.setSubtitles([]);
+        this.setSubtitles([], []);
     }
 
     profileChanged(settings?: AsbplayerSettings): void {

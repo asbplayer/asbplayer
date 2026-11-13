@@ -20,20 +20,25 @@ import VideoChannel from '@project/common/app/services/video-channel';
 import type { VideoProtocol, VideoProtocolMessage } from '@project/common/app/services/video-protocol';
 import { useSubtitleTracks } from '@project/common/app/hooks/use-subtitle-tracks';
 import { SubtitleStream } from '@project/common/subtitle-reader/subtitle-stream';
-import type { SubtitleSourceSnapshot, SubtitleSourceUpdate } from '@project/common/subtitle-reader/subtitle-stream';
+import type {
+    SubtitleSourceProducer,
+    SubtitleSourceSnapshot,
+    SubtitleSourceUpdate,
+} from '@project/common/subtitle-reader/subtitle-stream';
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 class TestVideoProtocol implements VideoProtocol {
     readonly sent: Message[] = [];
     source?: SubtitleSourceSnapshot;
+    offset = 500;
     onMessage?: (message: VideoProtocolMessage) => void;
 
     postMessage(message: Message) {
         this.sent.push(message);
         if (message.command === 'requestSubtitleSource' && this.source) {
             this.onMessage?.({
-                data: { command: 'subtitleSource', update: { type: 'snapshot', ...this.source } },
+                data: { command: 'subtitleSource', update: { type: 'snapshot', ...this.source, offset: this.offset } },
             });
         }
     }
@@ -63,6 +68,44 @@ const track = (text: string, readText = async () => vttText(text)): LoadableSubt
 let subtitleOffset = 500;
 const getSubtitleOffset = () => subtitleOffset;
 
+function createProducer(loadId = 'producer') {
+    let update!: (update: SubtitleSourceUpdate) => void;
+    let signal!: AbortSignal;
+    let finish!: () => void;
+    let fail!: (error: Error) => void;
+    const producer: SubtitleSourceProducer = (publish, abortSignal) => {
+        update = publish;
+        signal = abortSignal;
+        return new Promise<void>((resolve, reject) => {
+            finish = () => {
+                update({ type: 'complete', track: 0, loadId });
+                resolve();
+            };
+            fail = reject;
+            signal.addEventListener('abort', () => reject(signal.reason), { once: true });
+            update({
+                type: 'snapshot',
+                tracks: [{ track: 0, loadId, name: `${loadId}.srt`, status: 'loading', cues: [] }],
+            });
+        });
+    };
+    return {
+        producer,
+        append: (text: string, cueId = 0) =>
+            update({
+                type: 'cues',
+                track: 0,
+                loadId,
+                cues: [{ cueId, start: cueId * 2000 + 1000, end: cueId * 2000 + 2000, text }],
+            }),
+        finish: () => finish(),
+        fail: (error: Error) => fail(error),
+        get signal() {
+            return signal;
+        },
+    };
+}
+
 describe('useSubtitleTracks source transitions', () => {
     let root: Root;
     let container: HTMLDivElement;
@@ -72,6 +115,7 @@ describe('useSubtitleTracks source transitions', () => {
     let annotate: () => void;
     const onLoaded = jest.fn<(subtitleSourceFiles: File[]) => void>();
     const onError = jest.fn<(error: unknown) => void>();
+    const onStarted = jest.fn<() => void>();
 
     function Player({
         tracks,
@@ -79,19 +123,29 @@ describe('useSubtitleTracks source transitions', () => {
         initialSubtitles,
         progressive = false,
         ownership = 'local',
+        producer,
     }: {
         tracks: LoadableSubtitleTrack<FileWithId>[] | undefined;
         activeChannel?: VideoChannel;
         initialSubtitles?: DisplaySubtitleModel[];
         progressive?: boolean;
         ownership?: 'local' | 'remote';
+        producer?: SubtitleSourceProducer;
     }) {
         const [subtitles, setSubtitles] = useState<DisplaySubtitleModel[] | undefined>(initialSubtitles);
         const result = useSubtitleTracks({
             source:
                 ownership === 'remote'
-                    ? { kind: 'remote', supportsProgressiveSubtitles: progressive }
-                    : { kind: 'local', tracks, reader, onLoaded },
+                    ? {
+                          kind: 'remote',
+                          supportsProgressiveSubtitles: progressive,
+                          onOffset: (offset) => {
+                              subtitleOffset = offset;
+                          },
+                      }
+                    : producer
+                      ? { kind: 'producer', producer, supportsProgressiveSubtitles: progressive, onStarted }
+                      : { kind: 'local', tracks, reader, onLoaded },
             subtitles,
             channel: activeChannel,
             getSubtitleOffset,
@@ -126,6 +180,7 @@ describe('useSubtitleTracks source transitions', () => {
         subtitleOffset = 500;
         onLoaded.mockClear();
         onError.mockClear();
+        onStarted.mockClear();
         protocol = new TestVideoProtocol();
         channel = new VideoChannel(protocol);
         reader = new SubtitleReader({
@@ -334,15 +389,75 @@ describe('useSubtitleTracks source transitions', () => {
         expect(protocol.sent.filter((message) => message.command === 'requestSubtitleSource')).toHaveLength(1);
     });
 
+    it.each([0, 500, -250])('uses the owner offset %s on initial replay and subsequent batches', async (offset) => {
+        subtitleOffset = 900;
+        const remote = new SubtitleStream();
+        remote.update({ type: 'start', track: 0, loadId: 'remote', name: 'remote.ass' });
+        remote.update({
+            type: 'cues',
+            track: 0,
+            loadId: 'remote',
+            cues: [{ cueId: 0, start: 1000, end: 2000, text: 'First' }],
+        });
+        protocol.source = remote.sourceSnapshot;
+        protocol.offset = offset;
+        protocol.ready();
+        await act(async () => root.render(<Player tracks={undefined} ownership="remote" progressive />));
+        expect(container.querySelector('span')?.getAttribute('data-start')).toBe(String(1000 + offset));
+
+        await act(async () =>
+            protocol.onMessage?.({
+                data: {
+                    command: 'subtitleSource',
+                    update: {
+                        type: 'cues',
+                        track: 0,
+                        loadId: 'remote',
+                        cues: [{ cueId: 1, start: 3000, end: 4000, text: 'Second' }],
+                    },
+                },
+            })
+        );
+        expect(Array.from(container.querySelectorAll('span'), (span) => span.getAttribute('data-start'))).toEqual([
+            String(1000 + offset),
+            String(3000 + offset),
+        ]);
+    });
+
+    it('remembers the owner offset when the replay has no cues yet', async () => {
+        const remote = new SubtitleStream();
+        remote.update({ type: 'start', track: 0, loadId: 'remote', name: 'remote.ass' });
+        protocol.source = remote.sourceSnapshot;
+        protocol.offset = -250;
+        protocol.ready();
+        await act(async () => root.render(<Player tracks={undefined} ownership="remote" progressive />));
+        await act(async () =>
+            protocol.onMessage?.({
+                data: {
+                    command: 'subtitleSource',
+                    update: {
+                        type: 'cues',
+                        track: 0,
+                        loadId: 'remote',
+                        cues: [{ cueId: 0, start: 1000, end: 2000, text: 'First' }],
+                    },
+                },
+            })
+        );
+        expect(container.querySelector('span')?.getAttribute('data-start')).toBe('750');
+    });
+
     it('keeps local files authoritative when a video replays a remote source', async () => {
         protocol.ready();
         await render([track('Local')]);
         await act(async () =>
             protocol.onMessage?.({
-                data: { command: 'subtitleSource', update: { type: 'snapshot', tracks: [] } },
+                data: { command: 'subtitleSource', update: { type: 'snapshot', tracks: [], offset: 777 } },
             })
         );
         expect(container.textContent).toBe('Local');
+        expect(container.querySelector('span')?.getAttribute('data-start')).toBe('1500');
+        expect(subtitleOffset).toBe(500);
         expect(protocol.sent.some((message) => message.command === 'requestSubtitleSource')).toBe(false);
     });
 
@@ -368,6 +483,7 @@ describe('useSubtitleTracks source transitions', () => {
         });
         const nextProtocol = new TestVideoProtocol();
         nextProtocol.source = remote.sourceSnapshot;
+        nextProtocol.offset = -125;
         const nextChannel = new VideoChannel(nextProtocol);
         await act(async () =>
             root.render(<Player tracks={undefined} ownership="remote" activeChannel={nextChannel} progressive />)
@@ -375,7 +491,180 @@ describe('useSubtitleTracks source transitions', () => {
         await act(async () => nextProtocol.ready());
 
         expect(container.textContent).toBe('<b>First</b>Second');
+        expect(Array.from(container.querySelectorAll('span'), (span) => span.getAttribute('data-start'))).toEqual([
+            '875',
+            '2875',
+        ]);
         expect(nextProtocol.sent.map((message) => message.command)).toEqual(['requestSubtitleSource']);
+    });
+
+    it('publishes producer updates with the current offset and keeps remote replays from taking ownership', async () => {
+        const source = createProducer();
+        protocol.ready();
+        await act(async () => root.render(<Player tracks={undefined} producer={source.producer} progressive />));
+        expect(onStarted).toHaveBeenCalledTimes(1);
+        expect(onLoaded).not.toHaveBeenCalled();
+        expect(container.firstElementChild?.getAttribute('data-loading')).toBe('true');
+        expect(protocol.sent).toEqual([
+            {
+                command: 'subtitleSource',
+                update: {
+                    type: 'snapshot',
+                    tracks: [{ track: 0, loadId: 'producer', name: 'producer.srt', status: 'loading', cues: [] }],
+                    offset: 500,
+                },
+            },
+        ]);
+        await act(async () => source.append('First'));
+        await act(async () => annotate());
+        subtitleOffset = 1000;
+        await act(async () => source.append('Second', 1));
+        expect(container.textContent).toBe('<b>First</b>Second');
+        expect(Array.from(container.querySelectorAll('span'), (element) => element.dataset.start)).toEqual([
+            '2000',
+            '4000',
+        ]);
+        await act(async () =>
+            protocol.onMessage?.({
+                data: { command: 'subtitleSource', update: { type: 'snapshot', tracks: [], offset: 777 } },
+            })
+        );
+        expect(container.textContent).toBe('<b>First</b>Second');
+        expect(subtitleOffset).toBe(1000);
+        await act(async () => source.finish());
+        expect(container.firstElementChild?.getAttribute('data-loading')).toBe('false');
+        expect(protocol.sent.at(-1)).toEqual({
+            command: 'subtitleSource',
+            update: { type: 'complete', track: 0, loadId: 'producer' },
+        });
+        expect(protocol.subtitleMessages).toEqual([]);
+    });
+
+    it('waits for completed producer output before publishing to an older extension', async () => {
+        const source = createProducer();
+        protocol.ready();
+        await act(async () => root.render(<Player tracks={undefined} producer={source.producer} />));
+        await act(async () => source.append('First'));
+        expect(container.textContent).toBe('');
+        expect(protocol.sent).toEqual([]);
+        await act(async () => source.finish());
+        expect(container.textContent).toBe('First');
+        expect(protocol.subtitleMessages).toEqual([
+            {
+                command: 'subtitles',
+                name: 'producer.srt',
+                names: ['producer.srt'],
+                value: [expect.objectContaining({ text: 'First', start: 1500, originalStart: 1000 })],
+            },
+        ]);
+    });
+
+    it('replays a producer snapshot and annotations on reconnection without restarting production', async () => {
+        const source = createProducer();
+        await act(async () => root.render(<Player tracks={undefined} producer={source.producer} progressive />));
+        await act(async () => source.append('First'));
+        await act(async () => annotate());
+        const nextProtocol = new TestVideoProtocol();
+        const nextChannel = new VideoChannel(nextProtocol);
+        await act(async () =>
+            root.render(
+                <Player tracks={undefined} producer={source.producer} activeChannel={nextChannel} progressive />
+            )
+        );
+        await act(async () => nextProtocol.ready());
+        expect(onStarted).toHaveBeenCalledTimes(1);
+        expect(source.signal.aborted).toBe(false);
+        expect(nextProtocol.sent).toMatchObject([
+            {
+                command: 'subtitleSource',
+                update: {
+                    type: 'snapshot',
+                    offset: 500,
+                    tracks: [{ status: 'loading', cues: [{ cueId: 0, text: 'First' }] }],
+                },
+            },
+            { command: 'subtitlesUpdated', subtitles: [{ text: '<b>First</b>' }] },
+        ]);
+        await act(async () => source.append('Second', 1));
+        expect(container.textContent).toBe('<b>First</b>Second');
+        expect(nextProtocol.sent.at(-1)).toMatchObject({
+            command: 'subtitleSource',
+            update: { type: 'cues', cues: [{ cueId: 1, text: 'Second' }] },
+        });
+    });
+
+    it('keeps production running when file inputs, reader settings, and transport capabilities change', async () => {
+        const source = createProducer();
+        await act(async () => root.render(<Player tracks={undefined} producer={source.producer} progressive />));
+        const signal = source.signal;
+        await act(async () => source.append('First'));
+        reader = new SubtitleReader({
+            regexFilter: 'speaker: ',
+            regexFilterTextReplacement: '',
+            subtitleHtml: SubtitleHtml.render,
+            convertNetflixRuby: false,
+            pgsParserWorkerFactory: () => Promise.reject(new Error('PGS is not used in this test')),
+        });
+        await act(async () => root.render(<Player tracks={[track('Ignored')]} producer={source.producer} />));
+        expect(signal.aborted).toBe(false);
+        expect(source.signal).toBe(signal);
+        expect(onStarted).toHaveBeenCalledTimes(1);
+        await act(async () => source.finish());
+        expect(container.textContent).toBe('First');
+        expect(onError).not.toHaveBeenCalled();
+    });
+
+    it('cancels replaced producers and ignores their late output and failures', async () => {
+        const first = createProducer('first');
+        const second = createProducer('second');
+        await act(async () => root.render(<Player tracks={undefined} producer={first.producer} progressive />));
+        await act(async () => first.append('First'));
+        await act(async () => root.render(<Player tracks={undefined} producer={second.producer} progressive />));
+        expect(first.signal.aborted).toBe(true);
+        expect(container.textContent).toBe('');
+        await act(async () => {
+            second.append('Second');
+            first.append('Obsolete', 1);
+            first.fail(new Error('Obsolete failure'));
+        });
+        expect(container.textContent).toBe('Second');
+        await render([track('Local')]);
+        expect(second.signal.aborted).toBe(true);
+        await act(async () => second.append('Obsolete', 1));
+        expect(container.textContent).toBe('Local');
+        expect(onError).not.toHaveBeenCalled();
+    });
+
+    it('reports producer rejections, retains received cues, and cancels on unmount', async () => {
+        const source = createProducer();
+        await act(async () => root.render(<Player tracks={undefined} producer={source.producer} progressive />));
+        await act(async () => source.append('First'));
+        const error = new Error('Extraction failed');
+        await act(async () => source.fail(error));
+        expect(onError).toHaveBeenCalledWith(error);
+        expect(container.textContent).toBe('First');
+        await act(async () => root.render(null));
+        expect(source.signal.aborted).toBe(true);
+    });
+
+    it('switches a pending file load to a producer without accepting the old parse', async () => {
+        let finish!: (text: string) => void;
+        const pending = track(
+            'Old',
+            () =>
+                new Promise((resolve) => {
+                    finish = resolve;
+                })
+        );
+        protocol.ready();
+        await render([pending]);
+        const source = createProducer();
+        await act(async () => root.render(<Player tracks={undefined} producer={source.producer} progressive />));
+        await act(async () => source.append('New'));
+        await act(async () => finish(vttText('Old')));
+        expect(container.textContent).toBe('New');
+        expect(onLoaded).not.toHaveBeenCalled();
+        expect(protocol.subtitleMessages).toEqual([]);
     });
 
     it('switches a pending file load to a remote source without replacing the channel', async () => {

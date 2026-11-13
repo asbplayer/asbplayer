@@ -1,4 +1,9 @@
-import { displaySubtitleSnapshot, SubtitleStream } from '@project/common/subtitle-reader/subtitle-stream';
+import {
+    displaySubtitleSnapshot,
+    SubtitleStream,
+    subtitleSourceNames,
+    resolveSubtitleReference,
+} from '@project/common/subtitle-reader/subtitle-stream';
 import type { SubtitleSourceState, SubtitleSourceUpdate } from '@project/common/subtitle-reader/subtitle-stream';
 import PlaybackEngine, {
     formatRecipeNotification,
@@ -1092,7 +1097,11 @@ export default class Binding {
                             src: this._registeredVideoSrc,
                             message: {
                                 command: 'subtitleSource',
-                                update: { type: 'snapshot', ...this.subtitleStream.sourceSnapshot },
+                                update: {
+                                    type: 'snapshot',
+                                    ...this.subtitleStream.sourceSnapshot,
+                                    offset: this.playbackEngine.lastSubtitleOffset ?? 0,
+                                },
                             } satisfies SubtitleSourceMessage,
                         });
                         break;
@@ -1457,10 +1466,14 @@ export default class Binding {
             void this.seek(timestamp);
         });
         this.unsubscribeStatisticsSubtitleMine = this.dictionary.onRequestStatisticsMineSentences(
-            (_mediaId, indexes) => {
-                const index = indexes[0];
-                if (index === undefined) return;
-                const [resolvedSubtitle, resolvedSurroundingSubtitles] = this.subtitleController.subtitleAtIndex(index);
+            (_mediaId, references) => {
+                const reference = references[0];
+                if (reference === undefined) return;
+                const subtitle = resolveSubtitleReference(this.subtitleController.subtitles, reference);
+                if (!subtitle) return;
+                const [resolvedSubtitle, resolvedSurroundingSubtitles] = this.subtitleController.subtitleAtIndex(
+                    subtitle.index
+                );
                 if (resolvedSubtitle === null || resolvedSurroundingSubtitles === null) return;
                 void this._copySubtitle({
                     command: 'copy-subtitle',
@@ -2315,7 +2328,13 @@ export default class Binding {
         void browser.runtime.sendMessage({
             sender: 'asbplayer-video',
             src: this._registeredVideoSrc,
-            message: { command: 'subtitleSource', update } satisfies SubtitleSourceMessage,
+            message: {
+                command: 'subtitleSource',
+                update:
+                    update.type === 'snapshot'
+                        ? { ...update, offset: this.playbackEngine.lastSubtitleOffset ?? 0 }
+                        : update,
+            } satisfies SubtitleSourceMessage,
         });
     }
 
@@ -2329,11 +2348,7 @@ export default class Binding {
             this.playbackEngine.lastSubtitleOffset ?? 0
         );
         this.subtitleController.setSourceSubtitles(subtitles, snapshot.tracks);
-        const names: string[] = [];
-        for (const state of snapshot.tracks) {
-            while (names.length <= state.track) names.push('');
-            names[state.track] = state.name;
-        }
+        const names = subtitleSourceNames(snapshot.tracks);
         this.subtitleController.subtitleFileNames = names;
         if (update.type === 'start' || update.type === 'snapshot') {
             this.playbackEngine.playbackPositionKeysChanged(

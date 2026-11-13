@@ -197,7 +197,7 @@ export default class SubtitleController {
     setSourceSubtitles(subtitles: IndexedSubtitleModel[], sources: readonly SubtitleSourceState[]): void {
         this.subtitleSources = sources;
         const previous = this.subtitles;
-        this.subtitleAnnotations.setSourceSubtitles(subtitles, sources);
+        this.subtitleAnnotations.setSubtitles(subtitles, sources);
         const diff = diffCues(previous, this.subtitles, sameSubtitleAppearance);
         for (const overlay of [this.bottomSubtitlesElementOverlay, this.topSubtitlesElementOverlay]) {
             if (!(overlay instanceof CachingElementOverlay)) continue;
@@ -232,7 +232,7 @@ export default class SubtitleController {
 
     set subtitles(subtitles) {
         this.subtitleSources = [];
-        this.subtitleAnnotations.setSubtitles(subtitles);
+        this.subtitleAnnotations.setSubtitles(subtitles, []);
     }
 
     currentTokenSelectionLocation(): TokenSelectionLocation | undefined {
@@ -836,7 +836,7 @@ export default class SubtitleController {
         const previousOffset = this._computeOffset();
         if (previousOffset === offset) return;
 
-        this.subtitleAnnotations.setSourceSubtitles(
+        this.subtitleAnnotations.setSubtitles(
             this.subtitles.map((s) => ({
                 ...s,
                 start: s.originalStart + offset,

@@ -104,7 +104,7 @@ describe('SubtitleAnnotations public boundary', () => {
         const published = new Promise<void>((resolve) => {
             subtitleAnnotationsUpdated.mockImplementation(() => resolve());
         });
-        subtitleAnnotations.setSubtitles([makeSubtitle({ text: 'word' })]);
+        subtitleAnnotations.setSubtitles([makeSubtitle({ text: 'word' })], []);
         await published;
 
         expect(subtitleAnnotations.subtitles[0].tokenization?.tokens[0]).toEqual(
@@ -135,13 +135,13 @@ describe('SubtitleAnnotations public boundary', () => {
             makeFetcher()
         );
         const input = makeSubtitle({ text: 'word', originalText: undefined });
-        subtitleAnnotations.setSubtitles([input]);
+        subtitleAnnotations.setSubtitles([input], []);
         await waitForTokenization(subtitleAnnotations);
         const tokenization = subtitleAnnotations.subtitles[0].tokenization;
         expect(tokenization?.tokens).toHaveLength(1);
         subtitleAnnotationsUpdated.mockClear();
 
-        subtitleAnnotations.setSubtitles([makeSubtitle({ text: 'word', originalText: 'word' })]);
+        subtitleAnnotations.setSubtitles([makeSubtitle({ text: 'word', originalText: 'word' })], []);
 
         expect(input.originalText).toBe('word');
         expect(subtitleAnnotations.subtitles[0]).not.toBe(input);
@@ -176,9 +176,9 @@ describe('SubtitleAnnotations public boundary', () => {
             subtitleAnnotationsUpdated.mockImplementation(() => resolve());
         });
 
-        subtitleAnnotations.setSubtitles([makeSubtitle()]);
+        subtitleAnnotations.setSubtitles([makeSubtitle()], []);
         await tokenizationStarted;
-        subtitleAnnotations.setSubtitles([makeSubtitle({ start: 500, end: 1500 })]);
+        subtitleAnnotations.setSubtitles([makeSubtitle({ start: 500, end: 1500 })], []);
         release();
         await completed;
 
@@ -203,12 +203,12 @@ describe('SubtitleAnnotations public boundary', () => {
                     const update = updatedSubtitles.find((updated) => updated.index === subtitle.index);
                     return update ? { ...subtitle, text: update.text, tokenization: update.tokenization } : subtitle;
                 });
-                subtitleAnnotations.setSubtitles(playerSubtitles);
+                subtitleAnnotations.setSubtitles(playerSubtitles, []);
                 if (updatedSubtitles.some((subtitle) => subtitle.index === 1)) resolve();
             });
         });
 
-        subtitleAnnotations.setSubtitles(playerSubtitles);
+        subtitleAnnotations.setSubtitles(playerSubtitles, []);
         await completed;
 
         expect(subtitleAnnotations.subtitles.map((subtitle) => subtitle.tokenization?.tokens.length)).toEqual([1, 1]);
@@ -242,7 +242,7 @@ describe('SubtitleAnnotations public boundary', () => {
         const sources = [{ track: 0, loadId: 'stream', name: 'subtitles', status: 'loading' }] as const;
         subtitleAnnotations.bind();
         try {
-            subtitleAnnotations.setSourceSubtitles([first], sources);
+            subtitleAnnotations.setSubtitles([first], sources);
             await jest.advanceTimersByTimeAsync(0);
             const originalTokens = subtitleAnnotations.subtitles[0].tokenization;
             const earlier = makeSubtitle({
@@ -250,12 +250,12 @@ describe('SubtitleAnnotations public boundary', () => {
                 originalText: 'earlier',
                 source: { loadId: 'stream', cueId: 1 },
             });
-            subtitleAnnotations.setSourceSubtitles([earlier, { ...first, index: 1 }], sources);
+            subtitleAnnotations.setSubtitles([earlier, { ...first, index: 1 }], sources);
             await jest.advanceTimersByTimeAsync(10000);
             expect(subtitleAnnotations.subtitles[1].tokenization).toBe(originalTokens);
             expect(tokenize.mock.calls.filter(([text]) => text === 'first')).toHaveLength(1);
             expect(tokenize.mock.calls.some(([text]) => text === 'earlier')).toBe(true);
-            subtitleAnnotations.setSourceSubtitles(
+            subtitleAnnotations.setSubtitles(
                 [
                     { ...earlier, text: 'corrected', originalText: 'corrected' },
                     { ...first, index: 1 },
@@ -318,9 +318,9 @@ describe('SubtitleAnnotations public boundary', () => {
             const sources = [{ track: 0, loadId: 'stream', name: 'subtitles', status: 'loading' }] as const;
             subtitleAnnotations.bind();
             try {
-                subtitleAnnotations.setSourceSubtitles([first], sources);
+                subtitleAnnotations.setSubtitles([first], sources);
                 await startedPromise;
-                subtitleAnnotations.setSourceSubtitles(
+                subtitleAnnotations.setSubtitles(
                     [
                         makeSubtitle({
                             text: 'earlier',
@@ -331,7 +331,7 @@ describe('SubtitleAnnotations public boundary', () => {
                     ],
                     sources
                 );
-                subtitleAnnotations.setSourceSubtitles(
+                subtitleAnnotations.setSubtitles(
                     [
                         makeSubtitle({
                             text: 'latest',
@@ -383,13 +383,16 @@ describe('SubtitleAnnotations public boundary', () => {
         const { subtitleAnnotations, subtitleAnnotationsUpdated } = makeSubtitleAnnotations(
             makeSettings(makeDictionaryTracks(enabled))
         );
-        subtitleAnnotations.setSubtitles([
-            makeSubtitle({
-                text: 'annotated',
-                originalText: 'raw',
-                tokenization: { tokens: [makeToken({ states: [TokenState.IGNORED] })] },
-            }),
-        ]);
+        subtitleAnnotations.setSubtitles(
+            [
+                makeSubtitle({
+                    text: 'annotated',
+                    originalText: 'raw',
+                    tokenization: { tokens: [makeToken({ states: [TokenState.IGNORED] })] },
+                }),
+            ],
+            []
+        );
         subtitleAnnotationsUpdated.mockClear();
 
         subtitleAnnotations.settingsUpdated(makeSettings(makeDictionaryTracks(makeDictionaryTrack())));
@@ -462,19 +465,22 @@ describe('SubtitleAnnotations public boundary', () => {
             });
         });
 
-        subtitleAnnotations.setSubtitles([
-            makeSubtitle({
-                text: 'MIU007',
-                originalText: 'MIU007',
-                tokenization: {
-                    tokens: [
-                        makeToken({ pos: [0, 3], readings: [{ pos: [0, 3], reading: 'ミウ' }] }),
-                        makeToken({ pos: [3, 6], readings: [{ pos: [0, 3], reading: 'ゼロゼロセブン' }] }),
-                    ],
-                },
-            }),
-            makeSubtitle({ index: 1, text: 'MIU007', originalText: 'MIU007' }),
-        ]);
+        subtitleAnnotations.setSubtitles(
+            [
+                makeSubtitle({
+                    text: 'MIU007',
+                    originalText: 'MIU007',
+                    tokenization: {
+                        tokens: [
+                            makeToken({ pos: [0, 3], readings: [{ pos: [0, 3], reading: 'ミウ' }] }),
+                            makeToken({ pos: [3, 6], readings: [{ pos: [0, 3], reading: 'ゼロゼロセブン' }] }),
+                        ],
+                    },
+                }),
+                makeSubtitle({ index: 1, text: 'MIU007', originalText: 'MIU007' }),
+            ],
+            []
+        );
         await completed;
 
         const rendered = renderRichTextOntoSubtitles(

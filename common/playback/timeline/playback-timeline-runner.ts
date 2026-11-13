@@ -17,7 +17,7 @@ export interface PlaybackTimelineRunnerCallbacks {
     ): Promise<PlaybackTimelineActionResult>;
     correctAutoPause(timestampMs: number): Promise<void>;
     /** Reconciles state that must survive seeks, such as the playback rate. */
-    onState(state: PlaybackTimelineState): Promise<void>;
+    onState(state: PlaybackTimelineState, timestampMs: number): Promise<void>;
     /** Applies non-edge continuous behavior such as condensed playback after state is current. */
     onAfterState(timestampMs: number): Promise<{ readonly stateChangedTimestampMs?: number }>;
 }
@@ -111,6 +111,6 @@ export default class PlaybackTimelineRunner<T extends IndexedSubtitleModel> {
     }
 
     private async applyState(timestampMs: number): Promise<void> {
-        await this.callbacks.onState(this.timeline.lookupAt(timestampMs).state);
+        await this.callbacks.onState(this.timeline.lookupAt(timestampMs).state, timestampMs);
     }
 }

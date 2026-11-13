@@ -755,7 +755,7 @@ export default class VideoDataSyncController {
             }
             return false;
         } finally {
-            if ((!progressive || signal.aborted) && this._subtitleLoad === load) this._subtitleLoad = undefined;
+            if ((!load.selection || signal.aborted) && this._subtitleLoad === load) this._subtitleLoad = undefined;
         }
     }
 

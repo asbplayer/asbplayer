@@ -343,10 +343,10 @@ describe('AnimationFrameTimingDriver', () => {
             tokenSelection: { onPause: new Map() },
             subtitleVisibility: SubtitleVisibility.whenDue,
             timelineSubtitles: {
-                sourceStatus: 'complete',
                 actionBlocks: [],
                 hiddenSubtitleIndexes: [],
                 durationMs: 3000,
+                gapActionEndMs: 3000,
                 blocks: [],
                 displaySubtitles: [subtitle],
             },

@@ -1,3 +1,4 @@
+import type { SubtitleReference } from '@project/common/subtitle-reader/subtitle-stream';
 import type {
     CardExportedDialogMessage,
     CardUpdatedDialogMessage,
@@ -79,7 +80,10 @@ export class ExtensionDictionaryStorage implements DictionaryStorage {
     private dictionaryStatisticsSeekListener?: (
         message: ExtensionDictionaryStatisticsCommand<DictionaryRequestStatisticsSeekMessage>
     ) => void;
-    private dictionaryStatisticsMineSentencesCallbacks: ((mediaId: string, indexes: number[]) => void)[];
+    private dictionaryStatisticsMineSentencesCallbacks: ((
+        mediaId: string,
+        subtitles: readonly SubtitleReference[]
+    ) => void)[];
     private dictionaryStatisticsMineSentencesListener?: (
         message: ExtensionDictionaryStatisticsCommand<DictionaryRequestStatisticsMineSentencesMessage>
     ) => void;
@@ -456,19 +460,20 @@ export class ExtensionDictionaryStorage implements DictionaryStorage {
         };
     }
 
-    async requestStatisticsMineSentences(mediaId: string, indexes: number[]) {
+    async requestStatisticsMineSentences(mediaId: string, subtitles: readonly SubtitleReference[]) {
         const message: DictionaryDBCommand<DictionaryRequestStatisticsMineSentencesMessage> = {
             sender: 'asbplayer-dictionary',
             message: {
                 command: 'dictionary-request-statistics-mine-sentences',
                 mediaId,
-                indexes,
+                indexes: subtitles.map((subtitle) => (typeof subtitle === 'number' ? subtitle : subtitle.index)),
+                subtitles,
             },
         };
         return browser.runtime.sendMessage(message);
     }
 
-    onRequestStatisticsMineSentences(callback: (mediaId: string, indexes: number[]) => void) {
+    onRequestStatisticsMineSentences(callback: (mediaId: string, subtitles: readonly SubtitleReference[]) => void) {
         this.dictionaryStatisticsMineSentencesCallbacks.push(callback);
         if (!this.dictionaryStatisticsMineSentencesListener) {
             this.dictionaryStatisticsMineSentencesListener = (
@@ -477,7 +482,7 @@ export class ExtensionDictionaryStorage implements DictionaryStorage {
                 if (!isExtensionDictionaryStatisticsSender(message.sender)) return;
                 if (message.message.command !== 'dictionary-request-statistics-mine-sentences') return;
                 this.dictionaryStatisticsMineSentencesCallbacks.forEach((listener) =>
-                    listener(message.message.mediaId, message.message.indexes)
+                    listener(message.message.mediaId, message.message.subtitles)
                 );
             };
             browser.runtime.onMessage.addListener(this.dictionaryStatisticsMineSentencesListener);

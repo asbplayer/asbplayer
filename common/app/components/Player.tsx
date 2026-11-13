@@ -1,5 +1,5 @@
-import { mergeSubtitleAnnotations } from '@project/common/subtitle-reader/subtitle-stream';
-import type { SubtitleSourceState } from '@project/common/subtitle-reader/subtitle-stream';
+import { mergeSubtitleAnnotations, resolveSubtitleReference } from '@project/common/subtitle-reader/subtitle-stream';
+import type { SubtitleSourceProducer, SubtitleSourceState } from '@project/common/subtitle-reader/subtitle-stream';
 import { effectiveSettings } from '@project/common/settings/settings-recipes';
 import { AudioClip } from '@project/common/audio-clip';
 import { canMineWithAudio } from '@project/common/audio-transcode/mining-audio';
@@ -147,6 +147,7 @@ function pause(clock: Clock, mediaAdapter: MediaAdapter, forwardToMedia: boolean
 }
 
 interface PlayerProps {
+    subtitleProducer?: SubtitleSourceProducer;
     audioTranscodeHost?: AudioTranscodeHost;
     sources?: MediaSources;
     subtitles: DisplaySubtitleModel[];
@@ -237,6 +238,7 @@ function PlayerComponent(
     {
         sources,
         audioTranscodeHost,
+        subtitleProducer,
         subtitles,
         mediaId,
         subtitleReader,
@@ -705,8 +707,22 @@ function PlayerComponent(
     const { loadingSubtitles, subtitleFileNames, sourceStates } = useSubtitleTracks({
         source:
             tab && sources === undefined
-                ? { kind: 'remote', supportsProgressiveSubtitles: extension.supportsProgressiveSubtitles }
-                : { kind: 'local', tracks: subtitleTracks, reader: subtitleReader, onLoaded },
+                ? {
+                      kind: 'remote',
+                      supportsProgressiveSubtitles: extension.supportsProgressiveSubtitles,
+                      onOffset: (offset) => applyOffsetRef.current?.(offset, false),
+                  }
+                : subtitleProducer
+                  ? {
+                        kind: 'producer',
+                        producer: subtitleProducer,
+                        supportsProgressiveSubtitles: !tab || extension.supportsProgressiveSubtitles,
+                        onStarted: () =>
+                            onLoaded(
+                                subtitleTracks?.flatMap(({ fileParts }) => fileParts.map(({ file }) => file)) ?? []
+                            ),
+                    }
+                  : { kind: 'local', tracks: subtitleTracks, reader: subtitleReader, onLoaded },
         subtitles,
         channel,
         getSubtitleOffset,
@@ -836,7 +852,7 @@ function PlayerComponent(
             },
             () => clockRef.current.time({ maxMs: calculateLengthMs(videoDurationRef) })
         );
-        if (subtitlesRef.current) subtitleAnnotations.setSourceSubtitles(subtitlesRef.current, sourceStatesRef.current);
+        if (subtitlesRef.current) subtitleAnnotations.setSubtitles(subtitlesRef.current, sourceStatesRef.current);
         subtitleAnnotations.bind();
         asbTrace('playback/player', 'Bound subtitle annotation collection', {
             subtitleCount: subtitlesRef.current?.length ?? 0,
@@ -854,7 +870,7 @@ function PlayerComponent(
     useEffect(() => {
         if (!subtitleCollectionRef.current) return;
         if (subtitleCollectionRef.current instanceof SubtitleAnnotations) {
-            subtitleCollectionRef.current.setSourceSubtitles(subtitles, sourceStates);
+            subtitleCollectionRef.current.setSubtitles(subtitles, sourceStates);
         } else {
             subtitleCollectionRef.current.setSubtitles(subtitles);
         }
@@ -1541,11 +1557,12 @@ function PlayerComponent(
         const unsubscribeSeek = dictionaryProvider.onRequestStatisticsSeek((timestamp) => {
             void seek(timestamp, clock, true, { paused: !clock.running });
         });
-        const unsubscribeMine = dictionaryProvider.onRequestStatisticsMineSentences((_mediaId, indexes) => {
-            const subtitleIndex = indexes[0];
-            if (subtitleIndex === undefined) return;
+        const unsubscribeMine = dictionaryProvider.onRequestStatisticsMineSentences((_mediaId, references) => {
+            const reference = references[0];
+            if (reference === undefined) return;
             const subtitles = subtitlesRef.current;
-            const subtitle = subtitles?.[subtitleIndex];
+            if (!subtitles) return;
+            const subtitle = resolveSubtitleReference(subtitles, reference);
             if (!subtitle) return;
             void handleCopyFromSubtitlePlayer(
                 subtitle,

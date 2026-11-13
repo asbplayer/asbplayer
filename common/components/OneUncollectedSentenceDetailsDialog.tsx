@@ -1,3 +1,4 @@
+import { subtitleReference } from '@project/common/subtitle-reader/subtitle-stream';
 import { useTranslation } from 'react-i18next';
 import { useCallback } from 'react';
 import type { ComponentProps } from 'react';
@@ -33,7 +34,7 @@ const OneUncollectedSentenceDetailsDialog: React.FC<Props> = ({ dictionaryProvid
             if (!mediaId) {
                 return;
             }
-            void dictionaryProvider.requestStatisticsMineSentences(mediaId, [sentence.index]);
+            void dictionaryProvider.requestStatisticsMineSentences(mediaId, [subtitleReference(sentence)]);
         },
         [mediaId, dictionaryProvider]
     );

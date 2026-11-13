@@ -1,4 +1,8 @@
-import type { SubtitleSourceUpdate, SubtitleSourceState } from '@project/common/subtitle-reader/subtitle-stream';
+import type {
+    SubtitleSourceUpdate,
+    SubtitleSourceState,
+    SubtitleReference,
+} from '@project/common/subtitle-reader/subtitle-stream';
 import type {
     AnkiSettings,
     ApplyStrategy,
@@ -473,7 +477,12 @@ export interface ToggleSubtitleTrackInListFromVideoMessage extends Message {
 
 export interface SubtitleSourceMessage extends Message {
     readonly command: 'subtitleSource';
-    readonly update: SubtitleSourceUpdate;
+    readonly update:
+        | Exclude<SubtitleSourceUpdate, { type: 'snapshot' }>
+        | (Extract<SubtitleSourceUpdate, { type: 'snapshot' }> & {
+              /** The video's current offset when replaying its source snapshot. */
+              readonly offset: number;
+          });
 }
 
 export interface SubtitlesToVideoMessage extends Message {
@@ -1263,7 +1272,9 @@ export interface DictionaryRequestStatisticsSeekMessage extends Message {
 export interface DictionaryRequestStatisticsMineSentencesMessage extends Message {
     readonly command: 'dictionary-request-statistics-mine-sentences';
     readonly mediaId: string;
+    /** Retained in the wire payload for receivers that only understand sentence indexes. */
     readonly indexes: number[];
+    readonly subtitles: readonly SubtitleReference[];
 }
 
 export interface OpenStatisticsOverlayMessage extends Message {

@@ -1,6 +1,5 @@
 import type { IndexedSubtitleModel } from '@project/common';
 import { subtitleKey } from '@project/common/subtitle-reader/subtitle-stream';
-import type { SubtitleSourceStatus } from '@project/common/subtitle-reader/subtitle-stream';
 import { advanceTimestampIndex, firstTimestampIndex } from '@project/common/playback/timeline/playback-timeline';
 import type {
     PlaybackTimelineBlock,
@@ -15,8 +14,8 @@ import { clamp, normalizeFinite, normalizeNonNegative, normalizeNonPositive } fr
 
 export interface PlaybackTimelineSubtitles<T extends IndexedSubtitleModel> {
     readonly durationMs: number;
-    /** Until the selected source completes, the trailing gap is unknown. */
-    readonly sourceStatus: SubtitleSourceStatus;
+    /** Gap actions may only start before and land at or before this confirmed coverage boundary. */
+    readonly gapActionEndMs: number;
     readonly blocks: readonly PlaybackTimelineBlock[];
     /** Playback actions with boundaries independent of the merged state blocks. */
     readonly actionBlocks: readonly PlaybackTimelineBlock[];
@@ -148,7 +147,7 @@ export const compilePlaybackTimelineSubtitles = <T extends IndexedSubtitleModel>
         ? Math.max(0, options.durationMs)
         : Math.max(0, inferredDurationMs);
     const compiled: PlaybackTimelineSubtitles<T> = {
-        sourceStatus: 'complete',
+        gapActionEndMs: durationMs,
         durationMs,
         blocks: blocksFromSubtitles(
             subtitles,
@@ -431,15 +430,16 @@ export const compilePlaybackTimeline = <T extends IndexedSubtitleModel>(
     const condensedBlocks = subtitles.condensedBlocks ?? subtitles.blocks;
     for (const [index, block] of condensedBlocks.entries()) {
         const gapStartMs = condensedBlocks[index - 1]?.subtitleTriggerGapStartOffsetMs ?? 0;
-        if (gapStartMs < block.subtitleTriggerGapEndOffsetMs) {
-            condensedGaps.push({ startMs: gapStartMs, targetMs: block.subtitleTriggerGapEndOffsetMs });
+        const targetMs = Math.min(block.subtitleTriggerGapEndOffsetMs, subtitles.gapActionEndMs);
+        if (gapStartMs < targetMs) {
+            condensedGaps.push({ startMs: gapStartMs, targetMs });
         }
     }
 
-    if (subtitles.sourceStatus === 'complete' && subtitles.condensedBlocks !== undefined) {
+    if (subtitles.condensedBlocks !== undefined) {
         const gapStartMs = condensedBlocks.at(-1)?.subtitleTriggerGapStartOffsetMs ?? 0;
-        if (gapStartMs < subtitles.durationMs) {
-            condensedGaps.push({ startMs: gapStartMs, targetMs: subtitles.durationMs });
+        if (gapStartMs < subtitles.gapActionEndMs) {
+            condensedGaps.push({ startMs: gapStartMs, targetMs: subtitles.gapActionEndMs });
         }
     }
 

@@ -1,11 +1,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
-import type { DisplaySubtitleModel, LoadableSubtitleTrack } from '@project/common';
+import type { DisplaySubtitleModel, LoadableSubtitleTrack, SubtitleSourceMessage } from '@project/common';
 import type { FileWithId } from '@project/common/file-selector';
 import type { SubtitleReader } from '@project/common/subtitle-reader';
 import type VideoChannel from '@project/common/app/services/video-channel';
-import { displaySubtitleSnapshot, SubtitleStream } from '@project/common/subtitle-reader/subtitle-stream';
-import type { SubtitleSourceState, SubtitleSourceUpdate } from '@project/common/subtitle-reader/subtitle-stream';
+import {
+    displaySubtitleSnapshot,
+    SubtitleStream,
+    subtitleSourceNames,
+} from '@project/common/subtitle-reader/subtitle-stream';
+import type {
+    SubtitleSourceProducer,
+    SubtitleSourceState,
+    SubtitleSourceUpdate,
+} from '@project/common/subtitle-reader/subtitle-stream';
 import { asbTrace } from '@project/common/util/log';
 
 interface UseSubtitleTracksParams {
@@ -16,15 +24,31 @@ interface UseSubtitleTracksParams {
               reader: Pick<SubtitleReader, 'subtitles'>;
               onLoaded: (subtitleSourceFiles: File[]) => void;
           }
-        | { kind: 'remote'; supportsProgressiveSubtitles: boolean };
+        | { kind: 'remote'; supportsProgressiveSubtitles: boolean; onOffset: (offset: number) => void }
+        | {
+              kind: 'producer';
+              producer: SubtitleSourceProducer;
+              supportsProgressiveSubtitles: boolean;
+              onStarted: () => void;
+          };
     subtitles: DisplaySubtitleModel[] | undefined;
-    channel: Pick<VideoChannel, 'onReady' | 'subtitles' | 'onSubtitleSource' | 'requestSubtitleSource'> | undefined;
+    channel:
+        | Pick<
+              VideoChannel,
+              | 'onReady'
+              | 'subtitles'
+              | 'subtitlesUpdated'
+              | 'onSubtitleSource'
+              | 'subtitleSource'
+              | 'requestSubtitleSource'
+          >
+        | undefined;
     getSubtitleOffset: () => number;
     onSubtitles: Dispatch<SetStateAction<DisplaySubtitleModel[] | undefined>>;
     onError: (error: unknown) => void;
 }
 
-/** Loads local files or consumes the subtitle source owned by a connected video. */
+/** Loads local files, runs a producer, or consumes the source owned by a connected video. */
 export const useSubtitleTracks = ({
     source,
     subtitles,
@@ -35,63 +59,91 @@ export const useSubtitleTracks = ({
 }: UseSubtitleTracksParams) => {
     const subtitleTracks = source.kind === 'local' ? source.tracks : undefined;
     const subtitleReader = source.kind === 'local' ? source.reader : undefined;
-    const supportsProgressiveSubtitles = source.kind === 'remote' && source.supportsProgressiveSubtitles;
+    const producer = source.kind === 'producer' ? source.producer : undefined;
+    const supportsProgressiveSubtitles = source.kind !== 'local' && source.supportsProgressiveSubtitles;
     const stream = useRef(new SubtitleStream());
     const currentSubtitles = useRef(subtitles);
     currentSubtitles.current = subtitles;
     const fileLoad = useRef<object | undefined>(undefined);
     const ready = useRef(false);
-    const owner = useRef<'none' | 'loading-files' | 'files' | 'remote'>(
+    const owner = useRef<'none' | 'loading-files' | 'files' | 'producer' | 'remote'>(
         subtitleTracks === undefined ? 'none' : 'loading-files'
     );
     const [loadingFiles, setLoadingFiles] = useState(false);
     const [sourceStates, setSourceStates] = useState<readonly SubtitleSourceState[]>([]);
     const subtitleFileNames = useMemo(() => {
         if (!sourceStates.length) return subtitleTracks?.map(({ fileParts }) => fileParts[0]?.file.name ?? '') ?? [];
-        const names: string[] = [];
-        for (const state of sourceStates) {
-            while (names.length <= state.track) names.push('');
-            names[state.track] = state.name;
-        }
-        return names;
+        return subtitleSourceNames(sourceStates);
     }, [sourceStates, subtitleTracks]);
 
     const publish = useCallback(() => {
         const snapshot = stream.current.snapshot;
+        // Older extensions identify cues by index, so both sides need the completed selection.
+        if (
+            source.kind === 'producer' &&
+            !supportsProgressiveSubtitles &&
+            snapshot.tracks.some((track) => track.status === 'loading')
+        ) {
+            return;
+        }
         setSourceStates(snapshot.tracks);
         onSubtitles((previous) => displaySubtitleSnapshot(snapshot, previous ?? [], getSubtitleOffset()));
-    }, [onSubtitles, getSubtitleOffset]);
+    }, [source.kind, supportsProgressiveSubtitles, onSubtitles, getSubtitleOffset]);
 
     const sendSnapshot = useCallback(() => {
-        if (!channel || !ready.current || owner.current !== 'files') return;
+        if (!channel || !ready.current) return;
+        if (source.kind === 'remote') return;
+        if (source.kind === 'local' ? owner.current !== 'files' : owner.current !== 'producer') return;
         const snapshot = stream.current.snapshot;
         const displayed = displaySubtitleSnapshot(snapshot, currentSubtitles.current ?? [], getSubtitleOffset());
-        const names: string[] = [];
-        for (const state of snapshot.tracks) {
-            while (names.length <= state.track) names.push('');
-            names[state.track] = state.name;
+        if (source.kind === 'producer' && supportsProgressiveSubtitles) {
+            channel.subtitleSource({ type: 'snapshot', ...stream.current.sourceSnapshot, offset: getSubtitleOffset() });
+            const annotated = displayed.filter((cue) => cue.tokenization !== undefined);
+            if (annotated.length) channel.subtitlesUpdated(annotated);
+            return;
         }
+        if (snapshot.tracks.some((track) => track.status === 'loading')) return;
+        const names = subtitleSourceNames(snapshot.tracks);
         asbTrace('playback/player', 'Sending subtitles to media channel', {
             subtitleCount: snapshot.subtitles.length,
             trackCount: snapshot.tracks.length,
             subtitleFileNames: names,
         });
         channel.subtitles(displayed, names);
-    }, [channel, getSubtitleOffset]);
+    }, [channel, source.kind, supportsProgressiveSubtitles, getSubtitleOffset]);
 
     const receive = useCallback(
-        (update: SubtitleSourceUpdate) => {
-            if (fileLoad.current !== undefined || source.kind === 'local') return;
+        (update: SubtitleSourceMessage['update']) => {
+            if (fileLoad.current !== undefined || source.kind !== 'remote') return;
             if (!stream.current.update(update)) return;
+            if (update.type === 'snapshot') source.onOffset(update.offset);
             owner.current = 'remote';
             publish();
             if (update.type === 'failed') onError(new Error(update.error));
         },
-        [publish, onError, source.kind]
+        [publish, onError, source]
     );
 
-    const latest = useRef({ receive, sendSnapshot, publish, source, onError });
-    latest.current = { receive, sendSnapshot, publish, source, onError };
+    const receiveProducer = useCallback(
+        (update: SubtitleSourceUpdate) => {
+            if (!stream.current.update(update)) return;
+            publish();
+            if (update.type === 'failed') onError(new Error(update.error));
+            if (channel && ready.current) {
+                if (supportsProgressiveSubtitles) {
+                    channel.subtitleSource(
+                        update.type === 'snapshot' ? { ...update, offset: getSubtitleOffset() } : update
+                    );
+                } else {
+                    sendSnapshot();
+                }
+            }
+        },
+        [publish, onError, channel, supportsProgressiveSubtitles, getSubtitleOffset, sendSnapshot]
+    );
+
+    const latest = useRef({ receive, receiveProducer, sendSnapshot, publish, source, onError });
+    latest.current = { receive, receiveProducer, sendSnapshot, publish, source, onError };
     useEffect(() => {
         ready.current = false;
         if (!channel) return;
@@ -112,6 +164,20 @@ export const useSubtitleTracks = ({
     }, [channel, source.kind, supportsProgressiveSubtitles]);
     useEffect(() => {
         const source = latest.current.source;
+        if (source.kind === 'producer') {
+            const controller = new AbortController();
+            owner.current = 'producer';
+            setLoadingFiles(false);
+            void source
+                .producer((update) => {
+                    if (!controller.signal.aborted) latest.current.receiveProducer(update);
+                }, controller.signal)
+                .catch((error) => {
+                    if (!controller.signal.aborted) latest.current.onError(error);
+                });
+            source.onStarted(); // Hand off loading UI now; further progress belongs to the subtitle source.
+            return () => controller.abort();
+        }
         if (source.kind === 'remote') {
             setLoadingFiles(false);
             if (owner.current !== 'remote') setSourceStates([]);
@@ -121,7 +187,7 @@ export const useSubtitleTracks = ({
         const { tracks: subtitleTracks, reader: subtitleReader } = source;
         if (subtitleTracks === undefined) {
             setLoadingFiles(false);
-            if (owner.current === 'files' || owner.current === 'loading-files') {
+            if (owner.current === 'files' || owner.current === 'loading-files' || owner.current === 'producer') {
                 owner.current = 'remote';
                 setSourceStates([]);
             }
@@ -181,7 +247,7 @@ export const useSubtitleTracks = ({
         return () => {
             if (fileLoad.current === generation) fileLoad.current = undefined;
         };
-    }, [subtitleTracks, subtitleReader, source.kind]);
+    }, [source.kind, producer, subtitleTracks, subtitleReader]);
 
     return {
         sourceStates,
