@@ -1175,7 +1175,9 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
             : this.playbackModeController.playModes;
 
         return buildPlaybackPlan({
-            sourceStatus: this.subtitleSourceStatus,
+            sources: this.subtitleSources.filter((source) =>
+                isTrackSeekable(this.settings.seekableTracks, source.track)
+            ),
             subtitles: displaySubtitles.filter((subtitle) =>
                 isTrackSeekable(this.settings.seekableTracks, subtitle.track)
             ),

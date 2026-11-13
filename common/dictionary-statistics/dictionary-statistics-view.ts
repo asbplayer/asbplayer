@@ -1335,7 +1335,7 @@ function processDictionaryStatisticsTrackSnapshot(
     return {
         track: trackSnapshot.track,
         progress: trackSnapshot.progress,
-        sourceStatus: trackSnapshot.sourceStatus ?? 'complete',
+        sourceStatus: trackSnapshot.sourceStatus,
         progressPercent: percent(trackSnapshot.progress.current, trackSnapshot.progress.total),
         statusColors: trackSnapshot.statusColors,
         numDictionaryKnownTokens: dictionaryCounts.numKnownTokens,
@@ -1807,6 +1807,6 @@ function processSimplifiedDictionaryStatisticsTrackSnapshot(
         comprehensionPercent,
         sentenceBuckets,
         progress,
-        sourceStatus: trackSnapshot.sourceStatus ?? 'complete',
+        sourceStatus: trackSnapshot.sourceStatus,
     };
 }

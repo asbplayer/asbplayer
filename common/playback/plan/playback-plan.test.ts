@@ -253,16 +253,41 @@ describe('buildPlaybackPlan', () => {
     });
 
     it.each(['loading', 'failed'] as const)('does not fast-forward beyond a %s subtitle prefix', (sourceStatus) => {
-        const plan = makePlan([PlayMode.fastForward], { sourceStatus });
+        const plan = makePlan([PlayMode.fastForward], {
+            sources: [{ track: 0, loadId: 'source', name: 'primary.ass', status: sourceStatus }],
+        });
         const timeline = PlaybackTimeline.fromSubtitles(plan.timelineSubtitles);
-        expect(fastForwardingForPlanState(plan, timeline.lookupAt(2500).state)).toBe(false);
+        expect(fastForwardingForPlanState(plan, timeline.lookupAt(2500).state, 2500)).toBe(false);
         const completed = makePlan([PlayMode.fastForward]);
         expect(
             fastForwardingForPlanState(
                 completed,
-                PlaybackTimeline.fromSubtitles(completed.timelineSubtitles).lookupAt(2500).state
+                PlaybackTimeline.fromSubtitles(completed.timelineSubtitles).lookupAt(2500).state,
+                2500
             )
         ).toBe(true);
+    });
+
+    it('uses the slowest incomplete track to bound gap actions', () => {
+        const plan = makePlan([PlayMode.fastForward, PlayMode.condensed], {
+            subtitles: [
+                makeSubtitle(1000, 2000, 0, { track: 0 }),
+                makeSubtitle(2500, 2600, 1, { track: 1 }),
+                makeSubtitle(5500, 6000, 2, { track: 0 }),
+            ],
+            sources: [
+                { track: 0, loadId: 'first', name: 'first.ass', status: 'loading' },
+                { track: 1, loadId: 'second', name: 'second.ass', status: 'loading' },
+            ],
+            durationMs: 6000,
+            fastForwardPlaybackMinimumSkipIntervalMs: 0,
+        });
+        const timeline = PlaybackTimeline.fromSubtitles(plan.timelineSubtitles);
+        expect(plan.timelineSubtitles.gapActionEndMs).toBe(2500);
+        expect(fastForwardingForPlanState(plan, timeline.lookupAt(2200).state, 2200)).toBe(true);
+        expect(fastForwardingForPlanState(plan, timeline.lookupAt(3000).state, 3000)).toBe(false);
+        expect(timeline.lookupAt(2200).segment.condensedTarget).toBe(2499);
+        expect(timeline.lookupAt(3000).segment.condensedTarget).toBeUndefined();
     });
 
     it('uses the configured playback rate inside subtitles and throughout qualifying gaps', () => {
@@ -276,7 +301,7 @@ describe('buildPlaybackPlan', () => {
         });
         const timeline = PlaybackTimeline.fromSubtitles(plan.timelineSubtitles);
         const rateAt = (timestampMs: number) =>
-            fastForwardingForPlanState(plan, timeline.lookupAt(timestampMs).state)
+            fastForwardingForPlanState(plan, timeline.lookupAt(timestampMs).state, timestampMs)
                 ? plan.fastForward!.playbackRate
                 : plan.playbackRate;
 
@@ -299,7 +324,7 @@ describe('buildPlaybackPlan', () => {
         const lookup = timeline.lookupAt(2100);
 
         expect(lookup.segment.condensedTarget).toBe(3999);
-        expect(fastForwardingForPlanState(plan, lookup.state)).toBe(true);
+        expect(fastForwardingForPlanState(plan, lookup.state, 2100)).toBe(true);
     });
 
     it('keeps an entire subminimum subtitle gap at the normal rate', () => {
@@ -312,7 +337,7 @@ describe('buildPlaybackPlan', () => {
         });
         const timeline = PlaybackTimeline.fromSubtitles(plan.timelineSubtitles);
         const rateAt = (timestampMs: number) =>
-            fastForwardingForPlanState(plan, timeline.lookupAt(timestampMs).state)
+            fastForwardingForPlanState(plan, timeline.lookupAt(timestampMs).state, timestampMs)
                 ? plan.fastForward!.playbackRate
                 : plan.playbackRate;
 
@@ -329,7 +354,7 @@ describe('buildPlaybackPlan', () => {
         });
         const timeline = PlaybackTimeline.fromSubtitles(plan.timelineSubtitles);
         const rateAt = (timestampMs: number) =>
-            fastForwardingForPlanState(plan, timeline.lookupAt(timestampMs).state)
+            fastForwardingForPlanState(plan, timeline.lookupAt(timestampMs).state, timestampMs)
                 ? plan.fastForward!.playbackRate
                 : plan.playbackRate;
 
@@ -348,7 +373,7 @@ describe('buildPlaybackPlan', () => {
         });
         const timeline = PlaybackTimeline.fromSubtitles(plan.timelineSubtitles);
         const rateAt = (timestampMs: number) =>
-            fastForwardingForPlanState(plan, timeline.lookupAt(timestampMs).state)
+            fastForwardingForPlanState(plan, timeline.lookupAt(timestampMs).state, timestampMs)
                 ? plan.fastForward!.playbackRate
                 : plan.playbackRate;
 

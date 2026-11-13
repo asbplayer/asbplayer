@@ -3584,6 +3584,88 @@ describe('PlaybackEngine', () => {
     });
 });
 
+describe('progressive gap actions', () => {
+    it.each([PlayMode.condensed, PlayMode.fastForward])(
+        'bounds %s by a loading track even when a complete companion has later cues',
+        async (mode) => {
+            const harness = await makePlaybackEngine([mode], { subtitles: [], settings: { seekableTracks: 3 } });
+            const cues = [
+                makeSubtitle(1000, 2000, 0, { track: 0, source: { loadId: 'loading', cueId: 0 } }),
+                makeSubtitle(4000, 5000, 1, { track: 1, source: { loadId: 'complete', cueId: 0 } }),
+            ];
+            const sources = [
+                { track: 0, loadId: 'loading', name: 'primary.ass', status: 'loading' as const },
+                { track: 1, loadId: 'complete', name: 'companion.srt', status: 'complete' as const },
+            ];
+            try {
+                harness.playbackEngine.subtitlesChanged(cues, { sources });
+                await flushPlaybackInitialization();
+                await harness.driver.time(2100);
+                expect(harness.seeks).toEqual([]);
+                expect(harness.driver.playbackRateValue).toBe(1);
+
+                harness.playbackEngine.subtitlesChanged(
+                    [...cues, makeSubtitle(5500, 6000, 2, { track: 0, source: { loadId: 'loading', cueId: 1 } })],
+                    { sources }
+                );
+                await harness.driver.time(2100);
+                if (mode === PlayMode.condensed) expect(harness.seeks).toEqual([3999]);
+                else expect(harness.driver.playbackRateValue).toBeGreaterThan(1);
+            } finally {
+                harness.playbackEngine.unbind();
+            }
+        }
+    );
+
+    it.each([PlayMode.condensed, PlayMode.fastForward])(
+        'keeps %s off until an empty pending track completes',
+        async (mode) => {
+            const harness = await makePlaybackEngine([mode], { subtitles: [], settings: { seekableTracks: 3 } });
+            const cues = [makeSubtitle(4000, 5000, 0, { track: 1 })];
+            const sources = [
+                { track: 0, loadId: 'pending', name: 'primary.ass', status: 'loading' as const },
+                { track: 1, loadId: 'complete', name: 'companion.srt', status: 'complete' as const },
+            ];
+            try {
+                harness.playbackEngine.subtitlesChanged(cues, { sources });
+                await flushPlaybackInitialization();
+                await harness.driver.time(100);
+                expect(harness.seeks).toEqual([]);
+                expect(harness.driver.playbackRateValue).toBe(1);
+
+                harness.playbackEngine.subtitlesChanged(cues, {
+                    sources: sources.map((source) => ({ ...source, status: 'complete' as const })),
+                });
+                await harness.driver.time(100);
+                if (mode === PlayMode.condensed) expect(harness.seeks).toEqual([3999]);
+                else expect(harness.driver.playbackRateValue).toBeGreaterThan(1);
+            } finally {
+                harness.playbackEngine.unbind();
+            }
+        }
+    );
+
+    it('does not let an unseekable pending track block gap actions', async () => {
+        const harness = await makePlaybackEngine([PlayMode.condensed], {
+            subtitles: [],
+            settings: { seekableTracks: 1 },
+        });
+        try {
+            harness.playbackEngine.subtitlesChanged([makeSubtitle(4000, 5000, 0)], {
+                sources: [
+                    { track: 0, loadId: 'complete', name: 'selected.srt', status: 'complete' },
+                    { track: 1, loadId: 'pending', name: 'unseekable.ass', status: 'loading' },
+                ],
+            });
+            await flushPlaybackInitialization();
+            await harness.driver.time(100);
+            expect(harness.seeks).toEqual([3999]);
+        } finally {
+            harness.playbackEngine.unbind();
+        }
+    });
+});
+
 describe('recipe playback', () => {
     const recipe = { name: 'Reading', playbackModes: [PlayMode.autoPause], settings: { playbackRate: 0.8 } };
 

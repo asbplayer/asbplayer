@@ -7,6 +7,9 @@ import {
     SubtitleStream,
     subtitleKey,
     subtitleSourceStatus,
+    subtitleSourceNames,
+    subtitleReference,
+    resolveSubtitleReference,
     sameSubtitleSourceContent,
     sameSubtitleAppearance,
 } from '@project/common/subtitle-reader/subtitle-stream';
@@ -18,6 +21,39 @@ import { makeSubtitle } from '@project/common/playback/playback-test-utils';
 const cue = (cueId: number, start: number, text = 'word') => ({ cueId, start, end: start + 1000, text });
 const start = (stream: SubtitleStream, track = 0, loadId = 'first') =>
     stream.update({ type: 'start', track, loadId, name: `track-${track}.srt` });
+
+describe('subtitle references', () => {
+    it('resolves cue zero by track and load after earlier cues change its index', () => {
+        const original = makeSubtitle({ track: 1, index: 0, source: { loadId: 'selected', cueId: 0 } });
+        const reference = subtitleReference(original);
+        const moved = { ...original, index: 2 };
+        const current = [
+            makeSubtitle({ index: 0, source: { loadId: 'selected', cueId: 0 } }),
+            makeSubtitle({ track: 1, index: 1, source: { loadId: 'other', cueId: 0 } }),
+            moved,
+        ];
+        expect(resolveSubtitleReference([], reference)).toBeUndefined();
+        expect(resolveSubtitleReference(current, reference)).toBe(moved);
+        expect(resolveSubtitleReference(current.slice(0, 2), reference)).toBeUndefined();
+    });
+
+    it('uses indexes for legacy references that have no cue identity', () => {
+        const current = [makeSubtitle({ index: 0 }), makeSubtitle({ index: 1 })];
+        expect(resolveSubtitleReference(current, 1)).toBe(current[1]);
+        expect(resolveSubtitleReference(current, { index: 0, track: 0 })).toBe(current[0]);
+    });
+});
+
+it('keeps source file names aligned with sparse track slots regardless of input order', () => {
+    expect(subtitleSourceNames([])).toEqual([]);
+    expect(subtitleSourceNames([{ track: 2, name: 'third.ass' }])).toEqual(['', '', 'third.ass']);
+    expect(
+        subtitleSourceNames([
+            { track: 2, name: 'third.ass' },
+            { track: 0, name: 'first.srt' },
+        ])
+    ).toEqual(['first.srt', '', 'third.ass']);
+});
 
 describe('diffCues', () => {
     const identified = (cueId: number) => makeSubtitle({ source: { loadId: 'source', cueId } });

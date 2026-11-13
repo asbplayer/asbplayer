@@ -12,6 +12,7 @@ import type {
     IndexedSubtitleModel,
     LoadableSubtitleTrack,
     SubtitleSourceMessage,
+    DictionaryRequestStatisticsMineSentencesMessage,
 } from '@project/common';
 import { defaultSettings, SubtitleListPreference, TokenStatus } from '@project/common/settings';
 import type { DictionaryTrack } from '@project/common/settings';
@@ -20,6 +21,7 @@ import type { BindingOptions } from '@project/extension/src/services/binding';
 import type ActualVideoDataSyncController from '@project/extension/src/controllers/video-data-sync-controller';
 import { MockStorageArea } from '@project/extension/src/services/mock-storage-area';
 import { uiFrameForHtml } from '@project/extension/src/services/ui-frame';
+import { subtitleReference } from '@project/common/subtitle-reader/subtitle-stream';
 
 let mockUseRealSyncController = false;
 
@@ -569,6 +571,89 @@ describe('Binding playback mode integration', () => {
         }
     });
 
+    it('mines the identified cue after reindexing and ignores replaced identities', async () => {
+        await storage.set({ streamingRecordMedia: false, streamingTakeScreenshot: false });
+        const binding = new Binding(createVideo(), bindingOptions(false, false));
+        binding.bind();
+        await flushPlaybackTiming();
+        try {
+            binding.updateSubtitleSource({
+                type: 'snapshot',
+                tracks: [
+                    {
+                        track: 0,
+                        loadId: 'loading',
+                        name: 'primary.ass',
+                        status: 'loading',
+                        cues: [{ cueId: 0, start: 1000, end: 2000, text: 'First' }],
+                    },
+                    {
+                        track: 1,
+                        loadId: 'complete',
+                        name: 'companion.srt',
+                        status: 'complete',
+                        cues: [{ cueId: 0, start: 4000, end: 5000, text: 'Intended' }],
+                    },
+                ],
+            });
+            const reference = subtitleReference(binding.subtitleController.subtitles[1]);
+            await binding.dictionary.requestStatisticsMineSentences('video', [reference]);
+            const mineRequest = (
+                sendRuntimeMessage.mock.calls as unknown as [
+                    { message?: DictionaryRequestStatisticsMineSentencesMessage },
+                ][]
+            )
+                .map(([command]) => command.message)
+                .findLast((message) => message?.command === 'dictionary-request-statistics-mine-sentences');
+            expect(mineRequest).toMatchObject({
+                indexes: [1],
+                subtitles: [{ track: 1, source: { loadId: 'complete', cueId: 0 } }],
+            });
+            binding.updateSubtitleSource({
+                type: 'cues',
+                track: 0,
+                loadId: 'loading',
+                cues: [{ cueId: 1, start: 3000, end: 3500, text: 'Inserted' }],
+            });
+            const mine = (subtitles: (typeof reference)[]) => {
+                for (const listener of runtimeListeners) {
+                    listener(
+                        {
+                            sender: 'asbplayer-extension-to-video',
+                            src: binding.registeredVideoSrc,
+                            message: {
+                                command: 'dictionary-request-statistics-mine-sentences',
+                                mediaId: 'video',
+                                indexes: [1],
+                                subtitles,
+                            },
+                        },
+                        {},
+                        () => undefined
+                    );
+                }
+            };
+            const minedTexts = () =>
+                (
+                    sendRuntimeMessage.mock.calls as unknown as [
+                        { message?: { command: string; subtitle?: IndexedSubtitleModel } },
+                    ][]
+                )
+                    .filter(([command]) => command.message?.command === 'record-media-and-forward-subtitle')
+                    .map(([command]) => command.message?.subtitle?.text);
+            mine([reference]);
+            await flushPlaybackTiming();
+            expect(minedTexts()).toEqual(['Intended']);
+
+            binding.updateSubtitleSource({ type: 'start', track: 1, loadId: 'replacement', name: 'new.srt' });
+            mine([reference]);
+            await flushPlaybackTiming();
+            expect(minedTexts()).toEqual(['Intended']);
+        } finally {
+            binding.unbind();
+        }
+    });
+
     it('loads progressive cues, replays their source on attachment, and ignores them after file replacement', async () => {
         const binding = new Binding(createVideo(), bindingOptions(false, false));
         binding.bind();
@@ -584,6 +669,7 @@ describe('Binding playback mode integration', () => {
             expect(binding.subtitleController.subtitles).toMatchObject([
                 { text: 'First', source: { loadId: 'stream', cueId: 0 } },
             ]);
+            binding.subtitleOffsetChanged(500, { notifyPlayer: false });
             const requestSource = () => {
                 for (const listener of runtimeListeners) {
                     listener(
@@ -604,6 +690,7 @@ describe('Binding playback mode integration', () => {
                 .findLast((message) => message?.command === 'subtitleSource');
             expect(replay?.update).toMatchObject({
                 type: 'snapshot',
+                offset: 500,
                 tracks: [
                     {
                         name: 'progressive.srt',

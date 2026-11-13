@@ -1,3 +1,4 @@
+import { subtitleReference } from '@project/common/subtitle-reader/subtitle-stream';
 import type { DictionaryProvider } from '@project/common/dictionary-db';
 import type {
     DictionaryStatisticsAnkiTrackSnapshot,
@@ -1996,7 +1997,9 @@ export default function Statistics({
                 return;
             }
             await onMineWasRequested?.(mediaId);
-            await Promise.resolve(dictionaryProvider.requestStatisticsMineSentences(mediaId, [sentence.index]));
+            await Promise.resolve(
+                dictionaryProvider.requestStatisticsMineSentences(mediaId, [subtitleReference(sentence)])
+            );
         },
         [dictionaryProvider, onMineWasRequested, mediaId]
     );

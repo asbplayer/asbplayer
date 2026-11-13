@@ -137,6 +137,7 @@ const makeProcessingSnapshot = (): DictionaryStatisticsSnapshot => ({
     },
     snapshots: [
         {
+            sourceStatus: 'complete',
             track: 0,
             progress: { current: 2, total: 2, startedAt: 1 },
             statusColors: {
@@ -263,6 +264,7 @@ const makeAnkiSnapshot = (): DictionaryStatisticsSnapshot => ({
     },
     snapshots: [
         {
+            sourceStatus: 'complete',
             track: 0,
             progress: { current: 2, total: 2, startedAt: 1 },
             statusColors: {
@@ -331,6 +333,7 @@ const makeUnknownFrequencySnapshot = (): DictionaryStatisticsSnapshot => ({
     },
     snapshots: [
         {
+            sourceStatus: 'complete',
             track: 0,
             progress: { current: 1, total: 1, startedAt: 1 },
             statusColors: {
@@ -465,12 +468,13 @@ describe('DictionaryStatistics', () => {
             const source = { track: 0, loadId: 'stream', name: 'subtitles.srt', status: 'loading' as const };
             statistics.init(0, 1);
             statistics.setSourceStates([source]);
-            statistics.ingest(makeSentence());
+            statistics.ingest(makeSentence({ source: { loadId: 'stream', cueId: 0 } }));
             statistics.updateProgress(0, 1);
             await jest.advanceTimersByTimeAsync(1000);
             expect(lastPublishedSnapshot(storage)?.snapshots[0]).toMatchObject({
                 sourceStatus: 'loading',
                 progress: { current: 1, total: 1 },
+                stats: { sentences: { 0: { source: { loadId: 'stream', cueId: 0 } } } },
             });
             const subtitles = [
                 { ...makeSentence({ text: 'earlier', end: 500 }), originalStart: 0, originalEnd: 500 },
@@ -481,7 +485,9 @@ describe('DictionaryStatistics', () => {
             expect(lastPublishedSnapshot(storage)?.snapshots[0]).toMatchObject({
                 sourceStatus: 'loading',
                 progress: { current: 1, total: 2 },
-                stats: { sentences: { 1: { index: 1, start: 2000, end: 3000 } } },
+                stats: {
+                    sentences: { 1: { index: 1, start: 2000, end: 3000, source: { loadId: 'stream', cueId: 0 } } },
+                },
             });
             statistics.setSourceStates([{ ...source, status }]);
             await jest.advanceTimersByTimeAsync(1000);
@@ -548,13 +554,13 @@ describe('DictionaryStatistics', () => {
         expect(snapshots.map((snapshot) => snapshot.progress.current)).toEqual([1, 1]);
     });
 
-    it.each([undefined, 'loading', 'complete', 'failed'] as const)(
-        'preserves source status %s in full and simplified views, defaulting legacy snapshots to complete',
+    it.each(['loading', 'complete', 'failed'] as const)(
+        'preserves source status %s in full and simplified views',
         (sourceStatus) => {
             const snapshot = makeProcessingSnapshot();
-            if (sourceStatus !== undefined) snapshot.snapshots[0].sourceStatus = sourceStatus;
-            expect(processDictionaryStatisticsSnapshot(snapshot)[0].sourceStatus).toBe(sourceStatus ?? 'complete');
-            expect(processSimplifiedDictionaryStatistics(snapshot)[0].sourceStatus).toBe(sourceStatus ?? 'complete');
+            snapshot.snapshots[0].sourceStatus = sourceStatus;
+            expect(processDictionaryStatisticsSnapshot(snapshot)[0].sourceStatus).toBe(sourceStatus);
+            expect(processSimplifiedDictionaryStatistics(snapshot)[0].sourceStatus).toBe(sourceStatus);
         }
     );
 
@@ -1387,6 +1393,7 @@ describe('dictionary-statistics view helpers', () => {
             },
             snapshots: [
                 {
+                    sourceStatus: 'complete',
                     track: 0,
                     progress: { current: 1, total: 1, startedAt: 1 },
                     statusColors: makeProcessingSnapshot().snapshots[0].statusColors,

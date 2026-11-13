@@ -43,7 +43,6 @@ import type {
     SaveTokenLocalToVideoMessage,
     IndexedSubtitleModel,
 } from '@project/common';
-import type { SubtitleSourceUpdate } from '@project/common/subtitle-reader/subtitle-stream';
 import { asbError } from '@project/common/util/log';
 import { PlayMode, PostMineAction } from '@project/common';
 import type {
@@ -88,7 +87,7 @@ export default class VideoChannel {
     private appBarToggleCallbacks: (() => void)[];
     private ankiDialogRequestCallbacks: (() => void)[];
     private toggleSubtitleTrackInListCallbacks: ((track: number) => void)[];
-    private subtitleSourceCallbacks: ((update: SubtitleSourceUpdate) => void)[] = [];
+    private subtitleSourceCallbacks: ((update: SubtitleSourceMessage['update']) => void)[] = [];
     private subtitlesUpdatedCallbacks: ((updatedSubtitles: readonly IndexedSubtitleModel[]) => void)[];
     private saveTokenLocalCallbacks: ((
         track: number,
@@ -492,7 +491,7 @@ export default class VideoChannel {
         return () => this._remove(callback, this.toggleSubtitleTrackInListCallbacks);
     }
 
-    onSubtitleSource(callback: (update: SubtitleSourceUpdate) => void) {
+    onSubtitleSource(callback: (update: SubtitleSourceMessage['update']) => void) {
         this.subtitleSourceCallbacks.push(callback);
         return () => this._remove(callback, this.subtitleSourceCallbacks);
     }
@@ -501,7 +500,7 @@ export default class VideoChannel {
         this.protocol.postMessage({ command: 'requestSubtitleSource' });
     }
 
-    subtitleSource(update: SubtitleSourceUpdate) {
+    subtitleSource(update: SubtitleSourceMessage['update']) {
         const message: SubtitleSourceMessage = { command: 'subtitleSource', update };
         this.protocol.postMessage(message);
     }

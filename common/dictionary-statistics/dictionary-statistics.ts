@@ -21,6 +21,7 @@ export interface DictionaryStatisticsSentence {
     end: number;
     track: number;
     index: number;
+    source?: IndexedSubtitleModel['source'];
     tokenization?: Tokenization;
 }
 
@@ -53,8 +54,8 @@ export interface DictionaryStatisticsStats {
 }
 
 export interface DictionaryStatisticsRawTrackSnapshot {
-    /** Processing all received cues does not imply source completion. Omitted means complete for legacy snapshots. */
-    sourceStatus?: SubtitleSourceStatus;
+    /** Processing all received cues does not imply source completion. */
+    sourceStatus: SubtitleSourceStatus;
     track: number;
     progress: Progress;
     statusColors: Record<TokenStatus, string>;
@@ -148,7 +149,7 @@ export class DictionaryStatistics {
         let changed = false;
         for (const snapshot of this.rawTrackSnapshots.values()) {
             const status = sources.find((source) => source.track === snapshot.track)?.status ?? 'complete';
-            if ((snapshot.sourceStatus ?? 'complete') !== status) changed = true;
+            if (snapshot.sourceStatus !== status) changed = true;
             snapshot.sourceStatus = status;
         }
         if (changed) this.publishSnapshot();
@@ -228,7 +229,7 @@ export class DictionaryStatistics {
                 .sort(([left], [right]) => left - right)
                 .map(([track, ts]) => ({
                     track,
-                    sourceStatus: ts.sourceStatus ?? 'complete',
+                    sourceStatus: ts.sourceStatus,
                     progress: ts.progress,
                     statusColors: ts.statusColors,
                     stats: {

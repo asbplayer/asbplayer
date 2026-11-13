@@ -37,10 +37,10 @@ describe('PlaybackTimeline', () => {
             subtitleTriggerStartOffset: -250,
         });
         const result = PlaybackTimeline.fromSubtitles({
-            sourceStatus: 'complete',
             actionBlocks: [],
             hiddenSubtitleIndexes: [],
             durationMs: base.durationMs,
+            gapActionEndMs: base.durationMs,
             blocks: base.blocks.map((block) => ({ ...block, startAction: true as const })),
             displaySubtitles: subtitles,
         });
@@ -64,10 +64,10 @@ describe('PlaybackTimeline', () => {
         const subtitles = [makeSubtitle(1000, 2000, 0), makeSubtitle(4000, 5000, 1)];
         const base = timeline(subtitles);
         const result = PlaybackTimeline.fromSubtitles({
-            sourceStatus: 'complete',
             actionBlocks: [],
             hiddenSubtitleIndexes: [],
             durationMs: base.durationMs,
+            gapActionEndMs: base.durationMs,
             blocks: base.blocks.map((block) => ({ ...block, playbackModeStartMs: 1000, startAction: true as const })),
             displaySubtitles: subtitles,
         });

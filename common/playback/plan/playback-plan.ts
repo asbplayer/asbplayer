@@ -11,7 +11,7 @@ import type { FieldComparators } from '@project/common/util';
 
 import { AutoPausePreference, PlayMode } from '@project/common';
 import type { IndexedSubtitleModel, Token } from '@project/common';
-import type { SubtitleSourceStatus } from '@project/common/subtitle-reader/subtitle-stream';
+import type { SubtitleSourceState } from '@project/common/subtitle-reader/subtitle-stream';
 
 import type {
     PlaybackTimelineBlock,
@@ -97,7 +97,7 @@ export interface PlaybackPlan<T extends IndexedSubtitleModel> {
 }
 
 export interface PlaybackPlanInput<T extends IndexedSubtitleModel> {
-    readonly sourceStatus?: SubtitleSourceStatus;
+    readonly sources: readonly SubtitleSourceState[];
     /** Subtitles eligible to influence playback modes. */
     readonly subtitles: readonly T[];
     /** All subtitles eligible for display. Defaults to subtitles. */
@@ -409,6 +409,15 @@ export const buildPlaybackPlan = <T extends IndexedSubtitleModel>(input: Playbac
         subtitleTriggerGapStartOffset,
         subtitleTriggerGapEndOffset,
     });
+    let gapActionEndMs = timeline.durationMs;
+    for (const source of input.sources) {
+        if (source.status === 'complete') continue;
+        const latestStartMs = subtitles.reduce(
+            (latest, cue) => (cue.track === source.track ? Math.max(latest, cue.start) : latest),
+            0
+        );
+        gapActionEndMs = Math.min(gapActionEndMs, latestStartMs);
+    }
 
     const dictionary = buildDictionaryPlaybackContext(input);
     const subtitleRates = buildSubtitleAdaptiveRates(input, dictionary);
@@ -481,7 +490,7 @@ export const buildPlaybackPlan = <T extends IndexedSubtitleModel>(input: Playbac
         },
         timelineSubtitles: {
             ...timeline,
-            sourceStatus: input.sourceStatus ?? 'complete',
+            gapActionEndMs,
             blocks,
             actionBlocks,
             ...(condensedBlocks === undefined ? {} : { condensedBlocks }),
@@ -546,25 +555,27 @@ export const buildPlaybackPlan = <T extends IndexedSubtitleModel>(input: Playbac
 
 export const fastForwardingForPlanState = <T extends IndexedSubtitleModel>(
     plan: PlaybackPlan<T>,
-    state: PlaybackTimelineState
+    state: PlaybackTimelineState,
+    timestampMs: number
 ): boolean => {
     if (plan.fastForward === undefined) return false;
     if (state.current !== undefined) {
         return (state.current.adaptiveRate?.fraction ?? 0) > 0;
     }
 
-    if (plan.timelineSubtitles.sourceStatus !== 'complete' && state.next === undefined) return false;
+    if (timestampMs >= plan.timelineSubtitles.gapActionEndMs) return false;
     const previousGapEdge = state.previous?.subtitleTriggerGapStartOffsetMs;
     const nextGapEdge = state.next?.subtitleTriggerGapEndOffsetMs;
+    const gapEndMs = Math.min(nextGapEdge ?? plan.timelineSubtitles.durationMs, plan.timelineSubtitles.gapActionEndMs);
     if (previousGapEdge === undefined && nextGapEdge === undefined) return true;
 
     let gapDurationMs: number;
     if (previousGapEdge === undefined) {
-        gapDurationMs = nextGapEdge! + 1;
+        gapDurationMs = gapEndMs + 1;
     } else if (nextGapEdge === undefined) {
-        gapDurationMs = plan.timelineSubtitles.durationMs - previousGapEdge;
+        gapDurationMs = gapEndMs - previousGapEdge;
     } else {
-        gapDurationMs = nextGapEdge - previousGapEdge + 1;
+        gapDurationMs = gapEndMs - previousGapEdge + 1;
     }
     return gapDurationMs + timestampComparisonToleranceMs >= plan.fastForward.minimumSkipIntervalMs;
 };
@@ -678,7 +689,7 @@ function arePlaybackPlanFastForwardsEqual(
 
 const playbackTimelineSubtitlesComparators: FieldComparators<PlaybackTimelineSubtitles<IndexedSubtitleModel>> = {
     durationMs: (left, right) => left === right,
-    sourceStatus: (left, right) => left === right,
+    gapActionEndMs: (left, right) => left === right,
     blocks: (left, right) => arrayEquals(left, right, arePlaybackTimelineBlocksEqual),
     actionBlocks: (left, right) => arrayEquals(left, right, arePlaybackTimelineBlocksEqual),
     condensedBlocks: (left, right) => arrayEquals(left, right, arePlaybackTimelineBlocksEqual),
