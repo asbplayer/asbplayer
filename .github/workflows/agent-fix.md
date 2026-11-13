@@ -71,7 +71,7 @@ pre-agent-steps:
 
   - name: Install workspace dependencies
     run: |
-      pnpm install --filter @project/extension --filter @project/common --filter @project/client
+      pnpm install --filter @project/extension --filter @project/common --filter @project/client --filter @project/ffmpeg
 
   - name: Vendor pnpm for the agent sandbox
     run: |
