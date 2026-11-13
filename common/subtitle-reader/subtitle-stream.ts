@@ -32,6 +32,11 @@ export interface SubtitleSourceCue
  * An empty snapshot clears all tracks.
  */
 export interface SubtitleSourceSnapshot {
+    readonly tracks: readonly (SubtitleSourceState & { readonly cues: readonly SubtitleSourceCue[] })[];
+}
+
+/** Internal, sorted view with indexes and source identity restored for consumers. */
+export interface SubtitleStreamSnapshot {
     readonly tracks: readonly SubtitleSourceState[];
     readonly subtitles: readonly IndexedSubtitleModel[];
 }
@@ -63,6 +68,50 @@ export const subtitleKey = (cue: Pick<SubtitleModel, 'source' | 'index' | 'track
 export const sameSubtitleText = (a: SubtitleModel, b: SubtitleModel) =>
     (a.originalText ?? a.text) === (b.originalText ?? b.text);
 
+export const indexCuesByKey = <T extends IndexedSubtitleModel>(cues: readonly T[]): Map<string, T> => {
+    const byKey = new Map<string, T>();
+    for (const cue of cues) byKey.set(subtitleKey(cue), cue);
+    return byKey;
+};
+
+export interface CuePair<P, N> {
+    readonly previous: P;
+    readonly next: N;
+}
+
+export interface CueDiff<P, N> {
+    readonly added: N[];
+    readonly retained: CuePair<P, N>[];
+    readonly changed: CuePair<P, N>[];
+    readonly removedKeys: string[];
+}
+
+/** Matches cue identity; each consumer decides which changes invalidate its retained state. */
+export const diffCues = <P extends IndexedSubtitleModel, N extends IndexedSubtitleModel>(
+    previous: readonly P[],
+    next: readonly N[],
+    same: (previous: P, next: N) => boolean
+): CueDiff<P, N> => {
+    const previousByKey = indexCuesByKey(previous);
+    const added: N[] = [];
+    const retained: CuePair<P, N>[] = [];
+    const changed: CuePair<P, N>[] = [];
+    for (const cue of next) {
+        const key = subtitleKey(cue);
+        const old = previousByKey.get(key);
+        if (old === undefined) {
+            added.push(cue);
+        } else {
+            (same(old, cue) ? retained : changed).push({ previous: old, next: cue });
+            previousByKey.delete(key);
+        }
+    }
+    return { added, retained, changed, removedKeys: [...previousByKey.keys()] };
+};
+
+export const sameSubtitleAppearance = (a: SubtitleModel, b: SubtitleModel): boolean =>
+    a.text === b.text && a.tokenization === b.tokenization && a.textImage === b.textImage;
+
 const isOriginalToken = (token: Tokenization['tokens'][number]) => !(token as { __internal?: boolean }).__internal;
 
 /** Compares only source-provided tokens (positions and readings) without copying them. */
@@ -92,18 +141,19 @@ export function originalTokenizationsEqual(a: Tokenization | undefined, b: Token
     }
 }
 
+export const sameSubtitleSourceContent = (a: SubtitleModel, b: SubtitleModel): boolean =>
+    sameSubtitleText(a, b) && originalTokenizationsEqual(a.tokenization, b.tokenization);
+
 /** Reconcile asynchronous annotation results by identity and source text, rather than an obsolete array index. */
 export const mergeSubtitleAnnotations = <T extends IndexedSubtitleModel>(
     subtitles: readonly T[],
     updates: readonly IndexedSubtitleModel[]
 ): T[] => {
-    const byKey = new Map(updates.filter((cue) => cue.source).map((cue) => [subtitleKey(cue), cue]));
+    const byKey = indexCuesByKey(updates.filter((cue) => cue.source));
     const legacy = new Map(updates.filter((cue) => !cue.source).map((cue) => [cue.index, cue]));
     return subtitles.map((cue) => {
         const update = byKey.get(subtitleKey(cue)) ?? legacy.get(cue.index);
-        return update &&
-            sameSubtitleText(cue, update) &&
-            originalTokenizationsEqual(cue.tokenization, update.tokenization)
+        return update && sameSubtitleSourceContent(cue, update)
             ? {
                   ...cue,
                   text: update.text,
@@ -116,18 +166,15 @@ export const mergeSubtitleAnnotations = <T extends IndexedSubtitleModel>(
 
 /** Applies source timing to the current offset while retaining annotations on unchanged cues. */
 export const displaySubtitleSnapshot = (
-    snapshot: SubtitleSourceSnapshot,
+    snapshot: SubtitleStreamSnapshot,
     previous: readonly IndexedSubtitleModel[],
     offset: number
 ): DisplaySubtitleModel[] => {
-    const byKey = new Map(previous.map((cue) => [subtitleKey(cue), cue]));
+    const byKey = indexCuesByKey(previous);
     const length = snapshot.subtitles.reduce((end, cue) => Math.max(end, cue.originalEnd + offset), 0);
     return snapshot.subtitles.map((cue, index) => {
         const old = byKey.get(subtitleKey(cue));
-        const retained =
-            old && sameSubtitleText(cue, old) && originalTokenizationsEqual(cue.tokenization, old.tokenization)
-                ? old
-                : cue;
+        const retained = old && sameSubtitleSourceContent(cue, old) ? old : cue;
         return {
             ...retained,
             ...cue,
@@ -178,23 +225,14 @@ export class SubtitleStream {
         if (update.type === 'snapshot') {
             const next = new SubtitleStream();
             const trackIndexes = new Set(update.tracks.map((state) => state.track));
-            if (
-                trackIndexes.size !== update.tracks.length ||
-                update.subtitles.some((cue) => !trackIndexes.has(cue.track))
-            ) {
+            if (trackIndexes.size !== update.tracks.length) {
                 throw new Error('Invalid subtitle snapshot');
             }
-            for (const state of update.tracks) {
+            for (const { cues, ...state } of update.tracks) {
                 if (!['loading', 'complete', 'failed'].includes(state.status)) {
                     throw new Error('Invalid subtitle status');
                 }
                 next.update({ type: 'start', ...state });
-                const cues = update.subtitles
-                    .filter((cue) => cue.track === state.track)
-                    .map((cue) => {
-                        if (cue.source?.loadId !== state.loadId) throw new Error('Mismatched subtitle source');
-                        return { ...cue, cueId: cue.source.cueId, start: cue.originalStart, end: cue.originalEnd };
-                    });
                 next.update({ type: 'cues', track: state.track, loadId: state.loadId, cues });
                 if (state.status === 'complete') next.update({ type: 'complete', ...state });
                 if (state.status === 'failed') next.update({ type: 'failed', ...state, error: state.error ?? '' });
@@ -261,7 +299,25 @@ export class SubtitleStream {
         return [...this.tracks.values()].map(({ state }) => state).sort((a, b) => a.track - b.track);
     }
 
-    get snapshot(): SubtitleSourceSnapshot {
+    get sourceSnapshot(): SubtitleSourceSnapshot {
+        return {
+            tracks: [...this.tracks.values()]
+                .sort((a, b) => a.state.track - b.state.track)
+                .map(({ state, cues }) => ({
+                    ...state,
+                    cues: Array.from(cues, ([cueId, cue]) => ({
+                        cueId,
+                        start: cue.originalStart,
+                        end: cue.originalEnd,
+                        text: cue.text,
+                        textImage: cue.textImage,
+                        tokenization: cue.tokenization,
+                    })),
+                })),
+        };
+    }
+
+    get snapshot(): SubtitleStreamSnapshot {
         const tracks = [...this.tracks.values()].sort((a, b) => a.state.track - b.state.track);
         const subtitles = tracks
             .flatMap((track) => [...track.cues.values()])

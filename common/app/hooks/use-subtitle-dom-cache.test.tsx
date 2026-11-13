@@ -17,8 +17,14 @@ describe('useSubtitleDomCache', () => {
     let root: Root;
     let container: HTMLDivElement;
     let cache: OffscreenDomCache;
-    function Player({ subtitles }: { subtitles: IndexedSubtitleModel[] }) {
-        cache = useSubtitleDomCache(subtitles, renderSubtitle).getSubtitleDomCache();
+    function Player({
+        subtitles,
+        render = renderSubtitle,
+    }: {
+        subtitles: IndexedSubtitleModel[];
+        render?: (cue: IndexedSubtitleModel) => string;
+    }) {
+        cache = useSubtitleDomCache(subtitles, render).getSubtitleDomCache();
         return null;
     }
     beforeEach(() => {
@@ -57,5 +63,15 @@ describe('useSubtitleDomCache', () => {
         await act(async () => root.render(<Player subtitles={[replacement]} />));
         expect(cache.has(subtitleKey(cue))).toBe(false);
         expect(cache.get(subtitleKey(replacement)).textContent?.trim()).toBe('original');
+    });
+
+    it('refreshes retained cues when the renderer changes and clears removed cues', async () => {
+        const cue = makeSubtitle({ text: 'word', source: { loadId: 'stream', cueId: 0 } });
+        const subtitles = [cue];
+        await act(async () => root.render(<Player subtitles={subtitles} />));
+        await act(async () => root.render(<Player subtitles={subtitles} render={(cue) => `<em>${cue.text}</em>`} />));
+        expect(cache.get(subtitleKey(cue)).querySelector('em')?.textContent).toBe('word');
+        await act(async () => root.render(<Player subtitles={[]} />));
+        expect(cache.keys()).toEqual([]);
     });
 });

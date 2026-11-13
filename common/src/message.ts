@@ -1,4 +1,4 @@
-import type { SubtitleSourceUpdate, SubtitleSourceSnapshot } from '@project/common/subtitle-reader/subtitle-stream';
+import type { SubtitleSourceUpdate, SubtitleSourceState } from '@project/common/subtitle-reader/subtitle-stream';
 import type {
     AnkiSettings,
     ApplyStrategy,
@@ -335,14 +335,14 @@ export interface PlayerSyncMessage extends Message {
     readonly subtitles: SerializedSubtitleFile[];
     readonly flatten?: boolean;
     /** Attachment metadata only; cue data travels through subtitleSource messages. */
-    readonly subtitleSource?: Pick<SubtitleSourceSnapshot, 'tracks'>;
+    readonly subtitleSource?: { readonly tracks: readonly SubtitleSourceState[] };
 }
 
 export interface ExtensionSyncMessage extends Message {
     readonly command: 'sync';
     readonly subtitles: SerializedSubtitleFile[];
     readonly flatten?: boolean;
-    readonly subtitleSource?: Pick<SubtitleSourceSnapshot, 'tracks'>;
+    readonly subtitleSource?: { readonly tracks: readonly SubtitleSourceState[] };
     readonly withSyncedAsbplayerOnly: boolean;
     readonly withAsbplayerId?: string;
 }

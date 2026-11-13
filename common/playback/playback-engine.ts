@@ -18,7 +18,7 @@ import { activeRecipe, effectiveSettings, defaultSettings, isTrackSeekable } fro
 import type { AsbplayerSettings, SettingsProvider } from '@project/common/settings';
 
 import { PlayMode } from '@project/common';
-import { subtitleKey, subtitleSourceStatus } from '@project/common/subtitle-reader/subtitle-stream';
+import { indexCuesByKey, subtitleKey, subtitleSourceStatus } from '@project/common/subtitle-reader/subtitle-stream';
 import type { SubtitleSourceState } from '@project/common/subtitle-reader/subtitle-stream';
 import type { IndexedSubtitleModel, PlaybackState } from '@project/common';
 
@@ -807,7 +807,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         const preserveTokenSelection = this.tokenSelectionController.subtitlesChanged(this.subtitles, subtitles);
         const previousSubtitleCount = this.subtitles.length;
         const hadSubtitles = this.ready.subtitles;
-        const byKey = new Map(subtitles.filter((cue) => cue.source).map((cue) => [subtitleKey(cue), cue]));
+        const byKey = indexCuesByKey(subtitles);
         const existingTimingUnchanged =
             this.subtitles.length > 0 &&
             this.subtitles.every((old) => {

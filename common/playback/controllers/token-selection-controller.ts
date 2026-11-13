@@ -1,5 +1,5 @@
 import type { IndexedSubtitleModel } from '@project/common';
-import { subtitleKey, sameSubtitleText } from '@project/common/subtitle-reader/subtitle-stream';
+import { indexCuesByKey, subtitleKey, sameSubtitleText } from '@project/common/subtitle-reader/subtitle-stream';
 import type { TokenSelectionLocation } from '@project/common/annotations/token-navigation';
 import type { SelectTokenInRootOptions } from '@project/common/annotations';
 import type { PlaybackPlanTokenSelection } from '@project/common/playback/plan/playback-plan';
@@ -55,7 +55,7 @@ export default class TokenSelectionController {
     subtitlesChanged(previous: readonly IndexedSubtitleModel[], next: readonly IndexedSubtitleModel[]): boolean {
         const selection = this.pendingSelection;
         if (!selection) return false;
-        const byKey = new Map(next.filter((cue) => cue.source).map((cue) => [subtitleKey(cue), cue]));
+        const byKey = indexCuesByKey(next);
         const targets: TokenSelectionLocation[] = [];
         for (const target of selection.targets) {
             const old = previous[target.subtitleIndex];

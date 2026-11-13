@@ -703,15 +703,14 @@ function PlayerComponent(
     }, [subtitles, syntheticPlayback, tab]);
 
     const { loadingSubtitles, subtitleFileNames, sourceStates } = useSubtitleTracks({
-        sourceOwnership: tab && sources === undefined ? 'remote' : 'local',
-        supportsProgressiveSubtitles: !tab || extension.supportsProgressiveSubtitles,
-        subtitleTracks,
-        subtitleReader,
+        source:
+            tab && sources === undefined
+                ? { kind: 'remote', supportsProgressiveSubtitles: extension.supportsProgressiveSubtitles }
+                : { kind: 'local', tracks: subtitleTracks, reader: subtitleReader, onLoaded },
         subtitles,
         channel,
         getSubtitleOffset,
         onSubtitles,
-        onLoaded,
         onError,
     });
 

@@ -1,4 +1,6 @@
-import { compile as parseAss } from 'ass-compiler';
+import { parse as parseAss } from 'ass-compiler';
+import type { ParsedASS } from 'ass-compiler';
+import type { SubtitleSourceCue } from '@project/common/subtitle-reader/subtitle-stream';
 import SrtParser from '@qgustavor/srt-parser';
 import { subtitlesToSrt } from '@project/common/subtitle-reader/subtitles-to-srt';
 import { strToU8, zipSync } from 'fflate';
@@ -194,9 +196,72 @@ export default class SubtitleReader {
                     fileParts.map((subtitleSourceFile) => this._subtitles(subtitleSourceFile, track))
                 )
             )
-        )
-            .flat()
-            .sort((n1, n2) => n1.start - n2.start);
+        ).flat();
+        return this._processSubtitles(allNodes);
+    }
+
+    /** Creates an independent parser for a single progressive track. */
+    createProgressiveReader(extension: string) {
+        if (extension !== 'ass') throw new Error(`Unsupported progressive subtitle format: ${extension}`);
+        let pending = '';
+        let header = '';
+        let format: string[] | undefined;
+        let cueId = 0;
+        let previous: SubtitleNode | undefined;
+        return {
+            read: (text: string, final = false): SubtitleSourceCue[] => {
+                pending += text;
+                const lines = pending.split(/\r\n|\r|\n/);
+                pending = final ? '' : lines.pop()!;
+                if (lines.length === 0) return [];
+                const prefix = format ? `[Events]\nFormat: ${format.join(', ')}\n` : header;
+                const batch = lines.join('\n');
+                const tree = parseAss(prefix + batch);
+                if (tree.events.format.length > 0) {
+                    format = tree.events.format;
+                    header = '';
+                } else if (!format) {
+                    header += `${batch}\n`;
+                }
+                if (!format && tree.events.dialogue.length > 0) {
+                    throw new Error('ASS dialogue arrived before the events format');
+                }
+                if (final && !format) {
+                    throw new Error('Subtitle response did not contain an ASS events header and format');
+                }
+                const nodes = this._processSubtitles(this._assSubtitles(tree.events.dialogue, 0));
+                const cues: SubtitleSourceCue[] = [];
+                for (const node of nodes) {
+                    if (previous && this._isSame(previous, node)) continue;
+                    previous = node;
+                    cues.push({
+                        cueId: cueId++,
+                        start: node.start,
+                        end: node.end,
+                        text: node.text,
+                        textImage: node.textImage,
+                        tokenization: node.tokenization,
+                    });
+                }
+                return cues;
+            },
+        };
+    }
+
+    private _assSubtitles(dialogues: ParsedASS['events']['dialogue'], track: number): SubtitleNode[] {
+        return dialogues
+            .filter((dialogue) => dialogue.Start < dialogue.End)
+            .sort((a, b) => a.Start - b.Start || a.End - b.End)
+            .map((dialogue) => ({
+                start: Math.round(dialogue.Start * 1000),
+                end: Math.round(dialogue.End * 1000),
+                text: this._filterText(dialogue.Text.combined).replace(assNewLineRegex, '\n'),
+                track,
+            }));
+    }
+
+    private _processSubtitles(allNodes: SubtitleNode[]): SubtitleNode[] {
+        allNodes.sort((a, b) => a.start - b.start);
 
         // Sanitize after all parser, filter, decoding, and flattening transformations.
         // Ruby tokenization runs afterwards because it relies on positions in this
@@ -309,17 +374,7 @@ export default class SubtitleReader {
         }
 
         if (subtitleSourceFile.name.endsWith('.ass')) {
-            const nodes = parseAss(await subtitleSourceFile.text(), {});
-            return nodes.dialogues.map((dialogue) => {
-                return {
-                    start: Math.round(dialogue.start * 1000),
-                    end: Math.round(dialogue.end * 1000),
-                    text: this._filterText(
-                        dialogue.slices.flatMap((slice) => slice.fragments.map((fragment) => fragment.text)).join('')
-                    ).replace(assNewLineRegex, '\n'),
-                    track: track,
-                };
-            });
+            return this._assSubtitles(parseAss(await subtitleSourceFile.text()).events.dialogue, track);
         }
 
         if (subtitleSourceFile.name.endsWith('.ytsrv3')) {

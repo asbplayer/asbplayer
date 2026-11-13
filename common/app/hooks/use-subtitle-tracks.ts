@@ -9,31 +9,33 @@ import type { SubtitleSourceState, SubtitleSourceUpdate } from '@project/common/
 import { asbTrace } from '@project/common/util/log';
 
 interface UseSubtitleTracksParams {
-    sourceOwnership: 'local' | 'remote';
-    subtitleTracks: LoadableSubtitleTrack<FileWithId>[] | undefined;
-    subtitleReader: Pick<SubtitleReader, 'subtitles'>;
+    source:
+        | {
+              kind: 'local';
+              tracks: LoadableSubtitleTrack<FileWithId>[] | undefined;
+              reader: Pick<SubtitleReader, 'subtitles'>;
+              onLoaded: (subtitleSourceFiles: File[]) => void;
+          }
+        | { kind: 'remote'; supportsProgressiveSubtitles: boolean };
     subtitles: DisplaySubtitleModel[] | undefined;
     channel: Pick<VideoChannel, 'onReady' | 'subtitles' | 'onSubtitleSource' | 'requestSubtitleSource'> | undefined;
-    supportsProgressiveSubtitles: boolean;
     getSubtitleOffset: () => number;
     onSubtitles: Dispatch<SetStateAction<DisplaySubtitleModel[] | undefined>>;
-    onLoaded: (subtitleSourceFiles: File[]) => void;
     onError: (error: unknown) => void;
 }
 
 /** Loads local files or consumes the subtitle source owned by a connected video. */
 export const useSubtitleTracks = ({
-    sourceOwnership,
-    subtitleTracks,
-    subtitleReader,
+    source,
     subtitles,
     channel,
-    supportsProgressiveSubtitles,
     getSubtitleOffset,
     onSubtitles,
-    onLoaded,
     onError,
 }: UseSubtitleTracksParams) => {
+    const subtitleTracks = source.kind === 'local' ? source.tracks : undefined;
+    const subtitleReader = source.kind === 'local' ? source.reader : undefined;
+    const supportsProgressiveSubtitles = source.kind === 'remote' && source.supportsProgressiveSubtitles;
     const stream = useRef(new SubtitleStream());
     const currentSubtitles = useRef(subtitles);
     currentSubtitles.current = subtitles;
@@ -79,27 +81,27 @@ export const useSubtitleTracks = ({
 
     const receive = useCallback(
         (update: SubtitleSourceUpdate) => {
-            if (fileLoad.current !== undefined || sourceOwnership === 'local') return;
+            if (fileLoad.current !== undefined || source.kind === 'local') return;
             if (!stream.current.update(update)) return;
             owner.current = 'remote';
             publish();
             if (update.type === 'failed') onError(new Error(update.error));
         },
-        [publish, onError, sourceOwnership]
+        [publish, onError, source.kind]
     );
 
-    const callbacks = useRef({ receive, sendSnapshot, publish, onLoaded, onError });
-    callbacks.current = { receive, sendSnapshot, publish, onLoaded, onError };
+    const latest = useRef({ receive, sendSnapshot, publish, source, onError });
+    latest.current = { receive, sendSnapshot, publish, source, onError };
     useEffect(() => {
         ready.current = false;
         if (!channel) return;
-        const removeSource = channel.onSubtitleSource((update) => callbacks.current.receive(update));
+        const removeSource = channel.onSubtitleSource((update) => latest.current.receive(update));
         const removeReady = channel.onReady(() => {
             ready.current = true;
-            if (sourceOwnership === 'remote') {
+            if (source.kind === 'remote') {
                 if (supportsProgressiveSubtitles) channel.requestSubtitleSource();
             } else {
-                callbacks.current.sendSnapshot();
+                latest.current.sendSnapshot();
             }
         });
         return () => {
@@ -107,14 +109,16 @@ export const useSubtitleTracks = ({
             removeSource();
             removeReady();
         };
-    }, [channel, sourceOwnership, supportsProgressiveSubtitles]);
+    }, [channel, source.kind, supportsProgressiveSubtitles]);
     useEffect(() => {
-        if (sourceOwnership === 'remote') {
+        const source = latest.current.source;
+        if (source.kind === 'remote') {
             setLoadingFiles(false);
             if (owner.current !== 'remote') setSourceStates([]);
             owner.current = 'remote';
             return;
         }
+        const { tracks: subtitleTracks, reader: subtitleReader } = source;
         if (subtitleTracks === undefined) {
             setLoadingFiles(false);
             if (owner.current === 'files' || owner.current === 'loading-files') {
@@ -153,30 +157,31 @@ export const useSubtitleTracks = ({
                         (_, track) => nodes.filter((cue) => cue.track === track).length
                     ),
                 });
-                callbacks.current.publish();
-                callbacks.current.sendSnapshot();
+                latest.current.publish();
+                latest.current.sendSnapshot();
             } catch (error) {
                 if (fileLoad.current !== generation) return;
                 asbTrace('playback/player', 'Failed to load player subtitles', { error });
-                callbacks.current.onError(error);
+                latest.current.onError(error);
                 stream.current.replace([], names);
                 owner.current = 'files';
-                callbacks.current.publish();
-                callbacks.current.sendSnapshot();
+                latest.current.publish();
+                latest.current.sendSnapshot();
             } finally {
                 if (fileLoad.current === generation) {
                     fileLoad.current = undefined;
                     setLoadingFiles(false);
-                    callbacks.current.onLoaded(
-                        subtitleTracks.flatMap(({ fileParts }) => fileParts.map(({ file }) => file))
-                    );
+                    const source = latest.current.source;
+                    if (source.kind === 'local') {
+                        source.onLoaded(subtitleTracks.flatMap(({ fileParts }) => fileParts.map(({ file }) => file)));
+                    }
                 }
             }
-        })().catch((error) => callbacks.current.onError(error));
+        })().catch((error) => latest.current.onError(error));
         return () => {
             if (fileLoad.current === generation) fileLoad.current = undefined;
         };
-    }, [subtitleTracks, subtitleReader, sourceOwnership]);
+    }, [subtitleTracks, subtitleReader, source.kind]);
 
     return {
         sourceStates,

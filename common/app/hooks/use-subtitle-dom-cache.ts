@@ -6,7 +6,7 @@ import {
     selectTokenInRoot,
 } from '@project/common/annotations';
 import { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
-import { subtitleKey } from '@project/common/subtitle-reader/subtitle-stream';
+import { diffCues, sameSubtitleAppearance, subtitleKey } from '@project/common/subtitle-reader/subtitle-stream';
 
 export const useSubtitleDomCache = (
     subtitles: IndexedSubtitleModel[],
@@ -17,39 +17,35 @@ export const useSubtitleDomCache = (
     const previousRenderRef = useRef(render);
 
     useLayoutEffect(() => {
-        const previousSubtitles = previousSubtitlesRef.current;
-        const previousByKey = new Map(previousSubtitles?.map((cue) => [subtitleKey(cue), cue]));
-        const currentKeys = new Set(subtitles.map(subtitleKey));
+        const diff = diffCues(
+            previousSubtitlesRef.current ?? [],
+            subtitles,
+            (previous, next) => previousRenderRef.current === render && sameSubtitleAppearance(previous, next)
+        );
         const cache = domCacheRef.current;
-        for (const key of cache.keys()) if (!currentKeys.has(key)) cache.delete(key);
-        for (const subtitle of subtitles) {
-            const key = subtitleKey(subtitle);
-            const previous = previousByKey.get(key);
-            if (
-                !previous ||
-                previous.text !== subtitle.text ||
-                previous.tokenization !== subtitle.tokenization ||
-                previous.textImage !== subtitle.textImage ||
-                previousRenderRef.current !== render
-            ) {
-                const root = cache.has(key) ? cache.get(key) : undefined;
-                const selection = root && restorableTokenSelectionInRoot(root);
-                cache.add(key, render(subtitle));
-                if (selection && previous?.text === subtitle.text) {
-                    selectTokenInRoot(
-                        cache.get(key),
-                        { ...selection.location, subtitleIndex: subtitle.index },
-                        {
-                            ...selection.options,
-                            focusContainer: false,
-                            scrollIntoView: false,
-                        }
-                    );
-                }
-            } else if (previous.index !== subtitle.index) {
-                for (const element of cache.get(key).querySelectorAll(`[${ASB_SUBTITLE_INDEX_ATTRIBUTE}]`)) {
-                    element.setAttribute(ASB_SUBTITLE_INDEX_ATTRIBUTE, String(subtitle.index));
-                }
+        for (const key of diff.removedKeys) cache.delete(key);
+        for (const subtitle of diff.added) cache.add(subtitleKey(subtitle), render(subtitle));
+        for (const { previous, next } of diff.changed) {
+            const key = subtitleKey(next);
+            const root = cache.has(key) ? cache.get(key) : undefined;
+            const selection = root && restorableTokenSelectionInRoot(root);
+            cache.add(key, render(next));
+            if (selection && previous.text === next.text) {
+                selectTokenInRoot(
+                    cache.get(key),
+                    { ...selection.location, subtitleIndex: next.index },
+                    {
+                        ...selection.options,
+                        focusContainer: false,
+                        scrollIntoView: false,
+                    }
+                );
+            }
+        }
+        for (const { previous, next } of diff.retained) {
+            if (previous.index === next.index) continue;
+            for (const element of cache.get(subtitleKey(next)).querySelectorAll(`[${ASB_SUBTITLE_INDEX_ATTRIBUTE}]`)) {
+                element.setAttribute(ASB_SUBTITLE_INDEX_ATTRIBUTE, String(next.index));
             }
         }
 

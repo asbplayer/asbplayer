@@ -3,9 +3,8 @@ import { createRoot } from 'react-dom/client';
 import type { Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
 
-// These unrelated parsers ship as ESM. The tests below use the real WebVTT parser.
+// The unrelated SRT parser ships as ESM. The tests below use the real WebVTT parser.
 jest.mock('@qgustavor/srt-parser', () => ({ __esModule: true, default: class {} }));
-jest.mock('ass-compiler', () => ({ compile: () => ({ dialogues: [] }) }));
 
 import { SubtitleHtml } from '@project/common';
 import type {
@@ -89,15 +88,14 @@ describe('useSubtitleTracks source transitions', () => {
     }) {
         const [subtitles, setSubtitles] = useState<DisplaySubtitleModel[] | undefined>(initialSubtitles);
         const result = useSubtitleTracks({
-            sourceOwnership: ownership,
-            subtitleTracks: tracks,
-            supportsProgressiveSubtitles: progressive,
-            subtitleReader: reader,
+            source:
+                ownership === 'remote'
+                    ? { kind: 'remote', supportsProgressiveSubtitles: progressive }
+                    : { kind: 'local', tracks, reader, onLoaded },
             subtitles,
             channel: activeChannel,
             getSubtitleOffset,
             onSubtitles: setSubtitles,
-            onLoaded,
             onError,
         });
         annotate = () =>
@@ -236,6 +234,15 @@ describe('useSubtitleTracks source transitions', () => {
         ]);
     });
 
+    it('keeps loaded annotations when the source configuration is recreated', async () => {
+        const tracks = [track('Loaded')];
+        await render(tracks);
+        await act(async () => annotate());
+        await render(tracks);
+        expect(container.textContent).toBe('<b>Loaded</b>');
+        expect(onLoaded).toHaveBeenCalledTimes(1);
+    });
+
     it('does not send the previous file when a video becomes ready during a replacement parse', async () => {
         let finish!: (text: string) => void;
         await render([track('Old')]);
@@ -308,7 +315,7 @@ describe('useSubtitleTracks source transitions', () => {
             loadId: 'remote',
             cues: [{ cueId: 0, start: 1000, end: 2000, text: 'Remote' }],
         });
-        protocol.source = remote.snapshot;
+        protocol.source = remote.sourceSnapshot;
         protocol.ready();
         await act(async () => root.render(<Player tracks={undefined} ownership="remote" progressive />));
         expect(container.textContent).toBe('Remote');
@@ -332,7 +339,7 @@ describe('useSubtitleTracks source transitions', () => {
         await render([track('Local')]);
         await act(async () =>
             protocol.onMessage?.({
-                data: { command: 'subtitleSource', update: { type: 'snapshot', tracks: [], subtitles: [] } },
+                data: { command: 'subtitleSource', update: { type: 'snapshot', tracks: [] } },
             })
         );
         expect(container.textContent).toBe('Local');
@@ -348,7 +355,7 @@ describe('useSubtitleTracks source transitions', () => {
             loadId: 'remote',
             cues: [{ cueId: 0, start: 1000, end: 2000, text: 'First' }],
         });
-        protocol.source = remote.snapshot;
+        protocol.source = remote.sourceSnapshot;
         protocol.ready();
         await act(async () => root.render(<Player tracks={undefined} ownership="remote" progressive />));
         await act(async () => annotate());
@@ -360,7 +367,7 @@ describe('useSubtitleTracks source transitions', () => {
             cues: [{ cueId: 1, start: 3000, end: 4000, text: 'Second' }],
         });
         const nextProtocol = new TestVideoProtocol();
-        nextProtocol.source = remote.snapshot;
+        nextProtocol.source = remote.sourceSnapshot;
         const nextChannel = new VideoChannel(nextProtocol);
         await act(async () =>
             root.render(<Player tracks={undefined} ownership="remote" activeChannel={nextChannel} progressive />)
@@ -390,7 +397,7 @@ describe('useSubtitleTracks source transitions', () => {
             loadId: 'remote',
             cues: [{ cueId: 0, start: 1000, end: 2000, text: 'Remote' }],
         });
-        protocol.source = source.snapshot;
+        protocol.source = source.sourceSnapshot;
         await act(async () => root.render(<Player tracks={undefined} ownership="remote" progressive />));
         expect(container.textContent).toBe('Remote');
         await act(async () => finish(vttText('Old')));

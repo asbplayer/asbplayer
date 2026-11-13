@@ -1,6 +1,6 @@
 import {
-    subtitleKey,
-    sameSubtitleText,
+    diffCues,
+    sameSubtitleSourceContent,
     originalTokenizationsEqual,
 } from '@project/common/subtitle-reader/subtitle-stream';
 import type { SubtitleSourceState } from '@project/common/subtitle-reader/subtitle-stream';
@@ -88,22 +88,15 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
         for (const s of subtitles) {
             if (s.originalText === undefined) s.originalText = s.text;
         }
-        const previousByKey = new Map(this._subtitles.map((cue) => [subtitleKey(cue), cue]));
+        const diff = diffCues(this._subtitles, subtitles, sameSubtitleSourceContent);
         const identified = subtitles.length > 0 && subtitles.every((cue) => cue.source !== undefined);
-        const continuation = identified && subtitles.some((cue) => previousByKey.has(subtitleKey(cue)));
+        const continuation = identified && (diff.retained.length > 0 || diff.changed.length > 0);
         const shouldReset = identified ? !continuation : needsReset(subtitles, this._subtitles);
         if (!shouldReset) {
-            for (const cue of subtitles) {
-                const previous = previousByKey.get(subtitleKey(cue));
-                if (
-                    previous &&
-                    sameSubtitleText(cue, previous) &&
-                    originalTokenizationsEqual(cue.tokenization, previous.tokenization)
-                ) {
-                    (cue as InternalSubtitleModel).text = previous.text;
-                    cue.tokenization = previous.tokenization;
-                    (cue as InternalSubtitleModel).__tokenized = previous.__tokenized;
-                }
+            for (const { previous, next } of diff.retained) {
+                (next as InternalSubtitleModel).text = previous.text;
+                next.tokenization = previous.tokenization;
+                (next as InternalSubtitleModel).__tokenized = previous.__tokenized;
             }
         }
         this._subtitles = subtitles.map((s) => ({ ...s })); // Separate internals from react state changes

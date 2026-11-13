@@ -705,7 +705,7 @@ export default class VideoDataSyncController {
         load?.controller.abort();
         this._subtitleLoad = undefined;
         if (clearSubtitles && load?.selection) {
-            this._context.updateSubtitleSource({ type: 'snapshot', tracks: [], subtitles: [] });
+            this._context.updateSubtitleSource({ type: 'snapshot', tracks: [] });
         }
     }
 

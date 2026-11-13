@@ -1,7 +1,8 @@
 import {
     subtitleKey,
     sameSubtitleText,
-    originalTokenizationsEqual,
+    diffCues,
+    sameSubtitleSourceContent,
 } from '@project/common/subtitle-reader/subtitle-stream';
 import type { SubtitleSourceState } from '@project/common/subtitle-reader/subtitle-stream';
 import { asbError, asbTrace } from '@project/common/util/log';
@@ -234,24 +235,22 @@ export class BuildAnnotations {
     }
 
     private reconcileSubtitles(subtitles: InternalSubtitleModel[], sources: readonly SubtitleSourceState[]) {
-        const byKey = new Map(subtitles.map((cue) => [subtitleKey(cue), cue]));
+        const diff = diffCues(this.subtitles, subtitles, sameSubtitleSourceContent);
         const oldToNewIndexes = new Map<number, number>();
-        for (const old of this.subtitles) {
-            const cue = byKey.get(subtitleKey(old));
-            if (cue && sameSubtitleText(cue, old) && originalTokenizationsEqual(cue.tokenization, old.tokenization)) {
-                cue.text = old.text;
-                cue.tokenization = old.tokenization;
-                cue.__tokenized = old.__tokenized;
-                oldToNewIndexes.set(old.index, cue.index);
-            }
+        for (const { previous, next } of diff.retained) {
+            next.text = previous.text;
+            next.tokenization = previous.tokenization;
+            next.__tokenized = previous.__tokenized;
+            oldToNewIndexes.set(previous.index, next.index);
         }
-        const remap = (values: Iterable<number>) =>
-            new Set(
-                [...values].flatMap((index) => {
-                    const mapped = oldToNewIndexes.get(index);
-                    return mapped === undefined ? [] : [mapped];
-                })
-            );
+        const remap = (values: Iterable<number>) => {
+            const indexes = new Set<number>();
+            for (const index of values) {
+                const mapped = oldToNewIndexes.get(index);
+                if (mapped !== undefined) indexes.add(mapped);
+            }
+            return indexes;
+        };
         this.refreshCache = remap(this.refreshCache);
         this.deferredRefreshCache = remap(this.deferredRefreshCache);
         this.erroredCache = remap(this.erroredCache);

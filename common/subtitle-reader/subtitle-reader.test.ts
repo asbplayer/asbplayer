@@ -34,6 +34,113 @@ const createReader = (options: Partial<ConstructorParameters<typeof SubtitleRead
 const vttFile = (text: string, extension = 'vtt', timings = '00:00:00.000 --> 999:59:59.999') =>
     ({ name: `test.${extension}`, text: async () => `WEBVTT\n\n${timings}\n${text}\n\n` }) as unknown as File;
 
+describe('SubtitleReader ASS parsing', () => {
+    const header = `[Script Info]
+ScriptType: v4.00+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize
+Style: Default,Arial,20
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+`;
+    const dialogue = (text: string, start = '0:00:01.00', end = '0:00:04.00') =>
+        `Dialogue: 0,${start},${end},Default,,0,0,0,,${text}`;
+
+    it('retains fragmented sections, formats, and events, deduplicates across batches, and flushes EOF', () => {
+        const progressive = createReader({ regexFilter: 'speaker: ' }).createProgressiveReader('ass');
+        for (let index = 0; index < header.length; index += 3) {
+            expect(progressive.read(header.slice(index, index + 3))).toEqual([]);
+        }
+        expect(progressive.read(dialogue('speaker: first') + '\r')).toEqual([
+            expect.objectContaining({ cueId: 0, text: 'first', start: 1000, end: 4000 }),
+        ]);
+        expect(progressive.read('\n' + dialogue('speaker: first') + '\n')).toEqual([]);
+        expect(progressive.read(dialogue('speaker: second', '0:00:03.00'))).toEqual([]);
+        expect(progressive.read('', true)).toEqual([
+            expect.objectContaining({ cueId: 1, text: 'second', start: 3000, end: 4000 }),
+        ]);
+    });
+
+    it('uses the captured events format to interpret later batches', () => {
+        const progressive = createReader().createProgressiveReader('ass');
+        expect(progressive.read('[Events]\r\nFormat: End, Start, Text\r\n')).toEqual([]);
+        expect(progressive.read('Dialogue: 0:00:02.00,0:00:01.00,first,with comma\r\n')).toMatchObject([
+            { cueId: 0, start: 1000, end: 2000, text: 'first,with comma' },
+        ]);
+        expect(progressive.read('Dialogue: 0:00:04.00,0:00:03.00,second', true)).toMatchObject([
+            { cueId: 1, start: 3000, end: 4000, text: 'second' },
+        ]);
+    });
+
+    it.each([SubtitleHtml.render, SubtitleHtml.remove])(
+        'shares sorting, duration filtering, sanitization, ruby conversion, and deduplication with file parsing (%s)',
+        async (subtitleHtml) => {
+            const reader = createReader({ regexFilter: 'speaker: *', convertNetflixRuby: true, subtitleHtml });
+            const text =
+                header +
+                [
+                    dialogue('speaker: second', '0:00:03.00', '0:00:04.00'),
+                    dialogue('speaker: zero duration', '0:00:02.00', '0:00:02.00'),
+                    dialogue('speaker: reversed', '0:00:02.00', '0:00:01.00'),
+                    dialogue('speaker: {\\i1}漢字(かんじ){\\i0}\\N<img src=x onerror=alert(1)><b>word</b>'),
+                    dialogue('speaker: {\\i1}漢字(かんじ){\\i0}\\N<img src=x onerror=alert(1)><b>word</b>'),
+                    dialogue('{\\p1}m 0 0 l 1 1{\\p0}'),
+                    dialogue('speaker: '),
+                ].join('\n');
+            const nodes = await reader.subtitles([
+                { fileParts: [{ name: 'subtitles.ass', text: async () => text } as File] },
+            ]);
+            const cues = reader.createProgressiveReader('ass').read(text, true);
+            expect(cues.map((cue) => ({ ...cue, track: 0 }))).toEqual(nodes.map((node, cueId) => ({ ...node, cueId })));
+            expect(cues.map((cue) => cue.text)).toEqual([
+                subtitleHtml === SubtitleHtml.render ? '漢字\n<b>word</b>' : '漢字\nword',
+                'second',
+            ]);
+            expect(cues[0].tokenization?.tokens[0]).toMatchObject({
+                pos: [0, 2],
+                readings: [{ pos: [0, 2], reading: 'かんじ' }],
+            });
+        }
+    );
+
+    it('keeps each progressive reader independent', () => {
+        const reader = createReader();
+        const first = reader.createProgressiveReader('ass');
+        const second = reader.createProgressiveReader('ass');
+        first.read(header);
+        second.read(header);
+        expect(first.read(dialogue('first') + '\n')).toMatchObject([{ cueId: 0, text: 'first' }]);
+        expect(second.read(dialogue('second') + '\n')).toMatchObject([{ cueId: 0, text: 'second' }]);
+    });
+
+    it('accepts an empty ASS track with an events format', () => {
+        expect(createReader().createProgressiveReader('ass').read(header.trimEnd(), true)).toEqual([]);
+    });
+
+    it('rejects dialogue before the events format', () => {
+        expect(() =>
+            createReader()
+                .createProgressiveReader('ass')
+                .read('[Events]\n' + dialogue('first') + '\n')
+        ).toThrow('before the events format');
+    });
+
+    it.each(['<html>Error</html>', '[Events]\n'])(
+        'rejects a completed response without an events format: %s',
+        (text) => {
+            expect(() => createReader().createProgressiveReader('ass').read(text, true)).toThrow(
+                'ASS events header and format'
+            );
+        }
+    );
+
+    it('rejects unsupported progressive formats', () => {
+        expect(() => createReader().createProgressiveReader('vtt')).toThrow(
+            'Unsupported progressive subtitle format: vtt'
+        );
+    });
+});
+
 describe('SubtitleReader SRT downloads', () => {
     const readBytes = (blob: Blob) =>
         new Promise<Uint8Array>((resolve, reject) => {

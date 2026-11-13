@@ -1092,7 +1092,7 @@ export default class Binding {
                             src: this._registeredVideoSrc,
                             message: {
                                 command: 'subtitleSource',
-                                update: { type: 'snapshot', ...this.subtitleStream.snapshot },
+                                update: { type: 'snapshot', ...this.subtitleStream.sourceSnapshot },
                             } satisfies SubtitleSourceMessage,
                         });
                         break;
@@ -2237,14 +2237,13 @@ export default class Binding {
             tracks.map(({ fileParts }) => fileParts[0]?.name ?? '')
         );
         for (const track of pending) source.update({ type: 'start', ...track });
-        const snapshot = source.snapshot;
         await browser.runtime.sendMessage({
             sender: 'asbplayer-video',
             src: this._registeredVideoSrc,
             message: {
                 command: 'sync',
                 subtitles: [],
-                subtitleSource: { tracks: snapshot.tracks },
+                subtitleSource: { tracks: source.sourceStates },
                 withSyncedAsbplayerOnly:
                     settings.streamingSubtitleListPreference === SubtitleListPreference.noSubtitleList &&
                     syncWithAsbplayerId === undefined,
@@ -2252,7 +2251,7 @@ export default class Binding {
             } satisfies ExtensionSyncMessage,
         });
         signal.throwIfAborted();
-        this.updateSubtitleSource({ type: 'snapshot', ...snapshot });
+        this.updateSubtitleSource({ type: 'snapshot', ...source.sourceSnapshot });
     }
 
     private async _parseSubtitles(source: SubtitleSource) {
