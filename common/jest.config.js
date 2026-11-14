@@ -9,7 +9,9 @@ module.exports = {
     },
     moduleNameMapper: {
         '^uuid$': require.resolve('uuid'),
+        '^@qgustavor/srt-parser$': require.resolve('@qgustavor/srt-parser').replace('/dist/index.js', '/src/index.ts'),
     },
+    transformIgnorePatterns: ['node_modules/(?!\\.pnpm|@qgustavor/srt-parser)'],
     testEnvironment: 'jsdom',
     setupFiles: ['<rootDir>/../ffmpeg/jest.setup.cjs'],
 };

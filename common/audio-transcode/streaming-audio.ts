@@ -125,7 +125,7 @@ export const createStreamingAudio = ({
     };
     const failed = () => fail(new Error('The browser could not decode the streamed Opus audio'));
     const opened = () => {
-        if (disposed || sourceBuffer !== undefined) return;
+        if (disposed || mediaSource.readyState !== 'open' || sourceBuffer !== undefined) return;
         try {
             sourceBuffer = mediaSource.addSourceBuffer(webmOpusMimeType);
             asbTrace('audio/streaming', 'Opened streamed audio buffer', { availableBytes: available?.size ?? 0 });

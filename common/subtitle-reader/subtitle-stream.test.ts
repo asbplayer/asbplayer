@@ -1,10 +1,11 @@
-import { describe, expect, it } from '@jest/globals';
+import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import {
     displaySubtitleSnapshot,
     diffCues,
     mergeSubtitleAnnotations,
     originalTokenizationsEqual,
     SubtitleStream,
+    SubtitleCuePublisher,
     subtitleKey,
     subtitleSourceStatus,
     subtitleSourceNames,
@@ -21,6 +22,50 @@ import { makeSubtitle } from '@project/common/playback/playback-test-utils';
 const cue = (cueId: number, start: number, text = 'word') => ({ cueId, start, end: start + 1000, text });
 const start = (stream: SubtitleStream, track = 0, loadId = 'first') =>
     stream.update({ type: 'start', track, loadId, name: `track-${track}.srt` });
+
+describe('SubtitleCuePublisher', () => {
+    beforeEach(() => {
+        jest.useFakeTimers();
+    });
+    afterEach(() => {
+        jest.useRealTimers();
+    });
+
+    it('publishes immediately when idle and coalesces cues without postponing the pending deadline', () => {
+        const publish = jest.fn<(cues: readonly { cueId: number }[]) => void>();
+        const onError = jest.fn();
+        const publisher = new SubtitleCuePublisher(publish, onError);
+        publisher.add([]);
+        expect(publish).not.toHaveBeenCalled();
+        publisher.add([cue(0, 0)]);
+        expect(publish.mock.calls.map(([cues]) => cues.map(({ cueId }) => cueId))).toEqual([[0]]);
+        publisher.add([cue(1, 1000)]);
+        jest.advanceTimersByTime(99);
+        publisher.add([cue(2, 2000)]);
+        expect(publish).toHaveBeenCalledTimes(1);
+        jest.advanceTimersByTime(1);
+        expect(publish.mock.calls.map(([cues]) => cues.map(({ cueId }) => cueId))).toEqual([[0], [1, 2]]);
+        jest.advanceTimersByTime(200);
+        publisher.add([cue(3, 3000)]);
+        expect(publish.mock.calls.at(-1)?.[0]).toEqual([cue(3, 3000)]);
+        expect(onError).not.toHaveBeenCalled();
+        publisher.dispose();
+    });
+
+    it('flushes on request and discards buffered cues on disposal', () => {
+        const publish = jest.fn<(cues: readonly { cueId: number }[]) => void>();
+        const publisher = new SubtitleCuePublisher(publish, jest.fn());
+        publisher.add([cue(0, 0)]);
+        publisher.add([cue(1, 1000)]);
+        publisher.flush();
+        expect(publish.mock.calls.at(-1)?.[0]).toEqual([cue(1, 1000)]);
+        publisher.add([cue(2, 2000)]);
+        publisher.dispose();
+        jest.advanceTimersByTime(200);
+        expect(publish).toHaveBeenCalledTimes(2);
+        expect(jest.getTimerCount()).toBe(0);
+    });
+});
 
 describe('subtitle references', () => {
     it('resolves cue zero by track and load after earlier cues change its index', () => {

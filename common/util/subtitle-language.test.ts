@@ -34,6 +34,26 @@ describe('language names', () => {
         expect(languageDisplayName(' JA_jp-u-ca-japanese ')).toBe('日本語 (日本)');
     });
 
+    it('uses dialect names when browser standard-name data is missing', () => {
+        const original = Intl.DisplayNames.prototype.of;
+        const lookup = jest.spyOn(Intl.DisplayNames.prototype, 'of').mockImplementation(function (
+            this: Intl.DisplayNames,
+            code
+        ) {
+            return code === 'ar-001' && this.resolvedOptions().languageDisplay === 'standard'
+                ? undefined
+                : original.call(this, code);
+        });
+        try {
+            expect(languageDisplayName('ar-001')).toBe('العربية الفصحى الحديثة');
+            expect(genericSubtitleDisplayLabel(undefined, 'ar-001', '')).toBe('العربية الفصحى الحديثة');
+            expect(genericSubtitleDisplayLabel('ar-001', 'ar-001', '')).toBe('العربية الفصحى الحديثة');
+            expect(genericSubtitleDisplayLabel('Arabic SDH', 'ar-001', '')).toBe('العربية الفصحى الحديثة · SDH');
+        } finally {
+            lookup.mockRestore();
+        }
+    });
+
     it('preserves valid unknown and invalid language tags', () => {
         expect(languageDisplayName('qaa')).toBe('qaa');
         expect(languageDisplayName('invalid!')).toBe('invalid!');

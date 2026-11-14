@@ -1,3 +1,4 @@
+import type { EmbeddedSubtitleDescriptor } from '@project/common/embedded-subtitles/subtitle-source';
 import Dexie from 'dexie';
 import { v4 as uuidv4 } from 'uuid';
 import type { FileWithId } from '@project/common/file-selector';
@@ -25,6 +26,7 @@ export interface FileSessionRecord {
     // Source file IDs grouped by playback slot. Groups may be empty or repeat IDs;
     // '-' represents an empty placeholder within a group.
     subtitleTrackIds?: string[][];
+    embeddedSubtitles?: Record<string, EmbeddedSubtitleDescriptor>;
     timestamp: number;
 }
 
@@ -90,7 +92,13 @@ export interface FileSessionRepository {
     merge: (
         incoming: Pick<FileSessionRecord, 'videoHandle' | 'subtitleHandles' | 'bufferedSubtitleHandles'>
     ) => Promise<void>;
-    setCachedSubtitleFiles: (files: FileWithId[]) => Promise<boolean>;
+    setCachedSubtitleFiles: (
+        files: FileWithId[],
+        selection: {
+            subtitleTrackIds: string[][];
+            embeddedSubtitles: Record<string, EmbeddedSubtitleDescriptor>;
+        }
+    ) => Promise<boolean>;
     clear: () => Promise<void>;
 }
 
@@ -106,6 +114,7 @@ export class IndexedDBFileSessionRepository implements FileSessionRepository {
             ...(record?.subtitleHandles ?? []).map(({ id }) => id),
             ...(record?.bufferedSubtitleHandles ?? []).map(({ id }) => id),
             ...(record?.cachedSubtitleFiles ?? []).map(({ id }) => id),
+            ...Object.keys(record?.embeddedSubtitles ?? {}),
         ];
         const remaining = new Set(subtitleIds(next));
         const discarded = new Set(subtitleIds(previous).filter((id) => !remaining.has(id)));
@@ -147,6 +156,7 @@ export class IndexedDBFileSessionRepository implements FileSessionRepository {
             // Keep previous handles when user picks only one side (e.g. subtitles without re-selecting video),
             // so the saved session still represents the latest complete set.
             const merged: Omit<FileSessionRecord, 'id' | 'timestamp'> = {
+                ...existing,
                 videoHandle: incoming.videoHandle ?? existing?.videoHandle,
                 subtitleHandles:
                     incoming.subtitleHandles.length > 0 ? incoming.subtitleHandles : (existing?.subtitleHandles ?? []),
@@ -184,6 +194,11 @@ export class IndexedDBFileSessionRepository implements FileSessionRepository {
                 bufferedSubtitleHandles: bufferedSubtitleHandles?.filter((h) => retainedSubtitleIds.has(h.id)),
                 cachedSubtitleFiles: cachedSubtitleFiles?.filter((f) => retainedSubtitleIds.has(f.id)),
                 subtitleTrackIds,
+                embeddedSubtitles:
+                    existing?.embeddedSubtitles &&
+                    Object.fromEntries(
+                        Object.entries(existing.embeddedSubtitles).filter(([id]) => retainedSubtitleIds.has(id))
+                    ),
                 id: 1,
                 timestamp: Date.now(),
             });
@@ -214,8 +229,10 @@ export class IndexedDBFileSessionRepository implements FileSessionRepository {
             ];
             await this._replace(
                 this._clearDiscardedSubtitleSlots(existing, {
+                    ...existing,
+                    bufferedSubtitleHandles: undefined,
                     videoHandle: existing.videoHandle,
-                    subtitleHandles,
+                    subtitleHandles: [...new Map(subtitleHandles.map((handle) => [handle.id, handle])).values()],
                     cachedSubtitleFiles: existing.cachedSubtitleFiles,
                     subtitleTrackIds: existing.subtitleTrackIds,
                     id: 1,
@@ -240,6 +257,8 @@ export class IndexedDBFileSessionRepository implements FileSessionRepository {
             const { videoHandle, subtitleHandles, cachedSubtitleFiles } = existing;
             await this._replace(
                 this._clearDiscardedSubtitleSlots(existing, {
+                    ...existing,
+                    bufferedSubtitleHandles: undefined,
                     videoHandle,
                     subtitleHandles,
                     cachedSubtitleFiles,
@@ -253,7 +272,13 @@ export class IndexedDBFileSessionRepository implements FileSessionRepository {
         }
     }
 
-    async setCachedSubtitleFiles(cachedSubtitleFiles: FileWithId[]) {
+    async setCachedSubtitleFiles(
+        cachedSubtitleFiles: FileWithId[],
+        selection: {
+            subtitleTrackIds: string[][];
+            embeddedSubtitles: Record<string, EmbeddedSubtitleDescriptor>;
+        }
+    ) {
         const permit = await this._semaphore.acquire();
         let newRecord: FileSessionRecord | undefined;
         let existing: FileSessionRecord | undefined;
@@ -261,19 +286,16 @@ export class IndexedDBFileSessionRepository implements FileSessionRepository {
         try {
             existing = await this.fetch();
 
-            if (!existing && cachedSubtitleFiles.length === 0) {
-                return false;
-            }
-
             cachedSubtitleFiles = [
                 ...new Map(cachedSubtitleFiles.filter(({ id }) => id !== '-').map((f) => [f.id, f])).values(),
             ];
             newRecord = {
+                ...existing,
                 videoHandle: existing?.videoHandle,
                 subtitleHandles: existing?.subtitleHandles ?? [],
                 bufferedSubtitleHandles: existing?.bufferedSubtitleHandles,
                 cachedSubtitleFiles,
-                subtitleTrackIds: existing?.subtitleTrackIds,
+                ...selection,
                 id: 1,
                 timestamp: Date.now(),
             };

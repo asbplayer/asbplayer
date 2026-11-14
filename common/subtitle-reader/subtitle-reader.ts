@@ -50,6 +50,8 @@ const nonContentAtEdgesRegex = new RegExp(`^[${nonContentCharacterClass}]+|[${no
 // preserving other brace-delimited text to avoid false positives. See issue #471.
 const assOverrideTagRegex = /\{(?:\\(?:an[1-9]|[ius][01]|b(?:[01]|[1-9]00)))+\}/g;
 
+const srtCueSeparatorRegex = /\r?\n[ \t]*\r?\n/;
+const assLineBreakRegex = /\r\n|\r|\n/;
 const assNewLineRegex = RegExp(/\\[nN]/, 'ig');
 // Character classes shared by the Netflix ruby regexes below so they cannot drift apart.
 const netflixRubyKanaClass = '\\p{sc=Hira}\\p{sc=Kana}';
@@ -202,7 +204,9 @@ export default class SubtitleReader {
 
     /** Creates an independent parser for a single progressive track. */
     createProgressiveReader(extension: string) {
-        if (extension !== 'ass') throw new Error(`Unsupported progressive subtitle format: ${extension}`);
+        if (extension !== 'ass' && extension !== 'srt') {
+            throw new Error(`Unsupported progressive subtitle format: ${extension}`);
+        }
         let pending = '';
         let header = '';
         let format: string[] | undefined;
@@ -211,25 +215,35 @@ export default class SubtitleReader {
         return {
             read: (text: string, final = false): SubtitleSourceCue[] => {
                 pending += text;
-                const lines = pending.split(/\r\n|\r|\n/);
-                pending = final ? '' : lines.pop()!;
-                if (lines.length === 0) return [];
-                const prefix = format ? `[Events]\nFormat: ${format.join(', ')}\n` : header;
-                const batch = lines.join('\n');
-                const tree = parseAss(prefix + batch);
-                if (tree.events.format.length > 0) {
-                    format = tree.events.format;
-                    header = '';
-                } else if (!format) {
-                    header += `${batch}\n`;
+                let nodes: SubtitleNode[];
+                if (extension === 'srt') {
+                    const blocks = pending.split(srtCueSeparatorRegex);
+                    pending = final ? '' : blocks.pop()!;
+                    const contents = blocks.join('\n\n');
+                    if (!contents.trim()) return [];
+                    nodes = this._srtSubtitles(contents, 0);
+                } else {
+                    const lines = pending.split(assLineBreakRegex);
+                    pending = final ? '' : lines.pop()!;
+                    if (lines.length === 0) return [];
+                    const prefix = format ? `[Events]\nFormat: ${format.join(', ')}\n` : header;
+                    const batch = lines.join('\n');
+                    const tree = parseAss(prefix + batch);
+                    if (tree.events.format.length > 0) {
+                        format = tree.events.format;
+                        header = '';
+                    } else if (!format) {
+                        header += `${batch}\n`;
+                    }
+                    if (!format && tree.events.dialogue.length > 0) {
+                        throw new Error('ASS dialogue arrived before the events format');
+                    }
+                    if (final && !format) {
+                        throw new Error('Subtitle response did not contain an ASS events header and format');
+                    }
+                    nodes = this._assSubtitles(tree.events.dialogue, 0);
                 }
-                if (!format && tree.events.dialogue.length > 0) {
-                    throw new Error('ASS dialogue arrived before the events format');
-                }
-                if (final && !format) {
-                    throw new Error('Subtitle response did not contain an ASS events header and format');
-                }
-                const nodes = this._processSubtitles(this._assSubtitles(tree.events.dialogue, 0));
+                nodes = this._processSubtitles(nodes);
                 const cues: SubtitleSourceCue[] = [];
                 for (const node of nodes) {
                     if (previous && this._isSame(previous, node)) continue;
@@ -246,6 +260,19 @@ export default class SubtitleReader {
                 return cues;
             },
         };
+    }
+
+    private _srtSubtitles(contents: string, track: number): SubtitleNode[] {
+        const parser = new SrtParser({ numericTimestamps: true });
+        const nodes = parser.fromSrt(contents);
+        return nodes.map((node) => {
+            return {
+                start: Math.floor((node.startTime as number) * 1000),
+                end: Math.floor((node.endTime as number) * 1000),
+                text: this._filterText(node.text.replace(assOverrideTagRegex, '')),
+                track: track,
+            };
+        });
     }
 
     private _assSubtitles(dialogues: ParsedASS['events']['dialogue'], track: number): SubtitleNode[] {
@@ -299,16 +326,7 @@ export default class SubtitleReader {
     /** Parses one complete subtitle file or one fragment of a track. */
     async _subtitles(subtitleSourceFile: File, track: number): Promise<SubtitleNode[]> {
         if (subtitleSourceFile.name.endsWith('.srt') || subtitleSourceFile.name.endsWith('.subrip')) {
-            const parser = new SrtParser({ numericTimestamps: true });
-            const nodes = parser.fromSrt(await subtitleSourceFile.text());
-            return nodes.map((node) => {
-                return {
-                    start: Math.floor((node.startTime as number) * 1000),
-                    end: Math.floor((node.endTime as number) * 1000),
-                    text: this._filterText(node.text.replace(assOverrideTagRegex, '')),
-                    track: track,
-                };
-            });
+            return this._srtSubtitles(await subtitleSourceFile.text(), track);
         }
 
         if (subtitleSourceFile.name.endsWith('.vtt') || subtitleSourceFile.name.endsWith('.nfvtt')) {
@@ -953,7 +971,12 @@ export default class SubtitleReader {
         }
 
         if (this._removeXml) {
-            text = removeSubtitleHtmlSafely(text);
+            // Removing markup decodes entities. Keep that plain text literal when
+            // the result is sanitized and rendered as HTML later.
+            text = removeSubtitleHtmlSafely(text)
+                .replaceAll('&', '&amp;')
+                .replaceAll('<', '&lt;')
+                .replaceAll('>', '&gt;');
         }
 
         return text;

@@ -233,7 +233,9 @@
         "unsupportedExtension": "Ekstensi {{extension}} tidak didukung",
         "audioConversionFailed": "Failed to convert {{codec}} audio",
         "videoPlayerDragAndDropNotAllowed": "Pemutar video tidak dapat menerima berkas yang dijatuhkan langsung. Letakkan di luar bingkai video.",
-        "restoreSessionFailed": "Gagal memulihkan sesi terakhir. File mungkin telah dipindahkan atau dihapus."
+        "restoreSessionFailed": "Gagal memulihkan sesi terakhir. File mungkin telah dipindahkan atau dihapus.",
+        "unsupportedFormat": "Unsupported format: {{format}}",
+        "embeddedSubtitlesLoadFailed": "Failed to load embedded subtitles"
     },
     "extension": {
         "settings": {

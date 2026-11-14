@@ -1,3 +1,8 @@
+import type { SubtitleHost, EmbeddedSubtitleDescriptor } from '@project/common/embedded-subtitles/subtitle-source';
+import { embeddedSubtitleId } from '@project/common/embedded-subtitles/subtitle-source';
+import { embeddedSubtitleProducer } from '@project/common/embedded-subtitles/embedded-subtitle-producer';
+import { useLocalSubtitlePicker } from '@project/common/app/hooks/use-local-subtitle-picker';
+import { useSubtitleSelection } from '@project/common/app/hooks/use-subtitle-selection';
 import project from '@project/common/project';
 import { asbError, asbWarn } from '@project/common/util/log';
 import type { AudioTranscodeHost } from '@project/common/audio-transcode';
@@ -28,6 +33,7 @@ import type {
     CardTextFieldValues,
     RequestSubtitlesResponse,
     ConfirmedVideoDataSubtitleTrack,
+    LoadableSubtitleTrack,
 } from '@project/common';
 import { MediaFragment, PostMineAction, MediaFragmentErrorCode, VideoDataUiOpenReason } from '@project/common';
 import { createTheme } from '@project/common/theme';
@@ -93,7 +99,7 @@ import { isFirefox } from '@project/common/browser-detection';
 import type { StatisticsOverlayProps } from '@project/common/components/StatisticsOverlay';
 import StatisticsOverlay from '@project/common/components/StatisticsOverlay';
 import OneUncollectedSentenceDetailsDialog from '@project/common/components/OneUncollectedSentenceDetailsDialog';
-import VideoDataSyncDialog, { useVideoDataSyncDialogState } from '@project/common/components/VideoDataSyncDialog';
+import VideoDataSyncDialog from '@project/common/components/VideoDataSyncDialog';
 import type { FileWithId } from '@project/common/file-selector';
 import { DefaultFileSelector } from '@project/common/file-selector';
 import type { MediaSourceFile } from '@project/common/app/services/media-sources';
@@ -296,6 +302,7 @@ interface Props {
     fetcher: Fetcher;
     onSettingsChanged: (settings: Partial<AsbplayerSettings>) => void;
     audioTranscodeHost: AudioTranscodeHost;
+    subtitleHost: SubtitleHost;
     profile?: string;
     profiles: Profile[];
     activeProfile?: string;
@@ -316,6 +323,7 @@ function App({
     extension,
     fetcher,
     audioTranscodeHost,
+    subtitleHost,
     onSettingsChanged,
     profile,
     onGlobalStateChanged,
@@ -382,7 +390,12 @@ function App({
     const [jumpToSubtitle, setJumpToSubtitle] = useState<SubtitleModel>();
     const [rewindSubtitle, setRewindSubtitle] = useState<SubtitleModel>();
     const [sources, setSources] = useState(() => new MediaSources());
-    const { firstSubtitleSourceFiles, subtitleFileNames } = sources;
+    const [embeddedSelection, setEmbeddedSelection] = useState<{
+        video: FileWithId;
+        tracks: LoadableSubtitleTrack<FileWithId>[];
+        pendingDescriptors: EmbeddedSubtitleDescriptor[];
+    }>();
+    const { subtitleSourceFiles, firstSubtitleSourceFiles, subtitleFileNames } = sources;
     useEffect(() => {
         if (!sources.videoFile) {
             return;
@@ -399,6 +412,58 @@ function App({
             window.removeEventListener('beforeunload', handleBeforeUnload);
         };
     }, [sources.videoFile]);
+    const currentVideoFile = useRef<File>(undefined);
+    const importGeneration = useRef({});
+    const {
+        subtitleTrackSelectorOpen,
+        openSubtitleTrackSelector,
+        openSubtitleTrackSelectorWithFiles,
+        closeSubtitleTrackSelector,
+        subtitleTrackSelectorSelectedTrackIds,
+        setSubtitleTrackSelectorSelectedTrackIds,
+        subtitleTrackSelectorTracks,
+        setSubtitleTrackSelectorTracks,
+        onFilesImported,
+        embedded: { service: subtitleService, cancel: cancelEmbedded, loading: embeddedLoading, error: embeddedError },
+    } = useLocalSubtitlePicker({
+        source: sources.videoFile,
+        host: subtitleHost,
+        subtitleFiles: subtitleSourceFiles,
+        initialFiles: firstSubtitleSourceFiles,
+        discoveryKey: importGeneration.current,
+    });
+    const restoreAttempt = useRef<AbortController | undefined>(undefined);
+    const {
+        confirm: confirmSubtitleSelection,
+        cancel: cancelSelection,
+        busy: selectorBusy,
+        error: selectorError,
+    } = useSubtitleSelection({
+        source: sources.videoFile,
+        service: subtitleService,
+        selectedTrackIds: subtitleTrackSelectorSelectedTrackIds,
+        sources,
+    });
+    const cancelSubtitleSelection = useCallback(() => {
+        restoreAttempt.current?.abort();
+        restoreAttempt.current = undefined;
+        cancelSelection();
+    }, [cancelSelection]);
+    const selectorGeneration = useRef({});
+    const bufferedInputGeneration = useRef<object | undefined>(undefined);
+    useEffect(() => {
+        selectorGeneration.current = {};
+    }, [subtitleTrackSelectorOpen]);
+    useEffect(() => {
+        if (subtitleTrackSelectorOpen) videoChannelRef.current?.pause();
+    }, [subtitleTrackSelectorOpen]);
+    const handleMediaReady = useCallback(() => {
+        if (subtitleTrackSelectorOpen) videoChannelRef.current?.pause();
+    }, [subtitleTrackSelectorOpen]);
+    useEffect(() => {
+        subtitleService.retain(sources.videoFile ? [sources.videoFile] : []);
+    }, [subtitleService, sources.videoFile]);
+    useEffect(() => () => restoreAttempt.current?.abort(), []);
     const [loadingSources, setLoadingSources] = useState<FileWithId[]>([]);
     const [dragging, setDragging] = useState<boolean>(false);
     const dragEnterRef = useRef<Element | null>(null);
@@ -430,9 +495,41 @@ function App({
         saveBufferedHandlesToSession: saveBufferedHandlesToFileSession,
         promoteBufferedHandlesInSession: promoteBufferedHandlesInFileSession,
         clearBufferedHandlesInSession: clearBufferedHandlesInFileSession,
-        saveCachedSubtitleFilesToSession: saveCachedSubtitleFilesToFileSession,
+        saveSubtitleSelection,
         retainSourcesInSession: retainSourcesInFileSession,
     } = useFileSession();
+
+    const subtitleProducer = useMemo(() => {
+        if (!embeddedSelection) return undefined;
+        const { video, tracks, pendingDescriptors } = embeddedSelection;
+        return embeddedSubtitleProducer({
+            source: video,
+            tracks,
+            pendingDescriptors,
+            service: subtitleService,
+            reader: subtitleReader,
+            errorMessage: t('error.embeddedSubtitlesLoadFailed'),
+            onComplete: async (completed, signal) => {
+                signal.throwIfAborted();
+                if (currentVideoFile.current !== video.file) return;
+                setSources((previous) => {
+                    if (signal.aborted || previous.videoFile?.file !== video.file) return previous;
+                    return new MediaSources(
+                        {
+                            kind: 'files',
+                            tracks: completed.map(({ fileParts }, track) => ({
+                                fileParts: fileParts.map((file) => ({ ...file, track })),
+                            })),
+                        },
+                        previous.videoFile,
+                        previous.videoFileUrl
+                    );
+                });
+                await saveSubtitleSelection(completed, new Set());
+                signal.throwIfAborted();
+            },
+        });
+    }, [embeddedSelection, subtitleService, subtitleReader, saveSubtitleSelection, t]);
 
     const [lastError, setLastError] = useState<any>();
     const playerRef = useRef<PlayerRef>(null);
@@ -791,9 +888,11 @@ function App({
             if (videoFileUrl !== sources.videoFileUrl) {
                 return;
             }
+            setEmbeddedSelection(undefined);
 
             void dictionaryProvider.publishStatisticsSnapshot(extension.id, undefined);
             setStatisticsOverlayOpen(false);
+            currentVideoFile.current = undefined;
 
             setSources((previous) => {
                 revokeBlobUrl(videoFileUrl);
@@ -998,19 +1097,6 @@ function App({
         setTab(tab);
     }, []);
 
-    const {
-        subtitleTrackSelectorOpen,
-        openSubtitleTrackSelector,
-        openSubtitleTrackSelectorWithFiles,
-        closeSubtitleTrackSelector,
-        subtitleTrackSelectorSelectedTrackIds,
-        setSubtitleTrackSelectorSelectedTrackIds,
-        subtitleTrackSelectorTracks,
-        setSubtitleTrackSelectorTracks,
-        subtitleTrackSelectorDisabled,
-        setSubtitleTrackSelectorDisabled,
-    } = useVideoDataSyncDialogState(firstSubtitleSourceFiles);
-
     const validateFiles = useCallback(
         (files: FileWithId[]) => {
             try {
@@ -1025,8 +1111,17 @@ function App({
     );
 
     const handleSources = useCallback(
-        (mediaSources: MediaSources) => {
+        (mediaSources: MediaSources, selection = false) => {
+            if (!selection) {
+                setEmbeddedSelection(undefined);
+                selectorGeneration.current = {};
+                importGeneration.current = {};
+                cancelSubtitleSelection();
+                closeSubtitleTrackSelector();
+            }
             const remoteSubtitles = mediaSources.subtitleSource.kind === 'video';
+            if (mediaSources.videoFile) currentVideoFile.current = mediaSources.videoFile.file;
+            else if (remoteSubtitles) currentVideoFile.current = undefined;
             if (mediaSources.videoFile || mediaSources.subtitleFileNames.length > 0) {
                 setJumpToSubtitle(undefined);
             }
@@ -1034,8 +1129,12 @@ function App({
             setSources((previous) => {
                 let videoFile = mediaSources.videoFile;
                 let videoFileUrl: string | undefined;
+                const newVideo = videoFile !== undefined && videoFile.file !== previous.videoFile?.file;
 
-                if (videoFile) {
+                if (videoFile && !newVideo) {
+                    videoFile = previous.videoFile;
+                    videoFileUrl = previous.videoFileUrl;
+                } else if (videoFile) {
                     if (previous.videoFileUrl) revokeBlobUrl(previous.videoFileUrl);
                     videoFileUrl = createBlobUrl(videoFile.file);
                     setTab(undefined);
@@ -1044,16 +1143,23 @@ function App({
                     videoFileUrl = previous.videoFileUrl;
                 }
 
-                // A video-only selection retains file-backed subtitles; other selections replace them.
-                const sources = new MediaSources(
+                // A video-only selection retains file-backed subtitles; a new video drops embedded tracks.
+                let subtitleSource = mediaSources.subtitleSource;
+                if (
                     mediaSources.videoFile &&
                     mediaSources.subtitleSourceFiles.length === 0 &&
                     previous.subtitleSource.kind === 'files'
-                        ? previous.subtitleSource
-                        : mediaSources.subtitleSource,
-                    videoFile,
-                    videoFileUrl
-                );
+                ) {
+                    subtitleSource = newVideo
+                        ? {
+                              kind: 'files',
+                              tracks: previous.subtitleTracks.map(({ fileParts }) => ({
+                                  fileParts: fileParts.filter((file) => !file.embedded),
+                              })),
+                          }
+                        : previous.subtitleSource;
+                }
+                const sources = new MediaSources(subtitleSource, videoFile, videoFileUrl);
 
                 const previousLoadingSources = previous.allSourceFiles;
                 const loadingSources = sources.allSourceFiles.filter(
@@ -1072,13 +1178,13 @@ function App({
             const subtitleFileName = mediaSources.subtitleFileNames.find((name) => name);
             if (remoteSubtitles || subtitleFileName) setFileName(subtitleFileName?.replace(fileExtensionPattern, ''));
         },
-        [retainSourcesInFileSession]
+        [retainSourcesInFileSession, cancelSubtitleSelection, closeSubtitleTrackSelector]
     );
 
     const handleFiles = useCallback(
-        (files: MediaSourceFile[]): boolean => {
+        (files: MediaSourceFile[], selection = false): boolean => {
             try {
-                handleSources(MediaSources.fromFiles(files));
+                handleSources(MediaSources.fromFiles(files), selection);
                 return true;
             } catch (e) {
                 handleError(e);
@@ -1092,18 +1198,16 @@ function App({
         (files: FileWithId[]) => {
             if (files.length === 0) return true;
             if (!handleFiles(files)) return false;
-            const subtitleFiles = MediaSources.fromFiles(files).subtitleSourceFiles;
-            if (subtitleFiles.length > 1) openSubtitleTrackSelectorWithFiles(subtitleFiles);
+            const imported = MediaSources.fromFiles(files);
+            onFilesImported(imported.videoFile, imported.subtitleSourceFiles);
             return true;
         },
-        [handleFiles, openSubtitleTrackSelectorWithFiles]
+        [handleFiles, onFilesImported]
     );
 
     const persistFileSessionHandles = useCallback(
         (handles: FileSystemFileHandleWithId[] | undefined) => {
-            if (!handles || handles.length === 0) {
-                return;
-            }
+            if (!handles || handles.length === 0) return;
 
             let videoHandle: FileSystemFileHandleWithId | undefined;
             const subtitleHandles: FileSystemFileHandleWithId[] = [];
@@ -1130,13 +1234,12 @@ function App({
     );
 
     const persistBufferedFileSessionHandles = useCallback(
-        (handles: FileSystemFileHandleWithId[]) => {
+        async (handles: FileSystemFileHandleWithId[]) => {
             if (!handles || handles.length === 0) {
                 return;
             }
 
-            // Persist in background so session saving never blocks current file loading.
-            void saveBufferedHandlesToFileSession(handles).catch((e) => {
+            await saveBufferedHandlesToFileSession(handles).catch((e) => {
                 asbError('app/session', 'Failed to save file session:', e);
                 handleError(e);
             });
@@ -1144,35 +1247,81 @@ function App({
         [handleError, saveBufferedHandlesToFileSession]
     );
 
+    const startEmbeddedSubtitles = useCallback(
+        (
+            video: FileWithId,
+            tracks: LoadableSubtitleTrack<FileWithId>[],
+            pendingDescriptors: EmbeddedSubtitleDescriptor[]
+        ) => setEmbeddedSelection({ video, tracks, pendingDescriptors }),
+        []
+    );
+
     const handleRestoreLastSession = useCallback(async () => {
+        cancelSubtitleSelection();
+        cancelEmbedded();
+        const controller = new AbortController();
+        restoreAttempt.current = controller;
+        const current = () => restoreAttempt.current === controller && !controller.signal.aborted;
         try {
             const record = await fetchFileSession();
-            if (!record) return;
-
+            if (!record || !current()) return;
             const allHandles = [...(record.videoHandle ? [record.videoHandle] : []), ...record.subtitleHandles];
-
             const { granted, denied } = await requestPermissions(allHandles);
+            if (!current()) return;
             if (denied.length > 0) {
                 handleError(t('error.restoreSessionFailed'));
                 return;
             }
-
             const { files: resolvedFiles, errors } = await resolveFiles(granted);
+            if (!current()) return;
             if (errors.length > 0) {
                 handleError(t('error.restoreSessionFailed'));
-                await clearFileSession();
                 return;
             }
-
-            const files = restoreSessionFiles(record, resolvedFiles);
+            const { files, missingEmbeddedSubtitles } = await restoreSessionFiles(
+                record,
+                resolvedFiles,
+                (source, descriptors) => subtitleService.prepare(source, descriptors, controller.signal)
+            );
+            if (!current()) return;
+            const restored = MediaSources.fromFiles(files);
+            if (restored.videoFile) {
+                const pendingIds = new Set(
+                    missingEmbeddedSubtitles.map((descriptor) =>
+                        embeddedSubtitleId(descriptor.videoId, descriptor.trackIndex)
+                    )
+                );
+                subtitleService.restoreCompleted(
+                    restored.videoFile,
+                    restored.subtitleSourceFiles.filter((file) => !pendingIds.has(file.id))
+                );
+            }
             if (!handleFiles(files)) {
                 await clearFileSession();
+            } else {
+                if (restored.videoFile && missingEmbeddedSubtitles.length) {
+                    startEmbeddedSubtitles(restored.videoFile, restored.subtitleTracks, missingEmbeddedSubtitles);
+                }
             }
-        } catch (e) {
-            asbError('app/session', 'Failed to restore last session:', e);
-            handleError(e);
+        } catch (error) {
+            if (current()) {
+                asbError('app/session', 'Failed to restore last session:', error);
+                handleError(error);
+            }
+        } finally {
+            if (current()) restoreAttempt.current = undefined;
         }
-    }, [fetchFileSession, clearFileSession, handleFiles, handleError, t]);
+    }, [
+        fetchFileSession,
+        clearFileSession,
+        handleFiles,
+        handleError,
+        t,
+        subtitleService,
+        cancelEmbedded,
+        cancelSubtitleSelection,
+        startEmbeddedSubtitles,
+    ]);
 
     const handleDirectory = useCallback(
         async (items: DataTransferItemList) => {
@@ -1416,10 +1565,11 @@ function App({
                     return;
                 }
 
+                const generation = importGeneration.current;
                 if (dataTransfer.items && dataTransfer.items.length > 0) {
                     void extractDropFileHandles(dataTransfer.items)
                         .then((handles) => {
-                            if (!handles) {
+                            if (!handles || importGeneration.current !== generation) {
                                 return;
                             }
 
@@ -1441,8 +1591,10 @@ function App({
 
     const handleFileSelector = useCallback(
         async (params?: { buffered?: boolean }) => {
+            const generation = selectorGeneration.current;
             if (!supportsFileSystemAccess()) {
                 if (params?.buffered) {
+                    bufferedInputGeneration.current = generation;
                     bufferedFileInputRef.current?.click();
                 } else {
                     fileInputRef.current?.click();
@@ -1460,10 +1612,10 @@ function App({
 
                 const { files } = await resolveFiles(handles);
 
-                if (files.length === 0) return;
+                if (files.length === 0 || selectorGeneration.current !== generation) return;
 
                 if (params?.buffered && validateFiles(files)) {
-                    persistBufferedFileSessionHandles(handles);
+                    await persistBufferedFileSessionHandles(handles);
                     return files;
                 }
 
@@ -1494,6 +1646,10 @@ function App({
     }, [handleManualFiles]);
 
     const handleBufferedFileInputChange = useCallback(() => {
+        if (bufferedInputGeneration.current !== selectorGeneration.current) {
+            if (bufferedFileInputRef.current) bufferedFileInputRef.current.value = '';
+            return;
+        }
         const files = bufferedFileInputRef.current?.files;
 
         if (files && files.length > 0) {
@@ -1719,98 +1875,117 @@ function App({
         setSettingsDialogOpen(true);
     }, []);
 
+    const handleCloseSubtitleTrackSelector = useCallback(() => {
+        selectorGeneration.current = {};
+        cancelSubtitleSelection();
+        closeSubtitleTrackSelector();
+        void clearBufferedHandlesInFileSession();
+    }, [closeSubtitleTrackSelector, clearBufferedHandlesInFileSession, cancelSubtitleSelection]);
+
     const handleConfirmSubtitleTrackSelection = useCallback(
         (tracks: ConfirmedVideoDataSubtitleTrack[]) => {
-            void (async () => {
-                setSubtitleTrackSelectorDisabled(false);
-                try {
-                    const selectedSubtitleSourceFiles: MediaSourceFile[] = [];
-                    const cachedSubtitleSourceFiles: FileWithId[] = [];
-                    const previouslyCachedIds = new Set(
-                        (await fetchFileSession())?.cachedSubtitleFiles?.map(({ id }) => id) ?? []
-                    );
-                    for (const [track, selectedTrack] of tracks.entries()) {
-                        if (selectedTrack.file !== undefined) {
-                            const loadedTrack = sources.findSubtitleTrack({
-                                id: selectedTrack.id,
-                                file: selectedTrack.file,
-                            });
-                            const trackFileParts = loadedTrack?.fileParts ?? [
-                                { file: selectedTrack.file, id: selectedTrack.id },
-                            ];
-                            selectedSubtitleSourceFiles.push(
-                                ...trackFileParts.map((filePart) => ({ ...filePart, track }))
-                            );
-                            cachedSubtitleSourceFiles.push(
-                                ...trackFileParts.filter(({ id }) => previouslyCachedIds.has(id))
-                            );
-                        } else if (!Array.isArray(selectedTrack.url)) {
-                            const url = selectedTrack.url as string;
-                            const blob = await (await fetch(url)).blob();
-                            const isEmptyTrack = selectedTrack.id === '-';
-                            const subtitleFile = new File(
-                                [blob],
-                                isEmptyTrack ? '.srt' : `${selectedTrack.name}.${selectedTrack.extension}`
-                            );
-                            const subtitleFileWithId = { file: subtitleFile, id: selectedTrack.id, track };
-                            selectedSubtitleSourceFiles.push(subtitleFileWithId);
-                            if (!isEmptyTrack) {
-                                cachedSubtitleSourceFiles.push(subtitleFileWithId);
-                            }
-                        } else {
-                            asbWarn(
-                                'app/subtitles',
-                                'unexpected url array when downloading subtitle track selection',
-                                selectedTrack
-                            );
-                        }
-                    }
-                    if (handleFiles(selectedSubtitleSourceFiles)) {
-                        await saveCachedSubtitleFilesToFileSession(cachedSubtitleSourceFiles);
-                        await promoteBufferedHandlesInFileSession(selectedSubtitleSourceFiles.map(({ id }) => id));
-                        closeSubtitleTrackSelector();
-                    }
-                } catch (e) {
-                    asbError('app/selector', 'Failed to confirm track selection:', e);
-                    handleError(e);
-                } finally {
-                    setSubtitleTrackSelectorDisabled(false);
+            if (!subtitleTrackSelectorOpen) return;
+            confirmSubtitleSelection(tracks, async (selectedTracks, signal) => {
+                const files = selectedTracks.flatMap(({ fileParts }, track) =>
+                    fileParts.map((filePart) => ({ ...filePart, track }))
+                );
+                const session = await fetchFileSession();
+                signal.throwIfAborted();
+                const acceptedIds = new Set([...files.map((file) => file.id), sources.videoFile?.id]);
+                const handles = [
+                    ...(session?.subtitleHandles ?? []),
+                    ...(session?.bufferedSubtitleHandles ?? []),
+                ].filter((handle) => acceptedIds.has(handle.id));
+                if (!handleFiles(files, true)) return;
+                setEmbeddedSelection(undefined);
+                persistFileSessionHandles(handles);
+                const pendingDescriptors = selectedTracks.flatMap(({ fileParts }) =>
+                    fileParts.flatMap(({ embedded }) =>
+                        embedded &&
+                        sources.videoFile &&
+                        !subtitleService.completedFile(sources.videoFile, embedded.trackIndex)
+                            ? [embedded]
+                            : []
+                    )
+                );
+                const pendingIds = new Set(
+                    pendingDescriptors.map((descriptor) =>
+                        embeddedSubtitleId(descriptor.videoId, descriptor.trackIndex)
+                    )
+                );
+                await promoteBufferedHandlesInFileSession(files.map((file) => file.id));
+                signal.throwIfAborted();
+                await saveSubtitleSelection(selectedTracks, pendingIds);
+                signal.throwIfAborted();
+                if (sources.videoFile && pendingDescriptors.length) {
+                    startEmbeddedSubtitles(sources.videoFile, selectedTracks, pendingDescriptors);
                 }
-            })();
+                closeSubtitleTrackSelector();
+            });
         },
         [
+            subtitleTrackSelectorOpen,
+            confirmSubtitleSelection,
+            sources.videoFile,
+            subtitleService,
             handleFiles,
-            handleError,
-            closeSubtitleTrackSelector,
-            fetchFileSession,
+            persistFileSessionHandles,
             promoteBufferedHandlesInFileSession,
-            saveCachedSubtitleFilesToFileSession,
-            setSubtitleTrackSelectorDisabled,
-            sources,
+            saveSubtitleSelection,
+            startEmbeddedSubtitles,
+            fetchFileSession,
+            closeSubtitleTrackSelector,
         ]
     );
 
     const handleOpenSubtitleTrackSelection = useCallback(
         (files: FileWithId[]) => {
-            if (handleManualFiles(files)) {
-                void promoteBufferedHandlesInFileSession(files.map((f) => f.id));
-                if (MediaSources.fromFiles(files).subtitleTracks.length <= 1) closeSubtitleTrackSelector();
-            } else {
-                void clearBufferedHandlesInFileSession();
+            if (!validateFiles(files)) return;
+            const incoming = MediaSources.fromFiles(files);
+            const incomingVideo = incoming.videoFile;
+            if (incomingVideo) {
+                if (!handleFiles([incomingVideo])) return;
+                openSubtitleTrackSelectorWithFiles(incoming.subtitleSourceFiles);
+                // The video is already active, so retain its handle even if the subtitle draft is cancelled.
+                const generation = importGeneration.current;
+                void (async () => {
+                    const session = await fetchFileSession();
+                    if (importGeneration.current !== generation || currentVideoFile.current !== incomingVideo.file) {
+                        return;
+                    }
+                    const videoHandle = session?.bufferedSubtitleHandles?.find(
+                        (handle) => handle.id === incomingVideo.id
+                    );
+                    if (videoHandle) await saveFileSession({ videoHandle, subtitleHandles: [] });
+                })().catch(handleError);
+                return;
             }
+            setSubtitleTrackSelectorTracks((previous) => {
+                const merged = new Map(previous.map((track) => [track.id, track]));
+                for (const { id, file, embedded } of files) {
+                    merged.set(id, {
+                        id,
+                        file,
+                        embedded,
+                        label: file.name,
+                        extension: getExtension(file.name).slice(1),
+                    });
+                }
+                return [...merged.values()];
+            });
+            setSubtitleTrackSelectorSelectedTrackIds([0, 1, 2].map((index) => files[index]?.id ?? '-'));
         },
         [
-            promoteBufferedHandlesInFileSession,
-            clearBufferedHandlesInFileSession,
-            closeSubtitleTrackSelector,
-            handleManualFiles,
+            validateFiles,
+            handleFiles,
+            openSubtitleTrackSelectorWithFiles,
+            fetchFileSession,
+            saveFileSession,
+            handleError,
+            setSubtitleTrackSelectorTracks,
+            setSubtitleTrackSelectorSelectedTrackIds,
         ]
     );
-
-    const handleCloseSubtitleTrackSelector = useCallback(() => {
-        closeSubtitleTrackSelector();
-        void clearBufferedHandlesInFileSession();
-    }, [closeSubtitleTrackSelector, clearBufferedHandlesInFileSession]);
 
     useEffect(() => {
         return keyBinder.bindSelectSubtitleTrack(
@@ -1951,14 +2126,15 @@ function App({
                             {globalState && (
                                 <VideoDataSyncDialog
                                     open={subtitleTrackSelectorOpen}
-                                    disabled={subtitleTrackSelectorDisabled}
-                                    isLoading={false}
-                                    suggestedName={sources.videoFile?.file?.name ?? ''}
+                                    disabled={selectorBusy}
+                                    isLoading={selectorBusy}
+                                    discovering={embeddedLoading}
+                                    suggestedName={sources.videoFile?.file.name ?? ''}
                                     subtitleTracks={subtitleTrackSelectorTracks}
                                     selectedSubtitleTrackIds={subtitleTrackSelectorSelectedTrackIds}
                                     onSelectedSubtitleTrackIds={setSubtitleTrackSelectorSelectedTrackIds}
                                     defaultCheckboxState={false}
-                                    error=""
+                                    error={selectorError || embeddedError ? t('error.embeddedSubtitlesLoadFailed') : ''}
                                     openReason={VideoDataUiOpenReason.userRequested}
                                     profiles={profilesContext.profiles}
                                     activeProfile={profilesContext.activeProfile}
@@ -2048,9 +2224,11 @@ function App({
                                 <Player
                                     supportsDictionaryPlayback={supportsDictionaryPlayback}
                                     audioTranscodeHost={audioTranscodeHost}
+                                    onMediaReady={handleMediaReady}
                                     ref={playerRef}
                                     origin={origin}
                                     subtitleReader={subtitleReader}
+                                    subtitleProducer={subtitleProducer}
                                     subtitles={subtitles}
                                     mediaId={extension.id}
                                     settings={settings}

@@ -11,6 +11,7 @@ extern "C" {
 
 int asb_read_input(double offset, uint8_t* buffer, int length);
 int asb_write_output(const uint8_t* buffer, int length);
+int asb_write_subtitle_output(int track_index, const uint8_t* buffer, int length);
 }
 
 namespace asb::detail {

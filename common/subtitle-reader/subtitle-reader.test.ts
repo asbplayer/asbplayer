@@ -1,21 +1,6 @@
 import { describe, expect, it, jest } from '@jest/globals';
 import { strFromU8, unzipSync } from 'fflate';
 
-// This dependency ships as ESM that ts-jest does not transform. The narrow fake
-// returns cue text for ruby tests and exposes serialized cues for download tests.
-jest.mock('@qgustavor/srt-parser', () => ({
-    __esModule: true,
-    default: class {
-        fromSrt(value: string) {
-            const text = value.split(/\r?\n/).slice(2).join('\n');
-            return [{ startTime: 0, endTime: 1, text }];
-        }
-        toSrt(cues: { startTime: number; endTime: number; text: string }[]) {
-            return cues.length === 0 ? '' : JSON.stringify(cues);
-        }
-    },
-}));
-
 import SubtitleReader from '@project/common/subtitle-reader/subtitle-reader';
 import { SubtitleHtml } from '@project/common';
 import { defaultSettings } from '@project/common/settings';
@@ -141,7 +126,22 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     });
 });
 
+describe('SubtitleReader progressive SRT parsing', () => {
+    it('buffers fragmented SRT cues and flushes the final cue without a trailing separator', () => {
+        const progressive = createReader().createProgressiveReader('srt');
+        expect(progressive.read('1\r\n00:00:01,000 --> 00:00:02,000\r\nfirst')).toEqual([]);
+        expect(progressive.read('\r\nsecond line\r\n\r')).toEqual([]);
+        expect(progressive.read('\n2\n00:00:03,000 --> 00:00:04,000\nlast')).toEqual([
+            expect.objectContaining({ cueId: 0, text: 'first\nsecond line', start: 1000, end: 2000 }),
+        ]);
+        expect(progressive.read('', true)).toEqual([
+            expect.objectContaining({ cueId: 1, text: 'last', start: 3000, end: 4000 }),
+        ]);
+    });
+});
+
 describe('SubtitleReader SRT downloads', () => {
+    const srtText = (bytes: Uint8Array) => strFromU8(bytes).replaceAll('\r\n', '\n');
     const readBytes = (blob: Blob) =>
         new Promise<Uint8Array>((resolve, reject) => {
             const reader = new FileReader();
@@ -164,13 +164,10 @@ describe('SubtitleReader SRT downloads', () => {
         expect(result?.blob.type).toBe('application/zip');
         const files = unzipSync(await readBytes(result!.blob));
         expect(Object.keys(files)).toEqual(['[Track1]episode.srt', '[Track3]episode.srt']);
-        expect(JSON.parse(strFromU8(files['[Track1]episode.srt']))).toEqual([
-            { id: '0', startTime: 1800, endTime: 2800, text: '日本語' },
-        ]);
-        expect(JSON.parse(strFromU8(files['[Track3]episode.srt']))).toEqual([
-            { id: '0', startTime: 1200, endTime: 2200, text: 'English 1' },
-            { id: '1', startTime: 2500, endTime: 3500, text: 'English 2' },
-        ]);
+        expect(srtText(files['[Track1]episode.srt'])).toBe('0\n00:00:01,800 --> 00:00:02,800\n日本語\n\n');
+        expect(srtText(files['[Track3]episode.srt'])).toBe(
+            '0\n00:00:01,200 --> 00:00:02,200\nEnglish 1\n\n' + '1\n00:00:02,500 --> 00:00:03,500\nEnglish 2\n\n'
+        );
     });
 
     it('parses segmented source tracks and exports one file per track with gaps preserved', async () => {
@@ -196,13 +193,10 @@ describe('SubtitleReader SRT downloads', () => {
         expect(result?.name).toBe('episode.zip');
         const files = unzipSync(await readBytes(result!.blob));
         expect(Object.keys(files)).toEqual(['[Track1]日本語.srt', '[Track3]English.srt']);
-        expect(JSON.parse(strFromU8(files['[Track1]日本語.srt']))).toEqual([
-            { id: '0', startTime: 1000, endTime: 2000, text: '日本語 1' },
-            { id: '1', startTime: 3000, endTime: 4000, text: '日本語 2' },
-        ]);
-        expect(JSON.parse(strFromU8(files['[Track3]English.srt']))).toEqual([
-            { id: '0', startTime: 2000, endTime: 3000, text: 'English' },
-        ]);
+        expect(srtText(files['[Track1]日本語.srt'])).toBe(
+            '0\n00:00:01,000 --> 00:00:02,000\n日本語 1\n\n' + '1\n00:00:03,000 --> 00:00:04,000\n日本語 2\n\n'
+        );
+        expect(srtText(files['[Track3]English.srt'])).toBe('0\n00:00:02,000 --> 00:00:03,000\nEnglish\n\n');
     });
 
     it('downloads a single text track directly with its original slot prefix', async () => {
@@ -213,9 +207,7 @@ describe('SubtitleReader SRT downloads', () => {
 
         expect(result?.name).toBe('[Track3]English.srt');
         expect(result?.blob.type).toBe('text/plain');
-        expect(JSON.parse(strFromU8(await readBytes(result!.blob)))).toEqual([
-            { id: '0', startTime: 1000, endTime: 2000, text: 'English' },
-        ]);
+        expect(srtText(await readBytes(result!.blob))).toBe('0\n00:00:01,000 --> 00:00:02,000\nEnglish\n\n');
     });
 
     it('keeps repeated Unicode filenames as separate ZIP entries and sanitizes paths', async () => {
@@ -1083,4 +1075,90 @@ describe('SubtitleReader Bilibili JSON parsing', () => {
         expect(subtitles[0]).toMatchObject({ start: 1250, end: 3500, text: 'First subtitle' });
         expect(subtitles[1]).toMatchObject({ start: 4000, end: 6750, text: 'Second subtitle' });
     });
+});
+
+describe('SubtitleReader SRT parsing', () => {
+    const file = (text: string) =>
+        ({
+            name: 'episode.srt',
+            type: 'text/plain',
+            text: async () => text,
+        }) as File;
+
+    it.each([SubtitleHtml.render, SubtitleHtml.remove])(
+        'retains literal plain text and overlapping cues with HTML setting %s',
+        async (setting) => {
+            const nodes = await createReader({ subtitleHtml: setting }).subtitles([
+                {
+                    fileParts: [
+                        file(
+                            '1\n00:00:02,000 --> 00:00:04,500\n日本語 {\\an8}&lt;b&gt;literal&lt;/b&gt; &amp;amp;\nline two\n\n' +
+                                '2\n00:00:03,000 --> 00:00:05,000\nOverlap\n\n' +
+                                '3\n00:00:06,000 --> 00:00:07,000\nFinal cue\n\n' +
+                                '4\n00:00:08,000 --> 00:00:09,000\n&lt;laughing&gt;\n\n'
+                        ),
+                    ],
+                },
+            ]);
+            expect(nodes.map(({ start, end, text }) => ({ start, end, text }))).toEqual([
+                { start: 2000, end: 4500, text: '日本語 &lt;b&gt;literal&lt;/b&gt; &amp;amp;\nline two' },
+                { start: 3000, end: 5000, text: 'Overlap' },
+                { start: 6000, end: 7000, text: 'Final cue' },
+                { start: 8000, end: 9000, text: '&lt;laughing&gt;' },
+            ]);
+        }
+    );
+    it('preserves ordinary SRT markup handling and accepts empty tracks', async () => {
+        const srt = '1\n00:00:01,000 --> 00:00:02,000\n{\\an8}<b>normal</b> &amp;\n\n';
+        expect(
+            (await createReader({ subtitleHtml: SubtitleHtml.remove }).subtitles([{ fileParts: [file(srt)] }]))[0].text
+        ).toBe('normal &amp;');
+        expect(
+            await createReader({ subtitleHtml: SubtitleHtml.render }).subtitles([{ fileParts: [file('')] }])
+        ).toEqual([]);
+    });
+});
+
+it('loads shared subtitle readers and session restoration without FFmpeg build definitions', async () => {
+    const globals = globalThis as unknown as Record<string, unknown>;
+    const definitions = Object.fromEntries(
+        Object.keys(globals)
+            .filter((key) => key.startsWith('__ASB_FFMPEG_'))
+            .map((key) => [key, globals[key]])
+    );
+    for (const key of Object.keys(definitions)) delete globals[key];
+    try {
+        await jest.isolateModulesAsync(async () => {
+            const { SubtitleReader } = await import('@project/common/subtitle-reader');
+            const { SubtitleHtml } = await import('@project/common');
+            const { restoreSessionFiles } = await import('@project/common/file-system-access');
+            const { embeddedSubtitleId } = await import('@project/common/embedded-subtitles/subtitle-source');
+            const reader = new SubtitleReader({
+                regexFilter: '',
+                regexFilterTextReplacement: '',
+                subtitleHtml: SubtitleHtml.render,
+                convertNetflixRuby: false,
+                pgsParserWorkerFactory: async () => {
+                    throw new Error('Text subtitles do not need an image worker');
+                },
+            });
+            const file = new File([], 'embedded.srt', { type: 'application/x-subrip' });
+            file.text = async () => '1\n00:00:01,000 --> 00:00:02,000\n&lt;b&gt;literal&lt;/b&gt;\n\n';
+            const subtitle = { id: embeddedSubtitleId('video', 1), file };
+            expect(await reader.subtitles([{ fileParts: [file] }])).toMatchObject([
+                { start: 1000, end: 2000, text: '&lt;b&gt;literal&lt;/b&gt;' },
+            ]);
+            expect(
+                await restoreSessionFiles(
+                    { id: 1, timestamp: 0, subtitleHandles: [], cachedSubtitleFiles: [subtitle] },
+                    [],
+                    async () => {
+                        throw new Error('Unexpected embedded subtitle preparation');
+                    }
+                )
+            ).toEqual({ files: [{ ...subtitle, track: 0 }], missingEmbeddedSubtitles: [] });
+        });
+    } finally {
+        Object.assign(globals, definitions);
+    }
 });

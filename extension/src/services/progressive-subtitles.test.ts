@@ -135,6 +135,25 @@ describe('progressive subtitle responses', () => {
         expect(stream.source.snapshot.subtitles.map((cue) => cue.text)).toEqual(['First']);
     });
 
+    it('cancels a pending read when a timed publication fails', async () => {
+        jest.useFakeTimers();
+        const stream = openResponse();
+        const result = stream.loading.catch((error: Error) => error);
+        stream.response.enqueue(encoder.encode(`${header}${dialogue('First')}\n`));
+        await jest.advanceTimersByTimeAsync(0);
+        const error = new Error('Publication failed');
+        const update = jest.spyOn(stream.source, 'update').mockImplementationOnce(() => {
+            throw error;
+        });
+        stream.response.enqueue(encoder.encode(`${dialogue('Buffered', '0:00:03.00', '0:00:04.00')}\n`));
+        await jest.advanceTimersByTimeAsync(100);
+        expect(await result).toBe(error);
+        expect(stream.cancelled()).toBe(true);
+        expect(stream.source.sourceStates[0].status).toBe('failed');
+        expect(jest.getTimerCount()).toBe(0);
+        update.mockRestore();
+    });
+
     it('rejects a response that is not ASS instead of silently completing an empty track', async () => {
         const stream = openResponse();
         stream.response.enqueue(encoder.encode('<html>Error</html>'));

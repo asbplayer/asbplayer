@@ -81,6 +81,61 @@ export type SubtitleSourceProducer = (
     signal: AbortSignal
 ) => Promise<void>;
 
+const subtitlePublicationIntervalMs = 100;
+
+/**
+ * Publishes the first cues immediately and coalesces subsequent cues for up to 100 ms.
+ * Owners flush before completion/failure and dispose on cancellation or teardown.
+ * Timer failures go to onError so the owner can interrupt its pending I/O.
+ */
+export class SubtitleCuePublisher {
+    private pending: SubtitleSourceCue[] = [];
+    private timer: ReturnType<typeof setTimeout> | undefined;
+    private lastPublicationAt: number | undefined;
+
+    constructor(
+        private readonly publish: (cues: SubtitleSourceCue[]) => void,
+        private readonly onError: (error: unknown) => void
+    ) {}
+
+    add(cues: readonly SubtitleSourceCue[]): void {
+        for (const cue of cues) this.pending.push(cue);
+        if (!this.pending.length) return;
+        const remaining =
+            this.lastPublicationAt === undefined
+                ? 0
+                : subtitlePublicationIntervalMs - (performance.now() - this.lastPublicationAt);
+        if (remaining <= 0) {
+            this.flush();
+        } else if (this.timer === undefined) {
+            this.timer = setTimeout(() => {
+                try {
+                    this.flush();
+                } catch (error) {
+                    this.dispose();
+                    this.onError(error);
+                }
+            }, remaining);
+        }
+    }
+
+    flush(): void {
+        clearTimeout(this.timer);
+        this.timer = undefined;
+        if (!this.pending.length) return;
+        const cues = this.pending;
+        this.pending = [];
+        this.lastPublicationAt = performance.now();
+        this.publish(cues);
+    }
+
+    dispose(): void {
+        clearTimeout(this.timer);
+        this.timer = undefined;
+        this.pending = [];
+    }
+}
+
 export const subtitleKey = (cue: Pick<SubtitleModel, 'source' | 'index' | 'track'>): string =>
     cue.source ? `${cue.track}:${cue.source.loadId}:${cue.source.cueId}` : `legacy:${cue.index}`;
 
