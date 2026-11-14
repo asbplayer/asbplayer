@@ -10,7 +10,22 @@ const extendsToParentEndMarker = 0;
 const fullBoxVersionAndFlagsBytes = 4;
 const handlerPredefinedBytes = 4;
 const sampleEntryCountBytes = 4;
-const soundHandler = 'soun';
+
+const versionBytes = 1;
+const trackIdBytes = 4;
+const trackIdOffsetVersion0 = 12;
+const trackIdOffsetVersion1 = 20;
+const mediaLanguageOffsetVersion0 = 20;
+const mediaLanguageOffsetVersion1 = 32;
+const mediaLanguageBytes = 2;
+const languageBitsPerCharacter = 5;
+const languageCharacterMask = (1 << languageBitsPerCharacter) - 1;
+const languageCharacterCodeOffset = 96; // Packed language letters use 1 for 'a'.
+const minimumPackedLanguage = 0x400;
+const packedLanguageLimit = 0x8000;
+const handlerReservedBytes = 12;
+const handlerTypeEndOffset = fullBoxVersionAndFlagsBytes + handlerPredefinedBytes + isoBmffBoxTypeBytes;
+const handlerNameOffset = handlerTypeEndOffset + handlerReservedBytes;
 
 // AudioSampleEntry payload layout, excluding the box header.
 const audioSampleEntryHeaderBytes = 28;
@@ -36,6 +51,14 @@ const esOcrStreamFlag = 0x20;
 const esUrlLengthBytes = 1;
 // Object type (1), stream type (1), buffer size (3), and maximum/average bitrates (4 each).
 const decoderConfigHeaderBytes = 13;
+const objectTypeAc3 = 0xa5;
+const objectTypeEac3 = 0xa6;
+const objectTypeDts = 0xa9;
+const audioFormatsByObjectType: Record<number, string> = {
+    [objectTypeAc3]: 'ac-3',
+    [objectTypeEac3]: 'ec-3',
+    [objectTypeDts]: 'dtsc',
+};
 
 interface Box {
     type: string;
@@ -62,7 +85,7 @@ const readBox = async (reader: ByteReader, offset: number, limit: number): Promi
     } else {
         end = offset + size;
     }
-    if (dataOffset > end || end > limit) return;
+    if (!Number.isSafeInteger(end) || dataOffset > end || end > limit) return;
 
     return { type, dataOffset, end };
 };
@@ -79,7 +102,7 @@ const forEachBox = async <T>(
 ): Promise<T | undefined> => {
     while (offset < limit) {
         const box = await readBox(reader, offset, limit);
-        if (box === undefined) return;
+        if (box === undefined) throw new Error('Invalid MP4 metadata');
         const result = await visit(box);
         if (result !== undefined) return result;
         offset = box.end;
@@ -89,17 +112,6 @@ const forEachBox = async <T>(
 
 const findBox = (reader: ByteReader, type: string, offset: number, limit: number) =>
     forEachBox(reader, offset, limit, async (box) => (box.type === type ? box : undefined));
-
-const isAudioTrack = async (reader: ByteReader, mdia: Box) => {
-    const hdlr = await findBox(reader, 'hdlr', mdia.dataOffset, mdia.end);
-    if (hdlr === undefined) return false;
-    return (
-        (await reader.ascii(
-            hdlr.dataOffset + fullBoxVersionAndFlagsBytes + handlerPredefinedBytes,
-            isoBmffBoxTypeBytes
-        )) === soundHandler
-    ); // FullBox version/flags, then pre_defined, then the handler type.
-};
 
 const readDescriptor = async (reader: ByteReader, offset: number, limit: number) => {
     if (offset + descriptorMinimumHeaderBytes > limit) return;
@@ -144,8 +156,7 @@ const mp4aFormat = async (reader: ByteReader, entry: Box) => {
         return;
     }
     const objectType = (await reader.unsignedInt(decoder.dataOffset, 1))!;
-    const formats: { [objectType: number]: string } = { 0xa5: 'ac-3', 0xa6: 'ec-3', 0xa9: 'dtsc' };
-    return formats[objectType];
+    return audioFormatsByObjectType[objectType];
 };
 
 const sampleEntryFormat = async (reader: ByteReader, mdia: Box) => {
@@ -163,27 +174,82 @@ const sampleEntryFormat = async (reader: ByteReader, mdia: Box) => {
     return entry.type === 'mp4a' ? ((await mp4aFormat(reader, entry)) ?? entry.type) : entry.type;
 };
 
-/**
- * Walks MP4/ISO BMFF boxes by their declared sizes, including extended sizes and boxes that
- * extend to their parent's end. Identifies audio tracks through mdia/hdlr and reads their
- * sample-entry formats from minf/stbl/stsd, resolving Dolby/DTS inside generic mp4a entries.
- *
- * @returns sample entry formats of the audio tracks in an ISO base media file, in track order.
- */
-export const isoBmffAudioSampleFormats = async (reader: ByteReader): Promise<string[] | undefined> => {
-    const moov = await findBox(reader, 'moov', 0, reader.size); // moov is commonly at the end of the file, so this walks top-level boxes by size rather than reading through them.
-    if (moov === undefined) return;
+interface IsoBmffTrack {
+    id?: number;
+    chapter?: boolean;
+    handler: string;
+    format?: string;
+    language?: string;
+    title?: string;
+}
 
-    const formats: string[] = [];
+/** Walk track headers by box size, including a moov after a large media payload. */
+export const isoBmffTracks = async (reader: ByteReader): Promise<IsoBmffTrack[] | undefined> => {
+    const moov = await findBox(reader, 'moov', 0, reader.size);
+    if (!moov) return;
+    const tracks: IsoBmffTrack[] = [];
+    const chapterIds = new Set<number>();
     await forEachBox(reader, moov.dataOffset, moov.end, async (trak) => {
         if (trak.type !== 'trak') return;
-        const mdia = await findBox(reader, 'mdia', trak.dataOffset, trak.end);
-        if (mdia !== undefined && (await isAudioTrack(reader, mdia))) {
-            const format = await sampleEntryFormat(reader, mdia);
-            if (format !== undefined) formats.push(format);
+        const tkhd = await findBox(reader, 'tkhd', trak.dataOffset, trak.end);
+        let id: number | undefined;
+        if (tkhd) {
+            const version = await reader.unsignedInt(tkhd.dataOffset, versionBytes);
+            const idOffset = tkhd.dataOffset + (version === 1 ? trackIdOffsetVersion1 : trackIdOffsetVersion0);
+            if ((version !== 0 && version !== 1) || idOffset + trackIdBytes > tkhd.end) {
+                throw new Error('Invalid MP4 track header');
+            }
+            id = await reader.unsignedInt(idOffset, trackIdBytes);
         }
-        return;
+        const tref = await findBox(reader, 'tref', trak.dataOffset, trak.end);
+        const chap = tref && (await findBox(reader, 'chap', tref.dataOffset, tref.end));
+        if (chap) {
+            if ((chap.end - chap.dataOffset) % trackIdBytes) {
+                throw new Error('Invalid MP4 chapter references');
+            }
+            for (let offset = chap.dataOffset; offset < chap.end; offset += trackIdBytes) {
+                const chapterId = await reader.unsignedInt(offset, trackIdBytes);
+                if (chapterId === undefined) throw new Error('Truncated MP4 chapter reference');
+                chapterIds.add(chapterId);
+            }
+        }
+        const mdia = await findBox(reader, 'mdia', trak.dataOffset, trak.end);
+        const hdlr = mdia && (await findBox(reader, 'hdlr', mdia.dataOffset, mdia.end));
+        if (!mdia || !hdlr || hdlr.dataOffset + handlerTypeEndOffset > hdlr.end) {
+            throw new Error('Incomplete MP4 track metadata');
+        }
+        const handler = await reader.ascii(
+            hdlr.dataOffset + fullBoxVersionAndFlagsBytes + handlerPredefinedBytes,
+            isoBmffBoxTypeBytes
+        );
+        if (!handler) throw new Error('Missing MP4 track handler');
+        const mdhd = await findBox(reader, 'mdhd', mdia.dataOffset, mdia.end);
+        let language: string | undefined;
+        if (mdhd) {
+            const version = await reader.unsignedInt(mdhd.dataOffset, versionBytes);
+            if (version !== 0 && version !== 1) throw new Error('Unsupported MP4 media header');
+            const languageOffset =
+                mdhd.dataOffset + (version === 1 ? mediaLanguageOffsetVersion1 : mediaLanguageOffsetVersion0);
+            if (languageOffset + mediaLanguageBytes > mdhd.end) throw new Error('Truncated MP4 language');
+            const packed = await reader.unsignedInt(languageOffset, mediaLanguageBytes);
+            if (packed !== undefined && packed >= minimumPackedLanguage && packed < packedLanguageLimit) {
+                language = String.fromCharCode(
+                    ((packed >> (languageBitsPerCharacter * 2)) & languageCharacterMask) + languageCharacterCodeOffset,
+                    ((packed >> languageBitsPerCharacter) & languageCharacterMask) + languageCharacterCodeOffset,
+                    (packed & languageCharacterMask) + languageCharacterCodeOffset
+                );
+            }
+        }
+        // hdlr's UTF-8 name follows its full header. Real muxers use this as the track label.
+        const nameOffset = hdlr.dataOffset + handlerNameOffset;
+        const title = nameOffset < hdlr.end ? await reader.utf8(nameOffset, hdlr.end - nameOffset) : undefined;
+        tracks.push({ id, handler, format: await sampleEntryFormat(reader, mdia), language, title });
     });
-
-    return formats;
+    for (const track of tracks) track.chapter = track.id !== undefined && chapterIds.has(track.id);
+    return tracks;
 };
+
+export const isoBmffAudioSampleFormats = async (reader: ByteReader): Promise<string[] | undefined> =>
+    (await isoBmffTracks(reader))
+        ?.filter((track) => track.handler === 'soun')
+        .flatMap((track) => (track.format ? [track.format] : []));

@@ -41,6 +41,7 @@ class Source extends EventTarget {
         Source.latest = this;
     }
     addSourceBuffer() {
+        if (this.readyState !== 'open') throw new DOMException('MediaSource is not open', 'InvalidStateError');
         return this.buffer;
     }
     open() {
@@ -92,6 +93,29 @@ it('appends a growing prefix in order without rereading its prior bytes', async 
     expect(errors).toEqual([]);
     stream.dispose();
     expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:stream');
+});
+
+it('ignores a queued sourceopen after detachment and opens the buffer when reattached', async () => {
+    const errors: unknown[] = [];
+    const stream = createStreamingAudio({
+        currentTimeMs: () => 0,
+        onBuffered: () => {},
+        onError: (error) => errors.push(error),
+    });
+    try {
+        stream.append(new Blob([new Uint8Array([1, 2])]));
+        // The element detached before the browser delivered the queued event.
+        Source.latest.dispatchEvent(new Event('sourceopen'));
+        expect(errors).toEqual([]);
+        expect(URL.revokeObjectURL).not.toHaveBeenCalled();
+
+        Source.latest.open();
+        await tick();
+        expect(Source.latest.buffer.bytes).toEqual([1, 2]);
+        expect(errors).toEqual([]);
+    } finally {
+        stream.dispose();
+    }
 });
 
 it('bounds browser buffering ahead of playback and retries a full buffer after playback advances', async () => {

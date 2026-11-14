@@ -233,7 +233,9 @@
         "unsupportedExtension": "不支持该文件格式：{{extension}}",
         "audioConversionFailed": "Failed to convert {{codec}} audio",
         "videoPlayerDragAndDropNotAllowed": "播放器无法接收拖放文件，请拖至视频画面外。",
-        "restoreSessionFailed": "恢复上次会话失败，文件可能已被移动或删除。"
+        "restoreSessionFailed": "恢复上次会话失败，文件可能已被移动或删除。",
+        "unsupportedFormat": "Unsupported format: {{format}}",
+        "embeddedSubtitlesLoadFailed": "Failed to load embedded subtitles"
     },
     "extension": {
         "settings": {

@@ -16,17 +16,34 @@
             "sha256": "6ffcb593207be92584df15b32466ed64bbec99109f007c82205f0194572411a1"
         }
     },
+    "zlib": {
+        "version": "1.4",
+        "license": "Zlib",
+        "source": {
+            "url": "https://zlib.net/fossils/zlib-1.4.tar.gz",
+            "sha256": "02dd159783677a749c04adbdd02b55b8a2bcc7e054f51b76b549199a916ad584"
+        }
+    },
     "toolchain": {
-        "emscriptenVersion": "6.0.13",
-        "container": "emscripten/emsdk@sha256:fb7864e398acfda863dfcea78b8bc8adad359fa60c6a0bbeb845931de64aa68a",
+        "emscriptenVersion": "7.0.0",
+        "container": "emscripten/emsdk@sha256:6bd7aef93408b10bf7b36642cb7c91119b302f720b9ec2d20439f73cf07fe894",
         "platform": "linux/amd64"
     },
-    "nativeLibraries": ["libavutil", "libavcodec", "libavformat", "libswresample"],
+    "nativeLibraries": [
+        "libavutil",
+        "libavcodec",
+        "libavformat",
+        "libswresample"
+    ],
     "limits": {
         "initialMemoryBytes": 16777216,
         "maximumMemoryBytes": 1073741824,
         "stackBytes": 1048576,
         "maximumWasmBytes": 2000000
     },
-    "implementedOperations": ["inspect", "transcodeAudio"]
+    "implementedOperations": [
+        "inspect",
+        "transcodeAudio",
+        "extractSubtitles"
+    ]
 }

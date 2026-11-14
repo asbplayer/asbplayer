@@ -1,3 +1,4 @@
+import type { SubtitleHost } from '@project/common/embedded-subtitles/subtitle-source';
 import { asbError } from '@project/common/util/log';
 import type { Fetcher } from '@project/common';
 import type { AsbplayerSettings, SettingsProvider } from '@project/common/settings';
@@ -24,6 +25,7 @@ interface Props {
     extension: ChromeExtension;
     logProvider: LogProvider;
     audioTranscodeHost: AudioTranscodeHost;
+    subtitleHost: SubtitleHost;
 }
 
 const RootApp = ({
@@ -37,6 +39,7 @@ const RootApp = ({
     fetcher,
     logProvider,
     audioTranscodeHost,
+    subtitleHost,
 }: Props) => {
     const dictionaryProvider = useMemo(() => new DictionaryProvider(dictionaryStorage), [dictionaryStorage]);
     const [settings, setSettings] = useState<AsbplayerSettings>();
@@ -115,6 +118,7 @@ const RootApp = ({
             dictionaryProvider={dictionaryProvider}
             logProvider={logProvider}
             audioTranscodeHost={audioTranscodeHost}
+            subtitleHost={subtitleHost}
             settingsProvider={settingsProvider}
             settings={settings}
             globalState={globalState}

@@ -233,7 +233,9 @@
         "unsupportedExtension": "{{extension}} 확장자는 지원되지 않습니다.",
         "audioConversionFailed": "Failed to convert {{codec}} audio",
         "videoPlayerDragAndDropNotAllowed": "동영상 프레임에는 파일을 드롭할 수 없습니다. 화면 밖 영역에 드롭해 주세요.",
-        "restoreSessionFailed": "마지막 세션을 복원하지 못했습니다. 파일이 이동되었거나 삭제되었을 수 있습니다."
+        "restoreSessionFailed": "마지막 세션을 복원하지 못했습니다. 파일이 이동되었거나 삭제되었을 수 있습니다.",
+        "unsupportedFormat": "Unsupported format: {{format}}",
+        "embeddedSubtitlesLoadFailed": "Failed to load embedded subtitles"
     },
     "extension": {
         "settings": {

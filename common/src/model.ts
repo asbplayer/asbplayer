@@ -1,3 +1,4 @@
+import type { EmbeddedSubtitleDescriptor } from '@project/common/embedded-subtitles/subtitle-source';
 import type { AnkiSettings, TokenState, TokenStatus } from '@project/common/settings';
 import type { GenericParseType, OnlineSubtitleSourceConfig } from '@project/common/global-state';
 import type { TokenStatusInfo } from '@project/common/dictionary-db';
@@ -246,6 +247,8 @@ export interface AnkiUiSavedState {
 export interface VideoDataSubtitleTrackDef {
     /** Read complete cues as they arrive instead of waiting for the whole response. */
     progressive?: boolean;
+    embedded?: EmbeddedSubtitleDescriptor;
+    disabledReason?: string;
     label: string;
     language?: string;
     url?: string | string[];

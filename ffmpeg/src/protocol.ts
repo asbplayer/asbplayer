@@ -1,3 +1,9 @@
+export type ExtractedSubtitle = {
+    trackIndex: number;
+    extension: 'srt';
+    mimeType: 'application/x-subrip';
+};
+
 export type FfmpegLibraryInfo = {
     name: string;
     version: number;
@@ -59,6 +65,7 @@ export type WorkerRequest = RequestBase &
     (
         | { operation: 'initialize'; coreURL: string; wasmURL: string }
         | { operation: 'inspect' }
+        | { operation: 'extractSubtitles'; input: Blob; trackIndexes: number[] }
         | {
               operation: 'transcodeAudio';
               input: Blob;
@@ -89,7 +96,7 @@ export type WorkerReply = {
 } & (
     | { ok: true; result: unknown; diagnostics: FfmpegDiagnostics }
     | { ok: false; error: { code: FfmpegErrorCode; message: string }; diagnostics: FfmpegDiagnostics }
-    | { type: 'chunk'; chunk: ArrayBuffer }
+    | { type: 'chunk'; chunk: ArrayBuffer; trackIndex?: number }
 );
 
 export type WorkerReplyBody = WorkerReply extends infer Reply
@@ -107,7 +114,9 @@ export const isWorkerReply = (value: unknown): value is WorkerReply => {
             reply.type === 'chunk' &&
             !('ok' in reply) &&
             reply.chunk instanceof ArrayBuffer &&
-            reply.chunk.byteLength > 0
+            reply.chunk.byteLength > 0 &&
+            (reply.trackIndex === undefined ||
+                (Number.isSafeInteger(reply.trackIndex) && (reply.trackIndex as number) >= 0))
         );
     }
     if (!isDiagnostics(reply.diagnostics)) return false;

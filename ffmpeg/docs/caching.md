@@ -11,7 +11,7 @@ Each session load calls [`prepareFfmpegRuntimeArchive`](../../client/src/service
 3. Verify the downloaded archive against the expected byte size and SHA-256, then attempt to cache it, replacing any previous selection. Storage failures still allow online execution of verified bytes.
 4. Return the archive to the [runtime loading flow](runtime.md#loading-and-cancellation).
 
-Cache checks happen when a session loads. Browser app startup and updates never download or wait for FFmpeg. The runtime is excluded from PWA precaching; users who never need it do not download it.
+Cache checks happen when a session loads. Browser app startup and updates never download or wait for FFmpeg. The runtime is excluded from PWA precaching; users who never need it do not download it. Audio eligibility and embedded subtitle discovery use JavaScript container readers. FFmpeg is acquired for required audio conversion or when the player extracts confirmed or restored embedded selections whose completed files are missing. Opening the subtitle picker and preparing a restored selection do not acquire it.
 
 ## Offline use and app updates
 

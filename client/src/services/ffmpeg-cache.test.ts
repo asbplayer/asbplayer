@@ -38,6 +38,9 @@ const prepare = (
 const memoryCaches = () => {
     const caches = new Map<string, Cache>();
     return {
+        async match(request: RequestInfo, options?: MultiCacheQueryOptions) {
+            return options?.cacheName ? caches.get(options.cacheName)?.match(request) : undefined;
+        },
         async open(name: string) {
             let cache = caches.get(name);
             if (cache !== undefined) return cache;

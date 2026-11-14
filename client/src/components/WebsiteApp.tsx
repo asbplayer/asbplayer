@@ -11,7 +11,7 @@ import { LocalDictionaryStorage } from '@project/client/src/local-dictionary-sto
 import { LocalSettingsStorage } from '@project/client/src/local-settings-storage';
 import { LocalLogStorage } from '@project/client/src/local-log-storage';
 import { AppExtensionLogStorage } from '@project/common/app/services/app-extension-log-storage';
-import { webAudioTranscodeHost } from '@project/client/src/services/ffmpeg';
+import { webAudioTranscodeHost, webSubtitleHost } from '@project/client/src/services/ffmpeg';
 
 interface Props {
     origin: string;
@@ -52,6 +52,7 @@ const WebsiteApp = (props: Props) => {
             globalStateProvider={globalStateProvider}
             logProvider={logProvider}
             audioTranscodeHost={webAudioTranscodeHost}
+            subtitleHost={webSubtitleHost}
         />
     );
 };

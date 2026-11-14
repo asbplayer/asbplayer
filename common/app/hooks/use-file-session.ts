@@ -1,6 +1,7 @@
 import { asbError } from '@project/common/util/log';
 import { useCallback, useEffect, useState } from 'react';
 import type { FileWithId } from '@project/common/file-selector';
+import type { LoadableSubtitleTrack } from '@project/common';
 import type {
     FileSessionRecord,
     FileSessionSourceIds,
@@ -77,12 +78,20 @@ export const useFileSession = () => {
         await fileSessionRepository?.clearBuffered();
     }, [fileSessionRepository]);
 
-    const saveCachedSubtitleFilesToSession = useCallback(
-        async (files: FileWithId[]) => {
-            const didSave = await fileSessionRepository?.setCachedSubtitleFiles(files);
-            if (files.length > 0 && didSave) {
-                setCanRestoreLastSession(true);
-            }
+    const saveSubtitleSelection = useCallback(
+        async (tracks: LoadableSubtitleTrack<FileWithId>[], pendingEmbeddedIds: ReadonlySet<string>) => {
+            if (!fileSessionRepository) return;
+            const completedTracks = tracks.map(({ fileParts }) => ({
+                fileParts: fileParts.filter((file) => !pendingEmbeddedIds.has(file.id)),
+            }));
+            const files = completedTracks.flatMap(({ fileParts }) => fileParts);
+            await fileSessionRepository.setCachedSubtitleFiles(files, {
+                subtitleTrackIds: completedTracks.map(({ fileParts }) => fileParts.map(({ id }) => id)),
+                embeddedSubtitles: Object.fromEntries(
+                    files.filter((file) => file.embedded).map((file) => [file.id, file.embedded!])
+                ),
+            });
+            setCanRestoreLastSession(true);
         },
         [fileSessionRepository]
     );
@@ -99,6 +108,7 @@ export const useFileSession = () => {
     );
 
     return {
+        saveSubtitleSelection,
         canRestoreLastSession,
         saveSession,
         fetchSession,
@@ -106,7 +116,6 @@ export const useFileSession = () => {
         saveBufferedHandlesToSession,
         promoteBufferedHandlesInSession,
         clearBufferedHandlesInSession,
-        saveCachedSubtitleFilesToSession,
         retainSourcesInSession,
     };
 };

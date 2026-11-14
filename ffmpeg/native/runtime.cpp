@@ -2,6 +2,7 @@
 #include "audio_transcoder.hpp"
 #include "error.hpp"
 #include "runtime_info.hpp"
+#include "subtitles.hpp"
 
 #include <emscripten.h>
 
@@ -19,6 +20,10 @@ EM_JS(int, asb_read_input, (double offset, uint8_t* buffer, int length), {
 // seeks or retains a complete output in the WASM heap.
 EM_JS(int, asb_write_output, (const uint8_t* buffer, int length), {
     return Module['asbWriteOutput'](buffer, length);
+});
+
+EM_JS(int, asb_write_subtitle_output, (int track_index, const uint8_t* buffer, int length), {
+    return Module['asbWriteSubtitleOutput'](track_index, buffer, length);
 });
 
 // Diagnostics are buffered by the bridge and travel with the terminal reply.
@@ -56,4 +61,9 @@ extern "C" const char* asb_last_error(void) noexcept { return asb::detail::last_
 extern "C" double asb_transcode_audio(double input_size, int track_index) noexcept {
     av_log_set_callback(ffmpeg_diagnostic);
     return asb::detail::transcode_audio(input_size, track_index);
+}
+
+extern "C" const char* asb_extract_subtitles(double input_size, const uint32_t* track_indexes, size_t count) noexcept {
+    av_log_set_callback(ffmpeg_diagnostic);
+    return asb::detail::extract_subtitles(input_size, track_indexes, count);
 }

@@ -19,6 +19,7 @@ const requiredNotices = new Map([
     ['libc++abi-noexcept.a', ['libcxxabi-LICENSE.txt']],
     ['libclang_rt.builtins.a', ['compiler-rt-LICENSE.txt']],
     ['libdlmalloc.a', []],
+    ['libemcc.a', ['Emscripten-MIT.txt']],
     ['libnoexit.a', ['Emscripten-MIT.txt']],
     ['libstubs.a', ['Emscripten-MIT.txt']],
 ]);

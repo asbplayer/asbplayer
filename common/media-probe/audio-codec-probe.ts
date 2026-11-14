@@ -12,7 +12,7 @@ export interface ProbedAudioTrack {
     /**
      * Position among the audio tracks, matching ffmpeg's `0:a:<index>` stream specifier.
      */
-    readonly index: number;
+    readonly trackIndex: number;
     readonly codec: string;
 }
 
@@ -177,5 +177,5 @@ export const audioTrackRequiringTranscode = async (blob: Blob): Promise<ProbedAu
     }
 
     asbTrace('media/probe', 'Audio conversion required', { trackIndex: 0, codec: container.audioCodecs[0] });
-    return { index: 0, codec: container.audioCodecs[0] };
+    return { trackIndex: 0, codec: container.audioCodecs[0] };
 };
