@@ -1,5 +1,5 @@
 {
-    "version": "1.23.0",
+    "version": "1.24.0",
     "names": {
         "short": "asbplayer",
         "long": "a subtitle player"
@@ -16,7 +16,7 @@
             "releaseTag": "app-v{{version}}"
         },
         "extension": {
-            "publishedVersion": "1.22.0",
+            "publishedVersion": "1.23.0",
             "releaseTitle": "asbplayer-extension-v{{version}}",
             "releaseTag": "v{{version}}",
             "sources": "asbplayer-{{version}}-sources"
