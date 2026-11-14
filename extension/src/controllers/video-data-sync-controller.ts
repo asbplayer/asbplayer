@@ -710,7 +710,7 @@ export default class VideoDataSyncController {
     }
 
     private _beginSubtitleLoad(): SubtitleLoad {
-        // A replacement discards the previous progressive transcript even if the new selection fails.
+        // Cancel the previous load and clear its progressive cues before starting the replacement.
         this.cancelSubtitleLoad({ clearSubtitles: true });
         const load = { controller: new AbortController(), location: window.location.href };
         this._subtitleLoad = load;

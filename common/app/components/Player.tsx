@@ -704,9 +704,13 @@ function PlayerComponent(
         setOffset(subtitles[0].start - subtitles[0].originalStart);
     }, [subtitles, syntheticPlayback, tab]);
 
-    const { loadingSubtitles, subtitleFileNames, sourceStates } = useSubtitleTracks({
+    const {
+        loadingSubtitles,
+        subtitleFileNames: loadedSubtitleFileNames,
+        sourceStates,
+    } = useSubtitleTracks({
         source:
-            tab && sources === undefined
+            tab && (sources === undefined || sources.subtitleSource.kind === 'video')
                 ? {
                       kind: 'remote',
                       supportsProgressiveSubtitles: extension.supportsProgressiveSubtitles,
@@ -729,6 +733,8 @@ function PlayerComponent(
         onSubtitles,
         onError,
     });
+    const subtitleFileNames =
+        sources?.subtitleSource.kind === 'video' ? sources.subtitleFileNames : loadedSubtitleFileNames;
 
     sourceStatesRef.current = sourceStates;
     useEffect(() => {

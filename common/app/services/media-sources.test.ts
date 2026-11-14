@@ -92,7 +92,7 @@ describe('MediaSources', () => {
 
     it('keeps the subtitle track reference when the video is unloaded', () => {
         const original = MediaSources.fromFiles([source('English.vtt'), source('video.mp4')]);
-        const unloaded = new MediaSources(original.subtitleTracks);
+        const unloaded = new MediaSources(original.subtitleSource);
 
         expect(unloaded.subtitleTracks).toBe(original.subtitleTracks);
         expect(unloaded.subtitleFileNames).toEqual(['English.vtt']);
@@ -130,6 +130,54 @@ const decodedTrackNames = (serializedSourceFiles: SerializedSubtitleFile[], flat
     trackNames(MediaSources.fromFiles(decodeSubtitleSourceFiles(serializedSourceFiles, flatten)));
 
 describe('subtitle source messages', () => {
+    it('keeps video-owned track names available to history jumps and rewind without creating local files', () => {
+        const sources = MediaSources.fromSync({
+            command: 'syncv2',
+            subtitles: [],
+            subtitleSource: {
+                tracks: [
+                    { track: 2, loadId: 'external', name: 'companion.vtt', status: 'complete' },
+                    { track: 0, loadId: 'embedded', name: 'embedded.ass', status: 'loading' },
+                ],
+            },
+        });
+
+        expect(sources.subtitleSource.kind).toBe('video');
+        expect(sources.subtitleFileNames).toEqual(['embedded.ass', '', 'companion.vtt']);
+        expect(sources.hasSubtitleFile('embedded.ass')).toBe(true);
+        expect(sources.hasSubtitleFile('companion.vtt')).toBe(true);
+        expect(sources.hasSubtitleFile('')).toBe(false);
+        expect(sources.hasSubtitleFile('missing.vtt')).toBe(false);
+        expect(sources.subtitleTracks).toEqual([]);
+        expect(sources.allSourceFiles).toEqual([]);
+    });
+
+    it('preserves remote ownership for an empty video selection', () => {
+        const sources = MediaSources.fromSync({ command: 'syncv2', subtitles: [], subtitleSource: { tracks: [] } });
+        expect(sources.subtitleSource.kind).toBe('video');
+        expect(sources.subtitleFileNames).toEqual([]);
+        expect(sources.hasSubtitleFile('previous.ass')).toBe(false);
+    });
+
+    it('loads serialized syncv2 files as local tracks', () => {
+        const sources = MediaSources.fromSync({
+            command: 'syncv2',
+            subtitles: [serializedSourceFile('part1.vtt', 0), serializedSourceFile('part2.vtt', 0)],
+        });
+        expect(sources.subtitleSource.kind).toBe('files');
+        expect(trackNames(sources)).toEqual([['part1.vtt', 'part2.vtt']]);
+        expect(sources.hasSubtitleFile('part1.vtt')).toBe(true);
+    });
+
+    it('loads subtitle files from older extension sync messages', () => {
+        const sources = MediaSources.fromSync({
+            command: 'sync',
+            subtitles: serializedSourceFile('older-extension.vtt'),
+        });
+        expect(sources.subtitleSource.kind).toBe('files');
+        expect(trackNames(sources)).toEqual([['older-extension.vtt']]);
+    });
+
     it('decodes the original filename and subtitle contents', async () => {
         const [{ file: subtitleSourceFile }] = decodeSubtitleSourceFiles([serializedSourceFile('original.vtt')]);
         const text = await new Promise<string>((resolve, reject) => {

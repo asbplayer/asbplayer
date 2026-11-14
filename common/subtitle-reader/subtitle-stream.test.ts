@@ -225,6 +225,18 @@ describe('SubtitleStream', () => {
         expect(receiver.snapshot).toEqual({ tracks: [], subtitles: [] });
     });
 
+    it('replays tracks beyond the subtitle selector UI slots', () => {
+        const stream = new SubtitleStream();
+        start(stream, 3, 'fourth');
+        stream.update({ type: 'cues', track: 3, loadId: 'fourth', cues: [cue(0, 1000)] });
+        stream.update({ type: 'complete', track: 3, loadId: 'fourth' });
+
+        const receiver = new SubtitleStream();
+        receiver.update({ type: 'snapshot', ...stream.sourceSnapshot });
+        expect(receiver.snapshot).toEqual(stream.snapshot);
+        expect(receiver.snapshot.subtitles).toMatchObject([{ track: 3, text: 'word' }]);
+    });
+
     it('rejects invalid batches and snapshots atomically', () => {
         const stream = new SubtitleStream();
         start(stream);

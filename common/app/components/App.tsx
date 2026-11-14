@@ -35,7 +35,6 @@ import type { AsbplayerSettings, DictionaryTrack, Profile, SettingsProvider } fr
 import { AudioClip, Mp3Encoder } from '@project/common/audio-clip';
 import type { ExportParams } from '@project/common/anki';
 import { SubtitleReader } from '@project/common/subtitle-reader';
-import { subtitleSourceNames } from '@project/common/subtitle-reader/subtitle-stream';
 import { v4 as uuidv4 } from 'uuid';
 import clsx from 'clsx';
 import Alert from '@project/common/app/components/Alert';
@@ -383,9 +382,7 @@ function App({
     const [jumpToSubtitle, setJumpToSubtitle] = useState<SubtitleModel>();
     const [rewindSubtitle, setRewindSubtitle] = useState<SubtitleModel>();
     const [sources, setSources] = useState(() => new MediaSources());
-    const [tabSubtitleFileNames, setTabSubtitleFileNames] = useState<string[]>();
-    const { firstSubtitleSourceFiles } = sources;
-    const subtitleFileNames = tabSubtitleFileNames ?? sources.subtitleFileNames;
+    const { firstSubtitleSourceFiles, subtitleFileNames } = sources;
     useEffect(() => {
         if (!sources.videoFile) {
             return;
@@ -801,7 +798,7 @@ function App({
             setSources((previous) => {
                 revokeBlobUrl(videoFileUrl);
 
-                return new MediaSources(previous.subtitleTracks);
+                return new MediaSources(previous.subtitleSource);
             });
             setVideoFullscreen(false);
         },
@@ -1027,78 +1024,68 @@ function App({
         [handleError]
     );
 
-    const handleFiles = useCallback(
-        (files: MediaSourceFile[]): boolean => {
-            setTabSubtitleFileNames(undefined);
-            try {
-                const mediaSources = MediaSources.fromFiles(files);
-                let videoFile = mediaSources.videoFile;
-                const { subtitleSourceFiles } = mediaSources;
+    const handleSources = useCallback(
+        (mediaSources: MediaSources) => {
+            const remoteSubtitles = mediaSources.subtitleSource.kind === 'video';
+            if (mediaSources.videoFile || mediaSources.subtitleFileNames.length > 0) {
+                setJumpToSubtitle(undefined);
+            }
 
-                if (videoFile || subtitleSourceFiles.length > 0) {
-                    setJumpToSubtitle(undefined);
+            setSources((previous) => {
+                let videoFile = mediaSources.videoFile;
+                let videoFileUrl: string | undefined;
+
+                if (videoFile) {
+                    if (previous.videoFileUrl) revokeBlobUrl(previous.videoFileUrl);
+                    videoFileUrl = createBlobUrl(videoFile.file);
+                    setTab(undefined);
+                } else if (!remoteSubtitles) {
+                    videoFile = previous.videoFile;
+                    videoFileUrl = previous.videoFileUrl;
                 }
 
-                setSources((previous) => {
-                    let videoFileUrl: string | undefined = undefined;
+                // A video-only selection retains file-backed subtitles; other selections replace them.
+                const sources = new MediaSources(
+                    mediaSources.videoFile &&
+                    mediaSources.subtitleSourceFiles.length === 0 &&
+                    previous.subtitleSource.kind === 'files'
+                        ? previous.subtitleSource
+                        : mediaSources.subtitleSource,
+                    videoFile,
+                    videoFileUrl
+                );
 
-                    if (videoFile) {
-                        if (previous.videoFileUrl) {
-                            revokeBlobUrl(previous.videoFileUrl);
-                        }
+                const previousLoadingSources = previous.allSourceFiles;
+                const loadingSources = sources.allSourceFiles.filter(
+                    (source) => !previousLoadingSources.some((previousSource) => source.file === previousSource.file)
+                );
+                setLoadingSources(loadingSources);
 
-                        if (videoFile) {
-                            videoFileUrl = createBlobUrl(videoFile.file);
-                        }
-
-                        setTab(undefined);
-                    } else {
-                        videoFile = previous.videoFile;
-                        videoFileUrl = previous.videoFileUrl;
-                    }
-
-                    // An empty selection clears subtitles; a video-only selection retains them.
-                    const sources = new MediaSources(
-                        files.length === 0 || mediaSources.subtitleTracks.length > 0
-                            ? mediaSources.subtitleTracks
-                            : previous.subtitleTracks,
-                        videoFile,
-                        videoFileUrl
-                    );
-
-                    const previousLoadingSources = previous.allSourceFiles;
-                    const loadingSources = sources.allSourceFiles.filter((source) => {
-                        for (const previousLoadingSource of previousLoadingSources) {
-                            if (source.file === previousLoadingSource.file) {
-                                return false;
-                            }
-                        }
-
-                        return true;
-                    });
-                    setLoadingSources(loadingSources);
-
-                    void retainSourcesInFileSession({
-                        subtitleTrackIds: sources.subtitleTracks.map(({ fileParts }) => fileParts.map(({ id }) => id)),
-                        videoId: sources.videoFile?.id,
-                    });
-
-                    return sources;
+                void retainSourcesInFileSession({
+                    subtitleTrackIds: sources.subtitleTracks.map(({ fileParts }) => fileParts.map(({ id }) => id)),
+                    videoId: sources.videoFile?.id,
                 });
 
-                if (subtitleSourceFiles.length > 0) {
-                    const firstFilePart = subtitleSourceFiles[0];
-                    const subtitleFileName = firstFilePart.file.name;
-                    setFileName(subtitleFileName.substring(0, subtitleFileName.lastIndexOf('.')));
-                }
+                return sources;
+            });
 
+            const subtitleFileName = mediaSources.subtitleFileNames.find((name) => name);
+            if (remoteSubtitles || subtitleFileName) setFileName(subtitleFileName?.replace(fileExtensionPattern, ''));
+        },
+        [retainSourcesInFileSession]
+    );
+
+    const handleFiles = useCallback(
+        (files: MediaSourceFile[]): boolean => {
+            try {
+                handleSources(MediaSources.fromFiles(files));
                 return true;
             } catch (e) {
                 handleError(e);
                 return false;
             }
         },
-        [handleError, retainSourcesInFileSession]
+        [handleError, handleSources]
     );
 
     const handleManualFiles = useCallback(
@@ -1110,18 +1097,6 @@ function App({
             return true;
         },
         [handleFiles, openSubtitleTrackSelectorWithFiles]
-    );
-
-    const attachToVideoSubtitles = useCallback(
-        (video: VideoTabModel, names: string[]) => {
-            if (sources.videoFileUrl) handleUnloadVideo(sources.videoFileUrl);
-            handleFiles([]);
-            setSources(new MediaSources());
-            setTabSubtitleFileNames(names);
-            setFileName(names.find((name) => name)?.replace(fileExtensionPattern, ''));
-            setTab((previous) => (previous?.id === video.id && previous.src === video.src ? previous : video));
-        },
-        [sources.videoFileUrl, handleUnloadVideo, handleFiles]
     );
 
     const persistFileSessionHandles = useCallback(
@@ -1310,31 +1285,14 @@ function App({
                 }
 
                 const tab = tabs[0];
-                const subtitleSource =
-                    message.data.command === 'syncv2' ? (message.data as PlayerSyncMessage).subtitleSource : undefined;
-                if (subtitleSource) {
-                    attachToVideoSubtitles(tab, subtitleSourceNames(subtitleSource.tracks));
-                    return;
-                }
-                let subtitleSourceFiles: MediaSourceFile[];
-
-                if (message.data.command === 'sync') {
-                    const syncMessage = message.data as LegacyPlayerSyncMessage;
-                    subtitleSourceFiles = decodeSubtitleSourceFiles([syncMessage.subtitles]);
-                } else if (message.data.command === 'syncv2') {
-                    const syncMessage = message.data as PlayerSyncMessage;
-                    subtitleSourceFiles = decodeSubtitleSourceFiles(syncMessage.subtitles, syncMessage.flatten);
-                } else {
-                    asbError('app/messages', 'Unknown message ' + message.data.command);
-                    return;
-                }
+                const mediaSources = MediaSources.fromSync(message.data as LegacyPlayerSyncMessage | PlayerSyncMessage);
 
                 if (sources.videoFileUrl) {
                     handleUnloadVideo(sources.videoFileUrl);
                 }
 
-                handleFiles(subtitleSourceFiles);
-                setTab(tab);
+                handleSources(mediaSources);
+                setTab((previous) => (previous?.id === tab.id && previous.src === tab.src ? previous : tab));
             } else if (message.data.command === 'edit-keyboard-shortcuts') {
                 setSettingsDialogOpen(true);
                 setSettingsDialogScrollToId('keyboard-shortcuts');
@@ -1377,8 +1335,7 @@ function App({
         subtitleFileNames,
         statisticsOverlayOpen,
         tab,
-        handleFiles,
-        attachToVideoSubtitles,
+        handleSources,
         handleAnki,
         handleCloseStatisticsOverlay,
         handleUnloadVideo,
@@ -1559,7 +1516,13 @@ function App({
                     const { subtitles, subtitleFileNames } = response;
 
                     if (subtitleFileNames.length > 0) {
-                        attachToVideoSubtitles(videoElement, subtitleFileNames);
+                        if (sources.videoFileUrl) handleUnloadVideo(sources.videoFileUrl);
+                        handleSources(new MediaSources({ kind: 'video', names: subtitleFileNames }));
+                        setTab((previous) =>
+                            previous?.id === videoElement.id && previous.src === videoElement.src
+                                ? previous
+                                : videoElement
+                        );
                         const length = subtitles.length > 0 ? subtitles[subtitles.length - 1].end : 0;
                         setSubtitles(
                             subtitles.map((s, i) => ({
@@ -1575,7 +1538,7 @@ function App({
                 extension.loadSubtitles(tabId, src);
             }
         },
-        [extension, attachToVideoSubtitles]
+        [extension, sources.videoFileUrl, handleUnloadVideo, handleSources]
     );
 
     const handleDownloadSubtitleFilesAsSrt = useCallback(async () => {
@@ -2127,7 +2090,7 @@ function App({
                                     onLoadSubtitles={openSubtitleTrackSelector}
                                     tab={tab}
                                     availableTabs={availableTabs ?? []}
-                                    sources={tabSubtitleFileNames ? undefined : sources}
+                                    sources={sources}
                                     jumpToSubtitle={jumpToSubtitle}
                                     onJumpToSubtitleHandled={handleJumpToSubtitleHandled}
                                     rewindSubtitle={rewindSubtitle}
