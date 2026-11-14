@@ -77,7 +77,7 @@ export type SubtitleSourceUpdate =
  * The player aborts the signal on replacement or teardown; the producer owns stopping its I/O.
  */
 export type SubtitleSourceProducer = (
-    update: (update: SubtitleSourceUpdate) => void,
+    publishUpdate: (update: SubtitleSourceUpdate) => void,
     signal: AbortSignal
 ) => Promise<void>;
 
@@ -283,7 +283,7 @@ export class SubtitleStream {
             this.tracks = next.tracks;
             return true;
         }
-        if (!Number.isSafeInteger(update.track) || update.track < 0 || update.track > 2 || !update.loadId) {
+        if (!Number.isSafeInteger(update.track) || update.track < 0 || !update.loadId) {
             throw new Error('Invalid subtitle source');
         }
         if (update.type === 'start') {
