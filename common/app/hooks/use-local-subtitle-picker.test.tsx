@@ -153,19 +153,29 @@ it('opens a video-only import after supported embedded tracks are discovered', a
     expect(output().dataset.open).toBe('true');
 });
 
-it.each(['S_HDMV/PGS', 'S_VOBSUB', undefined])(
-    'automatically opens only for supported embedded tracks (%s)',
+it.each(['S_HDMV/PGS', 'S_VOBSUB', 'S_DVBSUB'])(
+    'automatically opens and enables embedded bitmap tracks (%s)',
     async (codec) => {
-        await render({ video: video('episode', codec === undefined ? '' : codec), files: [] });
+        await render({ video: video('episode', codec), files: [] });
+        await click('import');
+        await finishRead(0);
+        expect(output().dataset.open).toBe('true');
+        const lastChoice = container.querySelector('li:last-child')!;
+        expect(lastChoice.getAttribute('data-disabled')).toBeNull();
+    }
+);
+
+it.each(['S_TEXT/UNKNOWN', ''])(
+    'does not automatically open for unsupported or absent embedded subtitles (%s)',
+    async (codec) => {
+        await render({ video: video('episode', codec), files: [] });
         await click('import');
         await finishRead(0);
         expect(output().dataset.open).toBe('false');
         if (codec) {
             await click('open');
-            const lastChoice = container.querySelector('li:last-child')!;
-            expect(lastChoice.textContent).toBe(`English · ${codec === 'S_HDMV/PGS' ? 'PGS' : 'VOBSUB'} · Track 1`);
-            expect(lastChoice.getAttribute('data-disabled')).toBe(
-                `Unsupported ${codec === 'S_HDMV/PGS' ? 'PGS' : 'VOBSUB'}`
+            expect(container.querySelector('li:last-child')?.getAttribute('data-disabled')).toBe(
+                'Unsupported S_TEXT/UNKNOWN'
             );
         }
     }

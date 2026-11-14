@@ -95,7 +95,7 @@ export async function restoreSessionFiles(
             continue;
         }
         const cached = files.get(id);
-        if (descriptor.format === 'srt' && cached) {
+        if (cached) {
             files.set(id, { ...cached, embedded: descriptor });
         } else {
             files.delete(id);

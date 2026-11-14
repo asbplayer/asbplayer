@@ -29,6 +29,7 @@ const handlerNameOffset = handlerTypeEndOffset + handlerReservedBytes;
 
 // AudioSampleEntry payload layout, excluding the box header.
 const audioSampleEntryHeaderBytes = 28;
+const genericSampleEntryHeaderBytes = 8;
 const soundVersionOffset = 8;
 const soundVersionBytes = 2;
 const soundVersionExtensionBytes = [0, 16, 36]; // ISO version 0, then QuickTime versions 1 and 2.
@@ -54,6 +55,7 @@ const decoderConfigHeaderBytes = 13;
 const objectTypeAc3 = 0xa5;
 const objectTypeEac3 = 0xa6;
 const objectTypeDts = 0xa9;
+const objectTypeDvdSubtitle = 0xe0;
 const audioFormatsByObjectType: Record<number, string> = {
     [objectTypeAc3]: 'ac-3',
     [objectTypeEac3]: 'ec-3',
@@ -128,16 +130,11 @@ const readDescriptor = async (reader: ByteReader, offset: number, limit: number)
     return;
 };
 
-/** mp4a is a generic MPEG-4 audio entry; its descriptor can identify DTS or Dolby audio. */
-const mp4aFormat = async (reader: ByteReader, entry: Box) => {
-    if (entry.dataOffset + audioSampleEntryHeaderBytes > entry.end) return;
-    const version = (await reader.unsignedInt(entry.dataOffset + soundVersionOffset, soundVersionBytes))!;
-    const extensionBytes = soundVersionExtensionBytes[version];
-    if (extensionBytes === undefined) return;
-    const children = entry.dataOffset + audioSampleEntryHeaderBytes + extensionBytes;
-    let esds = await findBox(reader, 'esds', children, entry.end);
+/** Read the MPEG-4 object type shared by generic audio and subtitle sample entries. */
+const mpeg4ObjectType = async (reader: ByteReader, children: number, limit: number) => {
+    let esds = await findBox(reader, 'esds', children, limit);
     if (esds === undefined) {
-        const wave = await findBox(reader, 'wave', children, entry.end);
+        const wave = await findBox(reader, 'wave', children, limit);
         if (wave !== undefined) esds = await findBox(reader, 'esds', wave.dataOffset, wave.end);
     }
     if (esds === undefined) return;
@@ -155,8 +152,21 @@ const mp4aFormat = async (reader: ByteReader, entry: Box) => {
     if (decoder?.tag !== decoderConfigDescriptorTag || decoder.end - decoder.dataOffset < decoderConfigHeaderBytes) {
         return;
     }
-    const objectType = (await reader.unsignedInt(decoder.dataOffset, 1))!;
-    return audioFormatsByObjectType[objectType];
+    return reader.unsignedInt(decoder.dataOffset, 1);
+};
+
+/** mp4a is a generic MPEG-4 audio entry; its descriptor can identify DTS or Dolby audio. */
+const mp4aFormat = async (reader: ByteReader, entry: Box) => {
+    if (entry.dataOffset + audioSampleEntryHeaderBytes > entry.end) return;
+    const version = (await reader.unsignedInt(entry.dataOffset + soundVersionOffset, soundVersionBytes))!;
+    const extensionBytes = soundVersionExtensionBytes[version];
+    if (extensionBytes === undefined) return;
+    const objectType = await mpeg4ObjectType(
+        reader,
+        entry.dataOffset + audioSampleEntryHeaderBytes + extensionBytes,
+        entry.end
+    );
+    return objectType === undefined ? undefined : audioFormatsByObjectType[objectType];
 };
 
 const sampleEntryFormat = async (reader: ByteReader, mdia: Box) => {
@@ -171,6 +181,10 @@ const sampleEntryFormat = async (reader: ByteReader, mdia: Box) => {
         stsd.end
     ); // FullBox version/flags, then entry_count, then the first sample entry.
     if (entry === undefined) return;
+    if (entry.type === 'mp4s' && entry.dataOffset + genericSampleEntryHeaderBytes <= entry.end) {
+        const objectType = await mpeg4ObjectType(reader, entry.dataOffset + genericSampleEntryHeaderBytes, entry.end);
+        if (objectType === objectTypeDvdSubtitle) return 'dvd_subtitle';
+    }
     return entry.type === 'mp4a' ? ((await mp4aFormat(reader, entry)) ?? entry.type) : entry.type;
 };
 

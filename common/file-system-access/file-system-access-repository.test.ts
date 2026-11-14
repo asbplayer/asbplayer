@@ -16,6 +16,7 @@ import {
     restoreSessionFiles,
 } from '@project/common/file-system-access/file-system-access';
 import { IndexedDBFileSessionRepository } from '@project/common/file-system-access/file-system-access-repository';
+import { ffmpegSubtitleFormats } from '@project/ffmpeg/protocol';
 
 const unexpectedPreparation = async () => {
     throw new Error('Unexpected embedded subtitle preparation');
@@ -568,6 +569,33 @@ describe('embedded subtitle sessions', () => {
             expect(saved.cachedSubtitleFiles).toHaveLength(kind === 'cached' ? 1 : 0);
         }
     );
+
+    it('persists and restores completed bitmap files and their format without requesting extraction', async () => {
+        const bitmapDescriptor = {
+            ...descriptor,
+            codec: 'hdmv_pgs_subtitle',
+            format: ffmpegSubtitleFormats.image.extension,
+        };
+        const bitmap = {
+            ...embedded,
+            embedded: bitmapDescriptor,
+            file: new File(['completed images'], 'embedded.asbimg', {
+                type: ffmpegSubtitleFormats.image.mimeType,
+            }),
+        };
+        const repository = new IndexedDBFileSessionRepository();
+        await repository.merge({ videoHandle: record().videoHandle, subtitleHandles: [] });
+        await repository.setCachedSubtitleFiles([bitmap], {
+            subtitleTrackIds: [[id]],
+            embeddedSubtitles: { [id]: bitmapDescriptor },
+        });
+        const saved = (await repository.fetch())!;
+        const restored = await restoreSessionFiles(saved, [video], unexpectedPreparation);
+        expect(restored.missingEmbeddedSubtitles).toEqual([]);
+        expect(restored.files[1].embedded).toEqual(bitmapDescriptor);
+        expect(restored.files[1].file.name).toBe('embedded.asbimg');
+        expect(MediaSources.fromFiles(restored.files).subtitleSourceFiles[0].file.size).toBe(bitmap.file.size);
+    });
 
     it.each(['application/x-subrip', 'text/plain', ''])(
         'restores mixed sources and embedded provenance independently of MIME type %s',

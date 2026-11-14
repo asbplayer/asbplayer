@@ -184,7 +184,6 @@ export class CachingElementOverlay implements ElementOverlay {
 
         const container = this._nonFullscreenContainerElement();
         this._setChildren(container, contentElements);
-        this._applyResponsiveContentStyles(container, this.targetElement.getBoundingClientRect().width);
     }
 
     private _displayFullscreenContentElementsWithHtml(htmls: KeyedHtml[]) {
@@ -209,7 +208,6 @@ export class CachingElementOverlay implements ElementOverlay {
 
         const container = this._fullscreenContainerElement();
         this._setChildren(container, contentElements);
-        this._applyResponsiveContentStyles(container, this.targetElement.getBoundingClientRect().width);
     }
 
     private _nonFullscreenContainerElement() {
@@ -537,7 +535,7 @@ export class CachingElementOverlay implements ElementOverlay {
         }
 
         container.style.left = left + 'px';
-        this._applyResponsiveContentStyles(container, rect.width);
+        container.style.setProperty('--asb-video-width', `${rect.width}px`);
 
         if (this.contentWidth === -1) {
             container.style.maxWidth = rect.width + 'px';
@@ -565,13 +563,6 @@ export class CachingElementOverlay implements ElementOverlay {
         };
         window.addEventListener('focus', this.documentFocusChangeListener, true);
         window.addEventListener('blur', this.documentFocusChangeListener, true);
-    }
-
-    private _applyResponsiveContentStyles(container: HTMLElement, videoWidth: number) {
-        for (const element of container.querySelectorAll<HTMLElement>('[data-asb-video-width-ratio]')) {
-            const ratio = Number(element.dataset.asbVideoWidthRatio);
-            if (Number.isFinite(ratio)) element.style.width = `${videoWidth * ratio}px`;
-        }
     }
 
     private _clickable(rootNode: Document | ShadowRoot, container: HTMLElement, element: HTMLElement): boolean {

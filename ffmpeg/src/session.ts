@@ -1,6 +1,6 @@
 import type { PreparedFfmpegAssets } from '@project/ffmpeg/assets';
 import { ffmpegMetadata } from '@project/ffmpeg/metadata';
-import { isWorkerReply } from '@project/ffmpeg/protocol';
+import { isWorkerReply, mimeTypeForSubtitleFormat } from '@project/ffmpeg/protocol';
 import type {
     ExtractedSubtitle,
     FfmpegErrorCode,
@@ -279,14 +279,11 @@ export const createFfmpegSession = ({
             if (
                 !Array.isArray(result) ||
                 result.length !== indexes.length ||
-                result.some(
-                    (track) =>
-                        typeof track !== 'object' ||
-                        track === null ||
-                        !indexes.includes(track.trackIndex) ||
-                        track.extension !== 'srt' ||
-                        track.mimeType !== 'application/x-subrip'
-                ) ||
+                result.some((track) => {
+                    if (typeof track !== 'object' || track === null || !indexes.includes(track.trackIndex)) return true;
+                    const expectedMimeType = mimeTypeForSubtitleFormat(track.extension);
+                    return expectedMimeType === undefined || track.mimeType !== expectedMimeType;
+                }) ||
                 new Set(result.map((track) => track.trackIndex)).size !== indexes.length
             ) {
                 throw new FfmpegError('protocol', 'Incomplete subtitle extraction');

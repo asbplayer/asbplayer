@@ -24,6 +24,7 @@ import {
     hex2ToPercent,
     hexToRgb,
     humanReadableTime,
+    imageSubtitleHtml,
     mapSubtitlesForDisplay,
     inBatches,
     isKanaOnly,
@@ -90,6 +91,33 @@ describe('removeSubtitleHtml', () => {
 
     it('removes ruby readings and fallback text while preserving the base text', () => {
         expect(removeSubtitleHtml('<ruby><b>漢</b><rp>(</rp><rt>かん</rt><rp>)</rp></ruby><i>字')).toBe('漢字');
+    });
+});
+
+describe('imageSubtitleHtml', () => {
+    const image = {
+        dataUrl: 'data:image/png;base64,iVBORw0KGgo=',
+        screen: { width: 1920, height: 1080 },
+        image: { width: 300, height: 50 },
+    };
+
+    it.each([
+        [1, '0.15625'],
+        [2, '0.3125'],
+    ])('centers image subtitles in normal subtitle flow at scale %s', (scale, ratio) => {
+        const container = document.createElement('div');
+        container.innerHTML = imageSubtitleHtml(image, {
+            scale,
+            track: 1,
+            className: 'blurred',
+        });
+        const element = container.firstElementChild as HTMLElement;
+        expect(element.getAttribute('style')).toContain(`width:calc(var(--asb-video-width) * ${ratio})`);
+        expect(element.style.margin).toBe('auto');
+        expect(element.style.position).toBe('');
+        expect(element.dataset.track).toBe('1');
+        expect(element.className).toBe('blurred');
+        expect(element.querySelector('img')?.src).toBe(image.dataUrl);
     });
 });
 

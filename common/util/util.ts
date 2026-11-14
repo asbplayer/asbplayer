@@ -57,6 +57,25 @@ let subtitleHtmlHelperElement: HTMLDivElement | undefined;
 const subtitleGraphemeSegmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
 const invisibleGraphemePattern = /^[\s\p{Default_Ignorable_Code_Point}]*$/u;
 
+/** The playback container supplies --asb-video-width so cached image DOM resizes with the video. */
+export const imageSubtitleHtml = (
+    image: SubtitleTextImage,
+    {
+        scale,
+        track,
+        className,
+    }: {
+        scale: number;
+        track: number;
+        className: string;
+    }
+) => {
+    const ratio = (scale * image.image.width) / image.screen.width;
+    return `<div data-track="${track}" class="${className}" style="width:calc(var(--asb-video-width) * ${ratio});max-width:100%;margin:auto;">
+<img style="width:100%;display:block;" alt="subtitle" src="${image.dataUrl}" />
+</div>`;
+};
+
 /** Removes presentation markup, ruby readings, and ruby fallback text from subtitle text. */
 export const removeSubtitleHtml = (text: string): string => {
     subtitleHtmlHelperElement ??= document.createElement('div');
