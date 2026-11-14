@@ -26,6 +26,7 @@ import { openExtensionShortcuts } from '@/services/extension-shortcuts';
 import type { DictionaryProvider } from '@project/common/dictionary-db';
 import type { LogProvider } from '@project/common/util/log';
 import { useLocationHash } from '@project/common/hooks/use-location-hash';
+import { createForegroundYomitanFetcher } from '@/services/extension-yomitan-fetcher';
 
 const useStyles = makeStyles<Theme>((theme) => ({
     root: {
@@ -100,6 +101,7 @@ const SettingsPage = ({
     const { supportedLanguages } = useSupportedLanguages();
 
     const { hash: scrollToId } = useLocationHash();
+    const yomitanFetcher = useMemo(() => createForegroundYomitanFetcher('asbplayer-settings'), []);
 
     if (!settings || !anki || !commands || !i18nInitialized) {
         return null;
@@ -112,6 +114,7 @@ const SettingsPage = ({
                 <DialogContent className={classes.content}>
                     <SettingsForm
                         anki={anki}
+                        yomitanFetcher={yomitanFetcher}
                         extensionInstalled
                         extensionVersion={browser.runtime.getManifest().version}
                         extensionSupportsAppIntegration
@@ -136,6 +139,7 @@ const SettingsPage = ({
                         extensionSupportsDictionaryTokenStatusDisplayAlpha
                         supportsDictionaryPlayback
                         extensionSupportsDictionaryYomitanMecab
+                        extensionSupportsYomitanExtensionMessaging
                         extensionSupportsSubtitleTrackSelectorInWebApp
                         extensionSupportsSubtitleListCustomization
                         extensionSupportsUpdateLastWithSameSubtitleText

@@ -27,7 +27,8 @@ import type {
     DictionaryRecordsResult,
 } from '@project/common/dictionary-db';
 import { DictionaryDB } from '@project/common/dictionary-db';
-import type { ApplyStrategy, SettingsProvider } from '@project/common/settings';
+import type { YomitanFetcher } from '@project/common/yomitan';
+import type { ApplyStrategy, SettingsProvider, YomitanFetcherSettings } from '@project/common/settings';
 
 type ExtensionDictionaryStatisticsCommand<T extends Message> =
     | ExtensionToAsbPlayerCommand<T>
@@ -56,7 +57,10 @@ export class LocalDictionaryStorage implements DictionaryStorage {
     private dictionaryStatisticsMineSentencesCallbacks: ((mediaId: string, indexes: number[]) => void)[];
     private dictionaryStatisticsMineSentencesListener?: (event: MessageEvent) => void;
 
-    constructor(settingsProvider: SettingsProvider) {
+    constructor(
+        settingsProvider: SettingsProvider,
+        private readonly yomitanFetcherFactory: (settings: YomitanFetcherSettings) => YomitanFetcher
+    ) {
         this.dictionaryDB = new DictionaryDB(settingsProvider);
         this.buildAnkiCacheStateChangeCallbacks = [];
         this.buildWaniKaniCacheStateChangeCallbacks = [];
@@ -121,23 +125,31 @@ export class LocalDictionaryStorage implements DictionaryStorage {
     }
 
     buildAnkiCache(profile: string | undefined) {
-        return this.dictionaryDB.buildAnkiCache(profile, (state: DictionaryBuildAnkiCacheState) => {
-            const message: ExtensionToAsbPlayerCommand<DictionaryBuildAnkiCacheStateMessage> = {
-                sender: 'asbplayer-extension-to-player',
-                message: { command: 'dictionary-build-anki-cache-state', ...state },
-            };
-            window.parent.postMessage(message);
-        });
+        return this.dictionaryDB.buildAnkiCache(
+            profile,
+            (state: DictionaryBuildAnkiCacheState) => {
+                const message: ExtensionToAsbPlayerCommand<DictionaryBuildAnkiCacheStateMessage> = {
+                    sender: 'asbplayer-extension-to-player',
+                    message: { command: 'dictionary-build-anki-cache-state', ...state },
+                };
+                window.parent.postMessage(message);
+            },
+            this.yomitanFetcherFactory
+        );
     }
 
     buildWaniKaniCache(profile: string | undefined) {
-        return this.dictionaryDB.buildWaniKaniCache(profile, (state: DictionaryBuildWaniKaniCacheState) => {
-            const message: ExtensionToAsbPlayerCommand<DictionaryBuildWaniKaniCacheStateMessage> = {
-                sender: 'asbplayer-extension-to-player',
-                message: { command: 'dictionary-build-wanikani-cache-state', ...state },
-            };
-            window.parent.postMessage(message);
-        });
+        return this.dictionaryDB.buildWaniKaniCache(
+            profile,
+            (state: DictionaryBuildWaniKaniCacheState) => {
+                const message: ExtensionToAsbPlayerCommand<DictionaryBuildWaniKaniCacheStateMessage> = {
+                    sender: 'asbplayer-extension-to-player',
+                    message: { command: 'dictionary-build-wanikani-cache-state', ...state },
+                };
+                window.parent.postMessage(message);
+            },
+            this.yomitanFetcherFactory
+        );
     }
 
     ankiCardWasModified() {

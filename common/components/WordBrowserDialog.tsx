@@ -48,7 +48,7 @@ import type {
     TokenStatusInfo,
 } from '@project/common/dictionary-db';
 import { LOCAL_TOKEN_TRACK } from '@project/common/dictionary-db';
-import type { DictionaryTrack } from '@project/common/settings';
+import type { DictionaryTrack, YomitanFetcherSettings } from '@project/common/settings';
 import {
     ApplyStrategy,
     DictionaryTokenSource,
@@ -61,6 +61,7 @@ import {
 import { asbError } from '@project/common/util/log';
 import { getTokenStatus, normalizedLookupTerms } from '@project/common/util';
 import { Yomitan } from '@project/common/yomitan';
+import type { YomitanFetcher } from '@project/common/yomitan/yomitan-fetcher';
 import Box from '@mui/material/Box';
 
 type SortField = 'token' | 'lemmas' | 'source' | 'status' | 'states' | 'track' | 'cardIds' | 'noteIds' | 'suspended';
@@ -76,6 +77,7 @@ interface Props {
     activeProfile?: string;
     dictionaryTracks: DictionaryTrack[];
     supportsDictionaryWaniKani: boolean;
+    yomitanFetcher: (settings: YomitanFetcherSettings) => YomitanFetcher;
     onClose: () => void;
 }
 
@@ -776,6 +778,7 @@ export default function WordBrowserDialog({
     activeProfile,
     dictionaryTracks,
     supportsDictionaryWaniKani,
+    yomitanFetcher,
     onClose,
 }: Props) {
     const { t } = useTranslation();
@@ -783,8 +786,8 @@ export default function WordBrowserDialog({
     const fullScreen = useMediaQuery(theme.breakpoints.down('md'));
     const defaultDictionaryTrack = dictionaryTracks[0];
     const yomitans = useMemo(
-        () => dictionaryTracks.map((dictionaryTrack) => new Yomitan(dictionaryTrack)),
-        [dictionaryTracks]
+        () => dictionaryTracks.map((dictionaryTrack) => new Yomitan(dictionaryTrack, yomitanFetcher)),
+        [dictionaryTracks, yomitanFetcher]
     );
     const yomitanVersionPromiseRef = useRef<Promise<TrackError[]> | undefined>(undefined);
     const filterableSources = useMemo(

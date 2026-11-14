@@ -9,11 +9,12 @@ import type {
     Progress,
 } from '@project/common';
 import { DictionaryBuildWaniKaniCacheStateErrorCode, DictionaryBuildWaniKaniCacheStateType } from '@project/common';
-import type { AsbplayerSettings } from '@project/common/settings';
+import type { AsbplayerSettings, YomitanFetcherSettings } from '@project/common/settings';
 import { dictionaryStatusCollectionEnabled, DictionaryTokenSource, isWaniKaniSource } from '@project/common/settings';
 import type { WaniKaniAssignment, WaniKaniSpacedRepetitionSystem, WaniKaniSubject } from '@project/common/wanikani';
 import { WaniKani, WaniKaniApiError } from '@project/common/wanikani';
 import { Yomitan } from '@project/common/yomitan';
+import type { YomitanFetcher } from '@project/common/yomitan';
 import { v4 as uuidv4 } from 'uuid';
 import type {
     _DictionaryDatabase,
@@ -91,7 +92,8 @@ export async function buildWaniKaniCachePipeline(
     db: _DictionaryDatabase,
     profile: string,
     settings: AsbplayerSettings,
-    statusUpdates: (state: DictionaryBuildWaniKaniCacheState) => void
+    statusUpdates: (state: DictionaryBuildWaniKaniCacheState) => void,
+    yomitanFetcherFactory: (s: YomitanFetcherSettings) => YomitanFetcher
 ): Promise<void> {
     const modifiedTokensByTrack: ModifiedTokensByTrack = new Map();
     const buildId = uuidv4();
@@ -157,7 +159,7 @@ export async function buildWaniKaniCachePipeline(
                 continue; // Explicitly clear cache for no WaniKani token
             }
 
-            const yomitan = new Yomitan(dt);
+            const yomitan = new Yomitan(dt, yomitanFetcherFactory);
             try {
                 await yomitan.version();
             } catch (e) {

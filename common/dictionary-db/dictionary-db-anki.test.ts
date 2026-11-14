@@ -13,6 +13,7 @@ const mockYomitanInstances: any[] = [];
 const mockYomitanOverrides: any[] = [];
 
 let mockBuildIdCount = 0;
+const mockYomitanFetcherFactory = () => undefined as any;
 jest.mock('uuid', () => ({ v4: () => `test-build-id-${++mockBuildIdCount}` }));
 jest.mock('@project/common/anki', () => ({
     Anki: jest.fn().mockImplementation((settings) => {
@@ -189,17 +190,21 @@ describe('DictionaryDB Anki cache', () => {
         const finished = new Promise<void>((resolve) => {
             finish = resolve;
         });
-        await dictionaryDB.buildAnkiCache(profile, (state) => {
-            statusUpdates(state);
-            if (
-                state.type === DictionaryBuildAnkiCacheStateType.error ||
-                (state.type === DictionaryBuildAnkiCacheStateType.stats &&
-                    state.body !== undefined &&
-                    'orphanedCards' in state.body)
-            ) {
-                finish();
-            }
-        });
+        await dictionaryDB.buildAnkiCache(
+            profile,
+            (state) => {
+                statusUpdates(state);
+                if (
+                    state.type === DictionaryBuildAnkiCacheStateType.error ||
+                    (state.type === DictionaryBuildAnkiCacheStateType.stats &&
+                        state.body !== undefined &&
+                        'orphanedCards' in state.body)
+                ) {
+                    finish();
+                }
+            },
+            mockYomitanFetcherFactory
+        );
         await finished;
         return statusUpdates;
     };
@@ -497,7 +502,7 @@ describe('DictionaryDB Anki cache', () => {
         });
 
         useSettings([makeDictionaryTrack({ dictionaryColorizeSubtitles: true })]);
-        await dictionaryDB.buildAnkiCache(profile, statusUpdates);
+        await dictionaryDB.buildAnkiCache(profile, statusUpdates, mockYomitanFetcherFactory);
 
         expect(consoleError).toHaveBeenCalled();
         expect(statusUpdates).toHaveBeenCalledWith({
@@ -518,7 +523,7 @@ describe('DictionaryDB Anki cache', () => {
         useSettings([makeDictionaryTrack({ dictionaryColorizeSubtitles: true, dictionaryAnkiWordFields: ['Word'] })]);
         const statusUpdates = jest.fn();
 
-        await dictionaryDB.buildAnkiCache(profile, statusUpdates);
+        await dictionaryDB.buildAnkiCache(profile, statusUpdates, mockYomitanFetcherFactory);
 
         expect(statusUpdates).toHaveBeenCalledWith({
             type: DictionaryBuildAnkiCacheStateType.error,
@@ -553,7 +558,7 @@ describe('DictionaryDB Anki cache', () => {
         useSettings([makeDictionaryTrack({ dictionaryColorizeSubtitles: true, dictionaryAnkiWordFields: ['Word'] })]);
         const statusUpdates = jest.fn();
 
-        await dictionaryDB.buildAnkiCache(profile, statusUpdates);
+        await dictionaryDB.buildAnkiCache(profile, statusUpdates, mockYomitanFetcherFactory);
 
         expect(statusUpdates).toHaveBeenCalledWith({
             type: DictionaryBuildAnkiCacheStateType.error,
@@ -582,7 +587,7 @@ describe('DictionaryDB Anki cache', () => {
         useSettings([makeDictionaryTrack({ dictionaryColorizeSubtitles: true, dictionaryAnkiWordFields: ['Word'] })]);
         const statusUpdates = jest.fn();
 
-        await dictionaryDB.buildAnkiCache(profile, statusUpdates);
+        await dictionaryDB.buildAnkiCache(profile, statusUpdates, mockYomitanFetcherFactory);
 
         expect(statusUpdates).toHaveBeenCalledWith({
             type: DictionaryBuildAnkiCacheStateType.error,
@@ -653,7 +658,7 @@ describe('DictionaryDB Anki cache', () => {
         useSettings([makeDictionaryTrack()]);
         const statusUpdates = jest.fn();
 
-        await dictionaryDB.buildAnkiCache(profile, statusUpdates);
+        await dictionaryDB.buildAnkiCache(profile, statusUpdates, mockYomitanFetcherFactory);
 
         const records = await dictionaryDB.getRecords(profile, track);
         expect(records.tokenRecords).toEqual([expect.objectContaining({ token: 'cached', cardIds: [1] })]);
@@ -685,7 +690,7 @@ describe('DictionaryDB Anki cache', () => {
         ]);
         const statusUpdates = jest.fn();
 
-        await dictionaryDB.buildAnkiCache(profile, statusUpdates);
+        await dictionaryDB.buildAnkiCache(profile, statusUpdates, mockYomitanFetcherFactory);
 
         const records = await dictionaryDB.getRecords(profile, track);
         expect(records.tokenRecords).toEqual([]);

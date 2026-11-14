@@ -6,7 +6,14 @@ import { createTheme, ThemeProvider, useTheme } from '@mui/material/styles';
 import Box from '@mui/material/Box';
 import type { Theme } from '@mui/material/styles';
 import type { CardModel } from '@project/common';
-import type { AsbplayerSettings, PageConfig, PageSettings, Profile } from '@project/common/settings';
+import type {
+    AsbplayerSettings,
+    PageConfig,
+    PageSettings,
+    Profile,
+    YomitanFetcherSettings,
+} from '@project/common/settings';
+import type { YomitanFetcher } from '@project/common/yomitan/yomitan-fetcher';
 import { isMobile } from 'react-device-detect';
 import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
@@ -198,6 +205,8 @@ interface Props {
     extensionSupportsAutoCopyableTrackSetting: boolean;
     extensionOwnsWebSocketClient?: boolean;
     extensionSupportsDictionaryTokenStatusDisplayAlpha: boolean;
+    extensionSupportsYomitanExtensionMessaging: boolean;
+    yomitanFetcher: (settings: YomitanFetcherSettings) => YomitanFetcher;
     extensionSupportsDictionaryYomitanMecab: boolean;
     supportsDictionaryPlayback: boolean;
     extensionSupportsSubtitleTrackSelectorInWebApp: boolean;
@@ -263,6 +272,8 @@ export default function SettingsForm({
     extensionOwnsWebSocketClient,
     extensionSupportsDictionaryTokenStatusDisplayAlpha,
     extensionSupportsDictionaryYomitanMecab,
+    extensionSupportsYomitanExtensionMessaging,
+    yomitanFetcher,
     extensionSupportsUpdateLastWithSameSubtitleText,
     supportsDictionaryPlayback,
     insideApp,
@@ -562,6 +573,8 @@ export default function SettingsForm({
                         supportsDictionaryMatchAcrossScripts={supportsDictionaryMatchAcrossScripts}
                         supportsDictionaryTokenStatusDisplayAlpha={supportsDictionaryTokenStatusDisplayAlpha}
                         supportsDictionaryYomitanMecab={supportsDictionaryYomitanMecab}
+                        extensionSupportsYomitanExtensionMessaging={extensionSupportsYomitanExtensionMessaging}
+                        yomitanFetcher={yomitanFetcher}
                         supportsDictionaryPlayback={supportsDictionaryPlayback}
                         selectedDictionaryTrack={selectedDictionaryTrack}
                         onSelectedDictionaryTrackChanged={setSelectedDictionaryTrack}

@@ -27,7 +27,12 @@ import type {
     PlaybackState,
 } from '@project/common';
 import { PostMineAction } from '@project/common';
-import type { AsbplayerSettings, DictionaryTrack, TokenAnnotationConfig } from '@project/common/settings';
+import type {
+    AsbplayerSettings,
+    DictionaryTrack,
+    TokenAnnotationConfig,
+    YomitanFetcherSettings,
+} from '@project/common/settings';
 import {
     effectiveSubtitleListCustomization,
     SubtitleListTimestampDisplay,
@@ -73,6 +78,7 @@ import { useSubtitleFind } from '@project/common/app/hooks/use-subtitle-find';
 import { isMobile } from 'react-device-detect';
 import type { ExtensionMessage } from '@project/common/app/services/chrome-extension';
 import type ChromeExtension from '@project/common/app/services/chrome-extension';
+import type { YomitanFetcher } from '@project/common/yomitan/yomitan-fetcher';
 import type { MineSubtitleCommand, ExternalCommandDispatcher } from '@project/common/external-commands';
 import { localMediaId } from '@project/common/external-commands/media';
 import { clampSubtitlePlayerWidth } from '@project/common/app/components/video-subtitle-split';
@@ -664,6 +670,7 @@ interface SubtitlePlayerProps {
     ref?: Ref<SubtitlePlayerHandle>;
     clock: Clock;
     extension: ChromeExtension;
+    yomitanFetcher: (settings: YomitanFetcherSettings) => YomitanFetcher;
     onSeek: (progress: number, shouldPlay: boolean) => void;
     onCopy: (
         subtitle: SubtitleModel,
@@ -709,6 +716,7 @@ export default function SubtitlePlayer({
     ref,
     clock,
     extension,
+    yomitanFetcher,
     onSeek,
     onCopy,
     onOffsetChange,
@@ -861,6 +869,7 @@ export default function SubtitlePlayer({
     const find = useSubtitleFind({
         subtitles,
         dictionaryTracks: playbackSettings.dictionaryTracks,
+        yomitanFetcher,
         disableKeyEventsRef,
         hiddenRef,
         lastScrollTimestampRef,
