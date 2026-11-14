@@ -29,7 +29,7 @@ import { useLocationHash } from '@project/common/hooks/use-location-hash';
 
 const useStyles = makeStyles<Theme>((theme) => ({
     root: {
-        '& .MuiPaper-root': {
+        '& .MuiDialog-paper': {
             height: '100dvh',
         },
     },
