@@ -175,7 +175,7 @@ interface PlayerProps {
     statisticsOverlay?: React.ReactNode;
     onError: (error: any) => void;
     onUnloadVideo: (url: string) => void;
-    onCopy: (card: CardModel, postMineAction: PostMineAction | undefined, id: string | undefined) => void;
+    onCopy: (card: CardModel, postMineAction: PostMineAction | undefined) => void;
     onLoaded: (file: File[]) => void;
     onTabSelected: (tab: VideoTabModel) => void;
     onAnkiDialogRequest: () => void;
@@ -1110,9 +1110,9 @@ function PlayerComponent(
                                 audio,
                                 image,
                                 url,
+                                id,
                             },
-                            postMineAction,
-                            id
+                            postMineAction
                         );
                     } catch (error) {
                         onError(error);
@@ -1253,14 +1253,15 @@ function PlayerComponent(
             surroundingSubtitles: SubtitleModel[],
             postMineAction: PostMineAction,
             forceUseGivenSubtitle?: boolean,
-            cardTextFieldValues?: CardTextFieldValues
+            cardTextFieldValues?: CardTextFieldValues,
+            cardId?: string
         ) => {
             if (videoFileUrl) {
                 if (forceUseGivenSubtitle) {
-                    channel?.copy(postMineAction, subtitle, surroundingSubtitles, cardTextFieldValues);
+                    channel?.copy(postMineAction, subtitle, surroundingSubtitles, cardTextFieldValues, cardId);
                 } else {
                     // Let VideoPlayer do the copying to ensure copied subtitle is consistent with the VideoPlayer clock
-                    channel?.copy(postMineAction);
+                    channel?.copy(postMineAction, undefined, undefined, undefined, cardId);
                 }
             } else {
                 try {
@@ -1280,6 +1281,7 @@ function PlayerComponent(
                     }
                     onCopy(
                         {
+                            id: cardId,
                             subtitle,
                             surroundingSubtitles,
                             subtitleFileName: subtitleFileNames[subtitle.track] ?? '',
@@ -1299,8 +1301,7 @@ function PlayerComponent(
                                       },
                             ...cardTextFieldValues,
                         },
-                        postMineAction,
-                        undefined
+                        postMineAction
                     );
                 } catch (error) {
                     onError(error);

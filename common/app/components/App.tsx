@@ -358,8 +358,8 @@ function App({
             return new ExtensionBridgedCopyHistoryRepository(extension);
         }
 
-        return new IndexedDBCopyHistoryRepository(settings.miningHistoryStorageLimit);
-    }, [extension, settings.miningHistoryStorageLimit]);
+        return new IndexedDBCopyHistoryRepository(settingsProvider);
+    }, [extension, settingsProvider]);
     const {
         copyHistoryItems,
         pendingCopyHistoryItems,
@@ -579,7 +579,7 @@ function App({
     const settingsRef = useRef(settings);
     settingsRef.current = settings;
     const handleCopy = useCallback(
-        async (card: CardModel, postMineAction?: PostMineAction, id?: string) => {
+        async (card: CardModel, postMineAction?: PostMineAction) => {
             if (card.subtitle && settingsRef.current.copyToClipboardOnMine) {
                 void navigator.clipboard.writeText(card.subtitle.text);
             }
@@ -588,7 +588,7 @@ function App({
                 ...card,
                 subtitleFileName: card.subtitleFileName || card.file?.name || '',
                 timestamp: Date.now(),
-                id: id || uuidv4(),
+                id: card.id || uuidv4(),
             };
 
             retainCardAudioSource(newCard);
@@ -1242,14 +1242,17 @@ function App({
     useEffect(
         () =>
             externalCommands.setHandlers(
-                appExternalCommandHandlers({
-                    appId: extension.id,
-                    subtitles,
-                    subtitleFileNames,
-                    isActive: () => document.visibilityState === 'visible',
-                })
+                appExternalCommandHandlers(
+                    {
+                        appId: extension.id,
+                        subtitles,
+                        subtitleFileNames,
+                        isActive: () => document.visibilityState === 'visible',
+                    },
+                    copyHistoryRepository
+                )
             ),
-        [externalCommands, extension, subtitles, subtitleFileNames]
+        [externalCommands, extension, subtitles, subtitleFileNames, copyHistoryRepository]
     );
 
     useEffect(() => {

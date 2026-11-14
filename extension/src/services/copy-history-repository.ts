@@ -2,14 +2,15 @@ import type { CopyHistoryItem } from '@project/common';
 import { IndexedDBCopyHistoryRepository } from '@project/common/copy-history';
 import type TabRegistry from '@project/extension/src/services/tab-registry';
 import { publishCopyHistoryChanged } from '@project/extension/src/services/copy-history-changed';
+import type { SettingsProvider } from '@project/common/settings';
 
 /** Notify website instances after every extension mutation, including saves that prune old items. */
 export class ExtensionCopyHistoryRepository extends IndexedDBCopyHistoryRepository {
     constructor(
-        limit: number,
+        settingsProvider: SettingsProvider,
         private readonly tabRegistry: Pick<TabRegistry, 'publishCommandToAsbplayers'>
     ) {
-        super(limit);
+        super(settingsProvider);
     }
 
     override async save(item: CopyHistoryItem): Promise<void> {

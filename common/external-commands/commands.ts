@@ -1,4 +1,4 @@
-import type { SubtitleTrack } from '@project/common/src/model';
+import type { AudioModel, MediaFragmentModel, SubtitleTrack } from '@project/common/src/model';
 
 export type { SubtitleTrack };
 
@@ -10,6 +10,7 @@ export interface MineSubtitleCommand {
         postMineAction: number;
         mediaId?: string;
         noteId?: number;
+        asbplayerCardId?: string;
     };
 }
 
@@ -37,6 +38,33 @@ export interface LoadSubtitlesCommand {
         files?: SubtitleFile[];
         mediaId?: string;
     };
+}
+
+export interface GetMiningHistoryCommand {
+    command: 'get-mining-history';
+    messageId: string;
+    body: {
+        filter?: {
+            cardIds?: string[];
+        };
+        limit: number;
+    };
+}
+
+export interface GetMiningHistoryResponseBody {
+    cards: Card[];
+}
+
+export interface Card {
+    id: string;
+    subtitle: SubtitleCue;
+    text?: string;
+    word?: string;
+    definition?: string;
+    customFieldValues?: { [fieldName: string]: string };
+    url?: string;
+    audio?: AudioModel;
+    image?: MediaFragmentModel;
 }
 
 export interface SeekTimestampCommand {
@@ -92,6 +120,7 @@ export interface GetSubtitlesResponseBody {
 export type ExternalCommand =
     | MineSubtitleCommand
     | LoadSubtitlesCommand
+    | GetMiningHistoryCommand
     | SeekTimestampCommand
     | GetBoundMediaCommand
     | GetSubtitlesCommand;
@@ -99,6 +128,7 @@ export type ExternalCommand =
 export interface ExternalCommandHandlers {
     onMineSubtitle: (command: MineSubtitleCommand) => Promise<boolean>;
     onLoadSubtitles: (command: LoadSubtitlesCommand) => Promise<void>;
+    onGetMiningHistory: (command: GetMiningHistoryCommand) => Promise<GetMiningHistoryResponseBody>;
     onSeekTimestamp: (command: SeekTimestampCommand) => Promise<void>;
     onGetBoundMedia: () => Promise<BoundMedia[]>;
     onGetSubtitles: (mediaId: string | undefined, trackNumbers: number[] | undefined) => Promise<SubtitleCue[]>;

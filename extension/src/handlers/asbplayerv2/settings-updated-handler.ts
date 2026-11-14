@@ -6,6 +6,7 @@ import type {
     Message,
     SettingsUpdatedMessage,
 } from '@project/common';
+import type { CopyHistoryRepository } from '@project/common/copy-history';
 import type { SettingsProvider } from '@project/common/settings';
 import { primeLocalization } from '@project/extension/src/services/localization-fetcher';
 import type TabRegistry from '@project/extension/src/services/tab-registry';
@@ -14,10 +15,16 @@ import { bindWebSocketClient, unbindWebSocketClient } from '@project/extension/s
 export default class SettingsUpdatedHandler {
     private readonly _tabRegistry: TabRegistry;
     private readonly _settingsProvider: SettingsProvider;
+    private readonly _copyHistoryRepository: CopyHistoryRepository;
 
-    constructor(tabRegistry: TabRegistry, settingsProvider: SettingsProvider) {
+    constructor(
+        tabRegistry: TabRegistry,
+        settingsProvider: SettingsProvider,
+        copyHistoryRepository: CopyHistoryRepository
+    ) {
         this._tabRegistry = tabRegistry;
         this._settingsProvider = settingsProvider;
+        this._copyHistoryRepository = copyHistoryRepository;
     }
 
     get sender() {
@@ -36,7 +43,7 @@ export default class SettingsUpdatedHandler {
                 void primeLocalization(language);
 
                 if (webSocketClientEnabled) {
-                    void bindWebSocketClient(this._settingsProvider, this._tabRegistry);
+                    void bindWebSocketClient(this._settingsProvider, this._tabRegistry, this._copyHistoryRepository);
                 } else {
                     unbindWebSocketClient();
                 }

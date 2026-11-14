@@ -1,8 +1,14 @@
 import type { Command, Message, RequestCopyHistoryMessage, RequestCopyHistoryResponse } from '@project/common';
 import { asbError } from '@project/common/util/log';
-import { IndexedDBCopyHistoryRepository } from '@project/common/copy-history';
+import type { CopyHistoryRepository } from '@project/common/copy-history';
 
 export default class RequestCopyHistoryHandler {
+    private readonly _copyHistoryRepository;
+
+    constructor(copyHistoryRepository: CopyHistoryRepository) {
+        this._copyHistoryRepository = copyHistoryRepository;
+    }
+
     get sender() {
         return 'asbplayerv2';
     }
@@ -13,8 +19,8 @@ export default class RequestCopyHistoryHandler {
 
     handle(command: Command<Message>, sender: Browser.runtime.MessageSender, sendResponse: (r?: any) => void) {
         const message = command.message as RequestCopyHistoryMessage;
-        void new IndexedDBCopyHistoryRepository(message.count)
-            .fetch(message.count)
+        void this._copyHistoryRepository
+            .fetch(message.count, message.cardIds)
             .then((copyHistoryItems) => {
                 const response: RequestCopyHistoryResponse = {
                     copyHistoryItems,
