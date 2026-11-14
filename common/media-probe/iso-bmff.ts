@@ -262,8 +262,3 @@ export const isoBmffTracks = async (reader: ByteReader): Promise<IsoBmffTrack[] 
     for (const track of tracks) track.chapter = track.id !== undefined && chapterIds.has(track.id);
     return tracks;
 };
-
-export const isoBmffAudioSampleFormats = async (reader: ByteReader): Promise<string[] | undefined> =>
-    (await isoBmffTracks(reader))
-        ?.filter((track) => track.handler === 'soun')
-        .flatMap((track) => (track.format ? [track.format] : []));

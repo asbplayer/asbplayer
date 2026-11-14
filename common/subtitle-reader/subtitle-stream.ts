@@ -305,7 +305,8 @@ export const displaySubtitleSnapshot = (
 export class SubtitleStream {
     private tracks = new Map<number, { state: SubtitleSourceState; cues: Map<number, IndexedSubtitleModel> }>();
 
-    replace(subtitles: readonly SubtitleModel[], names: readonly string[]): void {
+    /** A file-load error marks the replacement failed; otherwise all replacement tracks are complete. */
+    replace(subtitles: readonly SubtitleModel[], names: readonly string[], error?: string): void {
         this.tracks.clear();
         const count = subtitles.reduce((count, cue) => Math.max(count, cue.track + 1), names.length);
         for (let track = 0; track < count; track++) {
@@ -315,7 +316,16 @@ export class SubtitleStream {
                 const cueId = cue.source?.loadId === loadId ? cue.source.cueId : cues.size;
                 cues.set(cueId, { ...cue, source: { loadId, cueId }, index: cueId });
             }
-            this.tracks.set(track, { state: { track, loadId, name: names[track] ?? '', status: 'complete' }, cues });
+            this.tracks.set(track, {
+                state: {
+                    track,
+                    loadId,
+                    name: names[track] ?? '',
+                    status: error === undefined ? 'complete' : 'failed',
+                    ...(error === undefined ? {} : { error }),
+                },
+                cues,
+            });
         }
     }
 

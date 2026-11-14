@@ -2523,7 +2523,7 @@ export default function VideoPlayer({
                 clock={clock}
                 length={lengthMs}
                 bufferedMs={convertedAudio.state === 'transcoding' ? (audioSeekableRange?.end ?? 0) : undefined}
-                audioTracks={audioTracks}
+                audioTracks={convertedAudio.required ? undefined : audioTracks}
                 selectedAudioTrack={selectedAudioTrack}
                 subtitlesToggle={subtitles && subtitles.length > 0}
                 subtitlesEnabled={displaySubtitles}

@@ -19,7 +19,8 @@ import SubtitleReader from '@project/common/subtitle-reader/subtitle-reader';
 import VideoChannel from '@project/common/app/services/video-channel';
 import type { VideoProtocol, VideoProtocolMessage } from '@project/common/app/services/video-protocol';
 import { useSubtitleTracks } from '@project/common/app/hooks/use-subtitle-tracks';
-import { SubtitleStream } from '@project/common/subtitle-reader/subtitle-stream';
+import { MediaSources } from '@project/common/app/services/media-sources';
+import { SubtitleStream, subtitleSourceStatus } from '@project/common/subtitle-reader/subtitle-stream';
 import type {
     SubtitleSourceProducer,
     SubtitleSourceSnapshot,
@@ -162,7 +163,7 @@ describe('useSubtitleTracks source transitions', () => {
                 }))
             );
         return (
-            <div data-loading={result.loadingSubtitles}>
+            <div data-loading={result.loadingSubtitles} data-status={subtitleSourceStatus(result.sourceStates)}>
                 {subtitles?.map((subtitle) => (
                     <span key={subtitle.index} data-start={subtitle.start}>
                         {subtitle.text}
@@ -198,6 +199,41 @@ describe('useSubtitleTracks source transitions', () => {
     afterEach(() => {
         act(() => root.unmount());
         container.remove();
+    });
+
+    it('keeps annotations, offsets, and loaded cues when the audio selection changes', async () => {
+        const first = track('First');
+        const second = track('Second');
+        const sources = MediaSources.fromFiles([
+            ...first.fileParts.map((part) => ({ ...part, track: 0 })),
+            ...second.fileParts.map((part) => ({ ...part, track: 0 })),
+        ]);
+        protocol.ready();
+        await render(sources.subtitleTracks);
+        await act(async () => annotate());
+        const messages = protocol.sent.length;
+        await render(sources.withAudioTrackIndex(1).subtitleTracks);
+        expect(container.textContent).toBe('<b>First</b><b>Second</b>');
+        expect([...container.querySelectorAll('span')].map((cue) => cue.dataset.start)).toEqual(['1500', '1500']);
+        expect(protocol.sent).toHaveLength(messages);
+        expect(onLoaded).toHaveBeenCalledTimes(1);
+        expect(onError).not.toHaveBeenCalled();
+    });
+
+    it('exposes failed file loads so an unchanged confirmation can retry them', async () => {
+        let fail = true;
+        const selected = track('Retry', async () => {
+            if (fail) throw new Error('Read failed');
+            return vttText('Recovered');
+        });
+        await render([selected]);
+        expect(container.firstElementChild?.getAttribute('data-status')).toBe('failed');
+        expect(container.textContent).toBe('');
+        expect(onError).toHaveBeenCalledTimes(1);
+        fail = false;
+        await render([selected]);
+        expect(container.firstElementChild?.getAttribute('data-status')).toBe('complete');
+        expect(container.textContent).toBe('Recovered');
     });
 
     it.each([true, false])('clears rendered and video subtitles when ready at clear is %s', async (readyAtClear) => {

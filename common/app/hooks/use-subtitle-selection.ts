@@ -3,6 +3,7 @@ import type { ConfirmedVideoDataSubtitleTrack, LoadableSubtitleTrack } from '@pr
 import type { FileWithId } from '@project/common/file-selector';
 import type { MediaSources } from '@project/common/app/services/media-sources';
 import type { EmbeddedSubtitles } from '@project/common/embedded-subtitles/embedded-subtitles';
+import type { SubtitleSourceStatus } from '@project/common/subtitle-reader/subtitle-stream';
 import { asbError } from '@project/common/util/log';
 
 /** Prepare the selection without extracting embedded tracks; their completed files arrive from the producer. */
@@ -46,7 +47,7 @@ const resolveSubtitleSelection = async (
     return files;
 };
 
-/** Prepares one confirmation; the player owns any subsequent embedded extraction. */
+/** Preserves unchanged subtitles or prepares a new selection; the player owns embedded extraction. */
 export const useSubtitleSelection = ({
     source,
     service,
@@ -71,10 +72,19 @@ export const useSubtitleSelection = ({
     }, [source?.file, source?.id, service, cancel]);
 
     const confirm = useCallback(
-        (
-            tracks: ConfirmedVideoDataSubtitleTrack[],
-            commit: (tracks: LoadableSubtitleTrack<FileWithId>[], signal: AbortSignal) => Promise<void>
-        ) => {
+        ({
+            tracks,
+            audioTrackIndex,
+            subtitleSourceStatus,
+            onSubtitlesUnchanged,
+            commit,
+        }: {
+            tracks: ConfirmedVideoDataSubtitleTrack[];
+            audioTrackIndex: number | undefined;
+            subtitleSourceStatus: SubtitleSourceStatus;
+            onSubtitlesUnchanged: () => void;
+            commit: (tracks: LoadableSubtitleTrack<FileWithId>[], signal: AbortSignal) => Promise<void>;
+        }) => {
             if (request.current) return;
             const controller = new AbortController();
             request.current = controller;
@@ -87,6 +97,17 @@ export const useSubtitleSelection = ({
                         tracks.some((track, index) => track.id !== selectedTrackIds[index])
                     ) {
                         throw new Error('Subtitle selection has changed');
+                    }
+                    // Keep annotations and an active producer for audio-only or unchanged choices.
+                    // An unchanged confirmation still retries a failed subtitle load or session commit.
+                    if (
+                        state !== 'failed' &&
+                        sources.matchesSubtitleSelection(tracks) &&
+                        (audioTrackIndex !== sources.audioTrackIndex || subtitleSourceStatus !== 'failed')
+                    ) {
+                        onSubtitlesUnchanged();
+                        if (!signal.aborted) setState('idle');
+                        return;
                     }
                     const files = await resolveSubtitleSelection(tracks, source, service, signal);
                     signal.throwIfAborted();
@@ -105,7 +126,7 @@ export const useSubtitleSelection = ({
                 }
             })();
         },
-        [source, service, selectedTrackIds, sources]
+        [source, service, selectedTrackIds, sources, state]
     );
 
     return {

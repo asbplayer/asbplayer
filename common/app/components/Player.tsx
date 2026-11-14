@@ -1,5 +1,13 @@
-import { mergeSubtitleAnnotations, resolveSubtitleReference } from '@project/common/subtitle-reader/subtitle-stream';
-import type { SubtitleSourceProducer, SubtitleSourceState } from '@project/common/subtitle-reader/subtitle-stream';
+import {
+    mergeSubtitleAnnotations,
+    resolveSubtitleReference,
+    subtitleSourceStatus,
+} from '@project/common/subtitle-reader/subtitle-stream';
+import type {
+    SubtitleSourceProducer,
+    SubtitleSourceState,
+    SubtitleSourceStatus,
+} from '@project/common/subtitle-reader/subtitle-stream';
 import { effectiveSettings } from '@project/common/settings/settings-recipes';
 import { AudioClip } from '@project/common/audio-clip';
 import { canMineWithAudio } from '@project/common/audio-transcode/mining-audio';
@@ -62,6 +70,7 @@ import type ChromeExtension from '@project/common/app/services/chrome-extension'
 import type PlaybackPreferenceController from '@project/common/playback/controllers/playback-preference-controller';
 import { useWindowSize } from '@project/common/app/hooks/use-window-size';
 import { useSubtitleTracks } from '@project/common/app/hooks/use-subtitle-tracks';
+import { useSubtitlePickerPlayback } from '@project/common/app/hooks/use-subtitle-picker-playback';
 import { useAppBarHeight } from '@project/common/hooks/use-app-bar-height';
 import { createBlobUrl } from '@project/common/blob-url';
 import type { MiningContext } from '@project/common/app/services/mining-context';
@@ -149,7 +158,7 @@ function pause(clock: Clock, mediaAdapter: MediaAdapter, forwardToMedia: boolean
 interface PlayerProps {
     subtitleProducer?: SubtitleSourceProducer;
     audioTranscodeHost?: AudioTranscodeHost;
-    onMediaReady?: () => void;
+    subtitlePickerOpen: boolean;
     sources?: MediaSources;
     subtitles: DisplaySubtitleModel[];
     mediaId?: string;
@@ -203,6 +212,7 @@ interface PlayerProps {
 
 export interface PlayerRef {
     downloadSubtitleTimeline: () => void;
+    getSubtitleSourceStatus: () => SubtitleSourceStatus;
 }
 
 const Player = React.memo(React.forwardRef<PlayerRef, PlayerProps>(PlayerComponent));
@@ -240,7 +250,7 @@ function PlayerComponent(
         sources,
         audioTranscodeHost,
         subtitleProducer,
-        onMediaReady,
+        subtitlePickerOpen,
         subtitles,
         mediaId,
         subtitleReader,
@@ -312,7 +322,7 @@ function PlayerComponent(
     const videoFile = sources?.videoFile;
     const videoFileUrl = sources?.videoFileUrl;
     const playbackPositionKey = videoFile?.file.name;
-    const transcodedAudio = useTranscodedAudio(videoFile, audioTranscodeHost);
+    const transcodedAudio = useTranscodedAudio(videoFile, audioTranscodeHost, sources?.audioTrackIndex);
     const failAudioConversion = transcodedAudio.fail;
     const transcodedAudioRef = useRef(transcodedAudio);
     transcodedAudioRef.current = transcodedAudio;
@@ -747,9 +757,14 @@ function PlayerComponent(
         });
     }, [subtitles, sourceStates, syntheticPlayback]);
 
-    useImperativeHandle(ref, () => ({ downloadSubtitleTimeline: handleDownloadSubtitleTimeline }), [
-        handleDownloadSubtitleTimeline,
-    ]);
+    useImperativeHandle(
+        ref,
+        () => ({
+            downloadSubtitleTimeline: handleDownloadSubtitleTimeline,
+            getSubtitleSourceStatus: () => subtitleSourceStatus(sourceStatesRef.current),
+        }),
+        [handleDownloadSubtitleTimeline]
+    );
 
     const applyOffset = useCallback(
         (offset: number, forwardToVideo: boolean) => {
@@ -1002,7 +1017,7 @@ function PlayerComponent(
             }),
         [channel, subtitles, videoFile]
     );
-    useEffect(() => channel?.onReady(() => onMediaReady?.()), [channel, onMediaReady]);
+    useSubtitlePickerPlayback(subtitlePickerOpen, channel);
     useEffect(
         () =>
             channel?.onReady(() => {
@@ -1720,7 +1735,7 @@ function PlayerComponent(
                                     ? (channel?.audioSeekableRange?.end ?? 0)
                                     : undefined
                             }
-                            audioTracks={audioTracks}
+                            audioTracks={transcodedAudio.required ? undefined : audioTracks}
                             selectedAudioTrack={selectedAudioTrack}
                             tabs={(!videoFileUrl && availableTabs) || undefined}
                             selectedTab={tab}

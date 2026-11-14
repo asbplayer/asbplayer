@@ -27,6 +27,8 @@ export interface FileSessionRecord {
     // '-' represents an empty placeholder within a group.
     subtitleTrackIds?: string[][];
     embeddedSubtitles?: Record<string, EmbeddedSubtitleDescriptor>;
+    /** Explicit choice among audio tracks; absent means browser-default playback. */
+    audioTrackIndex?: number;
     timestamp: number;
 }
 
@@ -38,6 +40,7 @@ export interface FileSystemFileHandleWithId {
 export interface FileSessionSourceIds {
     subtitleTrackIds: string[][];
     videoId?: string;
+    audioTrackIndex?: number;
 }
 
 class FileSessionDatabase extends Dexie {
@@ -158,6 +161,10 @@ export class IndexedDBFileSessionRepository implements FileSessionRepository {
             const merged: Omit<FileSessionRecord, 'id' | 'timestamp'> = {
                 ...existing,
                 videoHandle: incoming.videoHandle ?? existing?.videoHandle,
+                audioTrackIndex:
+                    incoming.videoHandle && incoming.videoHandle.id !== existing?.videoHandle?.id
+                        ? undefined
+                        : existing?.audioTrackIndex,
                 subtitleHandles:
                     incoming.subtitleHandles.length > 0 ? incoming.subtitleHandles : (existing?.subtitleHandles ?? []),
                 bufferedSubtitleHandles: [
@@ -175,7 +182,7 @@ export class IndexedDBFileSessionRepository implements FileSessionRepository {
         }
     }
 
-    async retain({ subtitleTrackIds, videoId }: FileSessionSourceIds) {
+    async retain({ subtitleTrackIds, videoId, audioTrackIndex }: FileSessionSourceIds) {
         const permit = await this._semaphore.acquire();
 
         try {
@@ -194,6 +201,7 @@ export class IndexedDBFileSessionRepository implements FileSessionRepository {
                 bufferedSubtitleHandles: bufferedSubtitleHandles?.filter((h) => retainedSubtitleIds.has(h.id)),
                 cachedSubtitleFiles: cachedSubtitleFiles?.filter((f) => retainedSubtitleIds.has(f.id)),
                 subtitleTrackIds,
+                audioTrackIndex,
                 embeddedSubtitles:
                     existing?.embeddedSubtitles &&
                     Object.fromEntries(

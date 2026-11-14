@@ -802,3 +802,28 @@ describe('embedded subtitle sessions', () => {
         expect(saved?.embeddedSubtitles).toEqual({ [id]: descriptor });
     });
 });
+
+it.each([undefined, 0, 1])(
+    'persists audio choice %s across subtitle saves and clears it for a replacement video',
+    async (audioTrackIndex) => {
+        const repository = new IndexedDBFileSessionRepository();
+        const videoHandle = { id: 'video', handle: { name: 'video.mp4' } as FileSystemFileHandle };
+        await repository.merge({ videoHandle, subtitleHandles: [] });
+        await repository.retain({ videoId: videoHandle.id, subtitleTrackIds: [], audioTrackIndex });
+        await repository.merge({ videoHandle, subtitleHandles: [] });
+        await repository.setCachedSubtitleFiles([], externalSelection([]));
+        await repository.clearBuffered();
+        const record = (await repository.fetch())!;
+        expect(record.audioTrackIndex).toBe(audioTrackIndex);
+        const video = { id: videoHandle.id, file: new File([], videoHandle.handle.name) };
+        const restored = await restoreSessionFiles(record, [video], unexpectedPreparation);
+        const sources = MediaSources.fromFiles(restored.files);
+        const playback = new MediaSources(sources.subtitleSource, sources.videoFile, undefined, record.audioTrackIndex);
+        expect(playback.audioTrackIndex).toBe(audioTrackIndex);
+        await repository.retain({ videoId: videoHandle.id, subtitleTrackIds: [], audioTrackIndex: undefined });
+        expect((await repository.fetch())?.audioTrackIndex).toBeUndefined();
+        await repository.retain({ videoId: videoHandle.id, subtitleTrackIds: [], audioTrackIndex });
+        await repository.merge({ videoHandle: { ...videoHandle, id: 'replacement' }, subtitleHandles: [] });
+        expect((await repository.fetch())?.audioTrackIndex).toBeUndefined();
+    }
+);
