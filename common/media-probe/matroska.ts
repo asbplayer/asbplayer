@@ -12,13 +12,13 @@ const idLanguageIetf = 0x22b59d;
 const idName = 0x536e;
 
 const trackTypeVideo = 1;
-const trackTypeAudio = 2;
+export const matroskaAudioTrackType = 2;
 export const matroskaSubtitleTrackType = 17;
 const trackTypeMetadata = 33;
 const webVttCodecs = new Set(['D_WEBVTT/SUBTITLES', 'D_WEBVTT/CAPTIONS', 'D_WEBVTT/DESCRIPTIONS', 'D_WEBVTT/METADATA']);
 const codecPrefixesByTrackType: Record<number, string> = {
     [trackTypeVideo]: 'V',
-    [trackTypeAudio]: 'A',
+    [matroskaAudioTrackType]: 'A',
     [matroskaSubtitleTrackType]: 'DS',
     [trackTypeMetadata]: 'DS',
 };
@@ -100,6 +100,3 @@ export const matroskaTracks = async (reader: ByteReader): Promise<MatroskaTrack[
         }
     }
 };
-
-export const matroskaAudioCodecIds = async (reader: ByteReader): Promise<string[] | undefined> =>
-    (await matroskaTracks(reader))?.filter((track) => track.type === trackTypeAudio).map((track) => track.codecId);

@@ -163,3 +163,66 @@ it.each(['srt', 'ass'])('confirms downloaded %s subtitles using their own filena
         container.remove();
     }
 });
+
+it.each([0, 1, 2])('offers %i audio tracks with the appropriate default and confirms explicit choices', (count) => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    const onConfirm = jest.fn<React.ComponentProps<typeof VideoDataSyncDialog>['onConfirm']>();
+    const audioTracks = Array.from({ length: count }, (_, trackIndex) => ({
+        trackIndex,
+        codec: 'aac',
+        language: 'ja',
+        title: 'Japanese',
+    }));
+    const props = { audioTracks, onConfirm, subtitleTracks: [{ id: '-', label: 'Empty', extension: 'srt' }] };
+    const confirm = () =>
+        act(() => {
+            [...document.querySelectorAll('button')].find((button) => button.textContent === 'action.ok')!.click();
+        });
+    const openAudioOptions = () =>
+        act(() => {
+            document
+                .querySelector('[role=combobox]')!
+                .dispatchEvent(new MouseEvent('mousedown', { bubbles: true, button: 0 }));
+        });
+    try {
+        act(() => root.render(<Picker {...props} />));
+        expect(document.querySelectorAll('[role=combobox]')).toHaveLength(count ? 4 : 3);
+        confirm();
+        expect(onConfirm.mock.calls.at(-1)?.[2]).toBeUndefined();
+        if (!count) return;
+        expect(document.querySelector('hr')).not.toBeNull();
+        const selectedAudioLabel = document
+            .querySelector('[role=combobox]')!
+            .textContent!.replace(/\u200b/g, '')
+            .trim();
+        if (count === 1) {
+            expect(selectedAudioLabel).toContain('日本語 · AAC');
+        } else {
+            expect(selectedAudioLabel).toBe('settings.defaultProfile');
+        }
+        openAudioOptions();
+        const options = [...document.querySelectorAll<HTMLElement>('[role=option]')];
+        expect(options).toHaveLength(count === 1 ? 1 : 3);
+        expect(options[0].getAttribute('aria-selected')).toBe('true');
+        if (count === 2) expect(options[0].textContent!.trim()).toBe('settings.defaultProfile');
+        act(() => options.at(-1)!.click());
+        confirm();
+        expect(onConfirm.mock.calls.at(-1)?.[2]).toBe(count === 1 ? undefined : 1);
+        if (count === 2) {
+            // Closing without committing a draft restores the currently playing choice on reopen.
+            act(() => root.render(<Picker {...props} open={false} audioTrackIndex={0} />));
+            act(() => root.render(<Picker {...props} audioTrackIndex={0} />));
+            confirm();
+            expect(onConfirm.mock.calls.at(-1)?.[2]).toBe(0);
+            openAudioOptions();
+            act(() => document.querySelector<HTMLElement>('[role=option]')!.click());
+            confirm();
+            expect(onConfirm.mock.calls.at(-1)?.[2]).toBeUndefined();
+        }
+    } finally {
+        act(() => root.unmount());
+        container.remove();
+    }
+});

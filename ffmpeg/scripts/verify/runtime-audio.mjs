@@ -31,7 +31,7 @@ const checkSampleCount = ({ audio, duration }, expectedSamples, label) => {
     assert.equal(Math.round(duration * sampleRate), expectedSamples, `${label}: reported sample count`);
 };
 
-const checkTone = (audio, start, end, label) => {
+const checkTone = (audio, start, end, label, expectedFrequency = toneHz) => {
     let power = 0;
     let crossings = 0;
     const first = Math.round(start * sampleRate);
@@ -44,7 +44,10 @@ const checkTone = (audio, start, end, label) => {
     }
     assert.ok(Math.sqrt(power / (last - first)) > 0.03, `${label}: expected audible audio`);
     const frequency = (crossings * sampleRate) / (last - first);
-    assert.ok(Math.abs(frequency - toneHz) < 5, `${label}: expected ${toneHz} Hz, got ${frequency} Hz`);
+    assert.ok(
+        Math.abs(frequency - expectedFrequency) < 5,
+        `${label}: expected ${expectedFrequency} Hz, got ${frequency} Hz`
+    );
 };
 
 const maximumSampleStep = (audio, start, end) => {
@@ -53,6 +56,63 @@ const maximumSampleStep = (audio, start, end) => {
         maximum = Math.max(maximum, Math.abs(audio[index * channels] - audio[(index - 1) * channels]));
     }
     return maximum;
+};
+
+// Older system FFmpeg versions cannot mux ISO floating-point PCM into MP4.
+// Author a single-chunk fpcm track with its pcmC format/endian declaration.
+const pcmMp4 = (bits) => {
+    const integers = (...values) => {
+        const bytes = Buffer.alloc(values.length * 4);
+        values.forEach((value, index) => bytes.writeUInt32BE(value, index * 4));
+        return bytes;
+    };
+    const box = (name, ...parts) => {
+        const data = Buffer.concat(parts);
+        return Buffer.concat([integers(data.length + 8), Buffer.from(name), data]);
+    };
+    const samples = sampleRate;
+    const bytesPerSample = bits / 8;
+    const data = Buffer.alloc(samples * channels * bytesPerSample);
+    for (let sample = 0; sample < samples; sample++) {
+        const value = 0.1 * Math.sin((2 * Math.PI * toneHz * sample) / sampleRate);
+        for (let channel = 0; channel < channels; channel++) {
+            const offset = (sample * channels + channel) * bytesPerSample;
+            if (bits === 32) data.writeFloatBE(value, offset);
+            else data.writeDoubleBE(value, offset);
+        }
+    }
+    const ftyp = box('ftyp', Buffer.from('isom'), integers(512), Buffer.from('isomiso6mp41'));
+    const tkhd = Buffer.alloc(84);
+    tkhd[3] = 3;
+    tkhd.writeUInt32BE(1, 12);
+    tkhd.writeUInt32BE(samples, 20);
+    const mdhd = box('mdhd', integers(0, 0, 0, sampleRate, samples), Buffer.from([0x55, 0xc4, 0, 0]));
+    const hdlr = box('hdlr', integers(0, 0), Buffer.from('soun'), Buffer.alloc(12));
+    const entry = Buffer.alloc(28);
+    entry.writeUInt16BE(1, 6); // data_reference_index
+    entry.writeUInt16BE(channels, 16);
+    entry.writeUInt16BE(bits, 18);
+    entry.writeUInt32BE(sampleRate * 65536, 24);
+    const stsd = box('stsd', integers(0, 1), box('fpcm', entry, box('pcmC', integers(0), Buffer.from([0, bits]))));
+    const stbl = box(
+        'stbl',
+        stsd,
+        box('stts', integers(0, 1, samples, 1)),
+        box('stsc', integers(0, 1, 1, samples, 1)),
+        box('stsz', integers(0, bytesPerSample * channels, samples)),
+        box('stco', integers(0, 1, ftyp.length + 8))
+    );
+    const minf = box(
+        'minf',
+        box('smhd', Buffer.alloc(8)),
+        box('dinf', box('dref', integers(0, 1), box('url ', integers(1)))),
+        stbl
+    );
+    return Buffer.concat([
+        ftyp,
+        box('mdat', data),
+        box('moov', box('trak', box('tkhd', tkhd), box('mdia', mdhd, hdlr, minf))),
+    ]);
 };
 
 try {
@@ -64,7 +124,7 @@ try {
             return {};
         },
     });
-    const transcode = async (file, onDiagnostic) => {
+    const transcode = async (file, { trackIndex = 0, onDiagnostic } = {}) => {
         const input = await readFile(file);
         const chunks = [];
         const diagnostics = [];
@@ -81,7 +141,7 @@ try {
             chunks.push(Buffer.from(module.HEAPU8.slice(pointer, pointer + length)));
             return length;
         };
-        const duration = module._asb_transcode_audio(input.length, 0);
+        const duration = module._asb_transcode_audio(input.length, trackIndex);
         assert.ok(duration > 0, module.UTF8ToString(module._asb_last_error()));
         const output = `${file}.webm`;
         await writeFile(output, Buffer.concat(chunks));
@@ -89,6 +149,110 @@ try {
         assert.ok(Math.abs(duration - audio.length / channels / sampleRate) < 0.001, 'reported sample duration');
         return { audio, duration, diagnostics };
     };
+
+    // Explicit selection must decode browser-playable formats too, not just Dolby/DTS.
+    const audioFormats = [
+        ['aac', 'mp4'],
+        ['libopus', 'mkv'],
+        ['libmp3lame', 'mkv'],
+        ['flac', 'mkv'],
+        ['libvorbis', 'mkv'],
+        ['mp2', 'mkv'],
+        ['alac', 'mp4'],
+        ['wavpack', 'mkv'],
+        ['tta', 'mkv'],
+        ['pcm_s16le', 'mkv'],
+        ['pcm_s16be', 'mkv'],
+        ['pcm_s24le', 'mkv'],
+        ['pcm_s24be', 'mkv'],
+        ['pcm_s32le', 'mkv'],
+        ['pcm_s32be', 'mkv'],
+        ['pcm_f32le', 'mkv'],
+        ['pcm_f64le', 'mkv'],
+        ['pcm_u8', 'mkv'],
+        ['pcm_alaw', 'mkv'],
+        ['pcm_mulaw', 'mkv'],
+        ['adpcm_ms', 'mkv'],
+        ['adpcm_ima_wav', 'mkv'],
+    ];
+    for (const [codec, extension] of audioFormats) {
+        const input = join(root, `${codec}.${extension}`);
+        ffmpeg(
+            '-f',
+            'lavfi',
+            '-i',
+            `sine=frequency=${toneHz}:sample_rate=${sampleRate}:duration=1.1`,
+            '-ac',
+            `${channels}`,
+            '-c:a',
+            codec,
+            input
+        );
+        const converted = await transcode(input);
+        checkTone(converted.audio, 0.2, 0.9, codec);
+    }
+    for (const bits of [32, 64]) {
+        const input = join(root, `pcm_f${bits}be.mp4`);
+        await writeFile(input, pcmMp4(bits));
+        const converted = await transcode(input);
+        checkTone(converted.audio, 0.2, 0.9, `MP4 float${bits} big-endian PCM`);
+    }
+
+    // System FFmpeg has no MP1 encoder. Zero bit allocations author silent
+    // MPEG-1 Layer I frames: 128 kbit/s, 48 kHz, stereo, 384 samples each.
+    const mp1Frame = Buffer.alloc(128);
+    mp1Frame.writeUInt32BE(0xffff4400);
+    const mp1Raw = join(root, 'silence.mp1');
+    const mp1 = join(root, 'mp1.mkv');
+    await writeFile(mp1Raw, Buffer.concat(Array(126).fill(mp1Frame)));
+    ffmpeg('-i', mp1Raw, '-c:a', 'copy', mp1);
+    const mp1Audio = await transcode(mp1);
+    checkSampleCount(mp1Audio, 126 * 384, 'MPEG-1 Layer I');
+    assert.ok(
+        mp1Audio.audio.every((sample) => Math.abs(sample) < 0.001),
+        'MP1 silent frames stay silent'
+    );
+
+    // Distinct tones prove that the audio-relative selection picks the requested stream.
+    const secondToneHz = 1703;
+    for (const extension of ['mp4', 'mkv']) {
+        const input = join(root, `multi-aac.${extension}`);
+        ffmpeg(
+            '-f',
+            'lavfi',
+            '-i',
+            'color=c=black:s=32x32:r=25:d=1.1',
+            '-f',
+            'lavfi',
+            '-i',
+            `sine=frequency=${toneHz}:sample_rate=${sampleRate}:duration=1.1`,
+            '-f',
+            'lavfi',
+            '-i',
+            `sine=frequency=${secondToneHz}:sample_rate=${sampleRate}:duration=1.1`,
+            '-map',
+            '0:v',
+            '-map',
+            '1:a',
+            '-map',
+            '2:a',
+            '-c:v',
+            'mpeg4',
+            '-c:a',
+            'aac',
+            input
+        );
+        for (const trackIndex of [0, 1]) {
+            const converted = await transcode(input, { trackIndex });
+            checkTone(
+                converted.audio,
+                0.2,
+                0.9,
+                `${extension} AAC track ${trackIndex}`,
+                trackIndex === 0 ? toneHz : secondToneHz
+            );
+        }
+    }
 
     const source = join(root, 'source.mp4');
     ffmpeg(
@@ -437,15 +601,17 @@ try {
     assert.notEqual(tailSamples % 960, 0, 'fixture must end in a partial 20 ms Opus frame');
     checkSampleCount(await transcode(tail), tailSamples, 'resampler tail and partial final Opus frame');
     checkSampleCount(
-        await transcode(tail, () => {
-            throw new Error('Diagnostic sink failed');
+        await transcode(tail, {
+            onDiagnostic: () => {
+                throw new Error('Diagnostic sink failed');
+            },
         }),
         tailSamples,
         'throwing diagnostic sink preserves native conversion and cleanup'
     );
 
     process.stdout.write(
-        'WASM audio regressions passed: MP4 preroll/positive start, negative audio preroll, remuxed timestamp rounding, Matroska offset, AC3 layout/rate changes, DTS/TrueHD timestamp rounding, corrupt frames/timestamps, resampler/Opus finalization\n'
+        'WASM audio regressions passed: common audio formats, MP4/MKV AAC track selection, MP4 preroll/positive start, negative audio preroll, remuxed timestamp rounding, Matroska offset, AC3 layout/rate changes, DTS/TrueHD timestamp rounding, corrupt frames/timestamps, resampler/Opus finalization\n'
     );
 } finally {
     await rm(root, { recursive: true, force: true });

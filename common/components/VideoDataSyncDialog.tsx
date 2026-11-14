@@ -6,6 +6,7 @@ import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
 import CloudOutlinedIcon from '@mui/icons-material/CloudOutlined';
 import SubtitlesOutlinedIcon from '@mui/icons-material/SubtitlesOutlined';
 import Dialog from '@mui/material/Dialog';
+import Divider from '@mui/material/Divider';
 import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
 import DialogContentText from '@mui/material/DialogContentText';
@@ -31,6 +32,9 @@ import type { GenericParseType, OnlineSubtitleSourceConfig } from '@project/comm
 import OnlineSubtitleSourceDialog from '@project/common/components/OnlineSubtitleSourceDialog';
 import type { TFunction } from 'i18next';
 import type { FileSelector, FileWithId } from '@project/common/file-selector';
+import type { ProbedAudioTrack } from '@project/common/media-probe';
+import { audioCodecDisplayName } from '@project/common/media-probe';
+import { genericSubtitleDisplayLabel } from '@project/common/util/subtitle-language';
 import { AUDIO_EXT_SET, VIDEO_EXT_SET, getExtension } from '@project/common/app/services/media-sources';
 
 const downloadedSubtitleIdPattern = /^https?:/;
@@ -198,6 +202,8 @@ interface Props {
     // The video name automatically supplied by asbplayer's content script
     // Not to be confused with the auto-calculated video name when user selects a subtitle track
     suggestedName: string;
+    audioTracks?: readonly ProbedAudioTrack[];
+    audioTrackIndex?: number;
     subtitleTracks: VideoDataSubtitleTrack[];
     selectedSubtitleTrackIds: string[];
     defaultCheckboxState: boolean;
@@ -216,7 +222,11 @@ interface Props {
     fileSelector: FileSelector;
     onCancel: () => void;
     onOpenSettings: () => void;
-    onConfirm: (track: ConfirmedVideoDataSubtitleTrack[], shouldRememberTrackChoices: boolean) => void;
+    onConfirm: (
+        track: ConfirmedVideoDataSubtitleTrack[],
+        shouldRememberTrackChoices: boolean,
+        audioTrackIndex?: number
+    ) => void;
     onSetActiveProfile: (profile: string | undefined) => void;
     onOnlineSourceConfigChanged: (state: Partial<OnlineSubtitleSourceConfig>) => void;
     onDismissFtue: () => void;
@@ -232,6 +242,8 @@ export default function VideoDataSyncDialog({
     isLoading,
     discovering,
     suggestedName,
+    audioTracks,
+    audioTrackIndex,
     subtitleTracks,
     selectedSubtitleTrackIds,
     defaultCheckboxState,
@@ -261,6 +273,10 @@ export default function VideoDataSyncDialog({
 }: Props) {
     const { t } = useTranslation();
     const [name, setName] = useState('');
+    const [selectedAudioTrackIndex, setSelectedAudioTrackIndex] = useState(audioTrackIndex);
+    useEffect(() => {
+        if (open) setSelectedAudioTrackIndex(audioTrackIndex);
+    }, [open, audioTrackIndex, audioTracks]);
     const [shouldRememberTrackChoices, setShouldRememberTrackChoices] = useState(false);
     const [genericSubtitleParserChanged, setGenericSubtitleParserChanged] = useState(false);
     const trimmedName = name.trim();
@@ -311,7 +327,11 @@ export default function VideoDataSyncDialog({
 
     function handleOkButtonClick() {
         const selectedSubtitleTracks: ConfirmedVideoDataSubtitleTrack[] = allSelectedSubtitleTracks();
-        onConfirm(selectedSubtitleTracks, shouldRememberTrackChoices);
+        onConfirm(
+            selectedSubtitleTracks,
+            shouldRememberTrackChoices,
+            audioTracks?.length === 1 ? undefined : selectedAudioTrackIndex
+        );
     }
 
     function handleRememberTrackChoices() {
@@ -593,6 +613,52 @@ export default function VideoDataSyncDialog({
                                         }}
                                     />
                                 </Grid>
+                            )}
+                            {audioTracks && audioTracks.length > 0 && (
+                                <>
+                                    <Grid item>
+                                        <TextField
+                                            select
+                                            fullWidth
+                                            color="primary"
+                                            variant="filled"
+                                            label={t('ankiDialog.audio')}
+                                            value={
+                                                audioTracks.length === 1
+                                                    ? audioTracks[0].trackIndex
+                                                    : (selectedAudioTrackIndex ?? '')
+                                            }
+                                            disabled={isLoading || disabled}
+                                            onChange={(event) =>
+                                                setSelectedAudioTrackIndex(
+                                                    event.target.value === '' ? undefined : Number(event.target.value)
+                                                )
+                                            }
+                                            SelectProps={{ displayEmpty: true }}
+                                            InputLabelProps={{ shrink: true }}
+                                        >
+                                            {audioTracks.length > 1 && (
+                                                <MenuItem value="">{t('settings.defaultProfile')}</MenuItem>
+                                            )}
+                                            {audioTracks.map((track) => (
+                                                <MenuItem key={track.trackIndex} value={track.trackIndex}>
+                                                    {[
+                                                        genericSubtitleDisplayLabel(track.title, track.language, ''),
+                                                        audioCodecDisplayName(track.codec),
+                                                        t('settings.subtitleTrackChoice', {
+                                                            trackNumber: track.trackIndex + 1,
+                                                        }),
+                                                    ]
+                                                        .filter(Boolean)
+                                                        .join(' · ')}
+                                                </MenuItem>
+                                            ))}
+                                        </TextField>
+                                    </Grid>
+                                    <Grid item>
+                                        <Divider />
+                                    </Grid>
+                                </>
                             )}
                             {threeSubtitleTrackSelectors}
                             {!hideRememberTrackPreferenceToggle && (

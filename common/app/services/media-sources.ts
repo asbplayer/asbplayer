@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import type {
+    ConfirmedVideoDataSubtitleTrack,
     LegacyPlayerSyncMessage,
     PlayerSyncMessage,
     LoadableSubtitleTrack,
@@ -10,6 +11,7 @@ import { base64ToBlob } from '@project/common/base64';
 import type { FileWithId } from '@project/common/file-selector';
 import { LocalizedError } from '@project/common/app/components/localized-error';
 import { ffmpegSubtitleFormats } from '@project/ffmpeg/protocol';
+import { subtitleSourceMatches } from '@project/common/embedded-subtitles/subtitle-source';
 
 /** A selected media source. Omitted track indexes assign each subtitle file its own track. */
 export type MediaSourceFile = FileWithId & { track?: number };
@@ -58,7 +60,8 @@ export class MediaSources {
     constructor(
         readonly subtitleSource: MediaSubtitleSource = { kind: 'files', tracks: [] },
         readonly videoFile?: FileWithId,
-        readonly videoFileUrl?: string
+        readonly videoFileUrl?: string,
+        readonly audioTrackIndex?: number
     ) {
         this.subtitleTracks = subtitleSource.kind === 'files' ? subtitleSource.tracks : [];
         this.subtitleSourceFiles = this.subtitleTracks.flatMap(({ fileParts }) => fileParts);
@@ -119,6 +122,44 @@ export class MediaSources {
 
     hasSubtitleFile(name: string): boolean {
         return name.length > 0 && this.subtitleFileNames.includes(name);
+    }
+
+    withAudioTrackIndex(audioTrackIndex: number | undefined): MediaSources {
+        return audioTrackIndex === this.audioTrackIndex
+            ? this
+            : new MediaSources(this.subtitleSource, this.videoFile, this.videoFileUrl, audioTrackIndex);
+    }
+
+    /** Picker slots identify a whole track by its first part; unfilled trailing slots have no source. */
+    matchesSubtitleSelection(tracks: readonly ConfirmedVideoDataSubtitleTrack[]): boolean {
+        if (this.subtitleSource.kind !== 'files') return false;
+        const count = Math.max(tracks.length, this.subtitleTracks.length);
+        for (let index = 0; index < count; index++) {
+            const selected = tracks[index];
+            const parts = this.subtitleTracks[index]?.fileParts;
+            const first = parts?.[0];
+            if ((!selected || selected.id === '-') && !parts?.some((part) => part.id !== '-')) continue;
+            if (!selected || selected.id === '-' || !first || selected.disabledReason || selected.id !== first.id) {
+                return false;
+            }
+            if (selected.embedded) {
+                const previous = first.embedded;
+                if (
+                    !this.videoFile ||
+                    !previous ||
+                    !subtitleSourceMatches(this.videoFile, selected.embedded) ||
+                    !subtitleSourceMatches(this.videoFile, previous) ||
+                    selected.embedded.trackIndex !== previous.trackIndex ||
+                    selected.embedded.codec !== previous.codec ||
+                    selected.embedded.format !== previous.format
+                ) {
+                    return false;
+                }
+            } else if (first.embedded || selected.file !== first.file) {
+                return false;
+            }
+        }
+        return true;
     }
 
     findSubtitleTrack(firstFilePart: FileWithId): LoadableSubtitleTrack<SubtitleSourceFile> | undefined {

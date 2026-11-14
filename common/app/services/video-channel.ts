@@ -913,6 +913,7 @@ export default class VideoChannel {
     }
 
     close() {
+        this.isReady = false;
         this.protocol.postMessage({ command: 'close' });
         this.protocol.close();
         this.readyCallbacks = [];

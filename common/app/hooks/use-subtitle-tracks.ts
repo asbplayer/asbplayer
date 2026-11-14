@@ -229,7 +229,7 @@ export const useSubtitleTracks = ({
                 if (fileLoad.current !== generation) return;
                 asbTrace('playback/player', 'Failed to load player subtitles', { error });
                 latest.current.onError(error);
-                stream.current.replace([], names);
+                stream.current.replace([], names, error instanceof Error ? error.message : String(error));
                 owner.current = 'files';
                 latest.current.publish();
                 latest.current.sendSnapshot();

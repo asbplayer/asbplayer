@@ -1,10 +1,6 @@
 import ByteReader from '@project/common/media-probe/byte-reader';
-import {
-    isoBmffAudioSampleFormats,
-    isoBmffBoxTypeOffset,
-    isoBmffBoxTypeBytes,
-} from '@project/common/media-probe/iso-bmff';
-import { matroskaAudioCodecIds } from '@project/common/media-probe/matroska';
+import { isoBmffTracks, isoBmffBoxTypeOffset, isoBmffBoxTypeBytes } from '@project/common/media-probe/iso-bmff';
+import { matroskaTracks, matroskaAudioTrackType } from '@project/common/media-probe/matroska';
 import { ebmlHeaderId, ebmlHeaderIdBytes } from '@project/common/media-probe/ebml';
 import { asbTrace, asbWarn } from '@project/common/util/log';
 
@@ -14,6 +10,8 @@ export interface ProbedAudioTrack {
      */
     readonly trackIndex: number;
     readonly codec: string;
+    readonly language?: string;
+    readonly title?: string;
 }
 
 const containerProbeBytes = 12;
@@ -81,7 +79,7 @@ const codecFromIsoBmffFormat = (format: string) => isoBmffCodecs[format] ?? form
 interface ProbedContainer {
     /** MIME type used to ask the browser whether it can play this container at all. */
     readonly mimeType: string;
-    readonly audioCodecs: string[];
+    readonly audioTracks: ProbedAudioTrack[];
 }
 
 /** Recognizes the container signature and normalizes its format-specific audio codec IDs. */
@@ -93,17 +91,48 @@ const probeContainer = async (reader: ByteReader): Promise<ProbedContainer | und
     }
 
     if ((await reader.unsignedInt(0, ebmlHeaderIdBytes)) === ebmlHeaderId) {
-        const codecIds = await matroskaAudioCodecIds(reader);
-        return codecIds && { mimeType: 'video/x-matroska', audioCodecs: codecIds.map(codecFromMatroskaCodecId) };
+        const tracks = await matroskaTracks(reader);
+        return (
+            tracks && {
+                mimeType: 'video/x-matroska',
+                audioTracks: tracks
+                    .filter((track) => track.type === matroskaAudioTrackType)
+                    .map((track, trackIndex) => ({
+                        trackIndex,
+                        codec: codecFromMatroskaCodecId(track.codecId),
+                        language: track.language,
+                        title: track.title,
+                    })),
+            }
+        );
     }
 
     if (isoBmffTopLevelBoxTypes.includes((await reader.ascii(isoBmffBoxTypeOffset, isoBmffBoxTypeBytes)) ?? '')) {
-        const formats = await isoBmffAudioSampleFormats(reader);
-        return formats && { mimeType: 'video/mp4', audioCodecs: formats.map(codecFromIsoBmffFormat) };
+        const tracks = await isoBmffTracks(reader);
+        return (
+            tracks && {
+                mimeType: 'video/mp4',
+                audioTracks: tracks
+                    .filter((track) => track.handler === 'soun')
+                    .map((track, trackIndex) => {
+                        if (!track.format) throw new Error('Missing MP4 audio sample entry');
+                        return {
+                            trackIndex,
+                            codec: codecFromIsoBmffFormat(track.format),
+                            language: track.language,
+                            title: track.title,
+                        };
+                    }),
+            }
+        );
     }
 
     return;
 };
+
+/** Discover audio choices without loading FFmpeg or guessing the browser's selected track. */
+export const probeAudioTracks = async (blob: Blob, signal?: AbortSignal): Promise<ProbedAudioTrack[]> =>
+    (await probeContainer(new ByteReader(blob, undefined, signal)))?.audioTracks ?? [];
 
 // A video element, since this is asked about video containers as well as audio codecs.
 let probeElement: HTMLVideoElement | undefined;
@@ -149,7 +178,7 @@ export const audioTrackRequiringTranscode = async (blob: Blob): Promise<ProbedAu
         return;
     }
 
-    if (container === undefined || container.audioCodecs.length === 0) {
+    if (container === undefined || container.audioTracks.length === 0) {
         asbTrace('media/probe', 'Skipping audio conversion', {
             reason: container === undefined ? 'unrecognized-container' : 'no-audio-tracks',
             inputBytes: blob.size,
@@ -159,7 +188,7 @@ export const audioTrackRequiringTranscode = async (blob: Blob): Promise<ProbedAu
 
     asbTrace('media/probe', 'Detected audio codecs', {
         container: container.mimeType,
-        codecs: container.audioCodecs,
+        codecs: container.audioTracks.map((track) => track.codec),
         inputBytes: blob.size,
         elapsedMs: performance.now() - startedAt,
     });
@@ -171,11 +200,11 @@ export const audioTrackRequiringTranscode = async (blob: Blob): Promise<ProbedAu
         return;
     }
 
-    if (container.audioCodecs.some(browserCanDecodeAudioCodec)) {
+    if (container.audioTracks.some((track) => browserCanDecodeAudioCodec(track.codec))) {
         asbTrace('media/probe', 'Skipping audio conversion: browser can decode an existing audio track');
         return;
     }
 
-    asbTrace('media/probe', 'Audio conversion required', { trackIndex: 0, codec: container.audioCodecs[0] });
-    return { trackIndex: 0, codec: container.audioCodecs[0] };
+    asbTrace('media/probe', 'Audio conversion required', { trackIndex: 0, codec: container.audioTracks[0].codec });
+    return { trackIndex: 0, codec: container.audioTracks[0].codec };
 };
