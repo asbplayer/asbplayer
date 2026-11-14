@@ -1,3 +1,7 @@
+import { v4 as uuid } from 'uuid';
+import SubtitleReader from '@project/common/subtitle-reader/subtitle-reader';
+import { streamSubtitles } from '@project/extension/src/services/progressive-subtitles';
+import { pgsParserWorkerFactory } from '@project/extension/src/services/pgs-parser-worker-factory';
 import project from '@project/common/project';
 import { arrayEquals } from '@project/common/util';
 import { asbError, asbTrace } from '@project/common/util/log';
@@ -65,6 +69,22 @@ type RequestSubtitlesOptions =
     | { readonly kind: 'reload'; readonly videoChanged: boolean }
     | { readonly kind: 'refresh-open-picker' };
 
+const subtitleParsingSettingsKeys = [
+    'subtitleRegexFilter',
+    'subtitleRegexFilterTextReplacement',
+    'subtitleHtml',
+    'convertNetflixRuby',
+] as const;
+
+type SubtitleParsingSettings = Pick<AsbplayerSettings, (typeof subtitleParsingSettingsKeys)[number]>;
+
+type SubtitleLoad = {
+    controller: AbortController;
+    location: string;
+    // Kept after EOF so parsing settings can restart the selected URLs without retaining the response text.
+    selection?: { tracks: ConfirmedVideoDataSubtitleTrack[]; syncWithAsbplayerId?: string };
+};
+
 const fetchDataForLanguageOnDemand = (language: string): Promise<VideoData> => {
     return new Promise((resolve) => {
         const listener = (event: Event) => {
@@ -99,6 +119,8 @@ export default class VideoDataSyncController {
     private _dataReceivedListener?: (event: Event) => void;
     private _dataReceivedEventTarget?: EventTarget;
     private _isTutorial: boolean;
+    private _subtitleLoad?: SubtitleLoad;
+    private _subtitleParsingSettings?: SubtitleParsingSettings;
 
     constructor(context: Binding, settings: SettingsProvider) {
         this._context = context;
@@ -126,6 +148,7 @@ export default class VideoDataSyncController {
     }
 
     unbind() {
+        this.cancelSubtitleLoad({ clearSubtitles: false });
         if (this._dataReceivedListener) {
             this._dataReceivedEventTarget?.removeEventListener(
                 'asbplayer-synced-data',
@@ -143,9 +166,15 @@ export default class VideoDataSyncController {
         this._frame.unbind();
     }
 
-    updateSettings({ streamingAutoSync, streamingLastLanguagesSynced }: AsbplayerSettings) {
-        this._autoSync = streamingAutoSync;
-        this._lastLanguagesSynced = streamingLastLanguagesSynced;
+    updateSettings(settings: AsbplayerSettings) {
+        const previous = this._subtitleParsingSettings;
+        this._subtitleParsingSettings = settings;
+        this._autoSync = settings.streamingAutoSync;
+        this._lastLanguagesSynced = settings.streamingLastLanguagesSynced;
+        const selection = this._subtitleLoad?.selection;
+        if (selection && previous && subtitleParsingSettingsKeys.some((key) => previous[key] !== settings[key])) {
+            void this._syncDataArray(selection.tracks, selection.syncWithAsbplayerId);
+        }
 
         if (this._frame.clientIfLoaded !== undefined) {
             void this._context.settings
@@ -176,6 +205,12 @@ export default class VideoDataSyncController {
     }
 
     async requestSubtitles(request: RequestSubtitlesOptions) {
+        if (
+            request.kind === 'reload' &&
+            (request.videoChanged || (this._subtitleLoad && this._subtitleLoad.location !== window.location.href))
+        ) {
+            this.cancelSubtitleLoad({ clearSubtitles: false });
+        }
         if (!this._context.hasPageScript) {
             return;
         }
@@ -558,18 +593,24 @@ export default class VideoDataSyncController {
 
                         dataWasSynced = await this._syncDataArray(data, confirmMessage.syncWithAsbplayerId);
                     } else if ('openFile' === message.command) {
+                        dataWasSynced = false;
+                        const load = this._beginSubtitleLoad();
                         const openFileMessage = message as VideoDataUiBridgeOpenFileMessage;
                         const subtitleFiles = openFileMessage.subtitles;
 
                         try {
                             await this._syncSubtitles(
-                                subtitleFiles.map((subtitleFile) => ({ fileParts: [subtitleFile] }))
+                                subtitleFiles.map((subtitleFile) => ({ fileParts: [subtitleFile] })),
+                                load.controller.signal,
+                                undefined
                             );
                             dataWasSynced = true;
                         } catch (e) {
-                            if (e instanceof Error) {
+                            if (!load.controller.signal.aborted && e instanceof Error) {
                                 await this._reportError(e.message);
                             }
+                        } finally {
+                            if (this._subtitleLoad === load) this._subtitleLoad = undefined;
                         }
                     }
 
@@ -659,57 +700,111 @@ export default class VideoDataSyncController {
         this._wasPaused = undefined;
     }
 
-    private async _syncData(data: VideoDataSubtitleTrack[]) {
-        try {
-            const tracks: LoadableSubtitleTrack<SerializedSubtitleFile>[] = [];
-
-            for (let i = 0; i < data.length; i++) {
-                const { extension, url, language, file: localSubtitleFile } = data[i];
-                const fileParts = await this._subtitleFilePartsForUrl(
-                    this._defaultVideoName(this._syncedData?.basename, data[i]),
-                    language,
-                    extension,
-                    url!,
-                    localSubtitleFile !== undefined
-                );
-                tracks.push({ fileParts: fileParts ?? [] });
-            }
-
-            await this._syncSubtitles(tracks);
-            return true;
-        } catch (error) {
-            if (typeof (error as Error).message !== 'undefined') {
-                await this._reportError(`Data Sync failed: ${(error as Error).message}`);
-            }
-
-            return false;
+    cancelSubtitleLoad({ clearSubtitles }: { clearSubtitles: boolean }) {
+        const load = this._subtitleLoad;
+        load?.controller.abort();
+        this._subtitleLoad = undefined;
+        if (clearSubtitles && load?.selection) {
+            this._context.updateSubtitleSource({ type: 'snapshot', tracks: [] });
         }
     }
 
+    private _beginSubtitleLoad(): SubtitleLoad {
+        // Cancel the previous load and clear its progressive cues before starting the replacement.
+        this.cancelSubtitleLoad({ clearSubtitles: true });
+        const load = { controller: new AbortController(), location: window.location.href };
+        this._subtitleLoad = load;
+        return load;
+    }
+
+    private _syncData(data: VideoDataSubtitleTrack[]) {
+        return this._syncDataArray(
+            data.map((track) => ({
+                ...track,
+                name: this._defaultVideoName(this._syncedData?.basename, track),
+            }))
+        );
+    }
+
     private async _syncDataArray(data: ConfirmedVideoDataSubtitleTrack[], syncWithAsbplayerId?: string) {
+        const load = this._beginSubtitleLoad();
+        const { signal } = load.controller;
+        const progressive = data.some((track) => track.progressive);
         try {
             const tracks: LoadableSubtitleTrack<SerializedSubtitleFile>[] = [];
-
-            for (let i = 0; i < data.length; i++) {
-                const { name, language, extension, url, file: localSubtitleFile } = data[i];
-                const fileParts = await this._subtitleFilePartsForUrl(
-                    name,
-                    language,
-                    extension,
-                    url!,
-                    localSubtitleFile !== undefined
-                );
-                tracks.push({ fileParts: fileParts ?? [] });
+            for (const track of data) {
+                const { name, language, extension, url, file } = track;
+                const fileParts = track.progressive
+                    ? []
+                    : await this._subtitleFilePartsForUrl(name, language, extension, url!, file !== undefined, signal);
+                signal.throwIfAborted();
+                if (fileParts === undefined) return false;
+                tracks.push({ fileParts });
             }
-
-            await this._syncSubtitles(tracks, syncWithAsbplayerId);
+            if (progressive) {
+                await this._startProgressiveSubtitles(data, tracks, load, syncWithAsbplayerId);
+            } else {
+                await this._syncSubtitles(tracks, signal, syncWithAsbplayerId);
+            }
             return true;
         } catch (error) {
+            if (signal.aborted) return false;
+            load.controller.abort();
             if (typeof (error as Error).message !== 'undefined') {
                 await this._reportError(`Data Sync failed: ${(error as Error).message}`);
             }
-
             return false;
+        } finally {
+            if ((!load.selection || signal.aborted) && this._subtitleLoad === load) this._subtitleLoad = undefined;
+        }
+    }
+
+    private async _startProgressiveSubtitles(
+        selected: ConfirmedVideoDataSubtitleTrack[],
+        serializedTracks: LoadableSubtitleTrack<SerializedSubtitleFile>[],
+        load: SubtitleLoad,
+        syncWithAsbplayerId?: string
+    ) {
+        const { signal } = load.controller;
+        const settings = await this._settings.getAll();
+        signal.throwIfAborted();
+        this._subtitleParsingSettings ??= settings;
+        const parsingSettings = this._subtitleParsingSettings;
+        const reader = new SubtitleReader({
+            regexFilter: parsingSettings.subtitleRegexFilter,
+            regexFilterTextReplacement: parsingSettings.subtitleRegexFilterTextReplacement,
+            subtitleHtml: parsingSettings.subtitleHtml,
+            convertNetflixRuby: parsingSettings.convertNetflixRuby,
+            pgsParserWorkerFactory,
+        });
+        const pending = selected.flatMap((selection, track) => {
+            if (!selection.progressive) return [];
+            if (typeof selection.url !== 'string') throw new Error('Invalid progressive subtitle URL');
+            return [
+                {
+                    track,
+                    loadId: uuid(),
+                    name: `${selection.name}.${selection.extension}`,
+                    url: selection.url,
+                    extension: selection.extension,
+                },
+            ];
+        });
+        const tracks = serializedTracks.map(({ fileParts }) => ({
+            fileParts: fileParts.map((file) => new File([base64ToBlob(file.base64, 'text/plain')], file.name)),
+        }));
+        load.selection = { tracks: selected, syncWithAsbplayerId };
+        await this._context.loadProgressiveSubtitles(tracks, pending, signal, syncWithAsbplayerId);
+        signal.throwIfAborted();
+        // The picker closes while the selected responses continue loading in the background.
+        for (const { track, loadId, url, extension } of pending) {
+            void streamSubtitles(url, extension, reader, { track, loadId }, signal, (update) =>
+                this._context.updateSubtitleSource(update)
+            ).catch((error) => {
+                if (!signal.aborted) {
+                    asbError('subtitle/progressive', 'Progressive subtitle response failed', error);
+                }
+            });
         }
     }
 
@@ -719,7 +814,8 @@ export default class VideoDataSyncController {
      */
     private async _syncSubtitles(
         serializedTracks: LoadableSubtitleTrack<SerializedSubtitleFile>[],
-        syncWithAsbplayerId?: string
+        signal: AbortSignal,
+        syncWithAsbplayerId: string | undefined
     ) {
         const tracks = await Promise.all(
             serializedTracks.map(async ({ fileParts }) => ({
@@ -744,7 +840,8 @@ export default class VideoDataSyncController {
             fileNames: Array.from(new Set(fileParts.map((subtitleSourceFile) => subtitleSourceFile.name))),
         }));
         try {
-            await this._context.loadSubtitles(tracks, syncWithAsbplayerId);
+            signal.throwIfAborted();
+            await this._context.loadSubtitles(tracks, { signal, syncWithAsbplayerId });
             asbTrace('subtitle/sync', 'Loaded retrieved subtitle files', {
                 fileCount,
                 totalBytes,
@@ -771,7 +868,8 @@ export default class VideoDataSyncController {
         language: string | undefined,
         extension: string,
         url: string | string[],
-        isLocalSubtitleFile: boolean | undefined
+        isLocalSubtitleFile: boolean | undefined,
+        signal: AbortSignal
     ): Promise<SerializedSubtitleFile[] | undefined> {
         const startedAt = performance.now();
         if (url === '-') {
@@ -812,7 +910,7 @@ export default class VideoDataSyncController {
                 : url.startsWith('data:')
                   ? 'inline-data'
                   : 'remote';
-            const response = await fetch(url)
+            const response = await fetch(url, { signal })
                 .catch(async (error) => {
                     asbTrace('subtitle/error', 'Subtitle retrieval request failed', {
                         extension,
@@ -820,7 +918,7 @@ export default class VideoDataSyncController {
                         durationMs: performance.now() - startedAt,
                         errorName: error instanceof Error ? error.name : typeof error,
                     });
-                    await this._reportError(error.message);
+                    if (!signal.aborted) await this._reportError(error.message);
                     return undefined;
                 })
                 .finally(() => {
@@ -857,7 +955,7 @@ export default class VideoDataSyncController {
         const partExtension = subtitleFileExtensionForUrl(firstUri, extension);
         const filePartName = `${name}.${partExtension}`;
         const partCount = url.length;
-        const promises = url.map((u) => fetch(u));
+        const promises = url.map((u) => fetch(u, { signal }));
         const fileParts = [];
         const responseStatusCounts: Record<string, number> = {};
         let finishedPromises = 0;

@@ -1,6 +1,7 @@
 import type { RefObject } from 'react';
 import { useCallback, useEffect, useRef } from 'react';
 import type { IndexedSubtitleModel } from '@project/common';
+import { subtitleKey, sameSubtitleText } from '@project/common/subtitle-reader/subtitle-stream';
 import {
     ASB_TOKEN_SELECTED_CLASS,
     ASB_TOKEN_START_ATTRIBUTE,
@@ -201,10 +202,28 @@ export const useTokenSelection = ({
 
     useEffect(() => cancelTokenSelectionRetry, [cancelTokenSelectionRetry]);
 
+    const previousSubtitlesRef = useRef(subtitles);
     useEffect(() => {
-        const target = activeTokenSelectionRef.current;
-        if (target) requestTokenSelection(target, activeTokenSelectionOptionsRef.current);
-    }, [requestTokenSelection, subtitles]);
+        let target = activeTokenSelectionRef.current;
+        const previous = target && previousSubtitlesRef.current?.[target.subtitleIndex];
+        previousSubtitlesRef.current = subtitles;
+        if (!target) return;
+        if (previous?.source) {
+            const current = subtitles?.find((cue) => subtitleKey(cue) === subtitleKey(previous));
+            if (!current || !sameSubtitleText(previous, current)) {
+                clearTokenSelection();
+                return;
+            }
+            target = { ...target, subtitleIndex: current.index };
+            activeTokenSelectionRef.current = target;
+        }
+        const selected = rootRef.current && currentTokenSelectionLocation(subtitles, rootRef.current);
+        if (selected?.subtitleIndex === target.subtitleIndex && selected.tokenStart === target.tokenStart) {
+            clearPendingTokenSelection();
+            return;
+        }
+        requestTokenSelection(target, activeTokenSelectionOptionsRef.current);
+    }, [clearPendingTokenSelection, clearTokenSelection, requestTokenSelection, rootRef, subtitles]);
 
     useEffect(() => {
         const root = rootRef.current;

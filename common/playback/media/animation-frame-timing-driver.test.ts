@@ -346,6 +346,7 @@ describe('AnimationFrameTimingDriver', () => {
                 actionBlocks: [],
                 hiddenSubtitleIndexes: [],
                 durationMs: 3000,
+                gapActionEndMs: 3000,
                 blocks: [],
                 displaySubtitles: [subtitle],
             },

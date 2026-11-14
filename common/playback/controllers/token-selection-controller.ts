@@ -1,4 +1,5 @@
 import type { IndexedSubtitleModel } from '@project/common';
+import { indexCuesByKey, subtitleKey, sameSubtitleText } from '@project/common/subtitle-reader/subtitle-stream';
 import type { TokenSelectionLocation } from '@project/common/annotations/token-navigation';
 import type { SelectTokenInRootOptions } from '@project/common/annotations';
 import type { PlaybackPlanTokenSelection } from '@project/common/playback/plan/playback-plan';
@@ -21,7 +22,7 @@ export interface TokenSelectionControllerCallbacks {
 }
 
 interface PendingSelection {
-    readonly targets: readonly TokenSelectionLocation[];
+    targets: readonly TokenSelectionLocation[];
     readonly onlyIfUnselected: boolean;
     readonly timestampMs: number;
     attempts: number;
@@ -39,9 +40,34 @@ export default class TokenSelectionController {
         this.callbacks = callbacks;
     }
 
-    replacePlan(plan: PlaybackPlanTokenSelection): void {
-        this.cancel();
+    replacePlan(plan: PlaybackPlanTokenSelection, { preservePending }: { preservePending: boolean }): void {
+        const selection = this.pendingSelection;
+        const starts = this.callbacks.automaticallyPaused() ? (plan.onAutoPause ?? plan.onPause) : plan.onPause;
+        if (
+            !preservePending ||
+            (selection && selection.targets.some((target) => starts.get(target.subtitleIndex) !== target.tokenStart))
+        ) {
+            this.cancel();
+        }
         this.plan = plan;
+    }
+
+    subtitlesChanged(previous: readonly IndexedSubtitleModel[], next: readonly IndexedSubtitleModel[]): boolean {
+        const selection = this.pendingSelection;
+        if (!selection) return false;
+        const byKey = indexCuesByKey(next);
+        const targets: TokenSelectionLocation[] = [];
+        for (const target of selection.targets) {
+            const old = previous[target.subtitleIndex];
+            const cue = old?.source ? byKey.get(subtitleKey(old)) : undefined;
+            if (!cue || !sameSubtitleText(old, cue) || old.start !== cue.start || old.end !== cue.end) {
+                this.cancel();
+                return false;
+            }
+            targets.push({ ...target, subtitleIndex: cue.index });
+        }
+        selection.targets = targets;
+        return true;
     }
 
     reevaluatePausedSelection(timestampMs: number): void {

@@ -1,5 +1,5 @@
-import { asbError } from '@project/common/util/log';
 import type {
+    SubtitleSourceMessage,
     AlertMessage,
     AnkiSettingsToVideoMessage,
     AppBarToggleMessageToVideoMessage,
@@ -41,6 +41,8 @@ import type {
     SaveTokenLocalToVideoMessage,
     IndexedSubtitleModel,
 } from '@project/common';
+import type { SubtitleSourceUpdate } from '@project/common/subtitle-reader/subtitle-stream';
+import { asbError } from '@project/common/util/log';
 import type {
     AnkiSettings,
     ApplyStrategy,
@@ -62,6 +64,7 @@ export default class PlayerChannel {
     private transcodedAudioCallbacks: ((audio: TranscodedAudioPayload) => void)[];
     private closeCallbacks: (() => void)[];
     private subtitlesCallbacks: ((subtitles: SubtitleModel[], subtitleFileName: string) => void)[];
+    private subtitleSourceCallbacks: ((update: SubtitleSourceUpdate) => void)[] = [];
     private subtitlesUpdatedCallbacks: ((updatedSubtitles: readonly IndexedSubtitleModel[]) => void)[];
     private saveTokenLocalCallbacks: ((
         track: number,
@@ -99,6 +102,7 @@ export default class PlayerChannel {
         this.readyCallbacks = [];
         this.subtitlesCallbacks = [];
         this.subtitlesUpdatedCallbacks = [];
+        this.subtitleSourceCallbacks = [];
         this.saveTokenLocalCallbacks = [];
         this.offsetCallbacks = [];
         this.playbackRateCallbacks = [];
@@ -183,6 +187,11 @@ export default class PlayerChannel {
                             subtitlesMessage.names.length > 0 ? subtitlesMessage.names[0] : ''
                         );
                     }
+                    break;
+                }
+                case 'subtitleSource': {
+                    const { update } = event.data as SubtitleSourceMessage;
+                    for (const callback of this.subtitleSourceCallbacks) callback(update);
                     break;
                 }
                 case 'subtitlesUpdated': {
@@ -361,6 +370,11 @@ export default class PlayerChannel {
     onSubtitles(callback: (subtitles: SubtitleModel[], subtitleFileName: string) => void) {
         this.subtitlesCallbacks.push(callback);
         return () => this._remove(callback, this.subtitlesCallbacks);
+    }
+
+    onSubtitleSource(callback: (update: SubtitleSourceUpdate) => void) {
+        this.subtitleSourceCallbacks.push(callback);
+        return () => this._remove(callback, this.subtitleSourceCallbacks);
     }
 
     onSubtitlesUpdated(callback: (updatedSubtitles: readonly IndexedSubtitleModel[]) => void) {
@@ -600,6 +614,7 @@ export default class PlayerChannel {
             this.readyCallbacks = [];
             this.subtitlesCallbacks = [];
             this.subtitlesUpdatedCallbacks = [];
+            this.subtitleSourceCallbacks = [];
             this.offsetCallbacks = [];
             this.playbackRateCallbacks = [];
             this.playModeCallbacks = [];

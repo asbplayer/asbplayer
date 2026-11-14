@@ -18,6 +18,8 @@ import { activeRecipe, effectiveSettings, defaultSettings, isTrackSeekable } fro
 import type { AsbplayerSettings, SettingsProvider } from '@project/common/settings';
 
 import { PlayMode } from '@project/common';
+import { indexCuesByKey, subtitleKey, subtitleSourceStatus } from '@project/common/subtitle-reader/subtitle-stream';
+import type { SubtitleSourceState } from '@project/common/subtitle-reader/subtitle-stream';
 import type { IndexedSubtitleModel, PlaybackState } from '@project/common';
 
 import { asbError, asbTrace, asbWarn } from '@project/common/util/log';
@@ -150,7 +152,7 @@ export interface PlaybackEngineCallbacks {
         notificationKey: typeof subtitleOffsetNotificationKey
     ) => void;
     readonly playbackStateChanged: (state: PlaybackState) => void;
-    readonly playbackPositionChanged: (position: number | undefined) => void;
+    readonly playbackPositionChanged: (position: number | undefined, ready: boolean) => void;
     readonly saveSettings: (settings: Partial<AsbplayerSettings>) => void;
     readonly recipeChanged: (name: string | null, transition: PlayModeTransition) => void;
     readonly settingChangeBlocked: (settingLocKey: string) => void;
@@ -164,6 +166,7 @@ export interface PlaybackEngineOptions<T extends IndexedSubtitleModel> {
     readonly appIntegration: boolean;
     readonly autoPauseCorrectionDisabled: boolean;
     readonly subtitles: readonly T[];
+    readonly sources: readonly SubtitleSourceState[];
     readonly playbackModesDisabled: boolean;
     readonly playbackModesSuppressed: boolean;
     readonly playbackPositionKeys: readonly string[];
@@ -208,6 +211,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
     private readonly subtitleOffsetStorage = new CachedLocalStorage();
     private subtitles: readonly T[];
     private lastSubtitleEndMs?: number;
+    private subtitleSources: readonly SubtitleSourceState[];
     private ready: { settings: boolean; subtitles: boolean };
     private playbackModesSuppressed: boolean;
     private plan: PlaybackPlan<T>;
@@ -241,6 +245,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         appIntegration,
         autoPauseCorrectionDisabled,
         subtitles,
+        sources,
         playbackModesDisabled,
         playbackModesSuppressed,
         playbackPositionKeys,
@@ -260,7 +265,9 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         this.autoPauseCorrectionDisabled = autoPauseCorrectionDisabled;
         this.settingsProvider = settingsProvider;
         this.subtitles = subtitles;
-        this.lastSubtitleEndMs = this.calculateLastSubtitleEndMs(subtitles);
+        this.subtitleSources = sources;
+        this.lastSubtitleEndMs =
+            this.subtitleSourceStatus === 'complete' ? this.calculateLastSubtitleEndMs(subtitles) : undefined;
         this.ready = { settings: false, subtitles: subtitles.length > 0 };
         this.playbackModesSuppressed = playbackModesSuppressed;
         this.playbackModeController = new PlaybackModeController(new Set([PlayMode.normal]), playbackModesDisabled);
@@ -375,6 +382,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
             playbackPositionKeys,
             currentTimeMs: () => this.timingDriver.currentTimeMs(),
             lastSubtitleEndMs: () => this.lastSubtitleEndMs,
+            subtitlesReadyAt: (timestampMs) => this.subtitlesReadyAt(timestampMs),
             callbacks: {
                 saveSettings: (settings) => {
                     this.settings = { ...this.settings, ...settings };
@@ -769,16 +777,48 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         this.playbackPositionController.playbackPositionKeysChanged(playbackPositionKeys, options);
     }
 
+    private get subtitleSourceStatus() {
+        return subtitleSourceStatus(this.subtitleSources);
+    }
+
+    private subtitlesReadyAt(timestampMs: number): boolean {
+        if (this.subtitleSourceStatus === 'failed') return false;
+        const pendingTracks = new Set(
+            this.subtitleSources.filter((source) => source.status === 'loading').map((source) => source.track)
+        );
+        for (let index = this.subtitles.length - 1; index >= 0 && pendingTracks.size; --index) {
+            const cue = this.subtitles[index];
+            if (cue.start <= timestampMs) break;
+            pendingTracks.delete(cue.track);
+        }
+        return pendingTracks.size === 0;
+    }
+
     subtitlesChanged(
         subtitles: readonly T[],
-        { timingChanged = true }: { readonly timingChanged?: boolean } = {}
+        {
+            timingChanged = true,
+            sources,
+        }: {
+            readonly timingChanged?: boolean;
+            readonly sources: readonly SubtitleSourceState[];
+        }
     ): void {
-        this.tokenSelectionController.cancel();
+        const preserveTokenSelection = this.tokenSelectionController.subtitlesChanged(this.subtitles, subtitles);
         const previousSubtitleCount = this.subtitles.length;
         const hadSubtitles = this.ready.subtitles;
-        const snapshotCleared = timingChanged && this.clearAutoPauseTimestamp();
+        const byKey = indexCuesByKey(subtitles);
+        const existingTimingUnchanged =
+            this.subtitles.length > 0 &&
+            this.subtitles.every((old) => {
+                const cue = old.source && byKey.get(subtitleKey(old));
+                return cue && cue.start === old.start && cue.end === old.end;
+            });
+        const snapshotCleared = timingChanged && !existingTimingUnchanged && this.clearAutoPauseTimestamp();
         this.subtitles = subtitles;
-        this.lastSubtitleEndMs = this.calculateLastSubtitleEndMs(subtitles);
+        this.subtitleSources = sources;
+        this.lastSubtitleEndMs =
+            this.subtitleSourceStatus === 'complete' ? this.calculateLastSubtitleEndMs(subtitles) : undefined;
         asbTrace('playback/subtitles', 'Playback subtitles changed', {
             hadSubtitles,
             newSubtitleCount: subtitles.length,
@@ -790,7 +830,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
             this.ready.subtitles = true;
             this.bind();
             if (hadSubtitles) {
-                const planChanged = this.rebuildPlan();
+                const planChanged = this.rebuildPlan({ preserveTokenSelection });
                 if (planChanged && !timingChanged) this.reevaluatePausedSelection();
                 if (!planChanged && snapshotCleared && this.timingDriver.bound) {
                     this.playbackStateController.notify(this.timingDriver.currentTimeMs(), { force: false });
@@ -804,6 +844,8 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
             }); // Reset to normal while subtitles are unavailable
             this.teardown({ saveSettings: true }); // Subtitle timing can stop while media and converted audio keep playing.
         }
+        if (this.subtitleSourceStatus === 'failed') this.playbackPositionController.dismissPlaybackPosition();
+        else this.playbackPositionController.subtitlesChanged();
     }
 
     private reevaluatePausedSelection(): void {
@@ -1064,7 +1106,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         asbTrace('playback/position', 'Resuming remembered playback position');
         try {
             await this.playbackPositionController.resumePlaybackPosition();
-            asbTrace('playback/position', 'Finished resuming remembered playback position', {
+            asbTrace('playback/position', 'Handled remembered playback position request', {
                 timestampMs: this.timingDriver.currentTimeMs(),
             });
         } catch (error) {
@@ -1133,6 +1175,9 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
             : this.playbackModeController.playModes;
 
         return buildPlaybackPlan({
+            sources: this.subtitleSources.filter((source) =>
+                isTrackSeekable(this.settings.seekableTracks, source.track)
+            ),
             subtitles: displaySubtitles.filter((subtitle) =>
                 isTrackSeekable(this.settings.seekableTracks, subtitle.track)
             ),
@@ -1167,7 +1212,9 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
      * the plan or timeline should as rebuilding to update them is always preferred. It also serves to simplify
      * the overall logic by reducing runtime checks.
      */
-    private rebuildPlan(options: { readonly initializePlaybackRate?: boolean } = {}): boolean {
+    private rebuildPlan(
+        options: { readonly initializePlaybackRate?: boolean; readonly preserveTokenSelection?: boolean } = {}
+    ): boolean {
         const plan = this.buildPlan();
         const planChanged = !playbackPlansEqual(this.plan, plan);
         asbTrace('playback/plan', 'Rebuilt playback plan', {
@@ -1192,7 +1239,9 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
             this.executor.replacePlan(this.plan, this.timingDriver.currentTimeMs(), {
                 forcePlaybackRate: options.initializePlaybackRate,
             });
-            this.tokenSelectionController.replacePlan(this.plan.tokenSelection);
+            this.tokenSelectionController.replacePlan(this.plan.tokenSelection, {
+                preservePending: options.preserveTokenSelection ?? false,
+            });
             if (this.timingDriver.bound) {
                 this.playbackStateController.notify(this.timingDriver.currentTimeMs(), { force: true });
             }

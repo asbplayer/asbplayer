@@ -1,4 +1,9 @@
 import type {
+    SubtitleSourceUpdate,
+    SubtitleSourceState,
+    SubtitleReference,
+} from '@project/common/subtitle-reader/subtitle-stream';
+import type {
     AnkiSettings,
     ApplyStrategy,
     AsbplayerSettings,
@@ -333,12 +338,15 @@ export interface PlayerSyncMessage extends Message {
     readonly command: 'syncv2';
     readonly subtitles: SerializedSubtitleFile[];
     readonly flatten?: boolean;
+    /** Attachment metadata only; cue data travels through subtitleSource messages. */
+    readonly subtitleSource?: { readonly tracks: readonly SubtitleSourceState[] };
 }
 
 export interface ExtensionSyncMessage extends Message {
     readonly command: 'sync';
     readonly subtitles: SerializedSubtitleFile[];
     readonly flatten?: boolean;
+    readonly subtitleSource?: { readonly tracks: readonly SubtitleSourceState[] };
     readonly withSyncedAsbplayerOnly: boolean;
     readonly withAsbplayerId?: string;
 }
@@ -465,6 +473,16 @@ export interface AudioBufferedFromVideoMessage extends Message {
 export interface ToggleSubtitleTrackInListFromVideoMessage extends Message {
     readonly command: 'toggleSubtitleTrackInList';
     readonly track: number;
+}
+
+export interface SubtitleSourceMessage extends Message {
+    readonly command: 'subtitleSource';
+    readonly update:
+        | Exclude<SubtitleSourceUpdate, { type: 'snapshot' }>
+        | (Extract<SubtitleSourceUpdate, { type: 'snapshot' }> & {
+              /** The video's current offset when replaying its source snapshot. */
+              readonly offset: number;
+          });
 }
 
 export interface SubtitlesToVideoMessage extends Message {
@@ -1254,7 +1272,9 @@ export interface DictionaryRequestStatisticsSeekMessage extends Message {
 export interface DictionaryRequestStatisticsMineSentencesMessage extends Message {
     readonly command: 'dictionary-request-statistics-mine-sentences';
     readonly mediaId: string;
+    /** Retained in the wire payload for receivers that only understand sentence indexes. */
     readonly indexes: number[];
+    readonly subtitles: readonly SubtitleReference[];
 }
 
 export interface OpenStatisticsOverlayMessage extends Message {

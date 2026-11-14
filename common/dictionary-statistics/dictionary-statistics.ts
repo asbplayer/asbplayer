@@ -1,4 +1,5 @@
-import type { Progress, Tokenization } from '@project/common';
+import type { IndexedSubtitleModel, Progress, Tokenization } from '@project/common';
+import type { SubtitleSourceState, SubtitleSourceStatus } from '@project/common/subtitle-reader/subtitle-stream';
 import type {
     CardInfoForDB,
     DictionaryProvider,
@@ -8,6 +9,9 @@ import type {
 } from '@project/common/dictionary-db';
 import type { DictionarySettings, SettingsProvider, TokenStatusConfig, TokenStatus } from '@project/common/settings';
 import { defaultSettings, dictionaryTrackEnabled, NUM_TOKEN_STATUSES } from '@project/common/settings';
+import { asbError } from '@project/common/util/log';
+
+const publicationIntervalMs = 1000;
 
 export const REVIEW_DUES = [0, 1, 7] as const; // 0 = due today, 1 = due within a day, 7 = due within a week
 
@@ -17,6 +21,7 @@ export interface DictionaryStatisticsSentence {
     end: number;
     track: number;
     index: number;
+    source?: IndexedSubtitleModel['source'];
     tokenization?: Tokenization;
 }
 
@@ -49,6 +54,8 @@ export interface DictionaryStatisticsStats {
 }
 
 export interface DictionaryStatisticsRawTrackSnapshot {
+    /** Processing all received cues does not imply source completion. */
+    sourceStatus: SubtitleSourceStatus;
     track: number;
     progress: Progress;
     statusColors: Record<TokenStatus, string>;
@@ -81,7 +88,9 @@ export class DictionaryStatistics {
     private settings: DictionarySettings;
     private anki: DictionaryStatisticsAnkiSnapshot;
     private waniKani: DictionaryStatisticsWaniKaniSnapshots;
-    private lastCancelledAt: number;
+    private resetGeneration = 0;
+    private publicationTimeout?: ReturnType<typeof setTimeout>;
+    private lastPublishedAt = -Infinity;
 
     constructor(settingsProvider: SettingsProvider, dictionaryProvider: DictionaryProvider, mediaId: string) {
         this.settingsProvider = settingsProvider;
@@ -91,7 +100,6 @@ export class DictionaryStatistics {
         this.settings = { dictionaryTracks: defaultSettings.dictionaryTracks };
         this.anki = { cardsInfo: {}, dueCards: {}, cardsStatus: {} };
         this.waniKani = {};
-        this.lastCancelledAt = 0;
     }
 
     hasStatistics(): boolean {
@@ -99,22 +107,33 @@ export class DictionaryStatistics {
     }
 
     reset(): void {
-        const startTime = Date.now();
+        clearTimeout(this.publicationTimeout);
+        this.publicationTimeout = undefined;
         this.rawTrackSnapshots.clear();
         this.anki = { cardsInfo: {}, dueCards: {}, cardsStatus: {} };
         this.waniKani = {};
-        void this._publish(undefined, startTime);
-        this.lastCancelledAt = Date.now();
+        ++this.resetGeneration;
+        void this._publish();
     }
 
     publishSnapshot(): void {
-        const startTime = Date.now();
-        void this._publish(this.hasStatistics() ? this._snapshot() : undefined, startTime);
+        if (this.publicationTimeout !== undefined) return;
+        const remainingMs = publicationIntervalMs - (performance.now() - this.lastPublishedAt);
+        if (remainingMs <= 0) {
+            this.lastPublishedAt = performance.now();
+            void this._publish();
+            return;
+        }
+        this.publicationTimeout = setTimeout(() => {
+            this.publicationTimeout = undefined;
+            this.publishSnapshot();
+        }, remainingMs);
     }
 
     init(track: number, total: number): void {
         this.rawTrackSnapshots.set(track, {
             track,
+            sourceStatus: 'complete',
             progress: { current: 0, total, startedAt: Date.now() },
             statusColors: statusColorsFromConfig([]),
             stats: {
@@ -126,31 +145,61 @@ export class DictionaryStatistics {
         });
     }
 
+    setSourceStates(sources: readonly SubtitleSourceState[]): void {
+        let changed = false;
+        for (const snapshot of this.rawTrackSnapshots.values()) {
+            const status = sources.find((source) => source.track === snapshot.track)?.status ?? 'complete';
+            if (snapshot.sourceStatus !== status) changed = true;
+            snapshot.sourceStatus = status;
+        }
+        if (changed) this.publishSnapshot();
+    }
+
+    reconcileSubtitles(
+        subtitles: readonly IndexedSubtitleModel[],
+        oldToNewIndexes: ReadonlyMap<number, number>,
+        sources: readonly SubtitleSourceState[],
+        processed: ReadonlyMap<number, ReadonlySet<number>>
+    ): void {
+        for (const snapshot of this.rawTrackSnapshots.values()) {
+            const sentences: DictionaryStatisticsSentences = {};
+            for (const sentence of Object.values(snapshot.stats.sentences)) {
+                const index = oldToNewIndexes.get(sentence.index);
+                if (index === undefined) continue;
+                const cue = subtitles[index];
+                if (cue) sentences[index] = { ...sentence, index, start: cue.start, end: cue.end };
+            }
+            snapshot.stats.sentences = sentences;
+            snapshot.progress.total = subtitles.filter((cue) => cue.track === snapshot.track).length;
+            snapshot.progress.current = processed.get(snapshot.track)?.size ?? 0;
+        }
+        this.setSourceStates(sources);
+        this.publishSnapshot();
+    }
+
     updateProgress(track: number, current: number): void {
-        const startTime = Date.now();
         const ts = this.rawTrackSnapshots.get(track);
         if (!ts) throw new Error(`Track ${track} not initialized for dictionary statistics`);
         ts.progress.current = current;
-        void this._publish(this._snapshot(), startTime);
+        this.publishSnapshot();
     }
 
     replaceAnkiSnapshot(anki: DictionaryStatisticsAnkiSnapshot): void {
-        const startTime = Date.now();
         this.anki = anki;
         if (!this.hasStatistics()) return;
-        void this._publish(this._snapshot(), startTime);
+        this.publishSnapshot();
     }
 
     replaceWaniKaniSnapshots(waniKani: DictionaryStatisticsWaniKaniSnapshots): void {
-        const startTime = Date.now();
         this.waniKani = { ...waniKani };
         if (!this.hasStatistics()) return;
-        void this._publish(this._snapshot(), startTime);
+        this.publishSnapshot();
     }
 
     async refreshDictionaryTokens(profile: string | undefined): Promise<void> {
-        const startTime = Date.now();
+        const generation = this.resetGeneration;
         const dictionaryTracks = await this.settingsProvider.getSingle('dictionaryTracks');
+        if (generation !== this.resetGeneration) return;
         const settings = { dictionaryTracks };
         this.settings = settings;
         await Promise.all(
@@ -158,9 +207,11 @@ export class DictionaryStatistics {
                 if (!dictionaryTrackEnabled(dt)) return;
                 const ts = this.rawTrackSnapshots.get(track);
                 if (!ts) throw new Error(`Track ${track} not initialized for dictionary statistics`);
-                ts.stats.dictionary.tokens = await this.dictionaryProvider.getAllTokens(profile, track);
+                const tokens = await this.dictionaryProvider.getAllTokens(profile, track);
+                if (generation !== this.resetGeneration) return;
+                ts.stats.dictionary.tokens = tokens;
                 ts.statusColors = statusColorsFromConfig(dt.dictionaryTokenStatusConfig);
-                await this._publish(this._snapshot(), startTime);
+                this.publishSnapshot();
             })
         );
     }
@@ -178,6 +229,7 @@ export class DictionaryStatistics {
                 .sort(([left], [right]) => left - right)
                 .map(([track, ts]) => ({
                     track,
+                    sourceStatus: ts.sourceStatus,
                     progress: ts.progress,
                     statusColors: ts.statusColors,
                     stats: {
@@ -193,8 +245,14 @@ export class DictionaryStatistics {
         };
     }
 
-    private async _publish(snapshot: DictionaryStatisticsSnapshot | undefined, startTime: number): Promise<void> {
-        if (startTime <= this.lastCancelledAt) return;
-        return this.dictionaryProvider.publishStatisticsSnapshot(this.mediaId, snapshot);
+    private async _publish(): Promise<void> {
+        try {
+            await this.dictionaryProvider.publishStatisticsSnapshot(
+                this.mediaId,
+                this.hasStatistics() ? this._snapshot() : undefined
+            );
+        } catch (error) {
+            asbError('statistics/publication', 'Failed to publish statistics snapshot:', error);
+        }
     }
 }

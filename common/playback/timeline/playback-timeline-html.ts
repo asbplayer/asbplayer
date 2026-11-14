@@ -24,6 +24,7 @@ export const buildPlaybackTimelineExportPlan = <T extends IndexedSubtitleModel>(
     playbackRate,
 }: PlaybackTimelineExportPlanInput<T>): PlaybackPlan<T> => {
     const plan = buildPlaybackPlan({
+        sources: [],
         subtitles,
         displaySubtitles: subtitles,
         durationMs,

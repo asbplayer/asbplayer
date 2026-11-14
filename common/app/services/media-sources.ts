@@ -1,5 +1,11 @@
 import { v4 as uuidv4 } from 'uuid';
-import type { LoadableSubtitleTrack, SerializedSubtitleFile } from '@project/common';
+import type {
+    LegacyPlayerSyncMessage,
+    PlayerSyncMessage,
+    LoadableSubtitleTrack,
+    SerializedSubtitleFile,
+} from '@project/common';
+import { subtitleSourceNames } from '@project/common/subtitle-reader/subtitle-stream';
 import { base64ToBlob } from '@project/common/base64';
 import type { FileWithId } from '@project/common/file-selector';
 import { LocalizedError } from '@project/common/app/components/localized-error';
@@ -9,6 +15,10 @@ export type MediaSourceFile = FileWithId & { track?: number };
 
 /** A complete subtitle file or a fragment, assigned to one subtitle track. */
 export type SubtitleSourceFile = FileWithId & { track: number };
+
+type MediaSubtitleSource =
+    | { readonly kind: 'files'; readonly tracks: LoadableSubtitleTrack<SubtitleSourceFile>[] }
+    | { readonly kind: 'video'; readonly names: string[] };
 
 export const videoExtensions = ['.mkv', '.mp4', '.m4v', '.avi', '.webm'] as const;
 export const audioExtensions = ['.mp3', '.m4a', '.aac', '.flac', '.ogg', '.wav', '.opus', '.m4b'] as const;
@@ -37,19 +47,24 @@ export const getExtension = (fileName: string) => {
 
 /** Replace the instance when sources change; derived arrays stay stable between renders. */
 export class MediaSources {
+    readonly subtitleTracks: LoadableSubtitleTrack<SubtitleSourceFile>[];
     readonly subtitleSourceFiles: SubtitleSourceFile[];
     readonly firstSubtitleSourceFiles: SubtitleSourceFile[];
     readonly subtitleFileNames: string[];
     readonly allSourceFiles: FileWithId[];
 
     constructor(
-        readonly subtitleTracks: LoadableSubtitleTrack<SubtitleSourceFile>[] = [],
+        readonly subtitleSource: MediaSubtitleSource = { kind: 'files', tracks: [] },
         readonly videoFile?: FileWithId,
         readonly videoFileUrl?: string
     ) {
-        this.subtitleSourceFiles = subtitleTracks.flatMap(({ fileParts }) => fileParts);
-        this.firstSubtitleSourceFiles = subtitleTracks.flatMap(({ fileParts }) => fileParts.slice(0, 1));
-        this.subtitleFileNames = subtitleTracks.map(({ fileParts }) => fileParts[0]?.file.name ?? '');
+        this.subtitleTracks = subtitleSource.kind === 'files' ? subtitleSource.tracks : [];
+        this.subtitleSourceFiles = this.subtitleTracks.flatMap(({ fileParts }) => fileParts);
+        this.firstSubtitleSourceFiles = this.subtitleTracks.flatMap(({ fileParts }) => fileParts.slice(0, 1));
+        this.subtitleFileNames =
+            subtitleSource.kind === 'video'
+                ? subtitleSource.names
+                : this.subtitleTracks.map(({ fileParts }) => fileParts[0]?.file.name ?? '');
         this.allSourceFiles = videoFile ? [...this.subtitleSourceFiles, videoFile] : this.subtitleSourceFiles;
     }
 
@@ -87,7 +102,17 @@ export class MediaSources {
             subtitleTracks[track].fileParts.push(subtitleSourceFile);
         }
 
-        return new MediaSources(subtitleTracks, videoFile);
+        return new MediaSources({ kind: 'files', tracks: subtitleTracks }, videoFile);
+    }
+
+    static fromSync(message: LegacyPlayerSyncMessage | PlayerSyncMessage): MediaSources {
+        if (message.command === 'sync') {
+            return MediaSources.fromFiles(decodeSubtitleSourceFiles([message.subtitles]));
+        }
+        if (message.subtitleSource) {
+            return new MediaSources({ kind: 'video', names: subtitleSourceNames(message.subtitleSource.tracks) });
+        }
+        return MediaSources.fromFiles(decodeSubtitleSourceFiles(message.subtitles, message.flatten));
     }
 
     hasSubtitleFile(name: string): boolean {

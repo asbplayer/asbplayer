@@ -72,9 +72,14 @@ const TestPlayer = ({
     return (
         <div ref={rootRef} className="asb-token-container" data-player={name} tabIndex={-1}>
             <button>{name}</button>
-            <span data-asb-subtitle-index="0">
-                <span data-asb-token-start="0">word</span>
-            </span>
+            {subtitleData.map((subtitle) => (
+                <span
+                    key={subtitle.source ? `${subtitle.source.loadId}:${subtitle.source.cueId}` : subtitle.index}
+                    data-asb-subtitle-index={subtitle.index}
+                >
+                    <span data-asb-token-start="0">{subtitle.text}</span>
+                </span>
+            ))}
         </div>
     );
 };
@@ -180,6 +185,39 @@ describe('useTokenSelection', () => {
         act(() => renderPlayer([...subtitles]));
         selection.clearPauseTokenSelection();
         expect(container.querySelector('.asb-token-selected')).not.toBeNull();
+    });
+
+    it('retains the selected cue through progressive reindexing and clears it on source replacement', () => {
+        let selection!: ReturnType<typeof useTokenSelection>;
+        const first = { ...subtitles[0], source: { loadId: 'stream', cueId: 0 } };
+        const keyBinder = new TestKeyBinder();
+        const renderPlayer = (subtitleData: typeof subtitles) =>
+            root.render(
+                <TestPlayer
+                    name="subtitles"
+                    keyBinder={keyBinder}
+                    subtitleData={subtitleData}
+                    onMatch={jest.fn()}
+                    exposeSelection={(api) => {
+                        selection = api;
+                    }}
+                />
+            );
+        act(() => renderPlayer([first]));
+        act(() => {
+            selection.selectToken({ subtitleIndex: 0, tokenStart: 0 });
+        });
+        const selected = container.querySelector('.asb-token-selected');
+        act(() =>
+            renderPlayer([
+                { ...first, text: 'earlier', source: { loadId: 'other', cueId: 0 } },
+                { ...first, index: 1 },
+            ])
+        );
+        expect(container.querySelector('.asb-token-selected')).toBe(selected);
+        expect(selected?.parentElement?.getAttribute('data-asb-subtitle-index')).toBe('1');
+        act(() => renderPlayer([{ ...first, source: { loadId: 'replacement', cueId: 0 } }]));
+        expect(container.querySelector('.asb-token-selected')).toBeNull();
     });
 
     it('preserves pending navigation when pause selection arrives before the token renders', () => {

@@ -280,20 +280,26 @@ const StatisticsOverlay = React.forwardRef<HTMLDivElement, StatisticsOverlayProp
                         </IconButton>
                     </Box>
                 </Box>
-                {bestTrackSnapshot && bestTrackSnapshot.progress.current < bestTrackSnapshot.progress.total && (
-                    <LinearProgress
-                        variant={bestTrackSnapshot.progress.current > 0 ? 'determinate' : 'indeterminate'}
-                        value={(bestTrackSnapshot.progress.current / bestTrackSnapshot.progress.total) * 100}
-                        sx={{
-                            position: 'absolute',
-                            width: (theme) => `calc(100% - ${theme.spacing(0.5)})`,
-                            left: (theme) => theme.spacing(0.25),
-                            bottom: -1,
-                            borderRadius: 0,
-                            height: 2,
-                        }}
-                    />
-                )}
+                {bestTrackSnapshot &&
+                    (bestTrackSnapshot.sourceStatus === 'loading' ||
+                        bestTrackSnapshot.progress.current < bestTrackSnapshot.progress.total) && (
+                        <LinearProgress
+                            variant={
+                                bestTrackSnapshot.sourceStatus !== 'loading' && bestTrackSnapshot.progress.total > 0
+                                    ? 'determinate'
+                                    : 'indeterminate'
+                            }
+                            value={(bestTrackSnapshot.progress.current / bestTrackSnapshot.progress.total) * 100}
+                            sx={{
+                                position: 'absolute',
+                                width: (theme) => `calc(100% - ${theme.spacing(0.5)})`,
+                                left: (theme) => theme.spacing(0.25),
+                                bottom: -1,
+                                borderRadius: 0,
+                                height: 2,
+                            }}
+                        />
+                    )}
             </Paper>
         </Fade>
     );

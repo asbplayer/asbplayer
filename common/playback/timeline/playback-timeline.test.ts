@@ -40,6 +40,7 @@ describe('PlaybackTimeline', () => {
             actionBlocks: [],
             hiddenSubtitleIndexes: [],
             durationMs: base.durationMs,
+            gapActionEndMs: base.durationMs,
             blocks: base.blocks.map((block) => ({ ...block, startAction: true as const })),
             displaySubtitles: subtitles,
         });
@@ -66,6 +67,7 @@ describe('PlaybackTimeline', () => {
             actionBlocks: [],
             hiddenSubtitleIndexes: [],
             durationMs: base.durationMs,
+            gapActionEndMs: base.durationMs,
             blocks: base.blocks.map((block) => ({ ...block, playbackModeStartMs: 1000, startAction: true as const })),
             displaySubtitles: subtitles,
         });

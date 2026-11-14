@@ -37,7 +37,8 @@ const makeController = ({
     const playbackPositionChanges: (number | undefined)[] = [];
     const seekCalls: number[] = [];
     const playCalls: number[] = [];
-    const state = { currentTimeMs, lastSubtitleEndMs };
+    const state = { currentTimeMs, lastSubtitleEndMs, subtitlesReady: true };
+    const resumeReadiness: boolean[] = [];
     let providerPositions = [...(settings.lastPlaybackPositions ?? defaultSettings.lastPlaybackPositions)];
     let providerReadPromise: Promise<AsbplayerSettings['lastPlaybackPositions']> | undefined;
     const settingsProvider = {
@@ -52,6 +53,7 @@ const makeController = ({
         playbackPositionKeys,
         currentTimeMs: () => state.currentTimeMs,
         lastSubtitleEndMs: () => state.lastSubtitleEndMs,
+        subtitlesReadyAt: () => state.subtitlesReady,
         settingsProvider,
         callbacks: {
             saveSettings: (updatedSettings) => {
@@ -60,7 +62,10 @@ const makeController = ({
                     providerPositions = updatedSettings.lastPlaybackPositions;
                 }
             },
-            playbackPositionChanged: (position) => playbackPositionChanges.push(position),
+            playbackPositionChanged: (position, ready) => {
+                playbackPositionChanges.push(position);
+                resumeReadiness.push(ready);
+            },
             seek: async (timestampMs) => {
                 seekCalls.push(timestampMs);
             },
@@ -85,6 +90,7 @@ const makeController = ({
         },
         savedSettings,
         playbackPositionChanges,
+        resumeReadiness,
         seekCalls,
         playCalls,
     };
@@ -153,6 +159,61 @@ describe('playback positions', () => {
 });
 
 describe('PlaybackPositionController', () => {
+    it('queues a requested resume until subtitles are ready and resumes only once', async () => {
+        const harness = makeController({
+            settings: { lastPlaybackPositions: [{ fileName: 'video.mp4', position: 61_000 }] },
+            showingSubtitlesAt: () => [subtitle],
+        });
+        harness.state.subtitlesReady = false;
+        harness.controller.bind();
+        await harness.controller.resumePlaybackPosition();
+        harness.controller.subtitlesChanged();
+        expect(harness.seekCalls).toEqual([]);
+        expect(harness.resumeReadiness).toEqual([false]);
+
+        harness.state.subtitlesReady = true;
+        harness.controller.subtitlesChanged();
+        harness.controller.subtitlesChanged();
+        await flushSave();
+        expect(harness.seekCalls).toEqual([subtitle.start]);
+        expect(harness.playCalls).toEqual([1]);
+        expect(harness.playbackPositionChanges).toEqual([61_000, undefined]);
+        harness.controller.unbind();
+    });
+
+    it('announces readiness without automatically resuming an unrequested offer', () => {
+        const harness = makeController({
+            settings: { lastPlaybackPositions: [{ fileName: 'video.mp4', position: 61_000 }] },
+        });
+        harness.state.subtitlesReady = false;
+        harness.controller.bind();
+        harness.state.subtitlesReady = true;
+        harness.controller.subtitlesChanged();
+        harness.controller.subtitlesChanged();
+        expect(harness.resumeReadiness).toEqual([false, true]);
+        expect(harness.playbackPositionChanges).toEqual([61_000, 61_000]);
+        expect(harness.seekCalls).toEqual([]);
+        harness.controller.unbind();
+    });
+
+    it.each(['dismiss', 'unbind', 'replace'] as const)('cancels a queued resume on %s', async (action) => {
+        const harness = makeController({
+            settings: { lastPlaybackPositions: [{ fileName: 'video.mp4', position: 61_000 }] },
+        });
+        harness.state.subtitlesReady = false;
+        harness.controller.bind();
+        await harness.controller.resumePlaybackPosition();
+        if (action === 'dismiss') harness.controller.dismissPlaybackPosition();
+        else if (action === 'unbind') harness.controller.unbind();
+        else harness.controller.playbackPositionKeysChanged(['video.mp4'], { isNewSource: true });
+        harness.state.subtitlesReady = true;
+        harness.controller.subtitlesChanged();
+        await flushSave();
+        expect(harness.seekCalls).toEqual([]);
+        expect(harness.playCalls).toEqual([]);
+        harness.controller.unbind();
+    });
+
     it('respects the minimum when saving and restoring, removing positions below it', async () => {
         const saveHarness = makeController({
             settings: {
