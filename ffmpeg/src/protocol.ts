@@ -1,8 +1,32 @@
-export type ExtractedSubtitle = {
-    trackIndex: number;
-    extension: 'srt';
-    mimeType: 'application/x-subrip';
-};
+export const ffmpegSubtitleFormats = {
+    text: { extension: 'srt', mimeType: 'application/x-subrip' },
+    /**
+     * Internal PNG-and-timing format for embedded PGS, DVD, and DVB subtitles.
+     * The .sup reader handles PGS only, and FFmpeg cannot encode DVD/DVB as PGS,
+     * so extraction uses one decoded representation for all three codecs.
+     */
+    image: { extension: 'asbimg', mimeType: 'application/x-asbimg' },
+} as const;
+
+type FfmpegSubtitleFormat = (typeof ffmpegSubtitleFormats)[keyof typeof ffmpegSubtitleFormats];
+
+export type ExtractedSubtitle = { trackIndex: number } & FfmpegSubtitleFormat;
+
+export type SubtitleOutputFormat = FfmpegSubtitleFormat['extension'];
+
+const mimeTypesBySubtitleFormat = new Map<string, FfmpegSubtitleFormat['mimeType']>(
+    Object.values(ffmpegSubtitleFormats).map(({ extension, mimeType }) => [extension, mimeType])
+);
+
+export function mimeTypeForSubtitleFormat(format: SubtitleOutputFormat): FfmpegSubtitleFormat['mimeType'];
+export function mimeTypeForSubtitleFormat(format: string): FfmpegSubtitleFormat['mimeType'] | undefined;
+export function mimeTypeForSubtitleFormat(format: string): FfmpegSubtitleFormat['mimeType'] | undefined {
+    return mimeTypesBySubtitleFormat.get(format);
+}
+
+export const subtitleOutputFormats: ReadonlySet<SubtitleOutputFormat> = new Set(
+    Object.values(ffmpegSubtitleFormats).map(({ extension }) => extension)
+);
 
 export type FfmpegLibraryInfo = {
     name: string;

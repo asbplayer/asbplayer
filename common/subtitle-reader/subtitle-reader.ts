@@ -10,6 +10,7 @@ import { WebVTT } from 'videojs-vtt.js';
 import { XMLParser } from 'fast-xml-parser';
 import type { LoadableSubtitleTrack, SubtitleTextImage, Token, Tokenization } from '@project/common';
 import { SubtitleHtml } from '@project/common';
+import { ffmpegSubtitleFormats } from '@project/ffmpeg/protocol';
 import DOMPurify from 'dompurify';
 
 /**
@@ -52,6 +53,9 @@ const assOverrideTagRegex = /\{(?:\\(?:an[1-9]|[ius][01]|b(?:[01]|[1-9]00)))+\}/
 
 const srtCueSeparatorRegex = /\r?\n[ \t]*\r?\n/;
 const assLineBreakRegex = /\r\n|\r|\n/;
+const pngDataUrlRegex = /^data:image\/png;base64,[A-Za-z0-9+/]+={0,2}$/;
+const maximumBitmapRecordLength = 32 * 1024 * 1024;
+const maximumBitmapDimension = 8192;
 const assNewLineRegex = RegExp(/\\[nN]/, 'ig');
 // Character classes shared by the Netflix ruby regexes below so they cannot drift apart.
 const netflixRubyKanaClass = '\\p{sc=Hira}\\p{sc=Kana}';
@@ -262,6 +266,51 @@ export default class SubtitleReader {
         };
     }
 
+    /**
+     * ASBIMG is newline-delimited JSON of completed bitmap cues with PNG data URLs.
+     * Records use milliseconds and source/image dimensions; chunk boundaries have no meaning.
+     * Completed bytes are persisted for restore, so decoding need not run again.
+     */
+    createProgressiveImageReader() {
+        const decoder = new TextDecoder('utf-8', { fatal: true });
+        let pending = '';
+        let nextCueId = 0;
+        return {
+            read: (chunk: ArrayBuffer, final: boolean): SubtitleSourceCue[] => {
+                pending += decoder.decode(chunk, { stream: !final });
+                const lines = pending.split('\n');
+                pending = lines.pop()!;
+                if (pending.length > maximumBitmapRecordLength || (final && pending.length !== 0)) {
+                    throw new Error('Incomplete or oversized bitmap subtitle record');
+                }
+                return lines.map((line) => {
+                    if (line.length > maximumBitmapRecordLength) throw new Error('Oversized bitmap subtitle record');
+                    const cue = JSON.parse(line);
+                    const image = cue?.textImage;
+                    const dimension = (n: unknown): n is number =>
+                        Number.isInteger(n) && (n as number) > 0 && (n as number) <= maximumBitmapDimension;
+                    if (
+                        !Number.isFinite(cue?.start) ||
+                        cue.start < 0 ||
+                        !Number.isFinite(cue?.end) ||
+                        cue.end <= cue.start ||
+                        !dimension(image?.screen?.width) ||
+                        !dimension(image?.screen?.height) ||
+                        !dimension(image?.image?.width) ||
+                        !dimension(image?.image?.height) ||
+                        image.image.width > image.screen.width ||
+                        image.image.height > image.screen.height ||
+                        typeof image.dataUrl !== 'string' ||
+                        !pngDataUrlRegex.test(image.dataUrl)
+                    ) {
+                        throw new Error('Invalid bitmap subtitle record');
+                    }
+                    return { cueId: nextCueId++, start: cue.start, end: cue.end, text: '', textImage: image };
+                });
+            },
+        };
+    }
+
     private _srtSubtitles(contents: string, track: number): SubtitleNode[] {
         const parser = new SrtParser({ numericTimestamps: true });
         const nodes = parser.fromSrt(contents);
@@ -325,6 +374,12 @@ export default class SubtitleReader {
 
     /** Parses one complete subtitle file or one fragment of a track. */
     async _subtitles(subtitleSourceFile: File, track: number): Promise<SubtitleNode[]> {
+        if (subtitleSourceFile.name.endsWith(`.${ffmpegSubtitleFormats.image.extension}`)) {
+            return this.createProgressiveImageReader()
+                .read(await subtitleSourceFile.arrayBuffer(), true)
+                .map(({ start, end, text, textImage }) => ({ start, end, text, textImage, track }));
+        }
+
         if (subtitleSourceFile.name.endsWith('.srt') || subtitleSourceFile.name.endsWith('.subrip')) {
             return this._srtSubtitles(await subtitleSourceFile.text(), track);
         }

@@ -2,6 +2,7 @@
 import { expect, it } from '@jest/globals';
 import { createFfmpegSession } from '@project/ffmpeg/session';
 import type { FfmpegWorker } from '@project/ffmpeg/session';
+import { ffmpegSubtitleFormats } from '@project/ffmpeg/protocol';
 import type { WorkerRequest, WorkerReply } from '@project/ffmpeg/protocol';
 import { ffmpegMetadata } from '@project/ffmpeg/metadata';
 import { extractSubtitleTracks } from '@project/common/embedded-subtitles/ffmpeg-subtitle-extractor';
@@ -42,8 +43,12 @@ class SubtitleWorker extends EventTarget implements FfmpegWorker {
                       diagnostics,
                       result: request.trackIndexes.map((trackIndex) => ({
                           trackIndex,
-                          extension: 'srt',
-                          mimeType: 'application/x-subrip',
+                          extension:
+                              this.host.bitmap && trackIndex === 9 ? ffmpegSubtitleFormats.image.extension : 'srt',
+                          mimeType:
+                              this.host.bitmap && trackIndex === 9
+                                  ? ffmpegSubtitleFormats.image.mimeType
+                                  : 'application/x-subrip',
                       })),
                   };
         } else {
@@ -84,6 +89,7 @@ class SubtitleWorker extends EventTarget implements FfmpegWorker {
 }
 
 class Host {
+    bitmap = false;
     autoInitialize = true;
     autoComplete = true;
     error?: string;
@@ -146,6 +152,18 @@ it('assembles interleaved text outputs, including empty tracks, then releases th
         [],
     ]);
     expect(host.workers[0].active).toBe(false);
+});
+
+it('assembles mixed bitmap and text output with their actual formats', async () => {
+    const host = new Host();
+    host.bitmap = true;
+    const files = await run(host);
+    expect(files.map(({ trackIndex, format, blob }) => [trackIndex, format, blob.type])).toEqual([
+        [2, 'srt', 'application/x-subrip'],
+        [9, ffmpegSubtitleFormats.image.extension, ffmpegSubtitleFormats.image.mimeType],
+        [5, 'srt', 'application/x-subrip'],
+    ]);
+    expect([...new Uint8Array(await files[1].blob.arrayBuffer())]).toEqual([4, 5]);
 });
 
 it.each(['initializing', 'extracting'])('terminates %s work on cancellation and allows retry', async (stage) => {

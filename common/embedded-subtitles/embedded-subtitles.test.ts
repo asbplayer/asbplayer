@@ -5,6 +5,7 @@ import { TextEncoder } from 'util';
 import { mkv, mkvTrack, element, utf8 } from '@project/common/media-probe/test-media';
 import { embeddedDescriptor, embeddedSubtitleId } from '@project/common/embedded-subtitles/subtitle-source';
 import { EmbeddedSubtitles } from '@project/common/embedded-subtitles/embedded-subtitles';
+import { ffmpegSubtitleFormats } from '@project/ffmpeg/protocol';
 import type {
     SubtitleHost,
     SubtitleExtractionOptions,
@@ -30,10 +31,12 @@ const tracks: EmbeddedSubtitleTrack[] = [
     {
         trackIndex: 2,
         codec: 'dvd_subtitle',
+        outputFormat: ffmpegSubtitleFormats.image.extension,
     },
     {
         trackIndex: 3,
         codec: 'hdmv_pgs_subtitle',
+        outputFormat: ffmpegSubtitleFormats.image.extension,
     },
 ];
 
@@ -201,7 +204,10 @@ it('does no work for empty selections and rejects changed or unsupported sources
             () => {}
         )
     ).rejects.toThrow('changed');
-    for (const track of tracks.slice(2)) {
+    for (const track of [
+        { ...tracks[0], codec: 'unsupported' },
+        { ...tracks[0], trackIndex: 20 },
+    ]) {
         await expect(
             service.extract(video, [embeddedDescriptor(video, track)], new AbortController().signal, () => {})
         ).rejects.toThrow('unavailable');

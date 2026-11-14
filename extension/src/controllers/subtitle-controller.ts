@@ -49,6 +49,7 @@ import {
     compareSubtitlesForDisplay,
     computeStyleString,
     formatAsSignedMs,
+    imageSubtitleHtml,
     mapSubtitlesForDisplay,
     surroundingSubtitles,
 } from '@project/common/util';
@@ -707,23 +708,11 @@ export default class SubtitleController {
             return {
                 html: () => {
                     if (subtitle.textImage) {
-                        const className = this._subtitleClasses(subtitle.track);
-                        const widthRatio =
-                            ((this.subtitleSettings?.imageBasedSubtitleScaleFactor ?? 1) *
-                                subtitle.textImage.image.width) /
-                            subtitle.textImage.screen.width;
-
-                        return `
-                            <div data-track="${
-                                subtitle.track ?? 0
-                            }" data-asb-video-width-ratio="${widthRatio}" style="max-width:100%;margin:auto;" class="${className}">
-                                <img
-                                    style="width:100%;"
-                                    alt="subtitle"
-                                    src="${subtitle.textImage.dataUrl}"
-                                />
-                            </div>
-                        `;
+                        return imageSubtitleHtml(subtitle.textImage, {
+                            scale: this.subtitleSettings?.imageBasedSubtitleScaleFactor ?? 1,
+                            track: subtitle.track,
+                            className: this._subtitleClasses(subtitle.track),
+                        });
                     } else {
                         return this._buildTextHtml(
                             subtitle.text,

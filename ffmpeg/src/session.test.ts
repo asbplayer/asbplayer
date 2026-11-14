@@ -1,5 +1,6 @@
 import { describe, expect, it, jest } from '@jest/globals';
 import { createFfmpegSession, ffmpegMetadata } from '@project/ffmpeg';
+import { ffmpegSubtitleFormats } from '@project/ffmpeg/protocol';
 import type {
     CreateFfmpegSessionOptions,
     FfmpegDiagnostics,
@@ -872,6 +873,17 @@ describe('embedded subtitle operations', () => {
         worker.autoReply = false;
         return { worker, session, runtime };
     };
+    it('accepts an asbimg output descriptor', async () => {
+        const { worker, runtime } = await ready();
+        const extraction = runtime.extractSubtitles({
+            input: new Blob(['video']),
+            trackIndexes: [2],
+            onChunk: () => {},
+        });
+        const output = { trackIndex: 2, ...ffmpegSubtitleFormats.image };
+        result(worker, [output]);
+        await expect(extraction).resolves.toEqual([output]);
+    });
     it('deduplicates subtitle track indexes and requires completion for empty outputs', async () => {
         const { worker, runtime } = await ready();
         const chunks: Array<[number, number]> = [];
@@ -930,14 +942,17 @@ describe('embedded subtitle operations', () => {
         );
         await expect(extraction).rejects.toMatchObject({ code: 'protocol' });
     });
-    it('rejects image output descriptors', async () => {
+    it.each([
+        { extension: 'sup', mimeType: 'application/x-pgs' },
+        { extension: ffmpegSubtitleFormats.image.extension, mimeType: ffmpegSubtitleFormats.text.mimeType },
+    ])('rejects unsupported or mismatched output descriptors: %j', async (descriptor) => {
         const { worker, runtime } = await ready();
         const extraction = runtime.extractSubtitles({
             input: new Blob(['video']),
             trackIndexes: [3],
             onChunk: () => {},
         });
-        result(worker, [{ trackIndex: 3, extension: 'sup', mimeType: 'application/x-pgs' }]);
+        result(worker, [{ trackIndex: 3, ...descriptor }]);
         await expect(extraction).rejects.toMatchObject({ code: 'protocol' });
     });
 });

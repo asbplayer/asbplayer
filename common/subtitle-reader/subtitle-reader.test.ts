@@ -1,4 +1,5 @@
-import { describe, expect, it, jest } from '@jest/globals';
+import { afterAll, beforeAll, describe, expect, it, jest } from '@jest/globals';
+import { TextDecoder, TextEncoder } from 'util';
 import { strFromU8, unzipSync } from 'fflate';
 
 import SubtitleReader from '@project/common/subtitle-reader/subtitle-reader';
@@ -137,6 +138,69 @@ describe('SubtitleReader progressive SRT parsing', () => {
         expect(progressive.read('', true)).toEqual([
             expect.objectContaining({ cueId: 1, text: 'last', start: 3000, end: 4000 }),
         ]);
+    });
+});
+
+describe('SubtitleReader progressive bitmap parsing', () => {
+    const originalTextDecoder = Object.getOwnPropertyDescriptor(globalThis, 'TextDecoder');
+    const record = {
+        start: 2000,
+        end: 4000,
+        textImage: {
+            dataUrl: 'data:image/png;base64,iVBORw0KGgo=',
+            screen: { width: 1920, height: 1080 },
+            image: { width: 300, height: 50 },
+        },
+    };
+    const encode = (value: string) => Uint8Array.from(new TextEncoder().encode(value)).buffer;
+
+    beforeAll(() => {
+        Object.defineProperty(globalThis, 'TextDecoder', { configurable: true, value: TextDecoder });
+    });
+
+    afterAll(() => {
+        if (originalTextDecoder) Object.defineProperty(globalThis, 'TextDecoder', originalTextDecoder);
+        else Reflect.deleteProperty(globalThis, 'TextDecoder');
+    });
+
+    it('buffers arbitrary chunks, publishes complete cues, and restores the same file', async () => {
+        const reader = createReader();
+        const parser = reader.createProgressiveImageReader();
+        const first = JSON.stringify(record) + '\n';
+        expect(parser.read(encode(''), false)).toEqual([]);
+        expect(parser.read(encode(first.slice(0, 17)), false)).toEqual([]);
+        expect(parser.read(encode(first.slice(17) + first.slice(0, 30)), false)).toEqual([
+            { ...record, text: '', cueId: 0 },
+        ]);
+        expect(parser.read(encode(first.slice(30)), true)).toEqual([{ ...record, text: '', cueId: 1 }]);
+        const file = { name: 'embedded.asbimg', arrayBuffer: async () => encode(first) } as File;
+        expect(await reader.subtitles([{ fileParts: [file] }])).toEqual([{ ...record, text: '', track: 0 }]);
+    });
+
+    it('accepts an empty track and rejects a truncated final record', () => {
+        expect(createReader().createProgressiveImageReader().read(encode(''), true)).toEqual([]);
+        expect(() =>
+            createReader()
+                .createProgressiveImageReader()
+                .read(encode(JSON.stringify(record)), true)
+        ).toThrow('Incomplete');
+    });
+
+    it.each([
+        { ...record, start: -1 },
+        { ...record, end: 2000 },
+        { ...record, textImage: { ...record.textImage, screen: { width: 100000, height: 1080 } } },
+        { ...record, textImage: { ...record.textImage, image: { width: 1921, height: 50 } } },
+        { ...record, textImage: { ...record.textImage, image: { width: 300, height: 1081 } } },
+        { ...record, textImage: { ...record.textImage, dataUrl: 'https://example.com/image.png' } },
+        { ...record, textImage: { ...record.textImage, dataUrl: 'data:image/svg+xml;base64,PHN2Zz4=' } },
+        { ...record, textImage: { ...record.textImage, dataUrl: 'data:image/png;base64,foo" onerror="alert(1)' } },
+    ])('rejects malformed timing, dimensions, and non-PNG image sources %#', (value) => {
+        expect(() =>
+            createReader()
+                .createProgressiveImageReader()
+                .read(encode(JSON.stringify(value) + '\n'), true)
+        ).toThrow('Invalid');
     });
 });
 

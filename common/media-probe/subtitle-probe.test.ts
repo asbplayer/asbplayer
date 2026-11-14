@@ -2,6 +2,7 @@
 import { expect, it } from '@jest/globals';
 import { probeSubtitleTracks } from '@project/common/media-probe/subtitle-probe';
 import { box, concat, element, mkv, mkvTrack, mp4Track, utf8 } from '@project/common/media-probe/test-media';
+import { ffmpegSubtitleFormats } from '@project/ffmpeg/protocol';
 
 it('reads mixed Matroska track order, UTF-8 metadata and unsupported subtitles', async () => {
     const bytes = mkv(
@@ -20,15 +21,19 @@ it('reads mixed Matroska track order, UTF-8 metadata and unsupported subtitles',
         mkvTrack(17, 'S_HDMV/PGS'),
         mkvTrack(17, 'D_WEBVTT/SUBTITLES'),
         mkvTrack(1, 'V_VP8'),
-        mkvTrack(17, 'S_TEXT/SSA')
+        mkvTrack(17, 'S_TEXT/SSA'),
+        mkvTrack(17, 'S_DVBSUB'),
+        mkvTrack(17, 'S_TEXT/UNKNOWN')
     );
     const tracks = await probeSubtitleTracks(new Blob([bytes]), new AbortController().signal);
     expect(tracks.map(({ trackIndex, codec, outputFormat }) => [trackIndex, codec, outputFormat])).toEqual([
-        [0, 'dvd_subtitle', undefined],
+        [0, 'dvd_subtitle', ffmpegSubtitleFormats.image.extension],
         [1, 'ass', 'srt'],
-        [2, 'hdmv_pgs_subtitle', undefined],
+        [2, 'hdmv_pgs_subtitle', ffmpegSubtitleFormats.image.extension],
         [3, 'webvtt', 'srt'],
         [4, 'ass', 'srt'],
+        [5, 'dvb_subtitle', ffmpegSubtitleFormats.image.extension],
+        [6, 'S_TEXT/UNKNOWN', undefined],
     ]);
     expect(tracks[1]).toMatchObject({ language: 'ja-JP', title: '日本語' });
 });
@@ -186,4 +191,22 @@ it('honors cancellation after an outstanding file read', async () => {
     controller.abort(new Error('cancelled'));
     release(new ArrayBuffer(20));
     await expect(discovery).rejects.toThrow('cancelled');
+});
+
+it.each([0xe0, 0xff])('identifies VobSub inside generic MPEG-4 subtitle descriptors (%i)', async (objectType) => {
+    const descriptor = box(
+        'esds',
+        Buffer.concat([Buffer.alloc(4), Buffer.from([3, 18, 0, 1, 0, 4, 13, objectType]), Buffer.alloc(12)])
+    );
+    const sample = box('mp4s', Buffer.alloc(8), descriptor);
+    const stsd = box('stsd', Buffer.from([0, 0, 0, 0, 0, 0, 0, 1]), sample);
+    const mdia = box('mdia', box('hdlr', Buffer.alloc(8), utf8('subp')), box('minf', box('stbl', stsd)));
+    const bytes = concat(box('ftyp'), box('moov', box('trak', mdia)));
+    expect(await probeSubtitleTracks(new Blob([bytes]), new AbortController().signal)).toEqual([
+        {
+            trackIndex: 0,
+            codec: objectType === 0xe0 ? 'dvd_subtitle' : 'mp4s',
+            outputFormat: objectType === 0xe0 ? ffmpegSubtitleFormats.image.extension : undefined,
+        },
+    ]);
 });
