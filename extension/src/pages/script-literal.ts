@@ -4,9 +4,11 @@
 // without evaluating any code. Anything beyond plain literals (calls, references, templates) aborts the
 // conversion of that array.
 
-// e.g. captions, closed_captions, captionTracks, subtitles, textTracks, and the generic player `tracks`
-// Matching starts at the keyword (no backtracking over long identifiers); `tracks` must be the whole key.
-const subtitleArrayKey = /(?:caption|subtit|texttrack|(?<![\w$])tracks)[\w$]*["']?\s*:\s*\[/gi;
+// e.g. captions, closed_captions, captionTracks, subtitles, textTracks, cc_languages, and the generic player `tracks`
+// Matching starts at the keyword (no backtracking over long identifiers); `tracks` must be the whole key, and the
+// closed-caption abbreviation `cc` must start the key, alone or before an underscore.
+const subtitleArrayKey =
+    /(?:caption|subtit|texttrack|(?<![\w$])(?:tracks|cc(?:_[\w$]*)?(?![\w$])))[\w$]*["']?\s*:\s*\[/gi;
 const nextFlightPush = /self\.__next_f\.push\(\[1,(?=["'])/g;
 const maximumLiteralLength = 64_000;
 const maximumArraysPerScript = 5;

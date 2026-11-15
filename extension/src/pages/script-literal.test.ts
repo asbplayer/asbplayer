@@ -38,6 +38,11 @@ describe('subtitleArraysFromScript', () => {
         expect(subtitleArraysFromScript(script)).toEqual([[{ src: 'a.vtt' }], [{ url: 'b.srt' }]]);
     });
 
+    it('accepts the closed-caption abbreviation only at the start of a key', () => {
+        const script = `x={"cc_multiple_languages": [{"url": "a.vtt"}], cc: [{src: "b.vtt"}], account: [1], ccTracks: [2], acc_list: [3]}`;
+        expect(subtitleArraysFromScript(script)).toEqual([[{ url: 'a.vtt' }], [{ src: 'b.vtt' }]]);
+    });
+
     it('skips arrays that are not plain literals', () => {
         expect(subtitleArraysFromScript('player.setup({ tracks: buildTracks(lang) })')).toEqual([]);
         expect(subtitleArraysFromScript('player.setup({ tracks: [makeTrack("en")] })')).toEqual([]);

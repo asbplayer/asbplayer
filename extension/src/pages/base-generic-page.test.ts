@@ -244,6 +244,22 @@ it('discovers subtitle arrays declared as object literals in executable inline s
     });
 });
 
+it('discovers closed-caption arrays keyed with the cc abbreviation and keeps one format', async () => {
+    const video = appendVideo();
+    const bridge = document.createElement('script');
+    bridge.textContent = `
+        window.bridge = {"cc": {"WebVTT": "https://cdn.example/c/en.vtt"}, "cc_multiple_languages": [
+            {"url": "https://cdn.example/c/en.dfxp", "primary": true, "profile": "DFXP", "language": "en"},
+            {"url": "https://cdn.example/c/en.vtt", "primary": true, "profile": "WebVTT", "language": "en"}]};
+    `;
+    document.body.append(bridge);
+
+    const { subtitles } = await new BaseGenericPageDiscovery().videoData(video);
+    expect(subtitles).toMatchObject([
+        { label: 'English', language: 'en', url: 'https://cdn.example/c/en.vtt', extension: 'vtt' },
+    ]);
+});
+
 it('discovers subtitle metadata in Next.js flight data and keeps one format per subtitle', async () => {
     const video = appendVideo();
     const payload = JSON.stringify({

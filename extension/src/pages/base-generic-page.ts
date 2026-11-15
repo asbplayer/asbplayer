@@ -31,7 +31,7 @@ const maximumInlineScripts = 50;
 const maximumInlineScriptLength = 512_000;
 const maximumFlightLength = 2_000_000;
 // Also matches the escaped `\"captions\":[` form found inside Next.js flight strings.
-const inlineScriptSubtitleHint = /(?:caption|subtit|texttrack|tracks)\w*\\?["']?\s*:\s*\[/i;
+const inlineScriptSubtitleHint = /(?:caption|subtit|texttrack|tracks|\bcc(?:_\w*)?\b)\w*\\?["']?\s*:\s*\[/i;
 export const maximumTextTrackCues = 10_000;
 export const maximumTextTrackTextLength = 1_000_000;
 export const capturedDuringPlaybackLabelSuffix = ' (captured during playback)';
