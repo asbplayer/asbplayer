@@ -73,6 +73,7 @@ import type {
     PlayModeMessage,
     PlayModesMessage,
     ReadyFromVideoMessage,
+    InitToVideoMessage,
     ReadyStateFromVideoMessage,
     RecordMediaAndForwardSubtitleMessage,
     RequestingActiveTabPermissionMessage,
@@ -839,7 +840,7 @@ export default class Binding {
         asbTrace('playback/binding', 'Media-owner bind finished');
     }
 
-    _notifyReady() {
+    _notifyReady(channelId?: string) {
         asbTrace('playback/binding', 'Sending media-ready state', {
             durationMs: this.video.duration * 1000,
             currentTimeMs: this.currentTimeMs,
@@ -851,6 +852,7 @@ export default class Binding {
             sender: 'asbplayer-video',
             message: {
                 command: 'ready',
+                channelId,
                 duration: this.video.duration,
                 currentTime: this.currentTimeMs / 1000,
                 paused: this.video.paused,
@@ -1066,7 +1068,7 @@ export default class Binding {
             if (request.sender === 'asbplayer-extension-to-video' && request.src === this._registeredVideoSrc) {
                 switch (request.message.command) {
                     case 'init':
-                        this._notifyReady();
+                        this._notifyReady((request.message as InitToVideoMessage).channelId);
                         break;
                     case 'ready':
                         // ignore

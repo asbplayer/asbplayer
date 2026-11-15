@@ -754,6 +754,33 @@ describe('Binding playback mode integration', () => {
         }
     });
 
+    it('addresses init replies to their channel while broadcasting binding readiness', async () => {
+        const binding = new Binding(createVideo(), bindingOptions(false, false));
+        binding.bind();
+        await flushPlaybackTiming();
+        try {
+            for (const listener of runtimeListeners) {
+                listener(
+                    {
+                        sender: 'asbplayer-extension-to-video',
+                        src: binding.registeredVideoSrc,
+                        message: { command: 'init', channelId: 'side-panel-channel' },
+                    },
+                    {},
+                    () => undefined
+                );
+            }
+            const readyMessages = () =>
+                (sendRuntimeMessage.mock.calls as unknown as [{ message?: { command: string; channelId?: string } }][])
+                    .map(([command]) => command.message)
+                    .filter((message) => message?.command === 'ready');
+            expect(readyMessages()[0]?.channelId).toBeUndefined();
+            expect(readyMessages().at(-1)?.channelId).toBe('side-panel-channel');
+        } finally {
+            binding.unbind();
+        }
+    });
+
     it('does not replace the current subtitles when progressive setup has been cancelled', async () => {
         const binding = new Binding(createVideo(), bindingOptions(false, false));
         binding.bind();

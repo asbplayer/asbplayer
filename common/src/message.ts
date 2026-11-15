@@ -381,8 +381,15 @@ export interface ReadyStateFromVideoMessage extends Message {
     readonly value: number;
 }
 
+export interface InitToVideoMessage extends Message {
+    readonly command: 'init';
+    readonly channelId: string;
+}
+
 export interface ReadyFromVideoMessage extends Message {
     readonly command: 'ready';
+    /** Set for an init reply; omitted when a video binding becomes ready for all connected players. */
+    readonly channelId?: string;
     readonly duration: number;
     readonly currentTime: number;
     readonly paused: boolean;

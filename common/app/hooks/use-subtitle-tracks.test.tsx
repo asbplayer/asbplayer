@@ -32,10 +32,12 @@ class TestVideoProtocol implements VideoProtocol {
     readonly sent: Message[] = [];
     source?: SubtitleSourceSnapshot;
     offset = 500;
+    onSubtitles?: () => void;
     onMessage?: (message: VideoProtocolMessage) => void;
 
     postMessage(message: Message) {
         this.sent.push(message);
+        if (message.command === 'subtitles') this.onSubtitles?.();
         if (message.command === 'requestSubtitleSource' && this.source) {
             this.onMessage?.({
                 data: { command: 'subtitleSource', update: { type: 'snapshot', ...this.source, offset: this.offset } },
@@ -116,6 +118,7 @@ describe('useSubtitleTracks source transitions', () => {
     const onLoaded = jest.fn<(subtitleSourceFiles: File[]) => void>();
     const onError = jest.fn<(error: unknown) => void>();
     const onStarted = jest.fn<() => void>();
+    const shouldRestoreSubtitles = jest.fn<(subtitleCount: number) => Promise<boolean>>();
 
     function Player({
         tracks,
@@ -149,6 +152,7 @@ describe('useSubtitleTracks source transitions', () => {
             subtitles,
             channel: activeChannel,
             getSubtitleOffset,
+            shouldRestoreSubtitles,
             onSubtitles: setSubtitles,
             onError,
         });
@@ -181,6 +185,7 @@ describe('useSubtitleTracks source transitions', () => {
         onLoaded.mockClear();
         onError.mockClear();
         onStarted.mockClear();
+        shouldRestoreSubtitles.mockReset().mockResolvedValue(true);
         protocol = new TestVideoProtocol();
         channel = new VideoChannel(protocol);
         reader = new SubtitleReader({
@@ -287,6 +292,101 @@ describe('useSubtitleTracks source transitions', () => {
         expect(protocol.subtitleMessages[0].value).toMatchObject([
             { text: '<b>Loaded</b>', originalText: 'Loaded', tokenization: { tokens: [] } },
         ]);
+    });
+
+    it('avoids older side-panel reload loops while allowing recovery, explicit replacements, and clears', async () => {
+        let videoHasSubtitles = true;
+        shouldRestoreSubtitles.mockImplementation(async (count) => count > 0 && !videoHasSubtitles);
+        // Older side panels reconnect after every full replacement and broadcast their init reply.
+        protocol.onSubtitles = () => {
+            videoHasSubtitles = protocol.subtitleMessages.at(-1)!.value.length > 0;
+            protocol.ready();
+        };
+        await render([track('Local')]);
+        await act(async () => protocol.ready());
+        expect(protocol.subtitleMessages).toHaveLength(1);
+        await act(async () => {
+            protocol.ready();
+            protocol.ready();
+        });
+        expect(protocol.subtitleMessages).toHaveLength(1);
+
+        videoHasSubtitles = false;
+        await act(async () => protocol.ready());
+        expect(protocol.subtitleMessages).toHaveLength(2);
+        expect(protocol.subtitleMessages.at(-1)?.value[0].text).toBe('Local');
+
+        await render([track('Replacement')]);
+        expect(protocol.subtitleMessages).toHaveLength(3);
+        expect(protocol.subtitleMessages.at(-1)?.value[0].text).toBe('Replacement');
+        await render([]);
+        expect(protocol.subtitleMessages).toHaveLength(4);
+        expect(protocol.subtitleMessages.at(-1)?.value).toEqual([]);
+    });
+
+    it('uses the latest annotations after a delayed recovery check', async () => {
+        protocol.ready();
+        await render([track('Loaded')]);
+        let finish!: (restore: boolean) => void;
+        shouldRestoreSubtitles.mockImplementationOnce(() => new Promise((resolve) => (finish = resolve)));
+        await act(async () => protocol.ready());
+        await act(async () => annotate());
+        await act(async () => finish(true));
+        expect(protocol.subtitleMessages).toHaveLength(2);
+        expect(protocol.subtitleMessages.at(-1)?.value).toMatchObject([
+            { text: '<b>Loaded</b>', originalText: 'Loaded', tokenization: { tokens: [] } },
+        ]);
+    });
+
+    it('uses the current file source when a recovery check finishes after a replacement', async () => {
+        protocol.ready();
+        await render([track('Loaded')]);
+        let finish!: (restore: boolean) => void;
+        shouldRestoreSubtitles.mockImplementationOnce(() => new Promise((resolve) => (finish = resolve)));
+        await act(async () => protocol.ready());
+        await render([track('New')]);
+        await act(async () => finish(true));
+        expect(protocol.subtitleMessages.slice(1).every(({ value }) => value[0].text === 'New')).toBe(true);
+    });
+
+    it.each(['remote', 'channel', 'unmount'] as const)(
+        'discards a delayed recovery after a %s change',
+        async (change) => {
+            const tracks = [track('Loaded')];
+            protocol.ready();
+            await render(tracks);
+            let finish!: (restore: boolean) => void;
+            shouldRestoreSubtitles.mockImplementationOnce(() => new Promise((resolve) => (finish = resolve)));
+            await act(async () => protocol.ready());
+            const nextProtocol = new TestVideoProtocol();
+            const nextChannel = new VideoChannel(nextProtocol);
+            if (change === 'remote') {
+                await act(async () => root.render(<Player tracks={undefined} ownership="remote" />));
+            } else if (change === 'channel') {
+                nextProtocol.ready();
+                await act(async () => root.render(<Player tracks={tracks} activeChannel={nextChannel} />));
+            } else {
+                await act(async () => root.render(null));
+            }
+            const sent = protocol.subtitleMessages.length;
+            const nextSent = nextProtocol.subtitleMessages.length;
+            await act(async () => finish(true));
+            expect(protocol.subtitleMessages).toHaveLength(sent);
+            expect(nextProtocol.subtitleMessages).toHaveLength(nextSent);
+            nextChannel.close();
+        }
+    );
+
+    it('leaves the video unchanged when a recovery check fails and allows a later retry', async () => {
+        protocol.ready();
+        await render([track('Loaded')]);
+        const error = new Error('Video unavailable');
+        shouldRestoreSubtitles.mockRejectedValueOnce(error);
+        await act(async () => protocol.ready());
+        expect(protocol.subtitleMessages).toHaveLength(1);
+        expect(onError).toHaveBeenCalledWith(error);
+        await act(async () => protocol.ready());
+        expect(protocol.subtitleMessages).toHaveLength(2);
     });
 
     it('keeps loaded annotations when the source configuration is recreated', async () => {

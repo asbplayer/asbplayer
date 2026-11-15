@@ -44,6 +44,7 @@ interface UseSubtitleTracksParams {
           >
         | undefined;
     getSubtitleOffset: () => number;
+    shouldRestoreSubtitles: (subtitleCount: number) => Promise<boolean>;
     onSubtitles: Dispatch<SetStateAction<DisplaySubtitleModel[] | undefined>>;
     onError: (error: unknown) => void;
 }
@@ -54,6 +55,7 @@ export const useSubtitleTracks = ({
     subtitles,
     channel,
     getSubtitleOffset,
+    shouldRestoreSubtitles,
     onSubtitles,
     onError,
 }: UseSubtitleTracksParams) => {
@@ -93,7 +95,8 @@ export const useSubtitleTracks = ({
     const sendSnapshot = useCallback(() => {
         if (!channel || !ready.current) return;
         if (source.kind === 'remote') return;
-        if (source.kind === 'local' ? owner.current !== 'files' : owner.current !== 'producer') return;
+        if (source.kind === 'local' && owner.current !== 'files') return;
+        if (source.kind === 'producer' && owner.current !== 'producer') return;
         const snapshot = stream.current.snapshot;
         const displayed = displaySubtitleSnapshot(snapshot, currentSubtitles.current ?? [], getSubtitleOffset());
         if (source.kind === 'producer' && supportsProgressiveSubtitles) {
@@ -142,21 +145,33 @@ export const useSubtitleTracks = ({
         [publish, onError, channel, supportsProgressiveSubtitles, getSubtitleOffset, sendSnapshot]
     );
 
-    const latest = useRef({ receive, receiveProducer, sendSnapshot, publish, source, onError });
-    latest.current = { receive, receiveProducer, sendSnapshot, publish, source, onError };
+    const latest = useRef({ receive, receiveProducer, sendSnapshot, publish, source, onError, shouldRestoreSubtitles });
+    latest.current = { receive, receiveProducer, sendSnapshot, publish, source, onError, shouldRestoreSubtitles };
     useEffect(() => {
         ready.current = false;
         if (!channel) return;
+        let active = true;
         const removeSource = channel.onSubtitleSource((update) => latest.current.receive(update));
         const removeReady = channel.onReady(() => {
+            const firstReady = !ready.current;
             ready.current = true;
             if (source.kind === 'remote') {
                 if (supportsProgressiveSubtitles) channel.requestSubtitleSource();
-            } else {
+            } else if (firstReady) {
                 latest.current.sendSnapshot();
+            } else {
+                void latest.current
+                    .shouldRestoreSubtitles(stream.current.snapshot.subtitles.length)
+                    .then((restore) => {
+                        if (active && restore) latest.current.sendSnapshot();
+                    })
+                    .catch((error) => {
+                        if (active) latest.current.onError(error);
+                    });
             }
         });
         return () => {
+            active = false;
             ready.current = false;
             removeSource();
             removeReady();

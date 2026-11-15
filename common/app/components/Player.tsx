@@ -21,6 +21,7 @@ import type {
     PostMineAction,
     SubtitleModel,
     DisplaySubtitleModel,
+    RequestSubtitlesResponse,
     VideoTabModel,
     TranscodedAudioPayload,
 } from '@project/common';
@@ -309,6 +310,8 @@ function PlayerComponent(
     const subtitleTracks = sources?.subtitleTracks;
     const videoFile = sources?.videoFile;
     const videoFileUrl = sources?.videoFileUrl;
+    const tabId = tab?.id;
+    const tabSrc = tab?.src;
     const playbackPositionKey = videoFile?.file.name;
     const transcodedAudio = useTranscodedAudio(videoFile, audioTranscodeHost);
     const failAudioConversion = transcodedAudio.fail;
@@ -704,6 +707,16 @@ function PlayerComponent(
         setOffset(subtitles[0].start - subtitles[0].originalStart);
     }, [subtitles, syntheticPlayback, tab]);
 
+    const shouldRestoreSubtitles = useCallback(
+        async (subtitleCount: number) => {
+            if (tabId === undefined || tabSrc === undefined || extension.supportsProgressiveSubtitles) return true;
+            if (subtitleCount === 0) return false; // Older side panels broadcast init replies. Only recover a nonempty source into an empty binding.
+            const current = (await extension.requestSubtitles(tabId, tabSrc)) as RequestSubtitlesResponse | undefined;
+            return current?.subtitles.length === 0;
+        },
+        [extension, tabId, tabSrc]
+    );
+
     const {
         loadingSubtitles,
         subtitleFileNames: loadedSubtitleFileNames,
@@ -730,6 +743,7 @@ function PlayerComponent(
         subtitles,
         channel,
         getSubtitleOffset,
+        shouldRestoreSubtitles,
         onSubtitles,
         onError,
     });
@@ -773,7 +787,7 @@ function PlayerComponent(
     applyOffsetRef.current = applyOffset;
 
     useEffect(() => {
-        if (!videoFile && !tab) {
+        if (!videoFile && (tabId === undefined || tabSrc === undefined)) {
             return;
         }
 
@@ -783,7 +797,7 @@ function PlayerComponent(
         asbTrace('playback/player', 'Creating media channel', {
             source: videoFile ? 'file' : 'tab',
             hasVideoFile: videoFile !== undefined,
-            hasTab: tab !== undefined,
+            hasTab: tabId !== undefined,
         });
 
         if (videoFile) {
@@ -792,7 +806,7 @@ function PlayerComponent(
             setChannelId(channelId);
             onLoaded([videoFile.file]);
         } else {
-            channel = new VideoChannel(new ChromeTabVideoProtocol(tab!.id, tab!.src, extension));
+            channel = new VideoChannel(new ChromeTabVideoProtocol(tabId!, tabSrc!, extension));
             channel.init();
         }
 
@@ -808,7 +822,7 @@ function PlayerComponent(
             clock.setTime(0, { paused: true });
             channel.close();
         };
-    }, [clock, videoPopOut, videoFile, tab, extension, videoChannelRef, onLoaded]);
+    }, [clock, videoPopOut, videoFile, tabId, tabSrc, extension, videoChannelRef, onLoaded]);
 
     useEffect(() => {
         if (!channel || !videoFrameRef) return;
