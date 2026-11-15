@@ -226,8 +226,8 @@ const getAtPath = (value: any, path: readonly IgnorePathSegment[]): unknown => {
 };
 
 it('strips deprecated keys from older exports instead of rejecting them', () => {
-    // The list is empty until a settings key is removed from the model; this
-    // keeps the stripping wired so the first removal only needs a path entry.
+    // Every listed key must import and then disappear, so a file that still
+    // contains one is not rejected.
     for (const path of deprecatedPaths) {
         const legacySettings = JSON.parse(JSON.stringify(populatedSettings));
         setAtPath(legacySettings, path, 'legacy-value');

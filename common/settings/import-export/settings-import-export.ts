@@ -36,9 +36,10 @@ import { download, getCurrentTimeString } from '@project/common/util';
 // validation, filling what older exports lack. That keeps historical exports
 // importable and lets consistency-synthesized fields be required here.
 // `settings-schema-conformance.test.ts` keeps the schema in sync with the
-// settings model key-for-key. Nested keys inside containers consistency fills
-// can stay required; containers without a fill source (`customAnkiFieldSettings`
-// values, `lastPlaybackPositions`) must keep new keys optional.
+// settings model key-for-key. Nested keys inside containers that consistency
+// fills can stay required; containers without a fill source
+// (`customAnkiFieldSettings` values, `lastPlaybackPositions`) must keep new
+// keys optional.
 
 const keyBindSchema = z.strictObject({
     keys: z.string(),

@@ -186,9 +186,10 @@ it('rejects unknown keys inside dictionary track settings', () => {
 });
 
 it('imports files containing settings that were later removed from the model', () => {
-    // v1.9.1 and earlier exported preCacheSubtitleDom, the hosted app briefly
-    // exported updateSelectedCard, and earlier versions accepted _schema.
-    // Removing them from the model must not make those files unimportable.
+    // v1.9.1 and earlier exported `preCacheSubtitleDom`, the hosted app briefly
+    // exported `keyBindSet.updateSelectedCard`, and earlier versions accepted
+    // `_schema`. Removing them from the model must not make those files
+    // unimportable.
     const imported = validateSettings({
         ...defaultSettings,
         preCacheSubtitleDom: true,
@@ -420,8 +421,8 @@ it('validates and round trips pause-selection playback triggers without rules', 
             trigger.enabled = invalid;
             expect(() => validateSettings(settings)).toThrow('Settings validation failed');
         }
-        // A deleted enabled is filled from defaults; it is indistinguishable
-        // from a version that predates the field.
+        // A deleted `enabled` field is filled from defaults; it is
+        // indistinguishable from a version that predates the field.
         delete trigger.enabled;
         expect(() => validateSettings(settings)).not.toThrow();
         trigger.enabled = true;

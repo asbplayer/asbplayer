@@ -595,8 +595,8 @@ export const ensureConsistencyOnRead = (
         return settings;
     }
 
-    // Only inject what was rebuilt: the containers may be absent from the
-    // input, and imports are patches, so absence must stay absence.
+    // Only inject what was rebuilt: a container may be absent from the input,
+    // and imports are patches, so an absent container must stay absent.
     return {
         ...settings,
         ...(ankiFieldSettingsModified ? { ankiFieldSettings: newAnkiFieldSettings } : {}),
