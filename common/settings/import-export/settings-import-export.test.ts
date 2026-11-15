@@ -5,6 +5,8 @@ import {
     TokenStyling,
     TokenReadingAnnotation,
     TokenFrequencyAnnotation,
+    TokenState,
+    TokenStatus,
 } from '@project/common/settings';
 import {
     mergeImportedSettings,
@@ -18,6 +20,123 @@ import { PlayMode } from '@project/common';
 
 it('validates the default settings', () => {
     validateSettings(defaultSettings);
+});
+
+it('imports a file old enough to exercise the consistency migration paths', () => {
+    // Hand-built export from before annotation configs, playback settings,
+    // recipes, and later key binds: the dictionary track has only the flat
+    // deprecated fields. Consistency must migrate it before validation,
+    // because the fields it synthesizes are required by the schema.
+    const imported = validateSettings({
+        ankiConnectUrl: 'http://127.0.0.1:8765',
+        deck: 'Sentences',
+        themeType: 'dark',
+        language: 'en',
+        subtitleSize: 36,
+        subtitleColor: '#ffffff',
+        subtitleTracksV2: [],
+        ankiFieldSettings: {
+            sentence: { order: 1, display: true },
+            definition: { order: 2, display: true },
+            word: { order: 3, display: true },
+            audio: { order: 4, display: true },
+            image: { order: 5, display: true },
+            source: { order: 6, display: true },
+            url: { order: 7, display: true },
+        },
+        keyBindSet: {
+            togglePlay: { keys: 'space' },
+            toggleAutoPause: { keys: '⇧+P' },
+        },
+        recipes: [
+            { name: 'Test recipe', playbackModes: [PlayMode.normal], settings: { playbackRate: 1.5 } },
+            'garbage',
+        ],
+        activeRecipeId: 1,
+        dictionaryTracks: [
+            {
+                dictionaryColorizeSubtitles: true,
+                dictionaryColorizeOnHoverOnly: true,
+                dictionaryHighlightOnHover: true,
+                dictionaryTokenMatchStrategy: TokenMatchStrategy.ANY_FORM_COLLECTED,
+                dictionaryTokenMatchStrategyPriority: TokenMatchStrategyPriority.EXACT,
+                dictionaryYomitanUrl: 'http://127.0.0.1:19633',
+                dictionaryYomitanScanLength: 16,
+                dictionaryTokenReadingAnnotation: TokenReadingAnnotation.ALWAYS,
+                dictionaryDisplayIgnoredTokenReadings: true,
+                dictionaryTokenFrequencyAnnotation: TokenFrequencyAnnotation.ALWAYS,
+                dictionaryAnkiDecks: [],
+                dictionaryAnkiWordFields: [],
+                dictionaryAnkiSentenceFields: [],
+                dictionaryAnkiSentenceTokenMatchStrategy: TokenMatchStrategy.EXACT_FORM_COLLECTED,
+                dictionaryAnkiMatureCutoff: 21,
+                dictionaryAnkiTreatSuspended: 'NORMAL',
+                dictionaryTokenStyling: TokenStyling.UNDERLINE,
+                dictionaryTokenStylingThickness: 3,
+                dictionaryColorizeFullyKnownTokens: true,
+            },
+        ],
+    });
+
+    // Track count padded to the current number of tracks.
+    expect(imported.dictionaryTracks).toHaveLength(3);
+    const track = imported.dictionaryTracks[0];
+
+    // Token colors/config absent from the file are created and padded.
+    expect(track.dictionaryTokenStatusColors).toEqual([
+        '#FF0000',
+        '#FFA500',
+        '#FFFF00',
+        '#00FF00',
+        '#0000FF',
+        '#FFFFFF',
+    ]);
+    expect(track.dictionaryTokenStatusConfig).toHaveLength(6);
+    expect(track.dictionaryTokenStatusConfig[TokenStatus.MATURE].display).toBe(true);
+
+    // The flat deprecated fields migrate into the annotation config.
+    const annotation = track.dictionaryTokenAnnotationConfig;
+    expect(annotation.colorizeEnabled).toBe(true);
+    expect(annotation.video.color.onHoverEnabled).toBe(true);
+    expect(annotation.video.gloss).toEqual({ onHoverEnabled: true, size: 0.5 });
+    expect(annotation.onStates[TokenState.IGNORED].reading).toBe(true);
+    expect(annotation.onStatuses.every((s) => s.reading && s.frequency && !s.gloss && !s.pitchAccent)).toBe(true);
+
+    // Playback settings absent from the file are synthesized.
+    expect(track.dictionaryPlaybackConfig.autoPause.onStatuses).toHaveLength(6);
+    expect(track.dictionaryPlaybackConfig.autoPause.rules).toEqual({
+        minWords: 0,
+        maxWords: 0,
+        minFrequency: 0,
+        maxFrequency: 0,
+    });
+
+    // Later per-track settings are filled from defaults.
+    expect(track.dictionaryYomitanParser).toBe('scanning-parser');
+    expect(track.dictionaryWaniKaniApiToken).toBe('');
+    expect(track.dictionaryMatchAcrossScripts).toBe(true);
+    expect(track.dictionaryAutoGenerateStatistics).toBe(false);
+
+    // Key binds added after the file's era are filled; provided ones survive.
+    for (const key of Object.keys(defaultSettings.keyBindSet)) {
+        expect(imported.keyBindSet).toHaveProperty(key);
+    }
+    expect(imported.keyBindSet.togglePlay).toEqual({ keys: 'space' });
+    expect(imported.keyBindSet.toggleRecipe1).toEqual(defaultSettings.keyBindSet.toggleRecipe1);
+
+    // Anki field settings added after the file's era are filled.
+    expect(imported.ankiFieldSettings.track1).toEqual(defaultSettings.ankiFieldSettings.track1);
+    expect(imported.ankiFieldSettings.sentence).toEqual({ order: 1, display: true });
+
+    // Malformed recipes are dropped and the dangling selection is cleared.
+    expect(imported.recipes).toHaveLength(1);
+    expect(imported.recipes[0].name).toBe('Test recipe');
+    expect(imported.activeRecipeId).toBeNull();
+
+    // Keys absent from the file stay absent (imports are patches over current
+    // settings), and `streamingPages` is never part of an import.
+    expect(imported.subtitlePreview).toBeUndefined();
+    expect(imported.streamingPages).toBeUndefined();
 });
 
 it('fails validation when an unknown key is encountered', () => {
@@ -39,14 +158,23 @@ it('fails validation when an unknown key is encountered inside an Anki field set
     ).toThrow('Unrecognized key: "asdf"\n  → at ankiFieldSettings.sentence');
 });
 
-it('preserves unknown keys inside dictionary track settings for forward compatibility', () => {
-    // Settings exported by newer asbplayer versions may carry extra keys.
+it('rejects unknown keys inside dictionary track settings', () => {
+    // Strict schemas treat unrecognized keys as typos everywhere, including
+    // inside array items; legacy keys must be listed in `deprecatedPaths`.
     const settings = {
         ...defaultSettings,
         dictionaryTracks: defaultSettings.dictionaryTracks.map((track) => ({ ...track, newKeyFromNewerVersion: 1 })),
     };
-    const imported = validateSettings(settings);
-    expect(imported.dictionaryTracks?.[0]).toHaveProperty('newKeyFromNewerVersion', 1);
+    expect(() => validateSettings(settings)).toThrow('Unrecognized key: "newKeyFromNewerVersion"');
+});
+
+it('rejects null values where an object is expected instead of repairing them', () => {
+    // No legitimate export contains these. Consistency throws on them; the
+    // catch falls back to validating the raw copy, which must still reject.
+    expect(() => validateSettings({ ...defaultSettings, keyBindSet: null })).toThrow('Settings validation failed');
+    expect(() =>
+        validateSettings({ ...defaultSettings, dictionaryTracks: [null, ...defaultSettings.dictionaryTracks.slice(1)] })
+    ).toThrow('Settings validation failed');
 });
 
 it('validates custom Anki field settings', () => {
@@ -224,7 +352,7 @@ it('validates and round trips pause-selection playback triggers without rules', 
     config.onStatuses[1].enabled = true;
     config.onStates[0].enabled = true;
     const imported = validateSettings(settingsForExport(settings));
-    expect(imported.dictionaryTracks![0].dictionaryPlaybackConfig.selectOnPause).toEqual(config);
+    expect(imported.dictionaryTracks[0].dictionaryPlaybackConfig.selectOnPause).toEqual(config);
     expect(config).not.toHaveProperty('rules');
     for (const trigger of [config.onStatuses[1], config.onStates[0]]) {
         for (const invalid of ['true', 1, null]) {

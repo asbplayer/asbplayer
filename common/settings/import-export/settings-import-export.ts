@@ -1,5 +1,7 @@
 import { z } from 'zod';
 import {
+    dictionaryAnkiTreatSuspendedNormal,
+    dictionaryYomitanParsers,
     maximumWholeSubtitleMatchThreshold,
     minimumWholeSubtitleMatchThreshold,
     TokenFrequencyAnnotation,
@@ -11,21 +13,30 @@ import {
 } from '@project/common/settings/settings-dictionary';
 import {
     AutoPauseResumeMode,
+    mediaFragmentFormats,
     PauseOnHoverMode,
+    streamingMediaFragmentFormats,
     SubtitleListPreference,
     SubtitleListTimestampDisplay,
     SubtitleVisibility,
+    subtitleAlignments,
+    subtitlesWidthUnits,
+    themeTypes,
     VideoSubtitleSplitBehavior,
 } from '@project/common/settings/settings';
-import { SubtitleHtml } from '@project/common/src/model';
+import { ankiExportModes, SubtitleHtml } from '@project/common/src/model';
 import type { AsbplayerSettings } from '@project/common/settings/settings';
 import { ensureConsistencyOnRead } from '@project/common/settings/settings-provider';
+import { asbTrace } from '@project/common/util/log';
 import { download, getCurrentTimeString } from '@project/common/util';
 
-// Settings exported by other asbplayer versions may carry unknown keys inside
-// array items (e.g. `subtitleAlignment` inside `subtitleTracksV2` entries), so
-// schemas reachable only through arrays must stay loose. Schemas for objects
-// hung directly off the settings root are strict to reject typos.
+// All schemas are strict: an unrecognized key anywhere, including inside
+// array items, is a typo and rejects the whole import. `validateSettings`
+// strips `deprecatedPaths` and runs `ensureConsistencyOnRead` before
+// validation, filling what older exports lack. That keeps historical exports
+// importable and lets consistency-synthesized fields be required here.
+// `settings-schema-conformance.test.ts` keeps the schema in sync with the
+// settings model key-for-key.
 
 const keyBindSchema = z.strictObject({
     keys: z.string(),
@@ -35,55 +46,54 @@ const ankiFieldSchema = z.strictObject({
     display: z.boolean(),
 });
 
-const tokenAnnotationDisplaySchema = z.looseObject({
+const tokenAnnotationDisplaySchema = z.strictObject({
     onHoverEnabled: z.boolean(),
     size: z.number(),
 });
 
-// `gloss` is optional here, unlike the other annotations, so imports lacking it stay valid.
-const tokenAnnotationDisplayConfigSchema = z.looseObject({
+const tokenAnnotationDisplayConfigSchema = z.strictObject({
     color: tokenAnnotationDisplaySchema,
     reading: tokenAnnotationDisplaySchema,
     frequency: tokenAnnotationDisplaySchema,
-    gloss: tokenAnnotationDisplaySchema.optional(),
+    gloss: tokenAnnotationDisplaySchema,
     pitchAccent: tokenAnnotationDisplaySchema,
 });
 
-const playbackTriggerSchema = z.looseObject({
+const playbackTriggerSchema = z.strictObject({
     enabled: z.boolean(),
 });
 
-const playbackRulesSchema = z.looseObject({
+const playbackRulesSchema = z.strictObject({
     minWords: z.number().int().min(0),
     maxWords: z.number().int().min(0),
     minFrequency: z.number().int().min(0),
     maxFrequency: z.number().int().min(0),
 });
 
-const playbackTriggersSchema = z.looseObject({
+const playbackTriggersSchema = z.strictObject({
     onStatuses: z.array(playbackTriggerSchema),
     onStates: z.array(playbackTriggerSchema),
     rules: playbackRulesSchema,
 });
 
-const dictionaryPlaybackConfigSchema = z.looseObject({
-    selectOnPause: z.looseObject({
+const dictionaryPlaybackConfigSchema = z.strictObject({
+    selectOnPause: z.strictObject({
         onStatuses: z.array(playbackTriggerSchema),
         onStates: z.array(playbackTriggerSchema),
     }),
     autoPause: playbackTriggersSchema,
     repeat: playbackTriggersSchema,
     condensed: playbackTriggersSchema,
-    fastForward: z.looseObject({
+    fastForward: z.strictObject({
         onStatuses: z.array(playbackTriggerSchema),
         onStates: z.array(playbackTriggerSchema),
         rules: playbackRulesSchema,
-        rateByComprehension: z.looseObject({
+        rateByComprehension: z.strictObject({
             enabled: z.boolean(),
             minimumPercent: z.number().int().min(0).max(99),
         }),
     }),
-    wordVisibility: z.looseObject({
+    wordVisibility: z.strictObject({
         onStatuses: z.array(playbackTriggerSchema),
         onStates: z.array(playbackTriggerSchema),
         rules: playbackRulesSchema,
@@ -95,30 +105,30 @@ const dictionaryPlaybackConfigSchema = z.looseObject({
     }),
 });
 
-const tokenStatusConfigSchema = z.looseObject({
+const tokenStatusConfigSchema = z.strictObject({
     display: z.boolean(),
     color: z.string(),
     alpha: z.string(),
 });
 
 // `gloss` is optional here, unlike the other annotations, so imports lacking it stay valid.
-const tokenAnnotationStatusSchema = z.looseObject({
+const tokenAnnotationStatusSchema = z.strictObject({
     reading: z.boolean(),
     frequency: z.boolean(),
-    gloss: z.boolean().optional(),
+    gloss: z.boolean(),
     pitchAccent: z.boolean(),
 });
 
-const dictionaryTrackSchema = z.looseObject({
+const dictionaryTrackSchema = z.strictObject({
     dictionaryColorizeSubtitles: z.boolean(),
-    dictionaryAutoGenerateStatistics: z.boolean().optional(),
+    dictionaryAutoGenerateStatistics: z.boolean(),
     dictionaryColorizeOnHoverOnly: z.boolean(),
     dictionaryHighlightOnHover: z.boolean(),
     dictionaryTokenMatchStrategy: z.enum(TokenMatchStrategy),
-    dictionaryMatchAcrossScripts: z.boolean().optional(),
+    dictionaryMatchAcrossScripts: z.boolean(),
     dictionaryTokenMatchStrategyPriority: z.enum(TokenMatchStrategyPriority),
     dictionaryYomitanUrl: z.string(),
-    dictionaryYomitanParser: z.enum(['scanning-parser', 'mecab']),
+    dictionaryYomitanParser: z.enum(dictionaryYomitanParsers),
     dictionaryYomitanScanLength: z.number(),
     dictionaryTokenReadingAnnotation: z.enum(TokenReadingAnnotation),
     dictionaryDisplayIgnoredTokenReadings: z.boolean(),
@@ -128,56 +138,57 @@ const dictionaryTrackSchema = z.looseObject({
     dictionaryAnkiSentenceFields: z.array(z.string()),
     dictionaryAnkiSentenceTokenMatchStrategy: z.enum(TokenMatchStrategy),
     dictionaryAnkiMatureCutoff: z.number(),
-    dictionaryAnkiTreatSuspended: z.union([z.enum(TokenStatus), z.literal('NORMAL')]),
-    dictionaryWaniKaniApiToken: z.string().optional(),
+    dictionaryAnkiTreatSuspended: z.union([z.enum(TokenStatus), z.literal(dictionaryAnkiTreatSuspendedNormal)]),
+    dictionaryWaniKaniApiToken: z.string(),
     dictionaryTokenStyling: z.enum(TokenStyling),
     dictionaryTokenStylingThickness: z.number(),
     dictionaryColorizeFullyKnownTokens: z.boolean(),
     dictionaryTokenStatusColors: z.array(z.string()),
-    dictionaryTokenStatusConfig: z.array(tokenStatusConfigSchema).optional(),
-    dictionaryPlaybackConfig: dictionaryPlaybackConfigSchema.optional(),
-    dictionaryTokenAnnotationConfig: z
-        .looseObject({
-            colorizeEnabled: z.boolean(),
-            video: tokenAnnotationDisplayConfigSchema,
-            subtitlePlayer: tokenAnnotationDisplayConfigSchema,
-            onStatuses: z.array(tokenAnnotationStatusSchema),
-            onStates: z.array(tokenAnnotationStatusSchema),
-        })
-        .optional(),
+    dictionaryTokenStatusConfig: z.array(tokenStatusConfigSchema),
+    dictionaryPlaybackConfig: dictionaryPlaybackConfigSchema,
+    dictionaryTokenAnnotationConfig: z.strictObject({
+        colorizeEnabled: z.boolean(),
+        video: tokenAnnotationDisplayConfigSchema,
+        subtitlePlayer: tokenAnnotationDisplayConfigSchema,
+        onStatuses: z.array(tokenAnnotationStatusSchema),
+        onStates: z.array(tokenAnnotationStatusSchema),
+    }),
 });
 
-const textSubtitleSettingsSchema = z.looseObject({
+const textSubtitleSettingsSchema = z.strictObject({
     subtitleColor: z.string(),
     subtitleSize: z.number(),
     subtitleThickness: z.number(),
     subtitleOutlineThickness: z.number(),
+    subtitleOutlineColor: z.string(),
+    subtitleShadowThickness: z.number(),
     subtitleShadowColor: z.string(),
     subtitleBackgroundOpacity: z.number(),
     subtitleBackgroundColor: z.string(),
     subtitleFontFamily: z.string(),
     subtitleCustomStyles: z.array(
-        z.looseObject({
+        z.strictObject({
             key: z.string().optional(),
             value: z.string().optional(),
         })
     ),
     subtitleBlur: z.boolean(),
+    subtitleAlignment: z.enum(subtitleAlignments),
 });
 
 const subtitleCustomStylesSchema = z.array(
-    z.looseObject({
+    z.strictObject({
         key: z.string().optional(),
         value: z.string().optional(),
     })
 );
 
-const lastPlaybackPositionSchema = z.looseObject({
+const lastPlaybackPositionSchema = z.strictObject({
     fileName: z.string(),
     position: z.number(),
 });
 
-const settingsSchema = z
+export const settingsSchema = z
     .strictObject({
         ankiConnectUrl: z.string(),
         ankiConnectApiKey: z.string(),
@@ -194,21 +205,18 @@ const settingsSchema = z
         track1Field: z.string(),
         track2Field: z.string(),
         track3Field: z.string(),
-        ankiFieldSettings: z
-            .strictObject({
-                sentence: ankiFieldSchema,
-                definition: ankiFieldSchema,
-                audio: ankiFieldSchema,
-                image: ankiFieldSchema,
-                word: ankiFieldSchema,
-                source: ankiFieldSchema,
-                url: ankiFieldSchema,
-                track1: ankiFieldSchema,
-                track2: ankiFieldSchema,
-                track3: ankiFieldSchema,
-            })
-            // Older settings files may omit entries.
-            .partial(),
+        ankiFieldSettings: z.strictObject({
+            sentence: ankiFieldSchema,
+            definition: ankiFieldSchema,
+            audio: ankiFieldSchema,
+            image: ankiFieldSchema,
+            word: ankiFieldSchema,
+            source: ankiFieldSchema,
+            url: ankiFieldSchema,
+            track1: ankiFieldSchema,
+            track2: ankiFieldSchema,
+            track3: ankiFieldSchema,
+        }),
         customAnkiFieldSettings: z.record(z.string(), ankiFieldSchema),
         subtitleSize: z.number(),
         subtitleColor: z.string(),
@@ -224,13 +232,13 @@ const settingsSchema = z
         subtitlePreview: z.string(),
         subtitlePositionOffset: z.number(),
         topSubtitlePositionOffset: z.number(),
-        subtitleAlignment: z.enum(['top', 'bottom']),
+        subtitleAlignment: z.enum(subtitleAlignments),
         subtitleTracksV2: z.array(textSubtitleSettingsSchema),
         audioPaddingStart: z.number(),
         audioPaddingEnd: z.number(),
         maxImageWidth: z.number(),
         maxImageHeight: z.number(),
-        mediaFragmentFormat: z.enum(['jpeg', 'webm']),
+        mediaFragmentFormat: z.enum(mediaFragmentFormats),
         mediaFragmentTrimStart: z.number(),
         mediaFragmentTrimEnd: z.number(),
         mediaFragmentMaxClipLength: z.number(),
@@ -266,89 +274,85 @@ const settingsSchema = z
         activeRecipeId: z.union([z.number().int(), z.null()]),
         lastPlaybackModes: z.array(z.number()),
         lastPlaybackPositions: z.array(lastPlaybackPositionSchema),
-        keyBindSet: z
-            .strictObject({
-                cycleRecipesForward: keyBindSchema,
-                cycleRecipesBackward: keyBindSchema,
-                toggleRecipe1: keyBindSchema,
-                toggleRecipe2: keyBindSchema,
-                toggleRecipe3: keyBindSchema,
-                toggleRecipe4: keyBindSchema,
-                toggleRecipe5: keyBindSchema,
-                toggleRecipe6: keyBindSchema,
-                toggleRecipe7: keyBindSchema,
-                toggleRecipe8: keyBindSchema,
-                toggleRecipe9: keyBindSchema,
-                toggleRecipe10: keyBindSchema,
-                togglePlay: keyBindSchema,
-                toggleAutoPause: keyBindSchema,
-                toggleCondensedPlayback: keyBindSchema,
-                toggleFastForwardPlayback: keyBindSchema,
-                toggleSubtitles: keyBindSchema,
-                toggleVideoSubtitleTrack1: keyBindSchema,
-                toggleVideoSubtitleTrack2: keyBindSchema,
-                toggleVideoSubtitleTrack3: keyBindSchema,
-                toggleAsbplayerSubtitleTrack1: keyBindSchema,
-                toggleAsbplayerSubtitleTrack2: keyBindSchema,
-                toggleAsbplayerSubtitleTrack3: keyBindSchema,
-                unblurAsbplayerTrack1: keyBindSchema,
-                unblurAsbplayerTrack2: keyBindSchema,
-                unblurAsbplayerTrack3: keyBindSchema,
-                seekBackward: keyBindSchema,
-                seekForward: keyBindSchema,
-                seekToPreviousSubtitle: keyBindSchema,
-                seekToNextSubtitle: keyBindSchema,
-                seekToBeginningOfCurrentSubtitle: keyBindSchema,
-                adjustOffsetToPreviousSubtitle: keyBindSchema,
-                adjustOffsetToNextSubtitle: keyBindSchema,
-                decreaseOffset: keyBindSchema,
-                increaseOffset: keyBindSchema,
-                resetOffset: keyBindSchema,
-                copySubtitle: keyBindSchema,
-                ankiExport: keyBindSchema,
-                updateLastCard: keyBindSchema,
-                updateSelectedCard: keyBindSchema,
-                exportCard: keyBindSchema,
-                takeScreenshot: keyBindSchema,
-                toggleRecording: keyBindSchema,
-                selectSubtitleTrack: keyBindSchema,
-                decreasePlaybackRate: keyBindSchema,
-                increasePlaybackRate: keyBindSchema,
-                toggleSidePanel: keyBindSchema,
-                toggleRepeat: keyBindSchema,
-                toggleSubtitleVisibility: keyBindSchema,
-                cycleAutoPauseResumeMode: keyBindSchema,
-                moveBottomSubtitlesUp: keyBindSchema,
-                moveBottomSubtitlesDown: keyBindSchema,
-                moveTopSubtitlesUp: keyBindSchema,
-                moveTopSubtitlesDown: keyBindSchema,
-                openStatistics: keyBindSchema,
-                jumpToNextToken: keyBindSchema,
-                jumpToPreviousToken: keyBindSchema,
-                markHoveredToken5: keyBindSchema,
-                jumpToNextTokenStatus5: keyBindSchema,
-                jumpToPreviousTokenStatus5: keyBindSchema,
-                markHoveredToken4: keyBindSchema,
-                jumpToNextTokenStatus4: keyBindSchema,
-                jumpToPreviousTokenStatus4: keyBindSchema,
-                markHoveredToken3: keyBindSchema,
-                jumpToNextTokenStatus3: keyBindSchema,
-                jumpToPreviousTokenStatus3: keyBindSchema,
-                markHoveredToken2: keyBindSchema,
-                jumpToNextTokenStatus2: keyBindSchema,
-                jumpToPreviousTokenStatus2: keyBindSchema,
-                markHoveredToken1: keyBindSchema,
-                jumpToNextTokenStatus1: keyBindSchema,
-                jumpToPreviousTokenStatus1: keyBindSchema,
-                markHoveredToken0: keyBindSchema,
-                jumpToNextTokenStatus0: keyBindSchema,
-                jumpToPreviousTokenStatus0: keyBindSchema,
-                toggleHoveredTokenIgnored: keyBindSchema,
-                jumpToNextTokenState0: keyBindSchema,
-                jumpToPreviousTokenState0: keyBindSchema,
-            })
-            // Older settings files may omit entries.
-            .partial(),
+        keyBindSet: z.strictObject({
+            cycleRecipesForward: keyBindSchema,
+            cycleRecipesBackward: keyBindSchema,
+            toggleRecipe1: keyBindSchema,
+            toggleRecipe2: keyBindSchema,
+            toggleRecipe3: keyBindSchema,
+            toggleRecipe4: keyBindSchema,
+            toggleRecipe5: keyBindSchema,
+            toggleRecipe6: keyBindSchema,
+            toggleRecipe7: keyBindSchema,
+            toggleRecipe8: keyBindSchema,
+            toggleRecipe9: keyBindSchema,
+            toggleRecipe10: keyBindSchema,
+            togglePlay: keyBindSchema,
+            toggleAutoPause: keyBindSchema,
+            toggleCondensedPlayback: keyBindSchema,
+            toggleFastForwardPlayback: keyBindSchema,
+            toggleSubtitles: keyBindSchema,
+            toggleVideoSubtitleTrack1: keyBindSchema,
+            toggleVideoSubtitleTrack2: keyBindSchema,
+            toggleVideoSubtitleTrack3: keyBindSchema,
+            toggleAsbplayerSubtitleTrack1: keyBindSchema,
+            toggleAsbplayerSubtitleTrack2: keyBindSchema,
+            toggleAsbplayerSubtitleTrack3: keyBindSchema,
+            unblurAsbplayerTrack1: keyBindSchema,
+            unblurAsbplayerTrack2: keyBindSchema,
+            unblurAsbplayerTrack3: keyBindSchema,
+            seekBackward: keyBindSchema,
+            seekForward: keyBindSchema,
+            seekToPreviousSubtitle: keyBindSchema,
+            seekToNextSubtitle: keyBindSchema,
+            seekToBeginningOfCurrentSubtitle: keyBindSchema,
+            adjustOffsetToPreviousSubtitle: keyBindSchema,
+            adjustOffsetToNextSubtitle: keyBindSchema,
+            decreaseOffset: keyBindSchema,
+            increaseOffset: keyBindSchema,
+            resetOffset: keyBindSchema,
+            copySubtitle: keyBindSchema,
+            ankiExport: keyBindSchema,
+            updateLastCard: keyBindSchema,
+            exportCard: keyBindSchema,
+            takeScreenshot: keyBindSchema,
+            toggleRecording: keyBindSchema,
+            selectSubtitleTrack: keyBindSchema,
+            decreasePlaybackRate: keyBindSchema,
+            increasePlaybackRate: keyBindSchema,
+            toggleSidePanel: keyBindSchema,
+            toggleRepeat: keyBindSchema,
+            toggleSubtitleVisibility: keyBindSchema,
+            cycleAutoPauseResumeMode: keyBindSchema,
+            moveBottomSubtitlesUp: keyBindSchema,
+            moveBottomSubtitlesDown: keyBindSchema,
+            moveTopSubtitlesUp: keyBindSchema,
+            moveTopSubtitlesDown: keyBindSchema,
+            openStatistics: keyBindSchema,
+            jumpToNextToken: keyBindSchema,
+            jumpToPreviousToken: keyBindSchema,
+            markHoveredToken5: keyBindSchema,
+            jumpToNextTokenStatus5: keyBindSchema,
+            jumpToPreviousTokenStatus5: keyBindSchema,
+            markHoveredToken4: keyBindSchema,
+            jumpToNextTokenStatus4: keyBindSchema,
+            jumpToPreviousTokenStatus4: keyBindSchema,
+            markHoveredToken3: keyBindSchema,
+            jumpToNextTokenStatus3: keyBindSchema,
+            jumpToPreviousTokenStatus3: keyBindSchema,
+            markHoveredToken2: keyBindSchema,
+            jumpToNextTokenStatus2: keyBindSchema,
+            jumpToPreviousTokenStatus2: keyBindSchema,
+            markHoveredToken1: keyBindSchema,
+            jumpToNextTokenStatus1: keyBindSchema,
+            jumpToPreviousTokenStatus1: keyBindSchema,
+            markHoveredToken0: keyBindSchema,
+            jumpToNextTokenStatus0: keyBindSchema,
+            jumpToPreviousTokenStatus0: keyBindSchema,
+            toggleHoveredTokenIgnored: keyBindSchema,
+            jumpToNextTokenState0: keyBindSchema,
+            jumpToPreviousTokenState0: keyBindSchema,
+        }),
         recordWithAudioPlayback: z.boolean(),
         preferMp3: z.boolean(),
         alwaysUseSubtitleForSentence: z.boolean(),
@@ -356,7 +360,7 @@ const settingsSchema = z
         miningHistoryStorageLimit: z.number(),
         clickToMineDefaultAction: z.number(),
         postMiningPlaybackState: z.number(),
-        themeType: z.enum(['dark', 'light']),
+        themeType: z.enum(themeTypes),
         videoSubtitleSplitBehavior: z.enum(VideoSubtitleSplitBehavior),
         showSubtitleListMiningButton: z.boolean(),
         subtitleListTimestampDisplay: z.enum(SubtitleListTimestampDisplay),
@@ -375,7 +379,7 @@ const settingsSchema = z
         imageBasedSubtitleScaleFactor: z.number(),
         subtitleCustomStyles: subtitleCustomStylesSchema,
         subtitlesWidth: z.number(),
-        subtitlesWidthUnit: z.enum(['%', 'px']),
+        subtitlesWidthUnit: z.enum(subtitlesWidthUnits),
         streamingAppUrl: z.string(),
         streamingDisplaySubtitles: z.boolean(),
         streamingRecordMedia: z.boolean(),
@@ -388,7 +392,7 @@ const settingsSchema = z
         streamingLastLanguagesSynced: z.record(z.string(), z.array(z.string())),
         streamingCondensedPlaybackMinimumSkipIntervalMs: z.number(),
         streamingScreenshotDelay: z.number(),
-        streamingMediaFragmentFormat: z.enum(['jpeg', 'webp']),
+        streamingMediaFragmentFormat: z.enum(streamingMediaFragmentFormats),
         streamingAnimatedImageFps: z.number(),
         streamingAnimatedImageQuality: z.number(),
         streamingSubtitleListPreference: z.enum(SubtitleListPreference),
@@ -396,7 +400,7 @@ const settingsSchema = z
         webSocketClientEnabled: z.boolean(),
         webSocketServerUrl: z.string(),
         pauseOnHoverMode: z.enum(PauseOnHoverMode),
-        lastSelectedAnkiExportMode: z.enum(['gui', 'updateLast', 'updateSpecific', 'default']),
+        lastSelectedAnkiExportMode: z.enum(ankiExportModes),
         dictionaryTracks: z.array(dictionaryTrackSchema),
         thumbnailPreview: z.boolean(),
         subtitleAboveThumbnail: z.boolean(),
@@ -413,6 +417,14 @@ const ignorePaths: readonly IgnorePath[] = [
     ['streamingPages'], // Ignored due to security risk (e.g. disable CSP)
 ];
 const validationIgnorePaths: readonly IgnorePath[] = [['streamingPages']];
+
+// Keys older asbplayer versions exported that no longer exist in the settings
+// model. Strict schemas would reject them as typos, so they are stripped
+// before validation. When removing a setting from the model, add its path
+// here, or keep it as a deprecated model field if its value must migrate. A
+// '*' segment applies to every array item. `settings-schema-conformance.test.ts`
+// checks that each path points at a key the schema no longer knows.
+export const deprecatedPaths: readonly IgnorePath[] = [];
 
 export const omitPath = (value: any, path: IgnorePath): any => {
     if (value === null || typeof value !== 'object' || !path.length) return value;
@@ -484,68 +496,31 @@ export const exportSettings = (settings: AsbplayerSettings) => {
 };
 
 export const validateSettings = (settings: any) => {
-    const copy = omitPaths(settings, validationIgnorePaths);
-    const result = settingsSchema.safeParse(copy);
+    const copy = omitPaths(settings, [...validationIgnorePaths, ...deprecatedPaths]);
+
+    // Consistency migrates old-version shapes before validation: it is the
+    // same code that migrates old storage data on read, and legitimate
+    // exports mirror those shapes. It assumes a schema-valid shape, so
+    // garbage can throw; the fallback then rejects the file below with a
+    // clean validation error.
+    let normalized = copy;
+    try {
+        normalized = ensureConsistencyOnRead(copy);
+    } catch (error) {
+        // Also catches bugs in consistency itself; trace so a bug that rejects
+        // valid imports stays diagnosable.
+        asbTrace('settings/import', 'Consistency threw on imported settings; validating the partially migrated copy', {
+            error,
+        });
+    }
+
+    // `streamingPages` is stripped above and absent from the schema, so the
+    // normalized input is validated, not zod's parsed output.
+    const result = settingsSchema.safeParse(normalized);
 
     if (!result.success) {
         throw new Error('Settings validation failed: ' + z.prettifyError(result.error));
     }
 
-    // `streamingPages` is stripped before validation and absent from the
-    // schema, so validate the input rather than zod's parsed output.
-    return ensureConsistencyOnRead(copy as AsbplayerSettings);
+    return normalized as AsbplayerSettings;
 };
-
-// Compile-time drift guard: the import schema must track the settings model.
-// Adding a setting (or key bind) without updating the schema, or vice versa, fails `tsc`.
-// Assignability (not key lists) is checked so nested objects are covered too;
-// required-vs-optional mismatches are covered by runtime tests.
-type ParsedSettings = z.infer<typeof settingsSchema>;
-type ImportableSettings = Omit<AsbplayerSettings, 'streamingPages'>;
-// `recipes` items are intentionally untyped here: recipe data is sanitized
-// item-by-item downstream by `normalizeRecipe`, which drops malformed recipes
-// instead of rejecting the whole import the way schema validation would.
-type ParsedSettingsExceptRecipes = Omit<ParsedSettings, 'recipes'>;
-type ImportableSettingsExceptRecipes = Omit<ImportableSettings, 'recipes'>;
-type Expect<T extends true> = T;
-type KeySubset<A, B> = [Exclude<keyof A, keyof B>] extends [never] ? true : false;
-// DeepPartial/DeepReadonly normalize optionality and readonly-ness, which the
-// schema (all keys optional) and the settings model (readonly) express
-// differently but which behave identically at runtime.
-type DeepPartial<T> = T extends readonly (infer U)[]
-    ? readonly DeepPartial<U>[]
-    : T extends object
-      ? { [K in keyof T]?: DeepPartial<T[K]> }
-      : T;
-type DeepReadonly<T> = T extends (infer U)[]
-    ? readonly DeepReadonly<U>[]
-    : T extends object
-      ? { readonly [K in keyof T]: DeepReadonly<T[K]> }
-      : T;
-// Strips the `[x: string]: unknown` passthrough index signature that loose
-// objects add. The settings model's interfaces can never satisfy it.
-type Plain<T> = T extends readonly (infer U)[]
-    ? readonly Plain<U>[]
-    : T extends object
-      ? { [K in keyof T as string extends K ? never : K]: Plain<T[K]> }
-      : T;
-
-type DriftedSchemaField = {
-    [K in keyof ParsedSettingsExceptRecipes]: ParsedSettingsExceptRecipes[K] extends DeepPartial<ImportableSettingsExceptRecipes>[K]
-        ? never
-        : K;
-}[keyof ParsedSettingsExceptRecipes];
-type DriftedSettingsField = {
-    [K in keyof ImportableSettingsExceptRecipes]: ImportableSettingsExceptRecipes[K] extends DeepReadonly<
-        Plain<ParsedSettingsExceptRecipes[K]>
-    >
-        ? never
-        : K;
-}[keyof ImportableSettingsExceptRecipes];
-
-export type SettingsSchemaDriftGuard = [
-    Expect<[KeySubset<ImportableSettings, ParsedSettings>] extends [true] ? true : 'settings keys missing from schema'>,
-    Expect<[KeySubset<ParsedSettings, ImportableSettings>] extends [true] ? true : 'unknown schema keys'>,
-    Expect<[DriftedSchemaField] extends [never] ? true : `${DriftedSchemaField & string} drifts from settings model`>,
-    Expect<[DriftedSettingsField] extends [never] ? true : `${DriftedSettingsField & string} drifts from schema`>,
-];

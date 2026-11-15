@@ -577,7 +577,13 @@ export const ensureConsistencyOnRead = (settings: Partial<AsbplayerSettings>) =>
         return settings;
     }
 
-    return { ...settings, ...{ ankiFieldSettings: newAnkiFieldSettings }, ...{ keyBindSet: newKeyBindSet } };
+    // Only inject what was rebuilt: the containers may be absent from the
+    // input, and imports are patches, so absence must stay absence.
+    return {
+        ...settings,
+        ...(ankiFieldSettingsModified ? { ankiFieldSettings: newAnkiFieldSettings } : {}),
+        ...(keyBindSetModified ? { keyBindSet: newKeyBindSet } : {}),
+    };
 };
 
 type SettingsKey = keyof AsbplayerSettings;

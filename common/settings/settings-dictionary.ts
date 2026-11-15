@@ -579,6 +579,15 @@ export enum ApplyStrategy {
     TOGGLE = 'TOGGLE',
 }
 
+// The type and the import schema both derive from this list, so neither can
+// drift from the other.
+export const dictionaryYomitanParsers = ['scanning-parser', 'mecab'] as const;
+export type DictionaryYomitanParser = (typeof dictionaryYomitanParsers)[number];
+
+// Shared with the import schema's `z.literal` so neither side drifts.
+export const dictionaryAnkiTreatSuspendedNormal = 'NORMAL' as const;
+export type DictionaryAnkiTreatSuspended = TokenStatus | typeof dictionaryAnkiTreatSuspendedNormal;
+
 export interface DictionaryTrack {
     /** @deprecated Use dictionaryTokenAnnotationConfig.colorizeEnabled */
     readonly dictionaryColorizeSubtitles: boolean;
@@ -590,7 +599,7 @@ export interface DictionaryTrack {
     readonly dictionaryMatchAcrossScripts: boolean;
     readonly dictionaryTokenMatchStrategyPriority: TokenMatchStrategyPriority;
     readonly dictionaryYomitanUrl: string;
-    readonly dictionaryYomitanParser: 'scanning-parser' | 'mecab';
+    readonly dictionaryYomitanParser: DictionaryYomitanParser;
     readonly dictionaryYomitanScanLength: number;
     /** @deprecated Use dictionaryTokenAnnotationConfig.onStatuses[].reading */
     readonly dictionaryTokenReadingAnnotation: TokenReadingAnnotation;
@@ -603,7 +612,7 @@ export interface DictionaryTrack {
     readonly dictionaryAnkiSentenceFields: string[];
     readonly dictionaryAnkiSentenceTokenMatchStrategy: TokenMatchStrategy;
     readonly dictionaryAnkiMatureCutoff: number;
-    readonly dictionaryAnkiTreatSuspended: TokenStatus | 'NORMAL';
+    readonly dictionaryAnkiTreatSuspended: DictionaryAnkiTreatSuspended;
     readonly dictionaryWaniKaniApiToken: string;
     readonly dictionaryTokenStyling: TokenStyling;
     readonly dictionaryTokenStylingThickness: number;
