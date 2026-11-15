@@ -159,9 +159,11 @@ const MiscSettingTab: React.FC<Props> = ({
     const settingsFileInputRef = useRef<HTMLInputElement>(null);
     const [importError, setImportError] = useState<string | undefined>();
     const handleSettingsFileInputChange = useCallback(async () => {
+        const input = settingsFileInputRef.current;
+        const file = input?.files?.[0];
+
         try {
             setImportError(undefined);
-            const file = settingsFileInputRef.current?.files?.[0];
 
             if (file === undefined) {
                 return;
@@ -173,6 +175,12 @@ const MiscSettingTab: React.FC<Props> = ({
         } catch (e) {
             asbError('settings/import', e);
             setImportError(e instanceof Error ? e.message : String(e));
+        } finally {
+            // Every import ends here, so the same file can be picked again, e.g.
+            // to retry after fixing a rejected file.
+            if (input) {
+                input.value = '';
+            }
         }
     }, [onSettingsChanged, settings]);
 

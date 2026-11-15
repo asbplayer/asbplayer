@@ -185,6 +185,23 @@ it('rejects unknown keys inside dictionary track settings', () => {
     expect(() => validateSettings(settings)).toThrow('Unrecognized key: "newKeyFromNewerVersion"');
 });
 
+it('imports files containing settings that were later removed from the model', () => {
+    // v1.9.1 and earlier exported preCacheSubtitleDom, the hosted app briefly
+    // exported updateSelectedCard, and earlier versions accepted _schema.
+    // Removing them from the model must not make those files unimportable.
+    const imported = validateSettings({
+        ...defaultSettings,
+        preCacheSubtitleDom: true,
+        _schema: 1,
+        keyBindSet: { ...defaultSettings.keyBindSet, updateSelectedCard: { keys: 'Q+U' } },
+    });
+
+    expect(imported).not.toHaveProperty('preCacheSubtitleDom');
+    expect(imported).not.toHaveProperty('_schema');
+    expect(imported.keyBindSet).not.toHaveProperty('updateSelectedCard');
+    expect(imported.keyBindSet.togglePlay).toEqual(defaultSettings.keyBindSet.togglePlay);
+});
+
 it('rejects null values where an object is expected instead of repairing them', () => {
     // No legitimate export contains these. Consistency throws on them; the
     // catch falls back to validating the raw copy, which must still reject.

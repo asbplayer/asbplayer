@@ -419,13 +419,21 @@ const ignorePaths: readonly IgnorePath[] = [
 ];
 const validationIgnorePaths: readonly IgnorePath[] = [['streamingPages']];
 
-// Keys older asbplayer versions exported that no longer exist in the settings
+// Keys older asbplayer versions wrote that no longer exist in the settings
 // model. Strict schemas would reject them as typos, so they are stripped
 // before validation. When removing a setting from the model, add its path
 // here, or keep it as a deprecated model field if its value must migrate. A
 // '*' segment applies to every array item. `settings-schema-conformance.test.ts`
 // checks that each path points at a key the schema no longer knows.
-export const deprecatedPaths: readonly IgnorePath[] = [];
+export const deprecatedPaths: readonly IgnorePath[] = [
+    // Exported up to v1.9.1, before the subtitle DOM was always pre-cached.
+    ['preCacheSubtitleDom'],
+    // Added and removed between releases; the hosted app deploys from main and
+    // could have exported it in between.
+    ['keyBindSet', 'updateSelectedCard'],
+    // Accepted by the old validator despite never being a setting.
+    ['_schema'],
+];
 
 export const omitPath = (value: any, path: IgnorePath): any => {
     if (value === null || typeof value !== 'object' || !path.length) return value;
