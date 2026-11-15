@@ -55,7 +55,7 @@ Analyze issue #${{ github.event.issue.number || inputs.issue-number }}, and:
 
 1. Find similar issues in this repository.
 2. Find relevant documentation under docs using the `get_file_contents` tool.
-3. Determine and set the issue type.
+3. Determine the issue type and set it with the `set_issue_type` tool.
 
 Do not make assumptions beyond what the issue content supports. Do not invent missing context.
 
@@ -73,8 +73,14 @@ Do not make assumptions beyond what the issue content supports. Do not invent mi
     - **Duplicate** (high confidence): the issue describes the same problem as an existing open issue. Include up to 3.
     - **Related**: (high confidence) similar domain or adjacent problem, but not a duplicate. Include up to 3.
 - Determine whether the issue is a Bug, Feature, or Task.
+- Apply the classification with the `set_issue_type` tool, including a `rationale` and a `confidence`. See "Setting the issue type" below.
 - Find relevant documentation found that looks highly likely to assist in resolving the issue. The URL is of the format `https://docs.asbplayer.dev/<path>` where `<path>` is the relative path under the `docs` directory. If specific documentation is found, target it with the corresponding hash fragment if it exists. For example: `https://docs.asbplayer.dev/docs/common-issues#asbplayer-isnt-detecting-streaming-video`. Include up to 3 URLs.
 - Only post a comment if: you are highly confident there is a duplicate or very related issue, or if there is relevant documentation that you are highly confident will resolve the issue. If neither of the above is true, then do not post a comment.
+
+## Setting the issue type
+
+- `set_issue_type` is a safe-output tool served by the `safeoutputs` server, not by the GitHub MCP server. Every tool listed in `<safe-output-tools>` is directly callable; do not report a listed tool as missing just because it is absent from the GitHub MCP toolset.
+- If a `set_issue_type` call fails, retry once with the same arguments, then call `report_incomplete` with the error. `report_missing_tool` is only for capabilities that were never configured for this workflow.
 
 ## Comment format
 
