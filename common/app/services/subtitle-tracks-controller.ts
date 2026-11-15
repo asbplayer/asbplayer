@@ -1,0 +1,274 @@
+import type { DisplaySubtitleModel, LoadableSubtitleTrack, SubtitleSourceMessage } from '@project/common';
+import type { FileWithId } from '@project/common/file-selector';
+import type { SubtitleReader } from '@project/common/subtitle-reader';
+import type VideoChannel from '@project/common/app/services/video-channel';
+import {
+    displaySubtitleSnapshot,
+    SubtitleStream,
+    subtitleSourceNames,
+} from '@project/common/subtitle-reader/subtitle-stream';
+import type {
+    SubtitleSourceProducer,
+    SubtitleSourceState,
+    SubtitleSourceUpdate,
+} from '@project/common/subtitle-reader/subtitle-stream';
+import { asbTrace } from '@project/common/util/log';
+
+type SubtitleTrackSource =
+    | {
+          kind: 'local';
+          tracks: LoadableSubtitleTrack<FileWithId>[] | undefined;
+          reader: Pick<SubtitleReader, 'subtitles'>;
+          onLoaded: (files: File[]) => void;
+      }
+    | { kind: 'remote'; supportsProgressiveSubtitles: boolean; onOffset: (offset: number) => void }
+    | {
+          kind: 'producer';
+          producer: SubtitleSourceProducer;
+          supportsProgressiveSubtitles: boolean;
+          onStarted: () => void;
+      };
+
+type SubtitleTrackChannel = Pick<
+    VideoChannel,
+    'onReady' | 'subtitles' | 'subtitlesUpdated' | 'onSubtitleSource' | 'subtitleSource' | 'requestSubtitleSource'
+>;
+
+export interface SubtitleTracksOptions {
+    source: SubtitleTrackSource;
+    subtitles: DisplaySubtitleModel[] | undefined;
+    channel: SubtitleTrackChannel | undefined;
+    getSubtitleOffset: () => number;
+    shouldRestoreSubtitles: (subtitleCount: number) => Promise<boolean>;
+    onSubtitles: (update: (previous: DisplaySubtitleModel[] | undefined) => DisplaySubtitleModel[]) => void;
+    onError: (error: unknown) => void;
+}
+
+export interface SubtitleTracksState {
+    sources: readonly SubtitleSourceState[];
+    loadingFiles: boolean;
+}
+
+type Activity =
+    | { kind: 'idle' }
+    | { kind: 'remote' }
+    | { kind: 'loading-files'; tracks: LoadableSubtitleTrack<FileWithId>[] }
+    | { kind: 'files' }
+    | { kind: 'producer'; controller: AbortController };
+
+/** Owns source transitions and channel synchronization; React only publishes its state. */
+export class SubtitleTracksController {
+    private readonly stream = new SubtitleStream();
+    private activity: Activity = { kind: 'idle' };
+    private sources: readonly SubtitleSourceState[] = [];
+    private channel?: SubtitleTrackChannel;
+    private ready = false;
+
+    constructor(
+        public options: SubtitleTracksOptions,
+        private readonly stateChanged: (state: SubtitleTracksState) => void
+    ) {}
+
+    setSource(source: SubtitleTrackSource): void {
+        this.options.source = source;
+        const previous = this.activity;
+        this.cancelSource();
+        switch (source.kind) {
+            case 'remote':
+                this.activity = { kind: 'remote' };
+                if (previous.kind !== 'remote') this.sources = [];
+                this.notifyState();
+                return;
+            case 'producer': {
+                const controller = new AbortController();
+                this.activity = { kind: 'producer', controller };
+                this.notifyState();
+                void this.produce(source, controller.signal);
+                source.onStarted();
+                return;
+            }
+            case 'local':
+                if (source.tracks === undefined) {
+                    this.sources = [];
+                    this.notifyState();
+                    return;
+                }
+                void this.loadFiles(source, source.tracks).catch((error) => this.options.onError(error));
+        }
+    }
+
+    cancelSource(): void {
+        const previous = this.activity;
+        this.activity = { kind: 'idle' };
+        if (previous.kind === 'producer') previous.controller.abort();
+    }
+
+    connect(channel: SubtitleTrackChannel | undefined): () => void {
+        this.channel = channel;
+        this.ready = false;
+        if (!channel) return () => {};
+        let active = true;
+        const removeSource = channel.onSubtitleSource((update) => this.receiveRemote(update));
+        const removeReady = channel.onReady(() => {
+            const firstReady = !this.ready;
+            this.ready = true;
+            const source = this.options.source;
+            if (source.kind === 'remote') {
+                if (source.supportsProgressiveSubtitles) channel.requestSubtitleSource();
+            } else if (firstReady) {
+                this.sendSnapshot();
+            } else {
+                void this.options
+                    .shouldRestoreSubtitles(this.stream.snapshot.subtitles.length)
+                    .then((restore) => {
+                        if (active && restore) this.sendSnapshot();
+                    })
+                    .catch((error) => {
+                        if (active) this.options.onError(error);
+                    });
+            }
+        });
+        return () => {
+            active = false;
+            this.channel = undefined;
+            this.ready = false;
+            removeSource();
+            removeReady();
+        };
+    }
+
+    private async loadFiles(
+        source: Extract<SubtitleTrackSource, { kind: 'local' }>,
+        tracks: LoadableSubtitleTrack<FileWithId>[]
+    ): Promise<void> {
+        const activity = { kind: 'loading-files', tracks } as const;
+        this.activity = activity;
+        this.notifyState();
+        const names = tracks.map(({ fileParts }) => fileParts[0]?.file.name ?? '');
+        asbTrace('playback/player', 'Loading player subtitles', {
+            subtitleTrackCount: tracks.length,
+            subtitleFileCount: tracks.reduce((count, { fileParts }) => count + fileParts.length, 0),
+            subtitleFileNames: names,
+        });
+        try {
+            const nodes = tracks.length
+                ? await source.reader.subtitles(
+                      tracks.map(({ fileParts }) => ({ fileParts: fileParts.map(({ file }) => file) }))
+                  )
+                : [];
+            if (this.activity !== activity) return;
+            this.stream.replace(
+                nodes.map((cue) => ({ ...cue, originalStart: cue.start, originalEnd: cue.end })),
+                names
+            );
+            asbTrace('playback/player', 'Loaded player subtitles', {
+                subtitleCount: nodes.length,
+                subtitleCountsByTrack: tracks.map((_, track) => nodes.filter((cue) => cue.track === track).length),
+            });
+        } catch (error) {
+            if (this.activity !== activity) return;
+            asbTrace('playback/player', 'Failed to load player subtitles', { error });
+            this.options.onError(error);
+            this.stream.replace([], names);
+        }
+        if (this.activity !== activity) return;
+        this.activity = { kind: 'files' };
+        this.publish();
+        this.sendSnapshot();
+        const current = this.options.source;
+        if (current.kind === 'local') {
+            current.onLoaded(tracks.flatMap(({ fileParts }) => fileParts.map(({ file }) => file)));
+        }
+    }
+
+    private async produce(source: Extract<SubtitleTrackSource, { kind: 'producer' }>, signal: AbortSignal) {
+        try {
+            await source.producer((update) => {
+                if (!signal.aborted) this.receiveProducer(update);
+            }, signal);
+        } catch (error) {
+            if (!signal.aborted) this.options.onError(error);
+        }
+    }
+
+    private receiveRemote(update: SubtitleSourceMessage['update']): void {
+        const source = this.options.source;
+        if (source.kind !== 'remote' || this.activity.kind !== 'remote') return;
+        if (!this.stream.update(update)) return;
+        if (update.type === 'snapshot') source.onOffset(update.offset);
+        this.publish();
+        if (update.type === 'failed') this.options.onError(new Error(update.error));
+    }
+
+    private receiveProducer(update: SubtitleSourceUpdate): void {
+        if (!this.stream.update(update)) return;
+        this.publish();
+        if (update.type === 'failed') this.options.onError(new Error(update.error));
+        const source = this.options.source;
+        if (!this.channel || !this.ready || source.kind !== 'producer') return;
+        if (source.supportsProgressiveSubtitles) {
+            this.channel.subtitleSource(
+                update.type === 'snapshot' ? { ...update, offset: this.options.getSubtitleOffset() } : update
+            );
+        } else {
+            this.sendSnapshot();
+        }
+    }
+
+    private publish(): void {
+        const snapshot = this.stream.snapshot;
+        const source = this.options.source;
+        if (
+            source.kind === 'producer' &&
+            !source.supportsProgressiveSubtitles &&
+            snapshot.tracks.some((track) => track.status === 'loading')
+        ) {
+            return; // Older extensions need completed tracks because their messages identify cues by index.
+        }
+        this.sources = snapshot.tracks;
+        this.notifyState();
+        this.options.onSubtitles((previous) =>
+            displaySubtitleSnapshot(snapshot, previous ?? [], this.options.getSubtitleOffset())
+        );
+    }
+
+    private notifyState(): void {
+        this.stateChanged({
+            sources: this.sources,
+            loadingFiles: this.activity.kind === 'loading-files' && this.activity.tracks.length > 0,
+        });
+    }
+
+    private sendSnapshot(): void {
+        const { channel } = this;
+        if (!channel || !this.ready) return;
+        const source = this.options.source;
+        if (source.kind === 'remote') return;
+        if (source.kind === 'local' && this.activity.kind !== 'files') return;
+        if (source.kind === 'producer' && this.activity.kind !== 'producer') return;
+        const snapshot = this.stream.snapshot;
+        const displayed = displaySubtitleSnapshot(
+            snapshot,
+            this.options.subtitles ?? [],
+            this.options.getSubtitleOffset()
+        );
+        if (source.kind === 'producer' && source.supportsProgressiveSubtitles) {
+            channel.subtitleSource({
+                type: 'snapshot',
+                ...this.stream.sourceSnapshot,
+                offset: this.options.getSubtitleOffset(),
+            });
+            const annotated = displayed.filter((cue) => cue.tokenization !== undefined);
+            if (annotated.length) channel.subtitlesUpdated(annotated);
+            return;
+        }
+        if (snapshot.tracks.some((track) => track.status === 'loading')) return;
+        const names = subtitleSourceNames(snapshot.tracks);
+        asbTrace('playback/player', 'Sending subtitles to media channel', {
+            subtitleCount: snapshot.subtitles.length,
+            trackCount: snapshot.tracks.length,
+            subtitleFileNames: names,
+        });
+        channel.subtitles(displayed, names);
+    }
+}
