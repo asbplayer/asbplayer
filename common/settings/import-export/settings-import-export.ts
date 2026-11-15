@@ -26,7 +26,7 @@ import {
 } from '@project/common/settings/settings';
 import { ankiExportModes, SubtitleHtml } from '@project/common/src/model';
 import type { AsbplayerSettings } from '@project/common/settings/settings';
-import { ensureConsistencyOnRead } from '@project/common/settings/settings-provider';
+import { defaultSettings, ensureConsistencyOnRead } from '@project/common/settings/settings-provider';
 import { asbTrace } from '@project/common/util/log';
 import { download, getCurrentTimeString } from '@project/common/util';
 
@@ -36,7 +36,9 @@ import { download, getCurrentTimeString } from '@project/common/util';
 // validation, filling what older exports lack. That keeps historical exports
 // importable and lets consistency-synthesized fields be required here.
 // `settings-schema-conformance.test.ts` keeps the schema in sync with the
-// settings model key-for-key.
+// settings model key-for-key. Nested keys inside containers consistency fills
+// can stay required; containers without a fill source (`customAnkiFieldSettings`
+// values, `lastPlaybackPositions`) must keep new keys optional.
 
 const keyBindSchema = z.strictObject({
     keys: z.string(),
@@ -111,7 +113,6 @@ const tokenStatusConfigSchema = z.strictObject({
     alpha: z.string(),
 });
 
-// `gloss` is optional here, unlike the other annotations, so imports lacking it stay valid.
 const tokenAnnotationStatusSchema = z.strictObject({
     reading: z.boolean(),
     frequency: z.boolean(),
@@ -495,7 +496,7 @@ export const exportSettings = (settings: AsbplayerSettings) => {
     );
 };
 
-export const validateSettings = (settings: any) => {
+export const validateSettings = (settings: any, fillSource: AsbplayerSettings = defaultSettings) => {
     const copy = omitPaths(settings, [...validationIgnorePaths, ...deprecatedPaths]);
 
     // Consistency migrates old-version shapes before validation: it is the
@@ -505,7 +506,7 @@ export const validateSettings = (settings: any) => {
     // clean validation error.
     let normalized = copy;
     try {
-        normalized = ensureConsistencyOnRead(copy);
+        normalized = ensureConsistencyOnRead(copy, fillSource);
     } catch (error) {
         // Also catches bugs in consistency itself; trace so a bug that rejects
         // valid imports stays diagnosable.

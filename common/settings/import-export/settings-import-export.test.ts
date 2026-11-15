@@ -32,9 +32,18 @@ it('imports a file old enough to exercise the consistency migration paths', () =
         deck: 'Sentences',
         themeType: 'dark',
         language: 'en',
+        subtitleAlignment: 'top',
         subtitleSize: 36,
         subtitleColor: '#ffffff',
-        subtitleTracksV2: [],
+        subtitleTracksV2: [
+            {
+                subtitleColor: '#ffffff',
+                subtitleSize: 36,
+                subtitleThickness: 700,
+                subtitleCustomStyles: [],
+                subtitleBlur: false,
+            },
+        ],
         ankiFieldSettings: {
             sentence: { order: 1, display: true },
             definition: { order: 2, display: true },
@@ -81,6 +90,14 @@ it('imports a file old enough to exercise the consistency migration paths', () =
     // Track count padded to the current number of tracks.
     expect(imported.dictionaryTracks).toHaveLength(3);
     const track = imported.dictionaryTracks[0];
+
+    // Per-track keys the old version could not have written are filled from
+    // the fill source; this direct call has no current settings, so defaults.
+    expect(imported.subtitleTracksV2).toHaveLength(1);
+    const trackEntry = imported.subtitleTracksV2[0];
+    expect(trackEntry.subtitleAlignment).toBe(defaultSettings.subtitleAlignment);
+    expect(trackEntry.subtitleOutlineColor).toBe(defaultSettings.subtitleOutlineColor);
+    expect(trackEntry.subtitleShadowThickness).toBe(defaultSettings.subtitleShadowThickness);
 
     // Token colors/config absent from the file are created and padded.
     expect(track.dictionaryTokenStatusColors).toEqual([
@@ -300,10 +317,17 @@ it('preserves dictionary playback rules through settings export and import', () 
     expect(imported.dictionaryTracks?.[0].dictionaryPlaybackConfig).toEqual(playback);
 });
 
-it('requires current playback fields when a dictionary playback config is present', () => {
+it('fills missing playback fields from defaults instead of rejecting them', () => {
+    // A file whose playback config predates a field is indistinguishable from
+    // a corrupt one, so missing fields are synthesized; corruption that is
+    // distinguishable (wrong types, unknown keys, out-of-range values) still
+    // fails, as asserted by the tests below.
     const legacy = JSON.parse(JSON.stringify(defaultSettings));
     delete legacy.dictionaryTracks[0].dictionaryPlaybackConfig;
-    expect(() => validateSettings(legacy)).not.toThrow();
+    const imported = validateSettings(legacy);
+    expect(imported.dictionaryTracks[0].dictionaryPlaybackConfig).toEqual(
+        defaultSettings.dictionaryTracks[0].dictionaryPlaybackConfig
+    );
 
     const missingFields = [
         (config: any) => delete config.selectOnPause,
@@ -327,8 +351,28 @@ it('requires current playback fields when a dictionary playback config is presen
     for (const removeField of missingFields) {
         const settings = JSON.parse(JSON.stringify(defaultSettings));
         removeField(settings.dictionaryTracks[0].dictionaryPlaybackConfig);
-        expect(() => validateSettings(settings)).toThrow('Settings validation failed');
+        const imported = validateSettings(settings);
+        expect(imported.dictionaryTracks[0].dictionaryPlaybackConfig).toEqual(
+            defaultSettings.dictionaryTracks[0].dictionaryPlaybackConfig
+        );
     }
+});
+
+it('fills playback features and subkeys an older version could not have written', () => {
+    // Mirrors a real pre-selectOnPause, pre-minimumPercent export.
+    const settings = JSON.parse(JSON.stringify(defaultSettings));
+    const playback = settings.dictionaryTracks[0].dictionaryPlaybackConfig;
+    delete playback.selectOnPause;
+    playback.fastForward.rateByComprehension = { enabled: true };
+
+    const imported = validateSettings(settings);
+    const config = imported.dictionaryTracks[0].dictionaryPlaybackConfig;
+    expect(config.selectOnPause).toEqual({
+        onStatuses: Array.from({ length: 6 }, () => ({ enabled: false })),
+        onStates: [{ enabled: false }],
+    });
+    // Values the file did write are preserved, not reset.
+    expect(config.fastForward.rateByComprehension).toEqual({ enabled: true, minimumPercent: 60 });
 });
 
 it('accepts only whole-number minimum comprehension percentages from zero through ninety-nine', () => {
@@ -359,8 +403,10 @@ it('validates and round trips pause-selection playback triggers without rules', 
             trigger.enabled = invalid;
             expect(() => validateSettings(settings)).toThrow('Settings validation failed');
         }
+        // A deleted enabled is filled from defaults; it is indistinguishable
+        // from a version that predates the field.
         delete trigger.enabled;
-        expect(() => validateSettings(settings)).toThrow('Settings validation failed');
+        expect(() => validateSettings(settings)).not.toThrow();
         trigger.enabled = true;
     }
 });
@@ -471,6 +517,54 @@ it('preserves current ignored values when they are explicitly present in an impo
         'existing-wanikani-secret',
     ]);
     expect(mergedSettings.streamingPages?.netflix).toEqual(currentSettings.streamingPages.netflix);
+});
+
+it('merges current settings under an import for containers the file may predate', () => {
+    // The file models an older export: keys added since are absent, so the
+    // current settings fill them instead of defaults. Keys the file did write
+    // win over current values.
+    const currentSettings = JSON.parse(JSON.stringify(defaultSettings));
+    currentSettings.subtitleAlignment = 'top';
+    currentSettings.keyBindSet.toggleRecipe1 = { keys: 'R+1' };
+    currentSettings.ankiFieldSettings.track1 = { order: 77, display: true };
+    currentSettings.dictionaryTracks[0].dictionaryPlaybackConfig.fastForward.rateByComprehension.minimumPercent = 80;
+
+    const file = JSON.parse(JSON.stringify(currentSettings));
+    delete file.keyBindSet.toggleRecipe1;
+    delete file.ankiFieldSettings.track1;
+    delete file.dictionaryTracks[0].dictionaryPlaybackConfig.selectOnPause;
+    delete file.dictionaryTracks[0].dictionaryPlaybackConfig.fastForward.rateByComprehension.minimumPercent;
+    file.dictionaryTracks[0].dictionaryTokenMatchStrategy = TokenMatchStrategy.LEMMA_OR_EXACT_FORM_COLLECTED;
+    file.subtitleTracksV2 = [
+        {
+            subtitleColor: '#ffffff',
+            subtitleSize: 40,
+            subtitleThickness: 700,
+            subtitleCustomStyles: [],
+            subtitleBlur: false,
+        },
+    ];
+
+    const imported = validateSettings(mergeImportedSettings(file, currentSettings), currentSettings);
+
+    expect(imported.keyBindSet.toggleRecipe1).toEqual({ keys: 'R+1' });
+    expect(imported.keyBindSet.togglePlay).toEqual({ keys: 'space' });
+    expect(imported.ankiFieldSettings.track1).toEqual({ order: 77, display: true });
+    expect(imported.dictionaryTracks[0].dictionaryPlaybackConfig.selectOnPause).toEqual(
+        currentSettings.dictionaryTracks[0].dictionaryPlaybackConfig.selectOnPause
+    );
+    expect(imported.dictionaryTracks[0].dictionaryPlaybackConfig.fastForward.rateByComprehension).toEqual({
+        enabled: false,
+        minimumPercent: 80,
+    });
+    expect(imported.dictionaryTracks[0].dictionaryTokenMatchStrategy).toBe(
+        TokenMatchStrategy.LEMMA_OR_EXACT_FORM_COLLECTED
+    );
+    // Per-track keys the file predates are filled from the current settings;
+    // keys the file wrote are kept.
+    expect(imported.subtitleTracksV2[0].subtitleAlignment).toBe('top');
+    expect(imported.subtitleTracksV2[0].subtitleSize).toBe(40);
+    expect(() => validateSettings(mergeImportedSettings(file, currentSettings), currentSettings)).not.toThrow();
 });
 
 it('validates exported settings', () => {

@@ -168,7 +168,7 @@ const MiscSettingTab: React.FC<Props> = ({
             }
 
             const importedSettings = JSON.parse(await file.text());
-            const validatedSettings = validateSettings(mergeImportedSettings(importedSettings, settings));
+            const validatedSettings = validateSettings(mergeImportedSettings(importedSettings, settings), settings);
             onSettingsChanged(validatedSettings);
         } catch (e) {
             asbError('settings/import', e);
