@@ -1,0 +1,40 @@
+---
+slug: 1.23.0-released
+title: Extension v1.23.0 released
+authors: [killergerbah]
+tags: []
+---
+
+Extension v1.23.0 has been released.
+
+<!-- truncate -->
+
+This release contains many high-value features:
+
+- New, highly configurable playback settings based on word learning status and word frequency, and the ability to auto-select specific words on pause, by [@ShanaryS](https://github.com/ShanaryS).
+- Also from [@ShanaryS](https://github.com/ShanaryS): A way to configure combine playback configurations into shareable recipes. Check out the [examples](/docs/guides/recipes), create, and share some of your own.
+- [@joaquinmuzzi](https://github.com/joaquinmuzzi) made it possible to export animated WebP recordings into Anki cards, with a follow-up fix for the audio recording permission prompt from [@N-akashiya](https://github.com/N-akashiya).
+- [@Dr-TNineS](https://github.com/Dr-TNineS) added subtitle detection for Bilibili mainland, for logged in users.
+
+And bug-fixes:
+
+- [@mcgrizzz](https://github.com/mcgrizzz) fixed long-standing bugs and inconsistencies with the webapp's WebSocket integration.
+- [@mwojick](https://github.com/mwojick) fixed a slew of usability issues with asbplayer's popup on Firefox. He also made it impossible for future versions of asbplayer to accidentally render raw localization keys.
+- [@ilyankin](https://github.com/ilyankin) fixed custom CSS for subtitle tracks 2 and 3 being incorrectly saved.
+- [@dajiaohuang](https://github.com/dajiaohuang) fixed `document.body` being mutated unconditionally when binding subtitles.
+- [@ShanaryS](https://github.com/ShanaryS) fixed seeking on HBO Max, Crunchyroll subtitle detection via the generic parser, and stopping an audio recording using the pause button with no subtitles loaded.
+
+And quality-of-life changes:
+
+- [@artjomsR](https://github.com/artjomsR) made it so that the OK button is automatically highlighted after selecting a subtitle track.
+- asbplayer behavior can now be extended using [external extensions](/docs/guides/external-extensions).
+
+Shout outs to the new contributors [@N-akashiya](https://github.com/N-akashiya), [@dajiaohuang](https://github.com/dajiaohuang), and [@ilyankin](https://github.com/ilyankin).
+
+Also worth mentioning: thanks to [@ShanaryS](https://github.com/ShanaryS), the webapp now supports Dolby-patented audio codecs,
+resolving one of asbplayer's most annoying video compatibility issues. This was a very difficult technical achievement
+that integrates asbplayer with ffmpeg using a custom ffmpeg build and bindings, paving the way forward for future ffmpeg-based compatibility upgrades.
+We are grateful to [@rookes](https://github.com/rookes) for the original [PR](https://github.com/asbplayer/asbplayer/pull/1111) that inspired this change.
+
+This is not nearly all the changes in this huge release. Thanks to all contributors both old and new for making it possible.
+The full release notes can be read [here](https://github.com/asbplayer/asbplayer/releases/tag/v1.23.0).
