@@ -1510,6 +1510,7 @@ function App({
             const { id: tabId, synced, src } = videoElement;
 
             if (synced) {
+                // Filenames establish the remote source and modern extensions replay its cues through the channel.
                 const response = (await extension.requestSubtitles(tabId, src)) as RequestSubtitlesResponse | undefined;
 
                 if (response !== undefined) {
@@ -1523,15 +1524,17 @@ function App({
                                 ? previous
                                 : videoElement
                         );
-                        const length = subtitles.length > 0 ? subtitles[subtitles.length - 1].end : 0;
-                        setSubtitles(
-                            subtitles.map((s, i) => ({
-                                ...s,
-                                displayTime: timeDurationDisplay(s.start, length),
-                                displayEndTime: timeDurationDisplay(s.end, length),
-                                index: i,
-                            }))
-                        );
+                        if (!extension.supportsProgressiveSubtitles) {
+                            const length = subtitles.length > 0 ? subtitles[subtitles.length - 1].end : 0;
+                            setSubtitles(
+                                subtitles.map((s, i) => ({
+                                    ...s,
+                                    displayTime: timeDurationDisplay(s.start, length),
+                                    displayEndTime: timeDurationDisplay(s.end, length),
+                                    index: i,
+                                }))
+                            );
+                        }
                     }
                 }
             } else {

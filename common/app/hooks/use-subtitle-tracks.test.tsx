@@ -36,7 +36,6 @@ describe('useSubtitleTracks React integration', () => {
     let annotate: () => void;
     const onLoaded = jest.fn<(subtitleSourceFiles: File[]) => void>();
     const onError = jest.fn<(error: unknown) => void>();
-    const onStarted = jest.fn<() => void>();
     const shouldRestoreSubtitles = jest.fn<(subtitleCount: number) => Promise<boolean>>();
 
     function Player({
@@ -53,6 +52,8 @@ describe('useSubtitleTracks React integration', () => {
         producer?: SubtitleSourceProducer;
     }) {
         const [subtitles, setSubtitles] = useState<DisplaySubtitleModel[] | undefined>();
+        const onInitialized = () =>
+            onLoaded(tracks?.flatMap(({ fileParts }) => fileParts.map(({ file }) => file)) ?? []);
         const result = useSubtitleTracks({
             source:
                 ownership === 'remote'
@@ -64,8 +65,13 @@ describe('useSubtitleTracks React integration', () => {
                           },
                       }
                     : producer
-                      ? { kind: 'producer', producer, supportsProgressiveSubtitles: progressive, onStarted }
-                      : { kind: 'local', tracks, reader, onLoaded },
+                      ? { kind: 'producer', producer, supportsProgressiveSubtitles: progressive, onInitialized }
+                      : {
+                            kind: 'local',
+                            tracks,
+                            reader,
+                            onInitialized,
+                        },
             subtitles,
             channel: activeChannel,
             getSubtitleOffset,
@@ -101,7 +107,6 @@ describe('useSubtitleTracks React integration', () => {
         subtitleOffset = 500;
         onLoaded.mockClear();
         onError.mockClear();
-        onStarted.mockClear();
         shouldRestoreSubtitles.mockReset().mockResolvedValue(true);
         protocol = new TestVideoProtocol();
         channel = new VideoChannel(protocol);
@@ -262,7 +267,7 @@ describe('useSubtitleTracks React integration', () => {
             )
         );
         await act(async () => nextProtocol.ready());
-        expect(onStarted).toHaveBeenCalledTimes(1);
+        expect(onLoaded).toHaveBeenCalledTimes(1);
         expect(source.signal.aborted).toBe(false);
         expect(nextProtocol.sent).toMatchObject([
             {
@@ -298,7 +303,7 @@ describe('useSubtitleTracks React integration', () => {
         await act(async () => root.render(<Player tracks={[track('Ignored')]} producer={source.producer} />));
         expect(signal.aborted).toBe(false);
         expect(source.signal).toBe(signal);
-        expect(onStarted).toHaveBeenCalledTimes(1);
+        expect(onLoaded).toHaveBeenCalledTimes(1);
         await act(async () => source.finish());
         expect(container.textContent).toBe('First');
         expect(onError).not.toHaveBeenCalled();

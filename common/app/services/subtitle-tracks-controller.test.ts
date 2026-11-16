@@ -34,13 +34,12 @@ describe('SubtitleTracksController', () => {
     let state: SubtitleTracksState;
     let disconnect: () => void;
     let offset: number;
-    const onLoaded = jest.fn<(files: File[]) => void>();
-    const onStarted = jest.fn<() => void>();
+    const onInitialized = jest.fn<() => void>();
     const onError = jest.fn<(error: unknown) => void>();
     const shouldRestoreSubtitles = jest.fn<(subtitleCount: number) => Promise<boolean>>();
 
     const load = async (tracks: LoadableSubtitleTrack<FileWithId>[] | undefined) => {
-        controller.setSource({ kind: 'local', tracks, reader, onLoaded });
+        controller.setSource({ kind: 'local', tracks, reader, onInitialized });
         await settle();
     };
     const remoteSource = (): SubtitleTracksOptions['source'] => ({
@@ -62,8 +61,7 @@ describe('SubtitleTracksController', () => {
     };
 
     beforeEach(() => {
-        onLoaded.mockClear();
-        onStarted.mockClear();
+        onInitialized.mockClear();
         onError.mockClear();
         shouldRestoreSubtitles.mockReset().mockResolvedValue(true);
         offset = 500;
@@ -78,7 +76,7 @@ describe('SubtitleTracksController', () => {
         });
         state = { sources: [], loadingFiles: false };
         options = {
-            source: { kind: 'local', tracks: undefined, reader, onLoaded },
+            source: { kind: 'local', tracks: undefined, reader, onInitialized },
             subtitles: undefined,
             channel,
             getSubtitleOffset: () => offset,
@@ -117,7 +115,7 @@ describe('SubtitleTracksController', () => {
         await load(undefined);
         expect(options.subtitles).toEqual([external]);
         expect(protocol.subtitleMessages).toEqual([]);
-        expect(onLoaded).not.toHaveBeenCalled();
+        expect(onInitialized).not.toHaveBeenCalled();
     });
 
     it.each(['local', 'remote'] as const)('releases a %s source when local tracks are absent', async (ownership) => {
@@ -156,7 +154,7 @@ describe('SubtitleTracksController', () => {
         expect(state.loadingFiles).toBe(false);
         expect(protocol.subtitleMessages.at(-1)).toMatchObject({ value: [], names: ['Broken.vtt'] });
         expect(onError).toHaveBeenCalledWith(error);
-        expect(onLoaded).toHaveBeenLastCalledWith([broken.fileParts[0].file]);
+        expect(onInitialized).toHaveBeenLastCalledWith();
     });
 
     it.each(['resolve', 'reject'] as const)('ignores an old parse that %ss after a clear', async (completion) => {
@@ -181,8 +179,8 @@ describe('SubtitleTracksController', () => {
         expect(protocol.subtitleMessages.at(-1)?.value).toEqual([]);
         expect(protocol.subtitleMessages.some(({ names }) => names.includes('Pending.vtt'))).toBe(false);
         expect(onError).not.toHaveBeenCalled();
-        expect(onLoaded).toHaveBeenCalledTimes(2);
-        expect(onLoaded).toHaveBeenLastCalledWith([]);
+        expect(onInitialized).toHaveBeenCalledTimes(2);
+        expect(onInitialized).toHaveBeenLastCalledWith();
     });
 
     it('sends only the latest parsed source when the video becomes ready', async () => {
@@ -401,10 +399,9 @@ describe('SubtitleTracksController', () => {
             kind: 'producer',
             producer: source.producer,
             supportsProgressiveSubtitles: true,
-            onStarted,
+            onInitialized,
         });
-        expect(onStarted).toHaveBeenCalledTimes(1);
-        expect(onLoaded).not.toHaveBeenCalled();
+        expect(onInitialized).toHaveBeenCalledTimes(1);
         expect(state.sources[0].status).toBe('loading');
         expect(protocol.sent).toEqual([
             {
@@ -441,7 +438,7 @@ describe('SubtitleTracksController', () => {
             kind: 'producer',
             producer: source.producer,
             supportsProgressiveSubtitles: false,
-            onStarted,
+            onInitialized,
         });
         source.append('First');
         expect(options.subtitles).toBeUndefined();
@@ -465,14 +462,14 @@ describe('SubtitleTracksController', () => {
             kind: 'producer',
             producer: first.producer,
             supportsProgressiveSubtitles: true,
-            onStarted,
+            onInitialized,
         });
         first.append('First');
         controller.setSource({
             kind: 'producer',
             producer: second.producer,
             supportsProgressiveSubtitles: true,
-            onStarted,
+            onInitialized,
         });
         expect(first.signal.aborted).toBe(true);
         expect(options.subtitles).toEqual([]);
@@ -494,7 +491,7 @@ describe('SubtitleTracksController', () => {
             kind: 'producer',
             producer: source.producer,
             supportsProgressiveSubtitles: true,
-            onStarted,
+            onInitialized,
         });
         source.append('First');
         const error = new Error('Extraction failed');
@@ -513,7 +510,7 @@ describe('SubtitleTracksController', () => {
             kind: 'producer',
             producer: source.producer,
             supportsProgressiveSubtitles: true,
-            onStarted,
+            onInitialized,
         });
         source.append('First');
         source.publish({ type: 'failed', track: 0, loadId: 'producer', error: 'Disconnected' });
@@ -537,7 +534,7 @@ describe('SubtitleTracksController', () => {
                 kind: 'producer',
                 producer: source.producer,
                 supportsProgressiveSubtitles: true,
-                onStarted,
+                onInitialized,
             });
         }
         const before = options.subtitles;
@@ -567,13 +564,13 @@ describe('SubtitleTracksController', () => {
             kind: 'producer',
             producer: source.producer,
             supportsProgressiveSubtitles: true,
-            onStarted,
+            onInitialized,
         });
         source.append('New');
         finish(vttText('Old'));
         await settle();
         expect(options.subtitles?.map((cue) => cue.text)).toEqual(['New']);
-        expect(onLoaded).not.toHaveBeenCalled();
+        expect(onInitialized).toHaveBeenCalledTimes(1);
         expect(protocol.subtitleMessages).toEqual([]);
     });
 });

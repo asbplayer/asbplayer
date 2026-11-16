@@ -717,6 +717,11 @@ function PlayerComponent(
         [extension, tabId, tabSrc]
     );
 
+    const handleSubtitleSourceInitialized = useCallback(
+        () => onLoaded(subtitleTracks?.flatMap(({ fileParts }) => fileParts.map(({ file }) => file)) ?? []),
+        [onLoaded, subtitleTracks]
+    );
+
     const {
         loadingSubtitles,
         subtitleFileNames: loadedSubtitleFileNames,
@@ -734,12 +739,14 @@ function PlayerComponent(
                         kind: 'producer',
                         producer: subtitleProducer,
                         supportsProgressiveSubtitles: !tab || extension.supportsProgressiveSubtitles,
-                        onStarted: () =>
-                            onLoaded(
-                                subtitleTracks?.flatMap(({ fileParts }) => fileParts.map(({ file }) => file)) ?? []
-                            ),
+                        onInitialized: handleSubtitleSourceInitialized,
                     }
-                  : { kind: 'local', tracks: subtitleTracks, reader: subtitleReader, onLoaded },
+                  : {
+                        kind: 'local',
+                        tracks: subtitleTracks,
+                        reader: subtitleReader,
+                        onInitialized: handleSubtitleSourceInitialized,
+                    },
         subtitles,
         channel,
         getSubtitleOffset,
