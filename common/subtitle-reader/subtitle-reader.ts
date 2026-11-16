@@ -1,4 +1,5 @@
 import { compile as parseAss } from 'ass-compiler';
+import type { Dialogue } from 'ass-compiler';
 import SrtParser from '@qgustavor/srt-parser';
 import { subtitlesToSrt } from '@project/common/subtitle-reader/subtitles-to-srt';
 import { strToU8, zipSync } from 'fflate';
@@ -49,6 +50,22 @@ const nonContentAtEdgesRegex = new RegExp(`^[${nonContentCharacterClass}]+|[${no
 const assOverrideTagRegex = /\{(?:\\(?:an[1-9]|[ius][01]|b(?:[01]|[1-9]00)))+\}/g;
 
 const assNewLineRegex = RegExp(/\\[nN]/, 'ig');
+
+// Plain emphasis tags that ordinary dialogue also uses.
+const assEmphasisTags = new Set(['b', 'i', 'u', 's']);
+
+// Typeset signs (translations of on-screen text, credits) are placed at a fixed point with \pos or \move and
+// restyled with font, size, color, rotation or scale overrides, or drawn as vector shapes. asbplayer can't place
+// them where the script puts them, so shown as text they pile up on top of the dialogue. Dialogue that is only
+// repositioned, e.g. `{\pos(460,247)}Look up!`, has no such overrides and is kept.
+const isTypesetAssSign = (dialogue: Dialogue) =>
+    (dialogue.pos !== undefined || dialogue.move !== undefined) &&
+    dialogue.slices.some((slice) =>
+        slice.fragments.some(
+            (fragment) => fragment.drawing || Object.keys(fragment.tag).some((tag) => !assEmphasisTags.has(tag))
+        )
+    );
+
 // Character classes shared by the Netflix ruby regexes below so they cannot drift apart.
 const netflixRubyKanaClass = '\\p{sc=Hira}\\p{sc=Kana}';
 const netflixRubyBaseClass = `${netflixRubyKanaClass}\\p{sc=Han}々〆〤ヶA-Za-z0-9`;
@@ -310,16 +327,20 @@ export default class SubtitleReader {
 
         if (subtitleSourceFile.name.endsWith('.ass')) {
             const nodes = parseAss(await subtitleSourceFile.text(), {});
-            return nodes.dialogues.map((dialogue) => {
-                return {
-                    start: Math.round(dialogue.start * 1000),
-                    end: Math.round(dialogue.end * 1000),
-                    text: this._filterText(
-                        dialogue.slices.flatMap((slice) => slice.fragments.map((fragment) => fragment.text)).join('')
-                    ).replace(assNewLineRegex, '\n'),
-                    track: track,
-                };
-            });
+            return nodes.dialogues
+                .filter((dialogue) => !isTypesetAssSign(dialogue))
+                .map((dialogue) => {
+                    return {
+                        start: Math.round(dialogue.start * 1000),
+                        end: Math.round(dialogue.end * 1000),
+                        text: this._filterText(
+                            dialogue.slices
+                                .flatMap((slice) => slice.fragments.map((fragment) => fragment.text))
+                                .join('')
+                        ).replace(assNewLineRegex, '\n'),
+                        track: track,
+                    };
+                });
         }
 
         if (subtitleSourceFile.name.endsWith('.ytsrv3')) {
