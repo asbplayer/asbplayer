@@ -176,8 +176,6 @@ const MiscSettingTab: React.FC<Props> = ({
             asbError('settings/import', e);
             setImportError(e instanceof Error ? e.message : String(e));
         } finally {
-            // Every import ends here, so the same file can be picked again, e.g.
-            // to retry after fixing a rejected file.
             if (input) {
                 input.value = '';
             }

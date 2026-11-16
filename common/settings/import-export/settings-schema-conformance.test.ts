@@ -8,10 +8,9 @@ import { expect, it } from '@jest/globals';
 
 type Failure = string;
 
-// Every array and record is populated so the conformance walk can descend
-// into their item schemas. `defaultSettings` is compiler-checked against
-// `AsbplayerSettings`, so the fixture only fills in the collections the
-// defaults leave empty.
+// populatedSettings is a settings object with all nested objects, including those in arrays,
+// filled in with sample values. defaultSettings alone isn't enough because some nested arrays
+// are empty, leaving the conformance test without any value to compare the nested schema against.
 const populatedSettings: AsbplayerSettings = {
     ...defaultSettings,
     subtitleCustomStyles: [{ key: 'transform', value: 'scale(1)' }],
@@ -30,8 +29,6 @@ const populatedSettings: AsbplayerSettings = {
     })),
 };
 
-// Written out in full so the compiler enforces the track element's shape
-// against `TextSubtitleSettings` (the schema must enumerate these keys too).
 function trackSettings(): TextSubtitleSettings {
     return {
         subtitleColor: defaultSettings.subtitleColor,
@@ -54,8 +51,7 @@ const describePath = (path: string) => path || 'settings root';
 
 // The walkers take zod's core schema type: v4's classic wrappers expose
 // `shape`, `element`, and `valueType` as core `$ZodType`, not classic
-// `ZodType`. Empty arrays and records would hide their item schemas from the
-// walk, so the fixture must populate every collection.
+// `ZodType`.
 const assertCollectionsPopulated = (schema: z.core.$ZodType, value: unknown, path: string, failures: Failure[]) => {
     if (schema instanceof z.ZodOptional) {
         if (value !== undefined) assertCollectionsPopulated(schema.unwrap(), value, path, failures);
@@ -95,12 +91,10 @@ const assertCollectionsPopulated = (schema: z.core.$ZodType, value: unknown, pat
     }
 };
 
-// Key-set equality between the schema and the settings model (as embodied by
-// the populated fixture) at every object level. A key in the settings but not
-// the schema means current exports would fail to import; a key in the schema
-// but not the settings means the schema validates a setting that does not
-// exist. `streamingPages` is exempt: stripped before validation and absent
-// from the schema by design.
+// Key-set equality between the schema and the settings model at every object
+// level. A key in the settings but not the schema means current exports would
+// fail to import; a key in the schema but not the settings means the schema
+// validates a setting that does not exist.
 const assertKeysConform = (
     schema: z.core.$ZodType,
     value: unknown,

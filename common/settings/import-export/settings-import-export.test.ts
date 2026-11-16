@@ -24,9 +24,7 @@ it('validates the default settings', () => {
 
 it('imports a file old enough to exercise the consistency migration paths', () => {
     // Hand-built export from before annotation configs, playback settings,
-    // recipes, and later key binds: the dictionary track has only the flat
-    // deprecated fields. Consistency must migrate it before validation,
-    // because the fields it synthesizes are required by the schema.
+    // recipes, and newer key binds.
     const imported = validateSettings({
         ankiConnectUrl: 'http://127.0.0.1:8765',
         deck: 'Sentences',
@@ -457,10 +455,11 @@ it('requires a boolean for individual word hiding before the threshold', () => {
     }
 });
 
-it('excludes credentials from settings exports without mutating the settings', () => {
+it('excludes ignored keys from settings exports without mutating the settings', () => {
     const settings = {
         ...defaultSettings,
         ankiConnectApiKey: 'anki-secret',
+        lastPlaybackPositions: [{ fileName: 'video.mp4', position: 1234 }],
         dictionaryTracks: defaultSettings.dictionaryTracks.map((track, index) => ({
             ...track,
             dictionaryWaniKaniApiToken: `wanikani-secret-${index}`,
@@ -471,6 +470,7 @@ it('excludes credentials from settings exports without mutating the settings', (
 
     expect(exportedSettings).not.toHaveProperty('ankiConnectApiKey');
     expect(exportedSettings).not.toHaveProperty('streamingPages');
+    expect(exportedSettings).not.toHaveProperty('lastPlaybackPositions');
     expect(exportedSettings.dictionaryTracks).toHaveLength(3);
     expect(exportedSettings.dictionaryTracks).toEqual([
         expect.not.objectContaining({ dictionaryWaniKaniApiToken: expect.any(String) }),

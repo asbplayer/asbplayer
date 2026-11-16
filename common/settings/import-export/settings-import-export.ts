@@ -30,11 +30,10 @@ import { defaultSettings, ensureConsistencyOnRead } from '@project/common/settin
 import { asbTrace } from '@project/common/util/log';
 import { download, getCurrentTimeString } from '@project/common/util';
 
-// All schemas are strict: an unrecognized key anywhere, including inside
-// array items, is a typo and rejects the whole import. `validateSettings`
+// All schemas are strict, including nested ones. `validateSettings`
 // strips `deprecatedPaths` and runs `ensureConsistencyOnRead` before
 // validation, filling what older exports lack. That keeps historical exports
-// importable and lets consistency-synthesized fields be required here.
+// importable.
 // `settings-schema-conformance.test.ts` keeps the schema in sync with the
 // settings model key-for-key. Nested keys inside containers that consistency
 // fills can stay required; containers without a fill source
@@ -417,12 +416,13 @@ const ignorePaths: readonly IgnorePath[] = [
     ['ankiConnectApiKey'],
     ['dictionaryTracks', '*', 'dictionaryWaniKaniApiToken'],
     ['streamingPages'], // Ignored due to security risk (e.g. disable CSP)
+    ['lastPlaybackPositions'], // Ignored since it exposes browsing history
 ];
 const validationIgnorePaths: readonly IgnorePath[] = [['streamingPages']];
 
 // Keys older asbplayer versions wrote that no longer exist in the settings
 // model. Strict schemas would reject them as typos, so they are stripped
-// before validation. When removing a setting from the model, add its path
+// before validation.When removing a setting from the model, add its path
 // here, or keep it as a deprecated model field if its value must migrate. A
 // '*' segment applies to every array item. `settings-schema-conformance.test.ts`
 // checks that each path points at a key the schema no longer knows.
@@ -508,11 +508,11 @@ export const exportSettings = (settings: AsbplayerSettings) => {
 export const validateSettings = (settings: any, fillSource: AsbplayerSettings = defaultSettings) => {
     const copy = omitPaths(settings, [...validationIgnorePaths, ...deprecatedPaths]);
 
-    // Consistency migrates old-version shapes before validation: it is the
-    // same code that migrates old storage data on read, and legitimate
-    // exports mirror those shapes. It assumes a schema-valid shape, so
-    // garbage can throw; the fallback then rejects the file below with a
-    // clean validation error.
+    // ensureConsistencyOnRead migrates settings from old asbplayer versions.
+    // It assumes the incoming data is valid, so it's possible for garbage data
+    // to cause an exception to be thrown.
+    // Even though the exception is swallowed, later validation would still reject
+    // garbage data.
     let normalized = copy;
     try {
         normalized = ensureConsistencyOnRead(copy, fillSource);
