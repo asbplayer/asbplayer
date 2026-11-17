@@ -11,7 +11,7 @@ import type {
     Progress,
 } from '@project/common';
 import { DictionaryBuildAnkiCacheStateErrorCode, DictionaryBuildAnkiCacheStateType } from '@project/common';
-import type { AsbplayerSettings, DictionaryTrack } from '@project/common/settings';
+import type { AsbplayerSettings, DictionaryTrack, YomitanFetcherSettings } from '@project/common/settings';
 import {
     dictionaryStatusCollectionEnabled,
     DictionaryTokenSource,
@@ -19,6 +19,7 @@ import {
     TokenStatus,
 } from '@project/common/settings';
 import { Yomitan } from '@project/common/yomitan';
+import type { YomitanFetcher } from '@project/common/yomitan';
 import { v4 as uuidv4 } from 'uuid';
 import type {
     _DictionaryDatabase,
@@ -72,7 +73,8 @@ export async function buildAnkiCachePipeline(
     db: _DictionaryDatabase,
     profile: string,
     settings: AsbplayerSettings,
-    statusUpdates: (state: DictionaryBuildAnkiCacheState) => void
+    statusUpdates: (state: DictionaryBuildAnkiCacheState) => void,
+    yomitanFetcherFactory: (s: YomitanFetcherSettings) => YomitanFetcher
 ): Promise<void> {
     const modifiedTokens = new Set<string>();
 
@@ -142,7 +144,7 @@ export async function buildAnkiCachePipeline(
                 tracksToClear.push(track); // Explicitly clear tracks with no Anki fields
                 continue;
             }
-            const yomitan = new Yomitan(dt);
+            const yomitan = new Yomitan(dt, yomitanFetcherFactory);
             try {
                 await yomitan.version();
             } catch (e) {

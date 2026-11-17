@@ -1,4 +1,5 @@
 import project from '@project/common/project';
+import { isFirefox } from '@project/common/browser-detection';
 import { arrayEquals } from '@project/common/util/array-equals';
 import { compareField, fieldsEqual } from '@project/common/util';
 import type { FieldComparators } from '@project/common/util';
@@ -579,6 +580,21 @@ export enum ApplyStrategy {
     TOGGLE = 'TOGGLE',
 }
 
+export type YomitanTransport = 'api' | 'extension';
+
+export interface YomitanFetcherSettings {
+    readonly dictionaryYomitanUrl: string;
+    readonly dictionaryYomitanTransport: DictionaryTrack['dictionaryYomitanTransport'];
+    readonly dictionaryYomitanExtensionId: string;
+}
+
+// Production Yomitan IDs; unpacked/sideloaded builds differ and are set per
+// track.
+export const YOMITAN_CHROME_EXTENSION_ID = 'likgccmbimhjbgkjambclfkhldnlhbnn';
+export const YOMITAN_FIREFOX_EXTENSION_ID = '{6b733b82-9261-47ee-a595-2dda294a4d08}';
+
+export const defaultYomitanExtensionId = () => (isFirefox ? YOMITAN_FIREFOX_EXTENSION_ID : YOMITAN_CHROME_EXTENSION_ID);
+
 export interface DictionaryTrack {
     /** @deprecated Use dictionaryTokenAnnotationConfig.colorizeEnabled */
     readonly dictionaryColorizeSubtitles: boolean;
@@ -590,6 +606,8 @@ export interface DictionaryTrack {
     readonly dictionaryMatchAcrossScripts: boolean;
     readonly dictionaryTokenMatchStrategyPriority: TokenMatchStrategyPriority;
     readonly dictionaryYomitanUrl: string;
+    readonly dictionaryYomitanTransport: YomitanTransport;
+    readonly dictionaryYomitanExtensionId: string;
     readonly dictionaryYomitanParser: 'scanning-parser' | 'mecab';
     readonly dictionaryYomitanScanLength: number;
     /** @deprecated Use dictionaryTokenAnnotationConfig.onStatuses[].reading */
@@ -629,6 +647,8 @@ const dictionaryTrackComparators: FieldComparators<DictionaryTrack> = {
     dictionaryMatchAcrossScripts: (a, b) => a === b,
     dictionaryTokenMatchStrategyPriority: (a, b) => a === b,
     dictionaryYomitanUrl: (a, b) => a === b,
+    dictionaryYomitanTransport: (a, b) => a === b,
+    dictionaryYomitanExtensionId: (a, b) => a === b,
     dictionaryYomitanParser: (a, b) => a === b,
     dictionaryYomitanScanLength: (a, b) => a === b,
     dictionaryTokenReadingAnnotation: (a, b) => a === b,
@@ -671,6 +691,8 @@ const dictionaryTrackRenderOnlyComparators: FieldComparators<DictionaryTrack> = 
     dictionaryMatchAcrossScripts: () => false,
     dictionaryTokenMatchStrategyPriority: () => false,
     dictionaryYomitanUrl: () => false,
+    dictionaryYomitanTransport: () => false,
+    dictionaryYomitanExtensionId: () => false,
     dictionaryYomitanParser: () => false,
     dictionaryYomitanScanLength: () => false,
     dictionaryTokenReadingAnnotation: () => true,
@@ -777,6 +799,8 @@ const defaultDictionaryTrackSettings: DictionaryTrack = {
     dictionaryMatchAcrossScripts: true,
     dictionaryTokenMatchStrategyPriority: TokenMatchStrategyPriority.EXACT,
     dictionaryYomitanUrl: `http://${project.services.yomitan.host}:${project.services.yomitan.port}`,
+    dictionaryYomitanTransport: 'api',
+    dictionaryYomitanExtensionId: defaultYomitanExtensionId(),
     dictionaryYomitanParser: 'scanning-parser',
     dictionaryYomitanScanLength: 16,
     dictionaryTokenReadingAnnotation: TokenReadingAnnotation.NEVER,
@@ -858,6 +882,13 @@ export const ensureDictionaryTracksConsistency = ({ dictionaryTracks }: Partial<
 
         // Existing tracks predate playback settings; new statuses and states need a trigger row.
         if (!dt.dictionaryPlaybackConfig) (dt as any).dictionaryPlaybackConfig = makeDefaultDictionaryPlaybackConfig();
+        // Existing tracks predate Yomitan transport settings.
+        if (!dt.dictionaryYomitanTransport) {
+            (dt as any).dictionaryYomitanTransport = defaultTrack.dictionaryYomitanTransport;
+        }
+        if (!dt.dictionaryYomitanExtensionId) {
+            (dt as any).dictionaryYomitanExtensionId = defaultTrack.dictionaryYomitanExtensionId;
+        }
         for (const feature of [...dictionaryPlaybackFeatures, 'selectOnPause'] as const) {
             const playback = dt.dictionaryPlaybackConfig[feature];
             for (const [triggers, count] of [

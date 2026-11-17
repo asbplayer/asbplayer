@@ -7,6 +7,7 @@ import type {
     ExternalWordSource,
     SettingsProvider,
     TokenState,
+    YomitanFetcherSettings,
 } from '@project/common/settings';
 import {
     ApplyStrategy,
@@ -19,7 +20,7 @@ import {
     TokenStatus,
 } from '@project/common/settings';
 import type { WaniKaniAssignment, WaniKaniSpacedRepetitionSystem, WaniKaniSubject } from '@project/common/wanikani';
-import type { Yomitan } from '@project/common/yomitan';
+import type { Yomitan, YomitanFetcher } from '@project/common/yomitan';
 import Dexie from 'dexie';
 import { buildAnkiCachePipeline, buildWaniKaniCachePipeline } from '@project/common/dictionary-db';
 import type { CardInfo } from '@project/common/anki';
@@ -287,18 +288,32 @@ export class DictionaryDB {
 
     async buildAnkiCache(
         inputProfile: string | undefined,
-        statusUpdates: (state: DictionaryBuildAnkiCacheState) => void
+        statusUpdates: (state: DictionaryBuildAnkiCacheState) => void,
+        yomitanFetcherFactory: (s: YomitanFetcherSettings) => YomitanFetcher
     ): Promise<void> {
         const settings = await this.settingsProvider.getAll();
-        return buildAnkiCachePipeline(this.db, this._getProfile(inputProfile), settings, statusUpdates);
+        return buildAnkiCachePipeline(
+            this.db,
+            this._getProfile(inputProfile),
+            settings,
+            statusUpdates,
+            yomitanFetcherFactory
+        );
     }
 
     async buildWaniKaniCache(
         inputProfile: string | undefined,
-        statusUpdates: (state: DictionaryBuildWaniKaniCacheState) => void
+        statusUpdates: (state: DictionaryBuildWaniKaniCacheState) => void,
+        yomitanFetcherFactory: (s: YomitanFetcherSettings) => YomitanFetcher
     ): Promise<void> {
         const settings = await this.settingsProvider.getAll();
-        return buildWaniKaniCachePipeline(this.db, this._getProfile(inputProfile), settings, statusUpdates);
+        return buildWaniKaniCachePipeline(
+            this.db,
+            this._getProfile(inputProfile),
+            settings,
+            statusUpdates,
+            yomitanFetcherFactory
+        );
     }
 
     private _getProfile(inputProfile: string | undefined): string {

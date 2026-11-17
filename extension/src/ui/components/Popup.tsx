@@ -41,6 +41,7 @@ import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import type { ToggleButtonProps } from '@mui/material/ToggleButton';
 import ExtensionIcon from '@mui/icons-material/Extension';
 import Badge from '@mui/material/Badge';
+import { createForegroundYomitanFetcher } from '@/services/extension-yomitan-fetcher';
 
 const globalStateProvider = new ExtensionGlobalStateProvider();
 
@@ -204,6 +205,8 @@ const Popup = ({
         }
     }, [currentMediaIdWithSubtitles, hasPendingExternalConnection]);
 
+    const yomitanFetcher = useMemo(() => createForegroundYomitanFetcher('asbplayer-popup'), []);
+
     if (!i18nInitialized) {
         return null;
     }
@@ -311,12 +314,14 @@ const Popup = ({
                             extensionSupportsDictionaryTokenStatusDisplayAlpha
                             supportsDictionaryPlayback
                             extensionSupportsDictionaryYomitanMecab
+                            extensionSupportsYomitanExtensionMessaging
                             extensionSupportsSubtitleTrackSelectorInWebApp
                             extensionSupportsSubtitleListCustomization
                             extensionSupportsUpdateLastWithSameSubtitleText
                             extensionSupportsAnimatedImageCapture={!isFirefoxBuild}
                             forceVerticalTabs={false}
                             anki={anki}
+                            yomitanFetcher={yomitanFetcher}
                             chromeKeyBinds={chromeCommandBindsToKeyBinds(commands)}
                             dictionaryProvider={dictionaryProvider}
                             logProvider={logProvider}

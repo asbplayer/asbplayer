@@ -910,9 +910,9 @@ describe('Binding playback mode integration', () => {
             (request: any) => Promise<any>
         >;
         sendMessage.mockImplementation(async ({ message }) => {
-            if (message.command === 'http-post') {
-                if (message.url.endsWith('/yomitanVersion')) return { version: '0.0.0.0' };
-                if (message.url.endsWith('/tokenize')) {
+            if (message.command === 'yomitan-execute') {
+                if (message.action === 'yomitanVersion') return { version: '0.0.0.0' };
+                if (message.action === 'tokenize') {
                     await tokenizationReady;
                     return message.body.text.map((text: string, index: number) => ({
                         id: 'id',
@@ -922,8 +922,8 @@ describe('Binding playback mode integration', () => {
                         content: [[{ text, reading: '' }]],
                     }));
                 }
-                if (message.url.endsWith('/termEntries')) return { dictionaryEntries: [] };
-                throw new Error(`Unexpected annotation request: ${message.url}`);
+                if (message.action === 'termEntries') return { dictionaryEntries: [] };
+                throw new Error(`Unexpected annotation request: ${message.action}`);
             }
             if (message.command === 'dictionary-get-bulk' || message.command === 'dictionary-get-by-lemma-bulk') {
                 return {};
@@ -980,9 +980,9 @@ describe('Binding playback mode integration', () => {
                 (request: any) => Promise<any>
             >;
             sendMessage.mockImplementation(async ({ message }) => {
-                if (message.command === 'http-post') {
-                    if (message.url.endsWith('/yomitanVersion')) return { version: '0.0.0.0' };
-                    if (message.url.endsWith('/tokenize')) {
+                if (message.command === 'yomitan-execute') {
+                    if (message.action === 'yomitanVersion') return { version: '0.0.0.0' };
+                    if (message.action === 'tokenize') {
                         return message.body.text.map((text: string, index: number) => ({
                             id: 'id',
                             source: 'source',
@@ -991,8 +991,8 @@ describe('Binding playback mode integration', () => {
                             content: [[{ text, reading: '' }]],
                         }));
                     }
-                    if (message.url.endsWith('/termEntries')) return { dictionaryEntries: [] };
-                    throw new Error(`Unexpected annotation request: ${message.url}`);
+                    if (message.action === 'termEntries') return { dictionaryEntries: [] };
+                    throw new Error(`Unexpected annotation request: ${message.action}`);
                 }
                 if (message.command === 'dictionary-get-bulk' || message.command === 'dictionary-get-by-lemma-bulk') {
                     return {};

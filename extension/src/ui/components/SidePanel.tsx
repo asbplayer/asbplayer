@@ -27,6 +27,7 @@ import type {
     TokenizedSubtitleModel,
 } from '@project/common';
 import type { BulkExportStartedPayload } from '@project/extension/src/controllers/bulk-export-controller';
+import { createForegroundYomitanFetcher } from '@/services/extension-yomitan-fetcher';
 import type { AsbplayerSettings, SettingsProvider } from '@project/common/settings';
 import { AudioClip } from '@project/common/audio-clip';
 import type { ChromeExtension } from '@project/common/app';
@@ -111,6 +112,7 @@ export default function SidePanel({
     extension,
 }: Props) {
     const { t } = useTranslation();
+    const yomitanFetcher = useMemo(() => createForegroundYomitanFetcher('asbplayer-popup'), []);
     const playbackPreferences = useMemo(() => new PlaybackPreferenceController(), []);
     const subtitleReader = useMemo(
         () =>
@@ -778,6 +780,7 @@ export default function SidePanel({
                         <>
                             <SidePanelRecordingOverlay show={recordingAudio} />
                             <Player
+                                yomitanFetcher={yomitanFetcher}
                                 supportsDictionaryPlayback
                                 ref={playerRef}
                                 origin={browser.runtime.getURL('/sidepanel.html')}

@@ -1,4 +1,5 @@
 import { asbError } from '@project/common/util/log';
+import type { YomitanFetcher } from '@project/common/yomitan/yomitan-fetcher';
 import { ensureStoragePersisted, HAS_LETTER_REGEX, humanReadableTime, localizeDateTime } from '@project/common/util';
 import React, { useCallback, useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -14,7 +15,7 @@ import ListItem from '@mui/material/ListItem';
 import ListItemText from '@mui/material/ListItemText';
 import Switch from '@mui/material/Switch';
 import MuiAlert from '@mui/material/Alert';
-import type { DictionaryTrack, TokenStatus, Profile } from '@project/common/settings';
+import type { DictionaryTrack, TokenStatus, Profile, YomitanFetcherSettings } from '@project/common/settings';
 import { getFullyKnownTokenStatus, NUM_TOKEN_STATUSES, TokenState, ApplyStrategy } from '@project/common/settings';
 import { Yomitan } from '@project/common/yomitan';
 import SwitchLabelWithHoverEffect from '@project/common/components/SwitchLabelWithHoverEffect';
@@ -38,6 +39,7 @@ interface Props {
     dictionaryProvider: DictionaryProvider;
     activeProfile?: string;
     profiles: Profile[];
+    yomitanFetcher: (settings: YomitanFetcherSettings) => YomitanFetcher;
     onClose: () => void;
 }
 
@@ -48,6 +50,7 @@ const DictionaryImport: React.FC<Props> = ({
     dictionaryProvider,
     activeProfile,
     profiles,
+    yomitanFetcher,
     onClose,
 }) => {
     const { t } = useTranslation();
@@ -67,7 +70,7 @@ const DictionaryImport: React.FC<Props> = ({
         if (!open) {
             return;
         }
-        const yomitan = new Yomitan(dictionaryTracks[importClipboardTrack]);
+        const yomitan = new Yomitan(dictionaryTracks[importClipboardTrack], yomitanFetcher);
         yomitan
             .version()
             .then(() => setYomitanError(''))
@@ -75,7 +78,7 @@ const DictionaryImport: React.FC<Props> = ({
                 asbError('dictionary/import', e);
                 setYomitanError(e instanceof Error ? e.message : String(e));
             });
-    }, [importClipboardTrack, dictionaryTracks, open]);
+    }, [importClipboardTrack, dictionaryTracks, open, yomitanFetcher]);
 
     useEffect(() => {
         setImportClipboardPreview(null);
@@ -110,7 +113,7 @@ const DictionaryImport: React.FC<Props> = ({
         setImportClipboardMessage(undefined);
         setImportClipboardPreview(null);
         try {
-            const yomitan = new Yomitan(dictionaryTracks[importClipboardTrack]);
+            const yomitan = new Yomitan(dictionaryTracks[importClipboardTrack], yomitanFetcher);
             await yomitan.version();
 
             const tokenSet = new Set<string>();
@@ -149,7 +152,7 @@ const DictionaryImport: React.FC<Props> = ({
         } finally {
             setImportClipboardLoading(false);
         }
-    }, [dictionaryTracks, importClipboardTrack, importClipboardText, t]);
+    }, [dictionaryTracks, importClipboardTrack, importClipboardText, t, yomitanFetcher]);
 
     const handleSaveImportClipboard = useCallback(async () => {
         if (!importClipboardPreview?.length) return;
@@ -185,7 +188,7 @@ const DictionaryImport: React.FC<Props> = ({
 
     const lemmatizeRecords = useCallback(
         async (records: Partial<DictionaryTokenRecord>[]) => {
-            const yomitan = new Yomitan(dictionaryTracks[importClipboardTrack]);
+            const yomitan = new Yomitan(dictionaryTracks[importClipboardTrack], yomitanFetcher);
             await yomitan.version();
             const lemmatizedRecords: Partial<DictionaryTokenRecord>[] = [];
             for (const record of records) {
@@ -199,7 +202,7 @@ const DictionaryImport: React.FC<Props> = ({
             }
             return lemmatizedRecords;
         },
-        [dictionaryTracks, importClipboardTrack]
+        [dictionaryTracks, importClipboardTrack, yomitanFetcher]
     );
 
     const dictionaryDBFileInputRef = useRef<HTMLInputElement>(null);

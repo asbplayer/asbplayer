@@ -593,6 +593,10 @@
         "dictionaryTokenMatchStrategyPriorityLeastKnown": "优先采用掌握度最低的卡片",
         "dictionaryYomitanSection": "Yomitan 设置",
         "dictionaryYomitanUrl": "Yomitan API链接",
+        "dictionaryYomitanTransport": "Yomitan connection",
+        "dictionaryYomitanTransportApi": "Yomitan API (native messaging component)",
+        "dictionaryYomitanTransportExtension": "Yomitan extension (extension-to-extension messaging)",
+        "dictionaryYomitanExtensionId": "Yomitan extension ID",
         "dictionaryYomitanParser": "分词解析器",
         "dictionaryYomitanScanningParser": "通用扫描解析器（全语言）",
         "dictionaryYomitanMecabParser": "MeCab 解析器（日语）",
@@ -865,7 +869,7 @@
         "empty": "No external extensions to display.",
         "help": "Learn about external extensions <docs>here</docs>.",
         "incomingRequest": "An external extension is requesting to connect to asbplayer.",
-        "warning": "Once approved, extension <0>{{id}}</0> will be able to control asbplayer. Only approve if you recognize it.",
-        "extensionDetailsHelper": "Extension details can be viewed at <0>{{address}}</0>."
+        "extensionDetailsHelper": "Extension details can be viewed at <0>{{address}}</0>.",
+        "warning": "Once approved, extension <0>{{id}}</0> will be able to control asbplayer. Only approve if you recognize it."
     }
 }

@@ -3,6 +3,7 @@ import { useChromeExtension } from '@project/common/app';
 import RootApp from '@project/common/app/components/RootApp';
 import { useEffect, useMemo } from 'react';
 import { AppExtensionDictionaryStorage } from '@project/common/app/services/app-extension-dictionary-storage';
+import { createAppYomitanFetcher } from '@project/common/app/services/app-extension-yomitan-fetcher';
 import { AppExtensionSettingsStorage } from '@project/common/app/services/app-extension-settings-storage';
 import { AppExtensionGlobalStateProvider } from '@project/common/app/services/app-extension-global-state-provider';
 import { SettingsProvider } from '@project/common/settings';
@@ -39,7 +40,7 @@ const WebsiteApp = (props: Props) => {
     }, [logProvider]);
     const dictionaryStorage = useMemo(() => {
         if (extension.supportsDictionary) return new AppExtensionDictionaryStorage(extension);
-        return new LocalDictionaryStorage(settingsProvider);
+        return new LocalDictionaryStorage(settingsProvider, createAppYomitanFetcher(extension));
     }, [extension, settingsProvider]);
     const globalStateProvider = useMemo(() => new AppExtensionGlobalStateProvider(extension), [extension]);
     return (

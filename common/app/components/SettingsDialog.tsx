@@ -5,11 +5,12 @@ import Box from '@mui/material/Box';
 import Dialog from '@mui/material/Dialog';
 import DialogContent from '@mui/material/DialogContent';
 import type ChromeExtension from '@project/common/app/services/chrome-extension';
+import { createAppYomitanFetcher } from '@project/common/app/services/app-extension-yomitan-fetcher';
 import SettingsForm from '@project/common/components/SettingsForm';
-import { useLocalFontFamilies } from '@project/common/hooks';
-import type { Anki } from '@project/common/anki';
 import type { AsbplayerSettings, Profile } from '@project/common/settings';
 import { supportedLanguages, testCard } from '@project/common/settings';
+import { useLocalFontFamilies } from '@project/common/hooks';
+import type { Anki } from '@project/common/anki';
 import SettingsProfileSelectMenu from '@project/common/components/SettingsProfileSelectMenu';
 import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
@@ -77,6 +78,7 @@ export default function SettingsDialog({
     ...profilesContext
 }: Props) {
     const { t } = useTranslation();
+    const yomitanFetcher = useMemo(() => createAppYomitanFetcher(extension), [extension]);
     const classes = useStyles();
 
     const {
@@ -106,6 +108,7 @@ export default function SettingsDialog({
             <DialogContent className={classes.content}>
                 <SettingsForm
                     anki={anki}
+                    yomitanFetcher={yomitanFetcher}
                     extensionInstalled={extension.installed}
                     extensionVersion={extension.installed ? extension.version : undefined}
                     extensionSupportsAppIntegration={extension.supportsAppIntegration}
@@ -132,6 +135,7 @@ export default function SettingsDialog({
                     }
                     supportsDictionaryPlayback={supportsDictionaryPlayback}
                     extensionSupportsDictionaryYomitanMecab={extension.supportsDictionaryYomitanMecab}
+                    extensionSupportsYomitanExtensionMessaging={extension.supportsYomitanExtensionMessaging}
                     extensionSupportsSubtitleTrackSelectorInWebApp={extension.supportsSubtitleTrackSelectorInWebApp}
                     extensionSupportsSubtitleListCustomization={extension.supportsSubtitleListCustomization}
                     extensionSupportsUpdateLastWithSameSubtitleText={extension.supportsUpdateLastWithSameSubtitleText}

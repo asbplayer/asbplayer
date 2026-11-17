@@ -20,7 +20,7 @@ asbplayer can annotate subtitles to better assist with language learning. Annota
 - **Many more features for future releases!**
 
 :::info
-Annotation requires a configured [Yomitan](https://yomitan.wiki/) instance and the [yomitan-api](https://github.com/yomidevs/yomitan-api).
+Annotation requires a configured [Yomitan](https://yomitan.wiki/) instance and a connection to Yomitan using either [yomitan-api](https://github.com/yomidevs/yomitan-api) or extension-to-extension messaging for Yomitan v0.0.0+.
 
 If you rely on the **local word database**, installing the asbplayer browser extension is recommended so your browser is less likely to delete stored words. If you can’t install the extension, consider periodically exporting your settings and/or local words as a backup.
 :::
@@ -30,10 +30,12 @@ If you rely on the **local word database**, installing the asbplayer browser ext
 1. Open asbplayer **Settings**.
 2. Go to the **Annotation** section.
 3. Select the track you want to configure.
-4. Configure the **Yomitan URL** for that track.
-    - You will need a configured [Yomitan](https://yomitan.wiki/) instance and the [yomitan-api](https://github.com/yomidevs/yomitan-api).
-    - If the URL is invalid or unreachable, asbplayer will show an error next to the setting.
-    - Frequency information requires at least one rank-based frequency dictionary to be available in your Yomitan instance.
+4. Configure the **Yomitan connection** for that track. You should have already installed [Yomitan](https://yomitan.wiki/). There are two ways to connect to Yomitan:
+    - **[Yomitan API](https://github.com/yomidevs/yomitan-api)**. If the URL is invalid or unreachable, asbplayer will show an error next to the setting.
+    - **Extension-to-extension messaging** for Yomitan v0.0.0+. Configure Yomitan's extension ID which can be found at `chrome://extensions` on Chrome or `about:addons` on Firefox.
+
+    Frequency information requires at least one rank-based frequency dictionary to be available in your Yomitan instance.
+
 5. (Anki users) Configure which cards to source known status information from
     - [`Anki decks`](../reference/settings.md#anki-decks) should typically be left blank to source from all decks, filtering by the fields is usually sufficient.
     - [`Anki word fields`](../reference/settings.md#anki-word-fields) correspond to the field on the Anki note that contains only the target word.

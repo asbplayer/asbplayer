@@ -1,6 +1,7 @@
 import { effectiveSettings } from '@project/common/settings/settings-recipes';
 import { AudioClip } from '@project/common/audio-clip';
 import { canMineWithAudio } from '@project/common/audio-transcode/mining-audio';
+import type { YomitanFetcher } from '@project/common/yomitan/yomitan-fetcher';
 import React, { useEffect, useState, useMemo, useCallback, useRef, useImperativeHandle } from 'react';
 import type { MutableRefObject } from 'react';
 
@@ -25,7 +26,7 @@ import type {
 } from '@project/common';
 
 import { ApplyStrategy, isTrackAutoCopyable, TokenState, VideoSubtitleSplitBehavior } from '@project/common/settings';
-import type { AsbplayerSettings, SettingsProvider } from '@project/common/settings';
+import type { AsbplayerSettings, SettingsProvider, YomitanFetcherSettings } from '@project/common/settings';
 
 import type { DictionaryProvider } from '@project/common/dictionary-db';
 import { SubtitleCollection } from '@project/common/subtitle-collection';
@@ -159,6 +160,7 @@ interface PlayerProps {
     playbackPreferences: PlaybackPreferenceController;
     keyBinder: KeyBinder;
     extension: ChromeExtension;
+    yomitanFetcher: (settings: YomitanFetcherSettings) => YomitanFetcher;
     supportsDictionaryPlayback: boolean;
     videoFrameRef?: MutableRefObject<HTMLIFrameElement | null>;
     videoChannelRef?: MutableRefObject<VideoChannel | null>;
@@ -233,6 +235,7 @@ function PlayerComponent(
         playbackPreferences,
         keyBinder,
         extension,
+        yomitanFetcher,
         supportsDictionaryPlayback,
         videoFrameRef,
         videoChannelRef,
@@ -825,7 +828,9 @@ function PlayerComponent(
                     return allSubtitles;
                 });
             },
-            () => clockRef.current.time({ maxMs: calculateLengthMs(videoDurationRef) })
+            () => clockRef.current.time({ maxMs: calculateLengthMs(videoDurationRef) }),
+            undefined,
+            yomitanFetcher
         );
         if (subtitlesRef.current) subtitleAnnotations.setSubtitles(subtitlesRef.current);
         subtitleAnnotations.bind();
@@ -840,7 +845,7 @@ function PlayerComponent(
             asbTrace('playback/player', 'Unbinding subtitle annotation collection');
             subtitleCollectionRef.current.unbind();
         };
-    }, [channel, dictionaryProvider, settingsProvider, mediaId, tab, onSubtitles]);
+    }, [channel, dictionaryProvider, settingsProvider, mediaId, tab, onSubtitles, yomitanFetcher]);
 
     useEffect(() => {
         if (!subtitleCollectionRef.current) return;
@@ -1724,6 +1729,7 @@ function PlayerComponent(
                         />
                     )}
                     <SubtitlePlayer
+                        yomitanFetcher={yomitanFetcher}
                         onSettingsChanged={onSettingsChanged}
                         ref={subtitlePlayerRef}
                         subtitles={subtitles}

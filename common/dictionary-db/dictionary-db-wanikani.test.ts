@@ -6,6 +6,7 @@ import { DictionaryBuildWaniKaniCacheStateErrorCode, DictionaryBuildWaniKaniCach
 import type { AsbplayerSettings } from '@project/common/settings';
 import { DictionaryTokenSource, TokenState, TokenStatus } from '@project/common/settings';
 
+const mockYomitanFetcherFactory = () => undefined as any;
 const mockWaniKaniInstances: any[] = [];
 const mockWaniKaniOverrides: any[] = [];
 const mockYomitanInstances: any[] = [];
@@ -727,7 +728,7 @@ describe('DictionaryDB WaniKani cache', () => {
         });
 
         useSettings([dictionaryTrack]);
-        await dictionaryDB.buildWaniKaniCache(profile, statusUpdates);
+        await dictionaryDB.buildWaniKaniCache(profile, statusUpdates, mockYomitanFetcherFactory);
         await waitForWaniKaniBuildToFinish();
 
         expect(mockWaniKaniInstances).toHaveLength(1);
@@ -797,7 +798,7 @@ describe('DictionaryDB WaniKani cache', () => {
         );
 
         useSettings([makeDictionaryTrack({ dictionaryColorizeSubtitles: true, dictionaryWaniKaniApiToken: '' })]);
-        await dictionaryDB.buildWaniKaniCache(profile, statusUpdates);
+        await dictionaryDB.buildWaniKaniCache(profile, statusUpdates, mockYomitanFetcherFactory);
 
         await expect(
             privateDb(dictionaryDB).tokens.get(tokenKey('cached', DictionaryTokenSource.WANIKANI, track))
@@ -871,7 +872,7 @@ describe('DictionaryDB WaniKani cache', () => {
         });
 
         useSettings([dictionaryTrack]);
-        await dictionaryDB.buildWaniKaniCache(profile, statusUpdates);
+        await dictionaryDB.buildWaniKaniCache(profile, statusUpdates, mockYomitanFetcherFactory);
         await waitForWaniKaniBuildToFinish();
 
         expect(mockWaniKaniInstances[0].apiToken).toBe('wk-token');
@@ -969,7 +970,7 @@ describe('DictionaryDB WaniKani cache', () => {
         });
 
         useSettings([dictionaryTrack]);
-        await dictionaryDB.buildWaniKaniCache(profile, statusUpdates);
+        await dictionaryDB.buildWaniKaniCache(profile, statusUpdates, mockYomitanFetcherFactory);
         await waitForWaniKaniBuildToFinish();
 
         expect(mockWaniKaniInstances[0].spacedRepetitionSystems).toHaveBeenCalledWith({ updatedAfter: undefined });
@@ -1010,7 +1011,7 @@ describe('DictionaryDB WaniKani cache', () => {
         useSettings([
             makeDictionaryTrack({ dictionaryColorizeSubtitles: true, dictionaryWaniKaniApiToken: 'bad-token' }),
         ]);
-        await dictionaryDB.buildWaniKaniCache(profile, statusUpdates);
+        await dictionaryDB.buildWaniKaniCache(profile, statusUpdates, mockYomitanFetcherFactory);
 
         expect(consoleError).toHaveBeenCalled();
         await expect(privateDb(dictionaryDB).meta.get([profile, track])).resolves.toMatchObject({

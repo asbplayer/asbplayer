@@ -29,6 +29,7 @@ import type {
 import type { DictionaryDB } from '@project/common/dictionary-db/dictionary-db';
 import type { Asbplayer, VideoElement } from '@/services/tab-registry';
 import type TabRegistry from '@/services/tab-registry';
+import { createBackgroundYomitanFetcher } from '@/services/extension-yomitan-fetcher';
 
 export default class DictionaryHandler {
     private readonly dictionaryDB: DictionaryDB;
@@ -139,27 +140,31 @@ export default class DictionaryHandler {
             case 'dictionary-build-anki-cache': {
                 const message = command.message as DictionaryBuildAnkiCacheMessage;
                 void this.dictionaryDB
-                    .buildAnkiCache(message.profile, (state: DictionaryBuildAnkiCacheState) => {
-                        const playerMessage: ExtensionToAsbPlayerCommand<DictionaryBuildAnkiCacheStateMessage> = {
-                            sender: 'asbplayer-extension-to-player',
-                            message: { command: 'dictionary-build-anki-cache-state', ...state },
-                        };
-                        void this._relayToExtensionContexts(playerMessage);
-                        void this._relayToAsbplayers((asbplayer) => {
-                            if (asbplayer.sidePanel) return;
-                            return playerMessage;
-                        });
-                        void this._relayToVideoElements((videoElement) => {
-                            return {
-                                sender: 'asbplayer-extension-to-video',
-                                src: videoElement.src,
-                                message: {
-                                    command: 'dictionary-build-anki-cache-state',
-                                    ...state,
-                                },
-                            } satisfies ExtensionToVideoCommand<DictionaryBuildAnkiCacheStateMessage>;
-                        });
-                    })
+                    .buildAnkiCache(
+                        message.profile,
+                        (state: DictionaryBuildAnkiCacheState) => {
+                            const playerMessage: ExtensionToAsbPlayerCommand<DictionaryBuildAnkiCacheStateMessage> = {
+                                sender: 'asbplayer-extension-to-player',
+                                message: { command: 'dictionary-build-anki-cache-state', ...state },
+                            };
+                            void this._relayToExtensionContexts(playerMessage);
+                            void this._relayToAsbplayers((asbplayer) => {
+                                if (asbplayer.sidePanel) return;
+                                return playerMessage;
+                            });
+                            void this._relayToVideoElements((videoElement) => {
+                                return {
+                                    sender: 'asbplayer-extension-to-video',
+                                    src: videoElement.src,
+                                    message: {
+                                        command: 'dictionary-build-anki-cache-state',
+                                        ...state,
+                                    },
+                                } satisfies ExtensionToVideoCommand<DictionaryBuildAnkiCacheStateMessage>;
+                            });
+                        },
+                        createBackgroundYomitanFetcher()
+                    )
                     .then((result) => sendResponse(result))
                     .catch((error) => asbError('dictionary', `Failed to handle ${command.message.command}:`, error));
                 return true;
@@ -167,27 +172,32 @@ export default class DictionaryHandler {
             case 'dictionary-build-wanikani-cache': {
                 const message = command.message as DictionaryBuildWaniKaniCacheMessage;
                 void this.dictionaryDB
-                    .buildWaniKaniCache(message.profile, (state: DictionaryBuildWaniKaniCacheState) => {
-                        const playerMessage: ExtensionToAsbPlayerCommand<DictionaryBuildWaniKaniCacheStateMessage> = {
-                            sender: 'asbplayer-extension-to-player',
-                            message: { command: 'dictionary-build-wanikani-cache-state', ...state },
-                        };
-                        void this._relayToExtensionContexts(playerMessage);
-                        void this._relayToAsbplayers((asbplayer) => {
-                            if (asbplayer.sidePanel) return;
-                            return playerMessage;
-                        });
-                        void this._relayToVideoElements((videoElement) => {
-                            return {
-                                sender: 'asbplayer-extension-to-video',
-                                src: videoElement.src,
-                                message: {
-                                    command: 'dictionary-build-wanikani-cache-state',
-                                    ...state,
-                                },
-                            } satisfies ExtensionToVideoCommand<DictionaryBuildWaniKaniCacheStateMessage>;
-                        });
-                    })
+                    .buildWaniKaniCache(
+                        message.profile,
+                        (state: DictionaryBuildWaniKaniCacheState) => {
+                            const playerMessage: ExtensionToAsbPlayerCommand<DictionaryBuildWaniKaniCacheStateMessage> =
+                                {
+                                    sender: 'asbplayer-extension-to-player',
+                                    message: { command: 'dictionary-build-wanikani-cache-state', ...state },
+                                };
+                            void this._relayToExtensionContexts(playerMessage);
+                            void this._relayToAsbplayers((asbplayer) => {
+                                if (asbplayer.sidePanel) return;
+                                return playerMessage;
+                            });
+                            void this._relayToVideoElements((videoElement) => {
+                                return {
+                                    sender: 'asbplayer-extension-to-video',
+                                    src: videoElement.src,
+                                    message: {
+                                        command: 'dictionary-build-wanikani-cache-state',
+                                        ...state,
+                                    },
+                                } satisfies ExtensionToVideoCommand<DictionaryBuildWaniKaniCacheStateMessage>;
+                            });
+                        },
+                        createBackgroundYomitanFetcher()
+                    )
                     .then((result) => sendResponse(result))
                     .catch((error) => asbError('dictionary', `Failed to handle ${command.message.command}:`, error));
                 return true;

@@ -1,4 +1,4 @@
-import type { Fetcher, Progress } from '@project/common';
+import type { Progress } from '@project/common';
 import type { DictionaryTrack } from '@project/common/settings';
 import {
     defaultSettings,
@@ -18,6 +18,7 @@ import type {
     TokenPartResult,
 } from '@project/common/yomitan';
 import { Yomitan, filterYomitanDictionaries, splitTextForTokenization } from '@project/common/yomitan';
+import type { YomitanFetcher } from '@project/common/yomitan/yomitan-fetcher';
 
 const testDictionaryTrack = (overrides: Partial<DictionaryTrack> = {}): DictionaryTrack => ({
     ...defaultSettings.dictionaryTracks[0],
@@ -57,8 +58,8 @@ type TestTokenizeResult = {
     content: TokenPartResult[][];
 };
 
-class MockFetcher implements Fetcher {
-    readonly fetch = jest.fn<Fetcher['fetch']>();
+class MockFetcher implements YomitanFetcher {
+    readonly fetch = jest.fn<YomitanFetcher['fetch']>();
 }
 
 const makeSource = (overrides: Partial<TermSource> = {}): TermSource => ({
@@ -199,7 +200,7 @@ afterEach(() => {
 
 describe('Yomitan', () => {
     it('rejects tokenizations whose reconstructed text differs from the source', () => {
-        const yomitan = new Yomitan(testDictionaryTrack());
+        const yomitan = new Yomitan(testDictionaryTrack(), () => new MockFetcher());
 
         expect(() => yomitan.verifyTokenizeResult('alpha', [[{ text: 'beta', reading: '' }]])).toThrow(
             'Tokenize result does not match the original text'
@@ -209,7 +210,7 @@ describe('Yomitan', () => {
     it('rejects malformed term-entry responses instead of caching them', async () => {
         const fetcher = new MockFetcher();
         fetcher.fetch.mockResolvedValue({ dictionaryEntries: null });
-        const yomitan = new Yomitan(testDictionaryTrack(), fetcher);
+        const yomitan = new Yomitan(testDictionaryTrack(), () => fetcher);
 
         await expect(yomitan.lemmatize('alpha')).rejects.toThrow('Unexpected Yomitan termEntries response');
     });
@@ -217,14 +218,14 @@ describe('Yomitan', () => {
     it('reports parser-specific bulk annotation support after capability negotiation', async () => {
         const scanningFetcher = new MockFetcher();
         scanningFetcher.fetch.mockResolvedValue({ version: '26.4.6' });
-        const scanning = new Yomitan(testDictionaryTrack(), scanningFetcher);
+        const scanning = new Yomitan(testDictionaryTrack(), () => scanningFetcher);
         await scanning.version();
 
         const mecabFetcher = new MockFetcher();
         mecabFetcher.fetch
             .mockResolvedValueOnce({ version: '26.4.6' })
             .mockResolvedValueOnce([makeMecabSupportResult()]);
-        const mecab = new Yomitan(testDictionaryTrack({ dictionaryYomitanParser: 'mecab' }), mecabFetcher);
+        const mecab = new Yomitan(testDictionaryTrack({ dictionaryYomitanParser: 'mecab' }), () => mecabFetcher);
         await mecab.version();
 
         expect(scanning.getSupportsBulkFrequency()).toBe(true);
@@ -236,14 +237,14 @@ describe('Yomitan', () => {
     it('reports bulk frequency support as false before the bulk API version', async () => {
         const scanningFetcher = new MockFetcher();
         scanningFetcher.fetch.mockResolvedValue({ version: '26.4.5' });
-        const scanning = new Yomitan(testDictionaryTrack(), scanningFetcher);
+        const scanning = new Yomitan(testDictionaryTrack(), () => scanningFetcher);
         await scanning.version();
 
         const mecabFetcher = new MockFetcher();
         mecabFetcher.fetch
             .mockResolvedValueOnce({ version: '26.4.5' })
             .mockResolvedValueOnce([makeMecabSupportResult()]);
-        const mecab = new Yomitan(testDictionaryTrack({ dictionaryYomitanParser: 'mecab' }), mecabFetcher);
+        const mecab = new Yomitan(testDictionaryTrack({ dictionaryYomitanParser: 'mecab' }), () => mecabFetcher);
         await mecab.version();
 
         expect(scanning.getSupportsBulkFrequency()).toBe(false);
@@ -255,14 +256,14 @@ describe('Yomitan', () => {
     it('reports bulk pitch accent support after negotiating parser-specific capabilities', async () => {
         const scanningFetcher = new MockFetcher();
         scanningFetcher.fetch.mockResolvedValue({ version: '26.7.21' });
-        const scanning = new Yomitan(testDictionaryTrack(), scanningFetcher);
+        const scanning = new Yomitan(testDictionaryTrack(), () => scanningFetcher);
         await scanning.version();
 
         const mecabFetcher = new MockFetcher();
         mecabFetcher.fetch
             .mockResolvedValueOnce({ version: '26.7.21' })
             .mockResolvedValueOnce([makeMecabSupportResult()]);
-        const mecab = new Yomitan(testDictionaryTrack({ dictionaryYomitanParser: 'mecab' }), mecabFetcher);
+        const mecab = new Yomitan(testDictionaryTrack({ dictionaryYomitanParser: 'mecab' }), () => mecabFetcher);
         await mecab.version();
 
         expect(scanning.getSupportsBulkPitchAccent()).toBe(true);
@@ -270,7 +271,7 @@ describe('Yomitan', () => {
 
         const olderFetcher = new MockFetcher();
         olderFetcher.fetch.mockResolvedValue({ version: '26.4.5' });
-        const olderScanning = new Yomitan(testDictionaryTrack(), olderFetcher);
+        const olderScanning = new Yomitan(testDictionaryTrack(), () => olderFetcher);
         await olderScanning.version();
         expect(olderScanning.getSupportsBulkPitchAccent()).toBe(false);
     });
@@ -294,21 +295,17 @@ describe('Yomitan', () => {
             }),
         ]);
         const progress: Progress[] = [];
-        const yomitan = new Yomitan(testDictionaryTrack(), fetcher);
+        const yomitan = new Yomitan(testDictionaryTrack(), () => fetcher);
 
         await expect(
-            yomitan.splitAndTokenizeBulk(
-                ' alpha。\n beta \n!!',
-                async (update) => {
-                    progress.push(update);
-                },
-                'http://override:50500'
-            )
+            yomitan.splitAndTokenizeBulk(' alpha。\n beta \n!!', async (update) => {
+                progress.push(update);
+            })
         ).resolves.toEqual([
             [makeTokenPart({ text: 'alpha', reading: 'alpha' })],
             [makeTokenPart({ text: 'beta', reading: 'beta' })],
         ]);
-        expect(fetcher.fetch).toHaveBeenCalledWith('http://override:50500/tokenize', {
+        expect(fetcher.fetch).toHaveBeenCalledWith('tokenize', {
             text: ['alpha', 'beta'],
             scanLength: 25,
             parser: 'scanning-parser',
@@ -334,7 +331,7 @@ describe('Yomitan', () => {
     });
 
     it('throws when tokenize is called with mecab parser support disabled', async () => {
-        const yomitan = new Yomitan(testDictionaryTrack({ dictionaryYomitanParser: 'mecab' }));
+        const yomitan = new Yomitan(testDictionaryTrack({ dictionaryYomitanParser: 'mecab' }), () => new MockFetcher());
 
         await expect(yomitan.tokenize('alpha')).rejects.toThrow('Yomitan is not configured to support MeCab');
     });
@@ -359,7 +356,7 @@ describe('Yomitan', () => {
                     ],
                 }),
             ]);
-        const yomitan = new Yomitan(testDictionaryTrack({ dictionaryYomitanParser: 'mecab' }), fetcher);
+        const yomitan = new Yomitan(testDictionaryTrack({ dictionaryYomitanParser: 'mecab' }), () => fetcher);
 
         await yomitan.version();
         await yomitan.tokenize('alpha');
@@ -392,7 +389,7 @@ describe('Yomitan', () => {
                 ],
             }),
         ]);
-        const yomitan = new Yomitan(testDictionaryTrack(), fetcher);
+        const yomitan = new Yomitan(testDictionaryTrack(), () => fetcher);
         await yomitan.version();
 
         const first = await yomitan.tokenize('alpha');
@@ -408,7 +405,7 @@ describe('Yomitan', () => {
         const fetcher = new MockFetcher();
         fetcher.fetch.mockResolvedValueOnce([makeTokenizeResult({ content: [] })]);
         fetcher.fetch.mockResolvedValueOnce([makeTokenizeResult({ content: [[]] })]);
-        const yomitan = new Yomitan(testDictionaryTrack(), fetcher);
+        const yomitan = new Yomitan(testDictionaryTrack(), () => fetcher);
 
         await expect(yomitan.tokenize('empty')).resolves.toEqual([]);
         await expect(yomitan.tokenizeBulk(['empty-group'])).resolves.toEqual([]);
@@ -425,7 +422,7 @@ describe('Yomitan', () => {
                 ],
             }),
         ]);
-        const yomitan = new Yomitan(testDictionaryTrack(), fetcher);
+        const yomitan = new Yomitan(testDictionaryTrack(), () => fetcher);
 
         await expect(yomitan.tokenize(' \t「alpha!?」  in-side!?')).resolves.toEqual([
             [{ text: ' ', reading: '' }],
@@ -469,7 +466,7 @@ describe('Yomitan', () => {
                 ],
             }),
         ]);
-        const yomitan = new Yomitan(testDictionaryTrack(), fetcher);
+        const yomitan = new Yomitan(testDictionaryTrack(), () => fetcher);
 
         await expect(yomitan.tokenize(' 「alpha」\t')).resolves.toEqual([
             [{ text: ' ', reading: '' }],
@@ -494,7 +491,7 @@ describe('Yomitan', () => {
                 content: tokenTexts.map((text) => [makeTokenPart({ text, reading: text })]),
             }),
         ]);
-        const yomitan = new Yomitan(testDictionaryTrack(), fetcher);
+        const yomitan = new Yomitan(testDictionaryTrack(), () => fetcher);
 
         await expect(yomitan.tokenize(tokenTexts.join(''))).resolves.toEqual(
             tokenTexts.map((text) => [{ text, reading: text }])
@@ -509,7 +506,7 @@ describe('Yomitan', () => {
                 content: tokenTexts.map((text) => [makeTokenPart({ text, reading: text })]),
             }),
         ]);
-        const yomitan = new Yomitan(testDictionaryTrack(), fetcher);
+        const yomitan = new Yomitan(testDictionaryTrack(), () => fetcher);
 
         await expect(yomitan.tokenize(tokenTexts.join(''))).resolves.toEqual(
             tokenTexts.map((text) => [{ text, reading: text }])
@@ -528,7 +525,7 @@ describe('Yomitan', () => {
                     content: [[makeTokenPart({ text: '「alpha」', reading: 'alpha' })]],
                 }),
             ]);
-        const yomitan = new Yomitan(testDictionaryTrack({ dictionaryYomitanParser: 'mecab' }), fetcher);
+        const yomitan = new Yomitan(testDictionaryTrack({ dictionaryYomitanParser: 'mecab' }), () => fetcher);
 
         await yomitan.version();
         await expect(yomitan.tokenize('「alpha」')).resolves.toEqual([[{ text: '「alpha」', reading: 'alpha' }]]);
@@ -536,14 +533,14 @@ describe('Yomitan', () => {
 
     it('returns an empty array without fetching in tokenizeBulk for 0 items', async () => {
         const fetcher = new MockFetcher();
-        const yomitan = new Yomitan(testDictionaryTrack(), fetcher);
+        const yomitan = new Yomitan(testDictionaryTrack(), () => fetcher);
 
         await expect(yomitan.tokenizeBulk([])).resolves.toEqual([]);
         expect(fetcher.fetch).not.toHaveBeenCalled();
     });
 
     it('throws when tokenizeBulk is called with mecab parser support disabled', async () => {
-        const yomitan = new Yomitan(testDictionaryTrack({ dictionaryYomitanParser: 'mecab' }));
+        const yomitan = new Yomitan(testDictionaryTrack({ dictionaryYomitanParser: 'mecab' }), () => new MockFetcher());
 
         await expect(yomitan.tokenizeBulk(['alpha'])).rejects.toThrow('Yomitan is not configured to support MeCab');
     });
@@ -560,7 +557,7 @@ describe('Yomitan', () => {
                 content: [[makeTokenPart({ text: 'fresh', reading: 'fresh' })]],
             }),
         ]);
-        const yomitan = new Yomitan(testDictionaryTrack(), fetcher);
+        const yomitan = new Yomitan(testDictionaryTrack(), () => fetcher);
 
         await yomitan.tokenize('cached');
         const result = await yomitan.tokenizeBulk(['cached', 'fresh']);
@@ -571,7 +568,7 @@ describe('Yomitan', () => {
         ]);
         expect(fetcher.fetch).toHaveBeenCalledTimes(2);
         expect(fetcher.fetch.mock.calls[1]).toEqual([
-            'http://127.0.0.1:50500/tokenize',
+            'tokenize',
             {
                 text: ['fresh'],
                 scanLength: 25,
@@ -592,7 +589,7 @@ describe('Yomitan', () => {
                 content: [[makeTokenPart({ text: 'beta', reading: 'beta' })]],
             }),
         ]);
-        const yomitan = new Yomitan(testDictionaryTrack(), fetcher);
+        const yomitan = new Yomitan(testDictionaryTrack(), () => fetcher);
 
         await yomitan.tokenize('alpha');
         await yomitan.tokenize('beta');
@@ -629,7 +626,7 @@ describe('Yomitan', () => {
                 }),
             ])
             .mockResolvedValueOnce([makeTermEntriesResult(0, []), makeTermEntriesResult(1, [])]);
-        const yomitan = new Yomitan(testDictionaryTrack({ dictionaryYomitanParser: 'mecab' }), fetcher);
+        const yomitan = new Yomitan(testDictionaryTrack({ dictionaryYomitanParser: 'mecab' }), () => fetcher);
         await yomitan.version();
 
         await expect(yomitan.tokenizeBulk(['alpha', 'beta'])).resolves.toEqual([
@@ -638,7 +635,7 @@ describe('Yomitan', () => {
             [makeTokenPart({ text: 'beta', reading: 'beta' })],
         ]);
 
-        expect(fetcher.fetch).toHaveBeenLastCalledWith('http://127.0.0.1:50500/termEntries', {
+        expect(fetcher.fetch).toHaveBeenLastCalledWith('termEntries', {
             term: ['alpha', 'beta'],
         });
     });
@@ -655,7 +652,7 @@ describe('Yomitan', () => {
                     content: [[makeTokenPart({ text: 'alpha', reading: 'alpha' })]],
                 }),
             ]);
-        const yomitan = new Yomitan(testDictionaryTrack({ dictionaryYomitanParser: 'mecab' }), fetcher);
+        const yomitan = new Yomitan(testDictionaryTrack({ dictionaryYomitanParser: 'mecab' }), () => fetcher);
         await yomitan.version();
 
         await expect(yomitan.tokenizeBulk(['alpha'])).resolves.toEqual([
@@ -674,7 +671,7 @@ describe('Yomitan', () => {
                 content: [[makeTokenPart({ text: 'alpha', reading: 'alpha' })]],
             }),
         ]);
-        const yomitan = new Yomitan(testDictionaryTrack(), fetcher);
+        const yomitan = new Yomitan(testDictionaryTrack(), () => fetcher);
         await yomitan.version();
 
         await expect(yomitan.tokenizeBulk(['alpha'])).resolves.toEqual([
@@ -708,7 +705,7 @@ describe('Yomitan', () => {
                 ],
             }),
         ]);
-        const yomitan = new Yomitan(testDictionaryTrack(), fetcher);
+        const yomitan = new Yomitan(testDictionaryTrack(), () => fetcher);
 
         await yomitan.version();
         await yomitan.tokenize('alpha');
@@ -720,7 +717,7 @@ describe('Yomitan', () => {
     it('lemmatize falls back to the token when configured and no dictionary entries match', async () => {
         const fetcher = new MockFetcher();
         fetcher.fetch.mockResolvedValue({ dictionaryEntries: [] });
-        const yomitan = new Yomitan(testDictionaryTrack(), fetcher, {
+        const yomitan = new Yomitan(testDictionaryTrack(), () => fetcher, {
             lemmaTokenFallback: true,
             tokensWereModified: () => undefined,
         });
@@ -731,7 +728,7 @@ describe('Yomitan', () => {
     it('lemmatize caches an empty result when fallback is disabled and no dictionary entries match', async () => {
         const fetcher = new MockFetcher();
         fetcher.fetch.mockResolvedValue({ dictionaryEntries: [] });
-        const yomitan = new Yomitan(testDictionaryTrack(), fetcher, {
+        const yomitan = new Yomitan(testDictionaryTrack(), () => fetcher, {
             lemmaTokenFallback: false,
             tokensWereModified: () => undefined,
         });
@@ -743,7 +740,7 @@ describe('Yomitan', () => {
 
     it('returns empty lemmas and null frequency for non-letter tokens in lemmatize and frequency', async () => {
         const fetcher = new MockFetcher();
-        const yomitan = new Yomitan(testDictionaryTrack(), fetcher);
+        const yomitan = new Yomitan(testDictionaryTrack(), () => fetcher);
 
         await expect(yomitan.lemmatize('!!')).resolves.toEqual([]);
         await expect(yomitan.frequency('!!')).resolves.toBeNull();
@@ -766,7 +763,7 @@ describe('Yomitan', () => {
                 }),
             ],
         });
-        const yomitan = new Yomitan(testDictionaryTrack(), fetcher);
+        const yomitan = new Yomitan(testDictionaryTrack(), () => fetcher);
 
         await expect(yomitan.lemmatize('過ぎます')).resolves.toEqual(['過ぎる', 'すぎる']);
         await expect(yomitan.lemmatize('過ぎます')).resolves.toEqual(['過ぎる', 'すぎる']);
@@ -778,7 +775,7 @@ describe('Yomitan', () => {
         const lemmatize = (token: string, headwords: TermHeadword[]) => {
             const fetcher = new MockFetcher();
             fetcher.fetch.mockResolvedValue({ dictionaryEntries: [makeEntry({ headwords })] });
-            return new Yomitan(testDictionaryTrack(), fetcher).lemmatize(token);
+            return new Yomitan(testDictionaryTrack(), () => fetcher).lemmatize(token);
         };
         const source = (originalText: string, deinflectedText: string) =>
             makeSource({ originalText, transformedText: originalText, deinflectedText });
@@ -807,11 +804,11 @@ describe('Yomitan', () => {
         jest.useFakeTimers().setSystemTime(1000);
         const fetcher = new MockFetcher();
         const blockerResponse = deferred<{ dictionaryEntries: TermDictionaryEntry[] }>();
-        fetcher.fetch.mockImplementation(async (_url, body) => {
+        fetcher.fetch.mockImplementation(async (_action, body) => {
             if ((body as { term: string }).term === 'blocker') return blockerResponse.promise;
             throw new Error('Cancelled lemmatize should not fetch');
         });
-        const yomitan = new Yomitan(testDictionaryTrack(), fetcher);
+        const yomitan = new Yomitan(testDictionaryTrack(), () => fetcher);
 
         const blocker = yomitan.lemmatize('blocker');
         await flushMicrotasks();
@@ -842,7 +839,7 @@ describe('Yomitan', () => {
                 }),
             ],
         });
-        const yomitan = new Yomitan(testDictionaryTrack(), fetcher);
+        const yomitan = new Yomitan(testDictionaryTrack(), () => fetcher);
 
         await expect(yomitan.frequency('alpha')).resolves.toEqual(4);
         await expect(yomitan.lemmatize('alpha')).resolves.toEqual(['alpha']);
@@ -859,7 +856,7 @@ describe('Yomitan', () => {
                 }),
             ],
         });
-        const yomitan = new Yomitan(testDictionaryTrack(), fetcher);
+        const yomitan = new Yomitan(testDictionaryTrack(), () => fetcher);
 
         await expect(yomitan.gloss('alpha')).resolves.toBe(longGloss);
     });
@@ -880,7 +877,7 @@ describe('Yomitan', () => {
                 }),
             ],
         });
-        const yomitan = new Yomitan(testDictionaryTrack(), fetcher);
+        const yomitan = new Yomitan(testDictionaryTrack(), () => fetcher);
 
         await expect(yomitan.gloss('alpha')).resolves.toBe('concise text');
     });
@@ -898,7 +895,7 @@ describe('Yomitan', () => {
                 }),
             ],
         });
-        const yomitan = new Yomitan(testDictionaryTrack(), fetcher);
+        const yomitan = new Yomitan(testDictionaryTrack(), () => fetcher);
 
         await expect(yomitan.gloss('alpha')).resolves.toBe('first | literal pipe');
     });
@@ -915,7 +912,7 @@ describe('Yomitan', () => {
         fetcher.fetch.mockResolvedValue({
             dictionaryEntries: [makeEntry({ definitions: [makeDefinition({ entries: [image] })] })],
         });
-        const yomitan = new Yomitan(testDictionaryTrack(), fetcher);
+        const yomitan = new Yomitan(testDictionaryTrack(), () => fetcher);
 
         await expect(yomitan.gloss('alpha')).resolves.toBe(expected);
     });
@@ -943,7 +940,7 @@ describe('Yomitan', () => {
                 }),
             ],
         });
-        const yomitan = new Yomitan(testDictionaryTrack(), fetcher);
+        const yomitan = new Yomitan(testDictionaryTrack(), () => fetcher);
 
         await expect(yomitan.gloss('alpha')).resolves.toBe('diagram description');
     });
@@ -989,7 +986,7 @@ describe('Yomitan', () => {
                 }),
             ],
         });
-        const yomitan = new Yomitan(testDictionaryTrack(), fetcher);
+        const yomitan = new Yomitan(testDictionaryTrack(), () => fetcher);
 
         await expect(yomitan.gloss('alpha')).resolves.toBe('best choice');
     });
@@ -1020,7 +1017,7 @@ describe('Yomitan', () => {
                 }),
             ],
         });
-        const yomitan = new Yomitan(testDictionaryTrack(), fetcher);
+        const yomitan = new Yomitan(testDictionaryTrack(), () => fetcher);
 
         await expect(yomitan.gloss('alpha')).resolves.toBe('First block Second block');
     });
@@ -1047,7 +1044,7 @@ describe('Yomitan', () => {
                 }),
             ],
         });
-        const yomitan = new Yomitan(testDictionaryTrack(), fetcher);
+        const yomitan = new Yomitan(testDictionaryTrack(), () => fetcher);
 
         await expect(yomitan.gloss('alpha')).resolves.toBe('preferred');
     });
@@ -1093,7 +1090,7 @@ describe('Yomitan', () => {
                     }),
                 ],
             });
-            const yomitan = new Yomitan(testDictionaryTrack(), fetcher);
+            const yomitan = new Yomitan(testDictionaryTrack(), () => fetcher);
 
             await expect(yomitan.lemmatize(token)).resolves.toEqual([term, reading]);
             await expect(yomitan.gloss(token)).resolves.toBe(gloss);
@@ -1112,7 +1109,7 @@ describe('Yomitan', () => {
                 }),
             ],
         });
-        const yomitan = new Yomitan(testDictionaryTrack(), fetcher);
+        const yomitan = new Yomitan(testDictionaryTrack(), () => fetcher);
 
         await expect(yomitan.gloss('alpha')).resolves.toBe('ranked first by Yomitan');
     });
@@ -1126,7 +1123,7 @@ describe('Yomitan', () => {
                 }),
             ],
         });
-        const yomitan = new Yomitan(testDictionaryTrack(), fetcher);
+        const yomitan = new Yomitan(testDictionaryTrack(), () => fetcher);
 
         await expect(yomitan.gloss('alpha')).resolves.toBeNull();
         await expect(yomitan.gloss('alpha')).resolves.toBeNull();
@@ -1138,7 +1135,7 @@ describe('Yomitan', () => {
         const malformedEntry: Partial<TermDictionaryEntry> = makeEntry();
         delete malformedEntry.definitions;
         fetcher.fetch.mockResolvedValue({ dictionaryEntries: [malformedEntry] });
-        const yomitan = new Yomitan(testDictionaryTrack(), fetcher);
+        const yomitan = new Yomitan(testDictionaryTrack(), () => fetcher);
 
         await expect(yomitan.gloss('alpha')).rejects.toThrow();
     });
@@ -1148,7 +1145,7 @@ describe('Yomitan', () => {
         fetcher.fetch.mockResolvedValue({
             dictionaryEntries: [makeEntry({ definitions: [makeDefinition({ entries: ['primed gloss'] })] })],
         });
-        const yomitan = new Yomitan(testDictionaryTrack(), fetcher);
+        const yomitan = new Yomitan(testDictionaryTrack(), () => fetcher);
 
         await expect(yomitan.lemmatize('alpha')).resolves.toEqual(['alpha']);
         await expect(yomitan.gloss('alpha')).resolves.toBe('primed gloss');
@@ -1183,7 +1180,7 @@ describe('Yomitan', () => {
                 ],
             }),
         ]);
-        const yomitan = new Yomitan(testDictionaryTrack(), fetcher);
+        const yomitan = new Yomitan(testDictionaryTrack(), () => fetcher);
         await yomitan.version();
 
         await yomitan.tokenize('alpha');
@@ -1208,7 +1205,7 @@ describe('Yomitan', () => {
                 }),
             ],
         });
-        const yomitan = new Yomitan(testDictionaryTrack(), fetcher);
+        const yomitan = new Yomitan(testDictionaryTrack(), () => fetcher);
 
         await expect(yomitan.pitchAccent('alpha')).resolves.toBe('LH');
         await expect(yomitan.frequency('alpha')).resolves.toBe(10);
@@ -1233,7 +1230,7 @@ describe('Yomitan', () => {
             ],
         });
         const modified: string[] = [];
-        const yomitan = new Yomitan(testDictionaryTrack(), fetcher, {
+        const yomitan = new Yomitan(testDictionaryTrack(), () => fetcher, {
             lemmaTokenFallback: false,
             tokensWereModified: (token) => modified.push(token),
         });
@@ -1259,7 +1256,9 @@ describe('Yomitan', () => {
                     fetcher.fetch.mockResolvedValueOnce({ dictionaryEntries: null });
                 } else {
                     // Frequency extraction succeeds before gloss extraction encounters invalid data.
-                    fetcher.fetch.mockResolvedValueOnce({ dictionaryEntries: [{ ...makeEntry(), definitions: null }] });
+                    fetcher.fetch.mockResolvedValueOnce({
+                        dictionaryEntries: [{ ...makeEntry(), definitions: null }],
+                    });
                 }
                 fetcher.fetch.mockResolvedValue({
                     dictionaryEntries: [
@@ -1270,7 +1269,7 @@ describe('Yomitan', () => {
                     ],
                 });
                 const modified: string[] = [];
-                const yomitan = new Yomitan(testDictionaryTrack(), fetcher, {
+                const yomitan = new Yomitan(testDictionaryTrack(), () => fetcher, {
                     lemmaTokenFallback: false,
                     tokensWereModified: (token) => modified.push(token),
                 });
@@ -1304,7 +1303,7 @@ describe('Yomitan', () => {
             const notify = jest.fn(() => {
                 throw new Error('Notification failed');
             });
-            const yomitan = new Yomitan(testDictionaryTrack(), fetcher, {
+            const yomitan = new Yomitan(testDictionaryTrack(), () => fetcher, {
                 lemmaTokenFallback: false,
                 tokensWereModified: notify,
             });
@@ -1322,12 +1321,12 @@ describe('Yomitan', () => {
         jest.useFakeTimers().setSystemTime(1000);
         const fetcher = new MockFetcher();
         const blockerResponse = deferred<{ dictionaryEntries: TermDictionaryEntry[] }>();
-        fetcher.fetch.mockImplementation(async (_url, body) => {
+        fetcher.fetch.mockImplementation(async (_action, body) => {
             if ((body as { term: string }).term === 'blocker') return blockerResponse.promise;
             throw new Error('Cancelled frequency should not fetch');
         });
         const modified: string[] = [];
-        const yomitan = new Yomitan(testDictionaryTrack(), fetcher, {
+        const yomitan = new Yomitan(testDictionaryTrack(), () => fetcher, {
             lemmaTokenFallback: false,
             tokensWereModified: (token) => modified.push(token),
         });
@@ -1350,12 +1349,12 @@ describe('Yomitan', () => {
         jest.useFakeTimers().setSystemTime(1000);
         const fetcher = new MockFetcher();
         const blockerResponse = deferred<{ dictionaryEntries: TermDictionaryEntry[] }>();
-        fetcher.fetch.mockImplementation(async (url, body) => {
-            if (url.endsWith('/yomitanVersion')) return { version: '26.4.6' };
-            if (url.endsWith('/termEntries') && (body as { term: string }).term === 'blocker') {
+        fetcher.fetch.mockImplementation(async (action, body) => {
+            if (action === 'yomitanVersion') return { version: '26.4.6' };
+            if (action === 'termEntries' && (body as { term: string }).term === 'blocker') {
                 return blockerResponse.promise;
             }
-            if (url.endsWith('/tokenize')) {
+            if (action === 'tokenize') {
                 return [
                     makeTokenizeResult({
                         content: [
@@ -1383,7 +1382,7 @@ describe('Yomitan', () => {
             throw new Error('Cached frequency should not fetch term entries');
         });
         const modified: string[] = [];
-        const yomitan = new Yomitan(testDictionaryTrack(), fetcher, {
+        const yomitan = new Yomitan(testDictionaryTrack(), () => fetcher, {
             lemmaTokenFallback: false,
             tokensWereModified: (token) => modified.push(token),
         });
@@ -1416,7 +1415,7 @@ describe('Yomitan', () => {
                 }),
             ],
         });
-        const yomitan = new Yomitan(testDictionaryTrack(), fetcher);
+        const yomitan = new Yomitan(testDictionaryTrack(), () => fetcher);
 
         await expect(yomitan.frequency('alpha')).resolves.toBe(8);
     });
@@ -1433,7 +1432,7 @@ describe('Yomitan', () => {
                 }),
             ],
         });
-        const yomitan = new Yomitan(testDictionaryTrack(), fetcher);
+        const yomitan = new Yomitan(testDictionaryTrack(), () => fetcher);
 
         await expect(yomitan.frequency('alpha')).resolves.toBe(8);
     });
@@ -1442,7 +1441,7 @@ describe('Yomitan', () => {
         jest.spyOn(console, 'log').mockImplementation(() => undefined);
         const modified: string[] = [];
         const fetcher = new MockFetcher();
-        fetcher.fetch.mockImplementation(async (_url, body) => {
+        fetcher.fetch.mockImplementation(async (_action, body) => {
             const terms = (body as { term: string[] }).term;
             return terms.map((token, index) => {
                 const tokenIndex = Number(token.substring('word'.length));
@@ -1468,7 +1467,7 @@ describe('Yomitan', () => {
                 ]);
             });
         });
-        const yomitan = new Yomitan(testDictionaryTrack(), fetcher, {
+        const yomitan = new Yomitan(testDictionaryTrack(), () => fetcher, {
             lemmaTokenFallback: false,
             tokensWereModified: (token) => modified.push(token),
         });
@@ -1492,7 +1491,7 @@ describe('Yomitan', () => {
 
     it('returns early without fetching in termEntriesBulk for 0 items', async () => {
         const fetcher = new MockFetcher();
-        const yomitan = new Yomitan(testDictionaryTrack(), fetcher);
+        const yomitan = new Yomitan(testDictionaryTrack(), () => fetcher);
 
         await yomitan.termEntriesBulk([], { triggerTokensWereModified: false });
 
@@ -1529,7 +1528,7 @@ describe('Yomitan', () => {
                 }),
             ]),
         ]);
-        const yomitan = new Yomitan(testDictionaryTrack(), fetcher);
+        const yomitan = new Yomitan(testDictionaryTrack(), () => fetcher);
 
         await yomitan.termEntriesBulk(['alpha', '!', 'beta'], { triggerTokensWereModified: false });
 
@@ -1574,7 +1573,7 @@ describe('Yomitan', () => {
                 }),
             ]),
         ]);
-        const yomitan = new Yomitan(testDictionaryTrack(), fetcher);
+        const yomitan = new Yomitan(testDictionaryTrack(), () => fetcher);
 
         await yomitan.termEntriesBulk(['alpha'], { triggerTokensWereModified: false });
         fetcher.fetch.mockClear();
@@ -1582,7 +1581,7 @@ describe('Yomitan', () => {
         await yomitan.termEntriesBulk(['alpha', '!', 'beta'], { triggerTokensWereModified: false });
 
         expect(fetcher.fetch).toHaveBeenCalledTimes(1);
-        expect(fetcher.fetch).toHaveBeenCalledWith('http://127.0.0.1:50500/termEntries', { term: ['beta'] });
+        expect(fetcher.fetch).toHaveBeenCalledWith('termEntries', { term: ['beta'] });
         await expect(yomitan.frequency('beta')).resolves.toEqual(5);
     });
 
@@ -1614,7 +1613,7 @@ describe('Yomitan', () => {
                 }),
             ]),
         ]);
-        const yomitan = new Yomitan(testDictionaryTrack(), fetcher);
+        const yomitan = new Yomitan(testDictionaryTrack(), () => fetcher);
 
         await yomitan.termEntriesBulk(['alpha', 'beta'], { triggerTokensWereModified: false });
         fetcher.fetch.mockClear();
@@ -1627,7 +1626,7 @@ describe('Yomitan', () => {
     it('retries tokenizeBulk with smaller batches after native messaging size failures', async () => {
         const fetcher = new MockFetcher();
         let failures = 1;
-        fetcher.fetch.mockImplementation(async (_url, body) => {
+        fetcher.fetch.mockImplementation(async (_action, body) => {
             if (failures > 0) {
                 --failures;
                 return 'Message exceeded maximum allowed size of 64MiB.';
@@ -1642,7 +1641,7 @@ describe('Yomitan', () => {
                 })
             );
         });
-        const yomitan = new Yomitan(testDictionaryTrack(), fetcher);
+        const yomitan = new Yomitan(testDictionaryTrack(), () => fetcher);
         const texts = Array.from({ length: 101 }, (_, index) => `text${index}`);
 
         const result = await yomitan.tokenizeBulk(texts);
@@ -1657,7 +1656,7 @@ describe('Yomitan', () => {
         jest.spyOn(console, 'warn').mockImplementation(() => undefined);
         const fetcher = new MockFetcher();
         let failures = 3;
-        fetcher.fetch.mockImplementation(async (_url, body) => {
+        fetcher.fetch.mockImplementation(async (_action, body) => {
             if (failures > 0) {
                 --failures;
                 return 'Message exceeded maximum allowed size of 64MiB.';
@@ -1678,7 +1677,7 @@ describe('Yomitan', () => {
                 ])
             );
         });
-        const yomitan = new Yomitan(testDictionaryTrack(), fetcher);
+        const yomitan = new Yomitan(testDictionaryTrack(), () => fetcher);
         const terms = Array.from({ length: 11 }, (_, index) => `term${index}`);
 
         await yomitan.termEntriesBulk(terms, { triggerTokensWereModified: false });
@@ -1695,48 +1694,9 @@ describe('Yomitan', () => {
         expect(fetcher.fetch.mock.calls.map((call) => (call[1] as { term: string[] }).term.length)).toEqual([5, 5, 2]);
     });
 
-    it('uses the per-call Yomitan URL override for API-backed public methods', async () => {
-        const fetcher = new MockFetcher();
-        const overrideUrl = 'http://override:50500';
-        fetcher.fetch.mockImplementation(async (url, body) => {
-            if (url.endsWith('/tokenize')) {
-                return [makeTokenizeResult({ content: [] })];
-            }
-            if (url.endsWith('/termEntries')) {
-                const term = (body as { term: string | string[] }).term;
-                if (Array.isArray(term)) {
-                    return term.map((_, index) => makeTermEntriesResult(index, [makeEntry()]));
-                }
-                return { dictionaryEntries: [makeEntry()] };
-            }
-            if (url.endsWith('/yomitanVersion')) {
-                return { version: '26.4.6' };
-            }
-            throw new Error(`Unexpected URL ${url}`);
-        });
-
-        await new Yomitan(testDictionaryTrack(), fetcher).tokenize('alpha', overrideUrl);
-        await new Yomitan(testDictionaryTrack(), fetcher).lemmatize('alpha', overrideUrl);
-        await new Yomitan(testDictionaryTrack(), fetcher).frequency('alpha', overrideUrl);
-        await new Yomitan(testDictionaryTrack(), fetcher).termEntriesBulk(
-            ['alpha'],
-            { triggerTokensWereModified: false },
-            overrideUrl
-        );
-        await new Yomitan(testDictionaryTrack(), fetcher).version(overrideUrl);
-
-        expect(fetcher.fetch.mock.calls.map((call) => call[0])).toEqual([
-            `${overrideUrl}/tokenize`,
-            `${overrideUrl}/termEntries`,
-            `${overrideUrl}/termEntries`,
-            `${overrideUrl}/termEntries`,
-            `${overrideUrl}/yomitanVersion`,
-        ]);
-    });
-
     it('batches termEntriesBulk requests in groups of 10', async () => {
         const fetcher = new MockFetcher();
-        fetcher.fetch.mockImplementation(async (_url, body) => {
+        fetcher.fetch.mockImplementation(async (_action, body) => {
             const terms = (body as { term: string[] }).term;
             return terms.map((term, index) =>
                 makeTermEntriesResult(index, [
@@ -1753,7 +1713,7 @@ describe('Yomitan', () => {
                 ])
             );
         });
-        const yomitan = new Yomitan(testDictionaryTrack(), fetcher);
+        const yomitan = new Yomitan(testDictionaryTrack(), () => fetcher);
         const terms = Array.from({ length: 11 }, (_, index) => `term${index}`);
 
         await yomitan.termEntriesBulk(terms, { triggerTokensWereModified: false });
@@ -1767,11 +1727,11 @@ describe('Yomitan', () => {
         jest.useFakeTimers().setSystemTime(1000);
         const fetcher = new MockFetcher();
         const blockerResponse = deferred<{ dictionaryEntries: TermDictionaryEntry[] }>();
-        fetcher.fetch.mockImplementation(async (_url, body) => {
+        fetcher.fetch.mockImplementation(async (_action, body) => {
             if ((body as { term: string }).term === 'blocker') return blockerResponse.promise;
             throw new Error('Cancelled bulk request should not fetch');
         });
-        const yomitan = new Yomitan(testDictionaryTrack(), fetcher);
+        const yomitan = new Yomitan(testDictionaryTrack(), () => fetcher);
 
         const blocker = yomitan.lemmatize('blocker');
         await flushMicrotasks();
@@ -1789,7 +1749,7 @@ describe('Yomitan', () => {
     it('accepts dev version 0.0.0.0 and enables bulk features for non-mecab parsers', async () => {
         const fetcher = new MockFetcher();
         fetcher.fetch.mockResolvedValue({ version: '0.0.0.0' });
-        const yomitan = new Yomitan(testDictionaryTrack(), fetcher);
+        const yomitan = new Yomitan(testDictionaryTrack(), () => fetcher);
 
         await expect(yomitan.version()).resolves.toEqual('0.0.0.0');
 
@@ -1801,7 +1761,7 @@ describe('Yomitan', () => {
     it('verifies mecab support for dev version 0.0.0.0 when the parser is mecab', async () => {
         const fetcher = new MockFetcher();
         fetcher.fetch.mockResolvedValueOnce({ version: '0.0.0.0' }).mockResolvedValueOnce([makeMecabSupportResult()]);
-        const yomitan = new Yomitan(testDictionaryTrack({ dictionaryYomitanParser: 'mecab' }), fetcher);
+        const yomitan = new Yomitan(testDictionaryTrack({ dictionaryYomitanParser: 'mecab' }), () => fetcher);
 
         await expect(yomitan.version()).resolves.toEqual('0.0.0.0');
 
@@ -1813,7 +1773,7 @@ describe('Yomitan', () => {
     it('rejects versions older than the minimum supported Yomitan release', async () => {
         const fetcher = new MockFetcher();
         fetcher.fetch.mockResolvedValue({ version: '25.12.15.9' });
-        const yomitan = new Yomitan(testDictionaryTrack(), fetcher);
+        const yomitan = new Yomitan(testDictionaryTrack(), () => fetcher);
 
         await expect(yomitan.version()).rejects.toThrow('Minimum Yomitan version is 25.12.16.0, found 25.12.15.9');
     });
@@ -1821,7 +1781,7 @@ describe('Yomitan', () => {
     it('rejects malformed Yomitan versions that semver cannot coerce', async () => {
         const fetcher = new MockFetcher();
         fetcher.fetch.mockResolvedValue({ version: 'not-a-version' });
-        const yomitan = new Yomitan(testDictionaryTrack(), fetcher);
+        const yomitan = new Yomitan(testDictionaryTrack(), () => fetcher);
 
         await expect(yomitan.version()).rejects.toThrow('Minimum Yomitan version is 25.12.16.0, found not-a-version');
     });
@@ -1829,7 +1789,7 @@ describe('Yomitan', () => {
     it('verifies mecab support at the configured threshold and toggles bulk support by version', async () => {
         const fetcher = new MockFetcher();
         fetcher.fetch.mockResolvedValueOnce({ version: '26.4.6' }).mockResolvedValueOnce([makeMecabSupportResult()]);
-        const yomitan = new Yomitan(testDictionaryTrack({ dictionaryYomitanParser: 'mecab' }), fetcher);
+        const yomitan = new Yomitan(testDictionaryTrack({ dictionaryYomitanParser: 'mecab' }), () => fetcher);
 
         await expect(yomitan.version()).resolves.toEqual('26.4.6');
 
@@ -1841,7 +1801,7 @@ describe('Yomitan', () => {
     it('does not verify mecab support for non-mecab parsers and keeps bulk support disabled before 26.4.6', async () => {
         const fetcher = new MockFetcher();
         fetcher.fetch.mockResolvedValue({ version: '26.4.5' });
-        const yomitan = new Yomitan(testDictionaryTrack(), fetcher);
+        const yomitan = new Yomitan(testDictionaryTrack(), () => fetcher);
 
         await expect(yomitan.version()).resolves.toEqual('26.4.5');
 
@@ -1854,7 +1814,7 @@ describe('Yomitan', () => {
     it('does not verify mecab support before version 26.3.9 even when the parser is mecab', async () => {
         const fetcher = new MockFetcher();
         fetcher.fetch.mockResolvedValue({ version: '26.3.8' });
-        const yomitan = new Yomitan(testDictionaryTrack({ dictionaryYomitanParser: 'mecab' }), fetcher);
+        const yomitan = new Yomitan(testDictionaryTrack({ dictionaryYomitanParser: 'mecab' }), () => fetcher);
 
         await expect(yomitan.version()).resolves.toEqual('26.3.8');
 
@@ -1867,7 +1827,7 @@ describe('Yomitan', () => {
     it('sets full mecab and lemma support when verifyMecabSupport receives the expected tokenization', async () => {
         const fetcher = new MockFetcher();
         fetcher.fetch.mockResolvedValueOnce({ version: '26.4.6' }).mockResolvedValueOnce([makeMecabSupportResult()]);
-        const yomitan = new Yomitan(testDictionaryTrack({ dictionaryYomitanParser: 'mecab' }), fetcher);
+        const yomitan = new Yomitan(testDictionaryTrack({ dictionaryYomitanParser: 'mecab' }), () => fetcher);
 
         await yomitan.version();
 
@@ -1891,7 +1851,7 @@ describe('Yomitan', () => {
                 ],
             }),
         ]);
-        const yomitan = new Yomitan(testDictionaryTrack({ dictionaryYomitanParser: 'mecab' }), fetcher);
+        const yomitan = new Yomitan(testDictionaryTrack({ dictionaryYomitanParser: 'mecab' }), () => fetcher);
 
         await yomitan.version();
 
@@ -1909,7 +1869,7 @@ describe('Yomitan', () => {
                 content: [[makeTokenPart({ text: '思い出せない', reading: 'おもいだせない' })]],
             }),
         ]);
-        const yomitan = new Yomitan(testDictionaryTrack({ dictionaryYomitanParser: 'mecab' }), fetcher);
+        const yomitan = new Yomitan(testDictionaryTrack({ dictionaryYomitanParser: 'mecab' }), () => fetcher);
 
         await yomitan.version();
 
@@ -1928,7 +1888,7 @@ describe('Yomitan', () => {
         ]);
         const unexpectedSource = new Yomitan(
             testDictionaryTrack({ dictionaryYomitanParser: 'mecab' }),
-            unexpectedSourceFetcher
+            () => unexpectedSourceFetcher
         );
 
         await unexpectedSource.version();
@@ -1937,7 +1897,7 @@ describe('Yomitan', () => {
 
         const failureFetcher = new MockFetcher();
         failureFetcher.fetch.mockResolvedValueOnce({ version: '26.4.6' }).mockRejectedValueOnce(new Error('boom'));
-        const failure = new Yomitan(testDictionaryTrack({ dictionaryYomitanParser: 'mecab' }), failureFetcher);
+        const failure = new Yomitan(testDictionaryTrack({ dictionaryYomitanParser: 'mecab' }), () => failureFetcher);
         await failure.version();
         expect(failure.getSupportsMecab()).toBe(false);
         expect(failure.getSupportsMecabLemma()).toBe(false);
@@ -1946,10 +1906,10 @@ describe('Yomitan', () => {
     it('throws from tokenize when the Yomitan API returns an empty payload', async () => {
         const fetcher = new MockFetcher();
         fetcher.fetch.mockResolvedValue('{}');
-        const yomitan = new Yomitan(testDictionaryTrack(), fetcher);
+        const yomitan = new Yomitan(testDictionaryTrack(), () => fetcher);
 
         await expect(yomitan.tokenize('alpha')).rejects.toThrow('Yomitan API error for tokenize: {}');
-        expect(fetcher.fetch).toHaveBeenCalledWith('http://127.0.0.1:50500/tokenize', {
+        expect(fetcher.fetch).toHaveBeenCalledWith('tokenize', {
             text: 'alpha',
             scanLength: 25,
             parser: 'scanning-parser',

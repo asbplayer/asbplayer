@@ -56,6 +56,7 @@ import { CachingElementOverlay, OffsetAnchor } from '@project/extension/src/serv
 import { v4 as uuidv4 } from 'uuid';
 import type { DictionaryProvider } from '@project/common/dictionary-db';
 import type Binding from '@/services/binding';
+import { createForegroundYomitanFetcher } from '@/services/extension-yomitan-fetcher';
 
 const BOUNDING_BOX_PADDING = 25;
 
@@ -183,7 +184,8 @@ export default class SubtitleController {
             this.context.registeredVideoSrc,
             (updatedSubtitles) => this._subtitleAnnotationsUpdated(updatedSubtitles),
             () => this.context.currentTimeMs,
-            new VideoFetcher(() => this.context.registeredVideoSrc)
+            new VideoFetcher(() => this.context.registeredVideoSrc),
+            createForegroundYomitanFetcher('asbplayer-video')
         );
     }
 
