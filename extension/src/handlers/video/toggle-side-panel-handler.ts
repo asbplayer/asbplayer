@@ -70,7 +70,7 @@ export default class ToggleSidePanelHandler {
             if (!isFirefoxBuild) {
                 const windowId = sender.tab?.windowId;
                 if (windowId === undefined) {
-                    asbWarn('toggle-side-panel', 'Message sender window is undefined, unable to toggle side panel');
+                    asbWarn('side-panel', 'Message sender window is undefined, unable to toggle side panel');
                     return false;
                 }
 
