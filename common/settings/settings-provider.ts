@@ -533,9 +533,11 @@ const ensureStreamingPagesConsistency = (settings: Partial<AsbplayerSettings>) =
     (settings as any).streamingPages = newStreamingPages;
 };
 
-// Older versions wrote fewer keys per subtitle track; fill the rest from the
-// fill source (the current settings on import, defaults on storage reads).
-// Garbage entries throw and are rejected by the caller.
+/**
+ * Fills incoming text subtitle settings with key/value pairs from fillSource.
+ * Intended to migrate old settings to the latest type. If fillSource is missing
+ * a key, then this function will throw, which is intended.
+ */
 const ensureTextSubtitleSettingsConsistency = (settings: Partial<AsbplayerSettings>, fillSource: AsbplayerSettings) => {
     if (!settings.subtitleTracksV2) return;
     for (const entry of settings.subtitleTracksV2) {

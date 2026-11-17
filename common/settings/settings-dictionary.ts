@@ -580,12 +580,10 @@ export enum ApplyStrategy {
     TOGGLE = 'TOGGLE',
 }
 
-// The type and the import schema both derive from this list, so neither can
-// drift from the other.
+// Express string union types as string arrays so that they're accessible to zod for import validation.
 export const dictionaryYomitanParsers = ['scanning-parser', 'mecab'] as const;
 export type DictionaryYomitanParser = (typeof dictionaryYomitanParsers)[number];
 
-// Shared with the import schema's `z.literal` so neither side drifts.
 export const dictionaryAnkiTreatSuspendedNormal = 'NORMAL' as const;
 export type DictionaryAnkiTreatSuspended = TokenStatus | typeof dictionaryAnkiTreatSuspendedNormal;
 
@@ -822,12 +820,7 @@ export const defaultDictionaryTracks = [
 ];
 export const NUM_DICTIONARY_TRACKS = defaultDictionaryTracks.length;
 
-// Fills keys missing in `override` from `base`, mutating `override` in place.
-// Present values (including unknown keys, wrong types, and out-of-range
-// values) are left untouched so validation still rejects them. Arrays take
-// their shape from `base`, which pads status-indexed arrays with defaults and
-// truncates extras. Newly assigned defaults are cloned so mutations of the
-// filled structure cannot corrupt the defaults.
+/* Fills keys missing in `override` from `base`, mutating `override` in place. */
 const fillFromDefault = <T>(base: T, override: unknown): T => {
     if (override === undefined) {
         return base !== null && typeof base === 'object' ? structuredClone(base) : base;
@@ -857,6 +850,14 @@ const fillFromDefault = <T>(base: T, override: unknown): T => {
     return override as T;
 };
 
+/**
+ * Upgrades `dictionaryTracks` in place: fills keys older versions could not write, migrates
+ * deprecated fields, and pads or trims to NUM_DICTIONARY_TRACKS.
+ *
+ * @param dictionaryTracks The tracks being upgraded; partial, or from an older version.
+ * @param fillSource Fallbacks for missing keys, matched by track index: the settings being
+ * replaced on import, or defaults on read. Values already in `dictionaryTracks` win.
+ */
 export const ensureDictionaryTracksConsistency = (
     { dictionaryTracks }: Partial<DictionarySettings>,
     fillSource: AsbplayerSettings
@@ -865,10 +866,6 @@ export const ensureDictionaryTracksConsistency = (
     const defaultTrack = defaultDictionaryTracks[0];
     const fullyKnownStatus = getFullyKnownTokenStatus();
     for (const [index, dt] of dictionaryTracks.entries()) {
-        // The track's counterpart in the fill source (the current settings on
-        // import, defaults on storage reads) supplies values for keys the old
-        // version could not have written; everything the old version wrote is
-        // kept so validation still rejects corruption.
         const baseTrack = fillSource.dictionaryTracks?.[index] ?? defaultTrack;
         (dt as any).dictionaryTokenStatusColors = fillFromDefault(
             baseTrack.dictionaryTokenStatusColors,
@@ -903,9 +900,6 @@ export const ensureDictionaryTracksConsistency = (
 
         // Ensure dictionaryTokenAnnotationConfig exists
         if (!dt.dictionaryTokenAnnotationConfig) {
-            // Synthesized from the deprecated flat fields, which carry the
-            // file's own preferences; migration-derived values outrank the
-            // fill source for these keys.
             const config = makeDefaultDictionaryTokenAnnotationConfigs();
 
             // Migrate dictionaryColorizeOnHoverOnly to dictionaryTokenAnnotationConfig
@@ -957,8 +951,6 @@ export const ensureDictionaryTracksConsistency = (
         }
     }
     while (dictionaryTracks.length < NUM_DICTIONARY_TRACKS) {
-        // Cloned: the imported tracks must not share identity with the fill
-        // source's tracks, or later mutations would corrupt them.
         const source = fillSource.dictionaryTracks?.[dictionaryTracks.length] ?? defaultTrack;
         dictionaryTracks.push(JSON.parse(JSON.stringify(source)));
     }

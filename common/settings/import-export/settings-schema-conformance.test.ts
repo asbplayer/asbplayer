@@ -49,9 +49,11 @@ function trackSettings(): TextSubtitleSettings {
 
 const describePath = (path: string) => path || 'settings root';
 
-// The walkers take zod's core schema type: v4's classic wrappers expose
-// `shape`, `element`, and `valueType` as core `$ZodType`, not classic
-// `ZodType`.
+// Keep these typed as z.core.$ZodType. Classic schemas extend the core types,
+// but `shape`, `element`, and `valueType` are core-typed children, so recursing
+// through them won't typecheck against z.ZodType. Do not narrow the parameter
+// or cast around it. instanceof still works: classic schemas are core schemas
+// at runtime.
 const assertCollectionsPopulated = (schema: z.core.$ZodType, value: unknown, path: string, failures: Failure[]) => {
     if (schema instanceof z.ZodOptional) {
         if (value !== undefined) assertCollectionsPopulated(schema.unwrap(), value, path, failures);

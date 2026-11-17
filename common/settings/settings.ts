@@ -86,8 +86,7 @@ export interface PlaybackPosition {
     readonly position: number;
 }
 
-// The type and the import schema both derive from this list, so neither can
-// drift from the other.
+// Express string union types as string arrays so that they're accessible to zod for import validation.
 export const themeTypes = ['dark', 'light'] as const;
 export type ThemeType = (typeof themeTypes)[number];
 
