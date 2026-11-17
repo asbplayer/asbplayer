@@ -854,13 +854,14 @@ const fillFromDefault = <T>(base: T, override: unknown): T => {
  * Ensures `dictionaryTracks` are consistent, according to this version of the code. If
  * dictionaryTracks is an older version of the model, migrates it to the current one.
  *
- * @param dictionaryTracks The data being being migrated.
+ * @param settings The data being migrated.
  * @param fillSource Fallbacks for missing keys.
  */
 export const ensureDictionaryTracksConsistency = (
-    { dictionaryTracks }: Partial<DictionarySettings>,
+    settings: Partial<DictionarySettings>,
     fillSource: AsbplayerSettings
 ) => {
+    const { dictionaryTracks } = settings;
     if (!dictionaryTracks) return;
     const defaultTrack = defaultDictionaryTracks[0];
     const fullyKnownStatus = getFullyKnownTokenStatus();

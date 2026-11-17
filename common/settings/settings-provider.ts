@@ -535,8 +535,7 @@ const ensureStreamingPagesConsistency = (settings: Partial<AsbplayerSettings>) =
 
 /**
  * Fills incoming text subtitle settings with key/value pairs from fillSource.
- * Intended to migrate old settings to the latest type. If fillSource is missing
- * a key, then this function will throw, which is intended.
+ * Intended to migrate old settings to the latest type.
  */
 const ensureTextSubtitleSettingsConsistency = (settings: Partial<AsbplayerSettings>, fillSource: AsbplayerSettings) => {
     if (!settings.subtitleTracksV2) return;

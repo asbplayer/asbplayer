@@ -16,6 +16,8 @@ import {
 } from '@project/common/settings/import-export';
 import { defaultSettings } from '@project/common/settings/settings-provider';
 import { describe, expect, it } from '@jest/globals';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { PlayMode } from '@project/common';
 
 it('validates the default settings', () => {
@@ -87,12 +89,12 @@ it('imports a file old enough to exercise the consistency migration paths', () =
 
     // Track count padded to the current number of tracks.
     expect(imported.dictionaryTracks).toHaveLength(3);
-    const track = imported.dictionaryTracks[0];
+    const track = imported.dictionaryTracks![0];
 
     // Per-track keys the old version could not have written are filled from
     // the fill source; this direct call has no current settings, so defaults.
     expect(imported.subtitleTracksV2).toHaveLength(1);
-    const trackEntry = imported.subtitleTracksV2[0];
+    const trackEntry = imported.subtitleTracksV2![0];
     expect(trackEntry.subtitleAlignment).toBe(defaultSettings.subtitleAlignment);
     expect(trackEntry.subtitleOutlineColor).toBe(defaultSettings.subtitleOutlineColor);
     expect(trackEntry.subtitleShadowThickness).toBe(defaultSettings.subtitleShadowThickness);
@@ -136,22 +138,35 @@ it('imports a file old enough to exercise the consistency migration paths', () =
     for (const key of Object.keys(defaultSettings.keyBindSet)) {
         expect(imported.keyBindSet).toHaveProperty(key);
     }
-    expect(imported.keyBindSet.togglePlay).toEqual({ keys: 'space' });
-    expect(imported.keyBindSet.toggleRecipe1).toEqual(defaultSettings.keyBindSet.toggleRecipe1);
+    expect(imported.keyBindSet!.togglePlay).toEqual({ keys: 'space' });
+    expect(imported.keyBindSet!.toggleRecipe1).toEqual(defaultSettings.keyBindSet.toggleRecipe1);
 
     // Anki field settings added after the file's era are filled.
-    expect(imported.ankiFieldSettings.track1).toEqual(defaultSettings.ankiFieldSettings.track1);
-    expect(imported.ankiFieldSettings.sentence).toEqual({ order: 1, display: true });
+    expect(imported.ankiFieldSettings!.track1).toEqual(defaultSettings.ankiFieldSettings.track1);
+    expect(imported.ankiFieldSettings!.sentence).toEqual({ order: 1, display: true });
 
     // Malformed recipes are dropped and the dangling selection is cleared.
     expect(imported.recipes).toHaveLength(1);
-    expect(imported.recipes[0].name).toBe('Test recipe');
+    expect(imported.recipes![0].name).toBe('Test recipe');
     expect(imported.activeRecipeId).toBeNull();
 
     // Keys absent from the file stay absent (imports are patches over current
     // settings), and `streamingPages` is never part of an import.
     expect(imported.subtitlePreview).toBeUndefined();
     expect(imported.streamingPages).toBeUndefined();
+});
+
+it('imports a real v1.22.0 export through the settings dialog path', () => {
+    // Produced by the v1.22.0 release. Catches key removals and renames that
+    // were not added to `deprecatedPaths`, which hand-built fixtures miss.
+    const legacyExport = JSON.parse(
+        readFileSync(join(__dirname, '__fixtures__', 'v1.22.0-settings-export.json'), 'utf-8')
+    );
+
+    const imported = validateSettings(mergeImportedSettings(legacyExport, defaultSettings), defaultSettings);
+
+    expect(imported.customAnkiFieldSettings).toEqual({ MyCustomField: { order: 99, display: true } });
+    expect(imported.customAnkiFields).toEqual({ MyCustomField: 'カスタム' });
 });
 
 it('fails validation when an unknown key is encountered', () => {
@@ -198,7 +213,7 @@ it('imports files containing settings that were later removed from the model', (
     expect(imported).not.toHaveProperty('preCacheSubtitleDom');
     expect(imported).not.toHaveProperty('_schema');
     expect(imported.keyBindSet).not.toHaveProperty('updateSelectedCard');
-    expect(imported.keyBindSet.togglePlay).toEqual(defaultSettings.keyBindSet.togglePlay);
+    expect(imported.keyBindSet!.togglePlay).toEqual(defaultSettings.keyBindSet.togglePlay);
 });
 
 it('rejects null values where an object is expected instead of repairing them', () => {
@@ -341,7 +356,7 @@ it('fills missing playback fields from defaults instead of rejecting them', () =
     const legacy = JSON.parse(JSON.stringify(defaultSettings));
     delete legacy.dictionaryTracks[0].dictionaryPlaybackConfig;
     const imported = validateSettings(legacy);
-    expect(imported.dictionaryTracks[0].dictionaryPlaybackConfig).toEqual(
+    expect(imported.dictionaryTracks![0].dictionaryPlaybackConfig).toEqual(
         defaultSettings.dictionaryTracks[0].dictionaryPlaybackConfig
     );
 
@@ -368,7 +383,7 @@ it('fills missing playback fields from defaults instead of rejecting them', () =
         const settings = JSON.parse(JSON.stringify(defaultSettings));
         removeField(settings.dictionaryTracks[0].dictionaryPlaybackConfig);
         const imported = validateSettings(settings);
-        expect(imported.dictionaryTracks[0].dictionaryPlaybackConfig).toEqual(
+        expect(imported.dictionaryTracks![0].dictionaryPlaybackConfig).toEqual(
             defaultSettings.dictionaryTracks[0].dictionaryPlaybackConfig
         );
     }
@@ -382,7 +397,7 @@ it('fills playback features and subkeys an older version could not have written'
     playback.fastForward.rateByComprehension = { enabled: true };
 
     const imported = validateSettings(settings);
-    const config = imported.dictionaryTracks[0].dictionaryPlaybackConfig;
+    const config = imported.dictionaryTracks![0].dictionaryPlaybackConfig;
     expect(config.selectOnPause).toEqual({
         onStatuses: Array.from({ length: 6 }, () => ({ enabled: false })),
         onStates: [{ enabled: false }],
@@ -412,7 +427,7 @@ it('validates and round trips pause-selection playback triggers without rules', 
     config.onStatuses[1].enabled = true;
     config.onStates[0].enabled = true;
     const imported = validateSettings(settingsForExport(settings));
-    expect(imported.dictionaryTracks[0].dictionaryPlaybackConfig.selectOnPause).toEqual(config);
+    expect(imported.dictionaryTracks![0].dictionaryPlaybackConfig.selectOnPause).toEqual(config);
     expect(config).not.toHaveProperty('rules');
     for (const trigger of [config.onStatuses[1], config.onStates[0]]) {
         for (const invalid of ['true', 1, null]) {
@@ -565,23 +580,23 @@ it('merges current settings under an import for containers the file may predate'
 
     const imported = validateSettings(mergeImportedSettings(file, currentSettings), currentSettings);
 
-    expect(imported.keyBindSet.toggleRecipe1).toEqual({ keys: 'R+1' });
-    expect(imported.keyBindSet.togglePlay).toEqual({ keys: 'space' });
-    expect(imported.ankiFieldSettings.track1).toEqual({ order: 77, display: true });
-    expect(imported.dictionaryTracks[0].dictionaryPlaybackConfig.selectOnPause).toEqual(
+    expect(imported.keyBindSet!.toggleRecipe1).toEqual({ keys: 'R+1' });
+    expect(imported.keyBindSet!.togglePlay).toEqual({ keys: 'space' });
+    expect(imported.ankiFieldSettings!.track1).toEqual({ order: 77, display: true });
+    expect(imported.dictionaryTracks![0].dictionaryPlaybackConfig.selectOnPause).toEqual(
         currentSettings.dictionaryTracks[0].dictionaryPlaybackConfig.selectOnPause
     );
-    expect(imported.dictionaryTracks[0].dictionaryPlaybackConfig.fastForward.rateByComprehension).toEqual({
+    expect(imported.dictionaryTracks![0].dictionaryPlaybackConfig.fastForward.rateByComprehension).toEqual({
         enabled: false,
         minimumPercent: 80,
     });
-    expect(imported.dictionaryTracks[0].dictionaryTokenMatchStrategy).toBe(
+    expect(imported.dictionaryTracks![0].dictionaryTokenMatchStrategy).toBe(
         TokenMatchStrategy.LEMMA_OR_EXACT_FORM_COLLECTED
     );
     // Per-track keys the file predates are filled from the current settings;
     // keys the file wrote are kept.
-    expect(imported.subtitleTracksV2[0].subtitleAlignment).toBe('top');
-    expect(imported.subtitleTracksV2[0].subtitleSize).toBe(40);
+    expect(imported.subtitleTracksV2![0].subtitleAlignment).toBe('top');
+    expect(imported.subtitleTracksV2![0].subtitleSize).toBe(40);
     expect(() => validateSettings(mergeImportedSettings(file, currentSettings), currentSettings)).not.toThrow();
 });
 

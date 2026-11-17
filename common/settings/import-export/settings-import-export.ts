@@ -156,6 +156,13 @@ const dictionaryTrackSchema = z.strictObject({
     }),
 });
 
+const subtitleCustomStylesSchema = z.array(
+    z.strictObject({
+        key: z.string().optional(),
+        value: z.string().optional(),
+    })
+);
+
 const textSubtitleSettingsSchema = z.strictObject({
     subtitleColor: z.string(),
     subtitleSize: z.number(),
@@ -167,22 +174,10 @@ const textSubtitleSettingsSchema = z.strictObject({
     subtitleBackgroundOpacity: z.number(),
     subtitleBackgroundColor: z.string(),
     subtitleFontFamily: z.string(),
-    subtitleCustomStyles: z.array(
-        z.strictObject({
-            key: z.string().optional(),
-            value: z.string().optional(),
-        })
-    ),
+    subtitleCustomStyles: subtitleCustomStylesSchema,
     subtitleBlur: z.boolean(),
     subtitleAlignment: z.enum(subtitleAlignments),
 });
-
-const subtitleCustomStylesSchema = z.array(
-    z.strictObject({
-        key: z.string().optional(),
-        value: z.string().optional(),
-    })
-);
 
 const lastPlaybackPositionSchema = z.strictObject({
     fileName: z.string(),
@@ -422,7 +417,7 @@ const validationIgnorePaths: readonly IgnorePath[] = [['streamingPages']];
 
 // Keys older asbplayer versions wrote that no longer exist in the settings
 // model. Strict schemas would reject them as typos, so they are stripped
-// before validation.When removing a setting from the model, add its path
+// before validation. When removing a setting from the model, add its path
 // here, or keep it as a deprecated model field if its value must migrate. A
 // '*' segment applies to every array item. `settings-schema-conformance.test.ts`
 // checks that each path points at a key the schema no longer knows.
@@ -532,5 +527,5 @@ export const validateSettings = (settings: any, fillSource: AsbplayerSettings = 
         throw new Error('Settings validation failed: ' + z.prettifyError(result.error));
     }
 
-    return normalized as AsbplayerSettings;
+    return normalized as Partial<AsbplayerSettings>;
 };
