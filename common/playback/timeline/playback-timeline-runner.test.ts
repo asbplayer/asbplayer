@@ -11,6 +11,7 @@ const makeTimeline = () => {
         actionBlocks: [],
         hiddenSubtitleIndexes: [],
         durationMs: timeline.durationMs,
+        gapActionEndMs: timeline.durationMs,
         displaySubtitles: [makeSubtitle(1000, 2000, 0), makeSubtitle(3000, 4000, 1)],
         blocks: timeline.blocks.map((block) => ({
             ...block,
@@ -60,6 +61,7 @@ describe('PlaybackTimelineRunner', () => {
             actionBlocks: [],
             hiddenSubtitleIndexes: [],
             durationMs: timeline.durationMs,
+            gapActionEndMs: timeline.durationMs,
             displaySubtitles: [makeSubtitle(1000, 2000, 0)],
             blocks: timeline.blocks.map((block) => ({
                 ...block,

@@ -57,6 +57,7 @@ export interface LoadableSubtitleTrack<TFilePart = File> {
 }
 
 export interface SubtitleModel {
+    readonly source?: { readonly loadId: string; readonly cueId: number };
     readonly text: string;
     readonly originalText?: string;
     readonly textImage?: SubtitleTextImage;
@@ -244,6 +245,8 @@ export interface AnkiUiSavedState {
 }
 
 export interface VideoDataSubtitleTrackDef {
+    /** Read complete cues as they arrive instead of waiting for the whole response. */
+    progressive?: boolean;
     label: string;
     language?: string;
     url?: string | string[];

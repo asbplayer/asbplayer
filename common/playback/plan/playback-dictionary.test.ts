@@ -386,12 +386,12 @@ describe('compiled dictionary playback', () => {
         expect(plan.timelineSubtitles.blocks.every((block) => block.endAction === undefined)).toBe(true);
         expect(plan.timelineSubtitles.actionBlocks).toEqual([
             expect.objectContaining({
-                id: 'autoPause:[0]',
+                id: 'autoPause:["legacy:0"]',
                 startAction: true,
                 endAction: { pause: true },
             }),
             expect.objectContaining({
-                id: 'repeat:[0]',
+                id: 'repeat:["legacy:0"]',
                 endAction: { pause: false, repeat: { count: 0, repeatsBeforeShowingSubtitles: 0 } },
             }),
         ]);
@@ -427,8 +427,8 @@ describe('compiled dictionary playback', () => {
                 block.playbackModeEndMs,
             ])
         ).toEqual([
-            ['autoPause:[1]', 2000, 2999],
-            ['repeat:[1]', 2000, 2999],
+            ['autoPause:["legacy:1"]', 2000, 2999],
+            ['repeat:["legacy:1"]', 2000, 2999],
         ]);
 
         const pauses: { timestampMs: number; subtitleIndex?: number }[] = [];
@@ -499,8 +499,8 @@ describe('compiled dictionary playback', () => {
                     block.playbackModeEndMs,
                 ])
             ).toEqual([
-                ['autoPause:[0,1]', [0, 1], 1000, endMs],
-                ['repeat:[0,1]', [0, 1], 1000, endMs],
+                ['autoPause:["legacy:0","legacy:1"]', [0, 1], 1000, endMs],
+                ['repeat:["legacy:0","legacy:1"]', [0, 1], 1000, endMs],
             ]);
 
             const pauses: number[] = [];
@@ -918,8 +918,8 @@ describe('per-track dictionary playback rules', () => {
         expect(
             plan.timelineSubtitles.actionBlocks.map((block) => [block.id, block.subtitleIndexes, block.endAction])
         ).toEqual([
-            ['autoPause:[1]', [1], { pause: true }],
-            ['repeat:[1]', [1], { pause: false, repeat: { count: 0, repeatsBeforeShowingSubtitles: 0 } }],
+            ['autoPause:["legacy:1"]', [1], { pause: true }],
+            ['repeat:["legacy:1"]', [1], { pause: false, repeat: { count: 0, repeatsBeforeShowingSubtitles: 0 } }],
         ]);
         expect(plan.timelineSubtitles.condensedBlocks?.map((block) => block.subtitleIndexes)).toEqual([[1]]);
     });

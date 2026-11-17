@@ -64,6 +64,7 @@ const plan = (
     options?: { readonly playModes?: PlayMode[]; readonly durationMs?: number }
 ) =>
     buildPlaybackPlan({
+        sources: [],
         subtitles,
         durationMs: options?.durationMs ?? 20_000,
         playModes: new Set(options?.playModes ?? [PlayMode.normal]),
@@ -400,6 +401,7 @@ describe('playbackTimelineToHtml', () => {
         const secondTrack = makeTextSubtitle(5000, 6500, 'two', 1, 1);
         const buildParityPlan = (subtitles: IndexedSubtitleModel[]) => {
             const parityPlan = buildPlaybackPlan({
+                sources: [],
                 subtitles,
                 displaySubtitles: subtitles,
                 durationMs: 20_000,
@@ -528,6 +530,7 @@ describe('playbackTimelineToHtml', () => {
         ) => {
             const effectiveSettings = { ...paritySettings, ...settings };
             const runtimePlan = buildPlaybackPlan({
+                sources: [],
                 subtitles: selectedSubtitles,
                 displaySubtitles: selectedSubtitles,
                 durationMs: 12_000,

@@ -61,6 +61,7 @@ export default class SyncHandler {
                     command: 'syncv2',
                     subtitles: extensionSyncCommand.message.subtitles,
                     flatten: extensionSyncCommand.message.flatten,
+                    subtitleSource: extensionSyncCommand.message.subtitleSource,
                 },
                 src: extensionSyncCommand.src,
                 tabId: sender.tab!.id!,

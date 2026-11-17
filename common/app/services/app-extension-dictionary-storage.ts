@@ -1,3 +1,4 @@
+import type { SubtitleReference } from '@project/common/subtitle-reader/subtitle-stream';
 import type { ChromeExtension } from '@project/common/app';
 import type {
     DictionaryLocalTokenInput,
@@ -53,7 +54,10 @@ export class AppExtensionDictionaryStorage implements DictionaryStorage {
     private dictionaryStatisticsGenerationRequestListener?: (event: MessageEvent) => void;
     private dictionaryStatisticsSeekCallbacks: ((timestamp: number) => void)[];
     private dictionaryStatisticsSeekListener?: (event: MessageEvent) => void;
-    private dictionaryStatisticsMineSentencesCallbacks: ((mediaId: string, indexes: number[]) => void)[];
+    private dictionaryStatisticsMineSentencesCallbacks: ((
+        mediaId: string,
+        subtitles: readonly SubtitleReference[]
+    ) => void)[];
     private dictionaryStatisticsMineSentencesListener?: (event: MessageEvent) => void;
 
     constructor(extension: ChromeExtension) {
@@ -212,7 +216,18 @@ export class AppExtensionDictionaryStorage implements DictionaryStorage {
                 const data: ExtensionDictionaryStatisticsCommand<DictionaryStatisticsMessage> = event.data;
                 if (!isExtensionDictionaryStatisticsSender(data.sender)) return;
                 if (data.message.command !== 'dictionary-statistics') return;
-                this.dictionaryStatisticsCallbacks.forEach((listener) => listener(data.message.snapshot));
+                const snapshot = data.message.snapshot;
+                const normalized =
+                    snapshot && !this._extension.supportsProgressiveSubtitles
+                        ? {
+                              ...snapshot,
+                              snapshots: snapshot.snapshots.map((track) => ({
+                                  ...track,
+                                  sourceStatus: 'complete' as const,
+                              })),
+                          }
+                        : snapshot;
+                this.dictionaryStatisticsCallbacks.forEach((listener) => listener(normalized));
             };
             window.parent.addEventListener('message', this.dictionaryStatisticsListener);
         }
@@ -308,21 +323,26 @@ export class AppExtensionDictionaryStorage implements DictionaryStorage {
         };
     }
 
-    async requestStatisticsMineSentences(mediaId: string, indexes: number[]) {
-        this._extension.requestStatisticsMineSentences(mediaId, indexes);
+    async requestStatisticsMineSentences(mediaId: string, subtitles: readonly SubtitleReference[]) {
+        this._extension.requestStatisticsMineSentences(mediaId, subtitles);
     }
 
-    onRequestStatisticsMineSentences(callback: (mediaId: string, indexes: number[]) => void) {
+    onRequestStatisticsMineSentences(callback: (mediaId: string, subtitles: readonly SubtitleReference[]) => void) {
         this.dictionaryStatisticsMineSentencesCallbacks.push(callback);
         if (!this.dictionaryStatisticsMineSentencesListener) {
             this.dictionaryStatisticsMineSentencesListener = (event: MessageEvent) => {
                 if (event.type !== 'message') return;
-                const data: ExtensionDictionaryStatisticsCommand<DictionaryRequestStatisticsMineSentencesMessage> =
-                    event.data;
+                const data: ExtensionDictionaryStatisticsCommand<
+                    | DictionaryRequestStatisticsMineSentencesMessage
+                    | Omit<DictionaryRequestStatisticsMineSentencesMessage, 'subtitles'>
+                > = event.data;
                 if (!isExtensionDictionaryStatisticsSender(data.sender)) return;
                 if (data.message.command !== 'dictionary-request-statistics-mine-sentences') return;
                 this.dictionaryStatisticsMineSentencesCallbacks.forEach((listener) =>
-                    listener(data.message.mediaId, data.message.indexes)
+                    listener(
+                        data.message.mediaId,
+                        'subtitles' in data.message ? data.message.subtitles : data.message.indexes
+                    )
                 );
             };
             window.parent.addEventListener('message', this.dictionaryStatisticsMineSentencesListener);
