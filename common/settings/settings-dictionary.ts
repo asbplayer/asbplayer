@@ -2,6 +2,7 @@ import project from '@project/common/project';
 import { arrayEquals } from '@project/common/util/array-equals';
 import { compareField, fieldsEqual } from '@project/common/util';
 import type { FieldComparators } from '@project/common/util';
+import type { AsbplayerSettings } from '@project/common/settings/settings';
 
 export enum DictionaryTokenSource {
     LOCAL = 0,
@@ -579,6 +580,13 @@ export enum ApplyStrategy {
     TOGGLE = 'TOGGLE',
 }
 
+// Express string union types as string arrays so that they're accessible to zod for import validation.
+export const dictionaryYomitanParsers = ['scanning-parser', 'mecab'] as const;
+export type DictionaryYomitanParser = (typeof dictionaryYomitanParsers)[number];
+
+export const dictionaryAnkiTreatSuspendedNormal = 'NORMAL' as const;
+export type DictionaryAnkiTreatSuspended = TokenStatus | typeof dictionaryAnkiTreatSuspendedNormal;
+
 export interface DictionaryTrack {
     /** @deprecated Use dictionaryTokenAnnotationConfig.colorizeEnabled */
     readonly dictionaryColorizeSubtitles: boolean;
@@ -590,7 +598,7 @@ export interface DictionaryTrack {
     readonly dictionaryMatchAcrossScripts: boolean;
     readonly dictionaryTokenMatchStrategyPriority: TokenMatchStrategyPriority;
     readonly dictionaryYomitanUrl: string;
-    readonly dictionaryYomitanParser: 'scanning-parser' | 'mecab';
+    readonly dictionaryYomitanParser: DictionaryYomitanParser;
     readonly dictionaryYomitanScanLength: number;
     /** @deprecated Use dictionaryTokenAnnotationConfig.onStatuses[].reading */
     readonly dictionaryTokenReadingAnnotation: TokenReadingAnnotation;
@@ -603,7 +611,7 @@ export interface DictionaryTrack {
     readonly dictionaryAnkiSentenceFields: string[];
     readonly dictionaryAnkiSentenceTokenMatchStrategy: TokenMatchStrategy;
     readonly dictionaryAnkiMatureCutoff: number;
-    readonly dictionaryAnkiTreatSuspended: TokenStatus | 'NORMAL';
+    readonly dictionaryAnkiTreatSuspended: DictionaryAnkiTreatSuspended;
     readonly dictionaryWaniKaniApiToken: string;
     readonly dictionaryTokenStyling: TokenStyling;
     readonly dictionaryTokenStylingThickness: number;
@@ -812,33 +820,61 @@ export const defaultDictionaryTracks = [
 ];
 export const NUM_DICTIONARY_TRACKS = defaultDictionaryTracks.length;
 
-export const ensureDictionaryTracksConsistency = ({ dictionaryTracks }: Partial<DictionarySettings>) => {
+/* Fills keys missing in `override` from `base`, mutating `override` in place. */
+const fillFromDefault = <T>(base: T, override: unknown): T => {
+    if (override === undefined) {
+        return base !== null && typeof base === 'object' ? structuredClone(base) : base;
+    }
+    if (Array.isArray(base)) {
+        if (!Array.isArray(override)) return override as T;
+        override.length = base.length;
+        base.forEach((item, index) => {
+            (override as unknown[])[index] = fillFromDefault(item, override[index]);
+        });
+        return override as T;
+    }
+    if (
+        base !== null &&
+        typeof base === 'object' &&
+        override !== null &&
+        typeof override === 'object' &&
+        !Array.isArray(override)
+    ) {
+        for (const [key, value] of Object.entries(base)) {
+            (override as Record<string, unknown>)[key] = fillFromDefault(
+                value,
+                (override as Record<string, unknown>)[key]
+            );
+        }
+    }
+    return override as T;
+};
+
+/**
+ * Ensures `dictionaryTracks` are consistent, according to this version of the code. If
+ * dictionaryTracks is an older version of the model, migrates it to the current one.
+ *
+ * @param settings The data being migrated.
+ * @param fillSource Fallbacks for missing keys.
+ */
+export const ensureDictionaryTracksConsistency = (
+    settings: Partial<DictionarySettings>,
+    fillSource: AsbplayerSettings
+) => {
+    const { dictionaryTracks } = settings;
     if (!dictionaryTracks) return;
     const defaultTrack = defaultDictionaryTracks[0];
     const fullyKnownStatus = getFullyKnownTokenStatus();
-    for (const dt of dictionaryTracks) {
-        // Ensure dictionaryTokenStatusColors exists and has the correct length
-        if (!dt.dictionaryTokenStatusColors) (dt as any).dictionaryTokenStatusColors = [];
-        while (dt.dictionaryTokenStatusColors.length < NUM_TOKEN_STATUSES) {
-            const color = defaultTrack.dictionaryTokenStatusColors[dt.dictionaryTokenStatusColors.length];
-            dt.dictionaryTokenStatusColors.push(color);
-        }
-        while (dt.dictionaryTokenStatusColors.length > NUM_TOKEN_STATUSES) {
-            dt.dictionaryTokenStatusColors.pop();
-        }
-
-        // Ensure dictionaryTokenStatusConfig exists and has the correct length
-        if (!dt.dictionaryTokenStatusConfig) (dt as any).dictionaryTokenStatusConfig = [];
-        while (dt.dictionaryTokenStatusConfig.length < NUM_TOKEN_STATUSES) {
-            const config = {
-                ...defaultTrack.dictionaryTokenStatusConfig[dt.dictionaryTokenStatusConfig.length],
-                color: dt.dictionaryTokenStatusColors[dt.dictionaryTokenStatusConfig.length],
-            };
-            dt.dictionaryTokenStatusConfig.push(config);
-        }
-        while (dt.dictionaryTokenStatusConfig.length > NUM_TOKEN_STATUSES) {
-            dt.dictionaryTokenStatusConfig.pop();
-        }
+    for (const [index, dt] of dictionaryTracks.entries()) {
+        const baseTrack = fillSource.dictionaryTracks?.[index] ?? defaultTrack;
+        (dt as any).dictionaryTokenStatusColors = fillFromDefault(
+            baseTrack.dictionaryTokenStatusColors,
+            dt.dictionaryTokenStatusColors
+        );
+        (dt as any).dictionaryTokenStatusConfig = fillFromDefault(
+            baseTrack.dictionaryTokenStatusConfig,
+            dt.dictionaryTokenStatusConfig
+        );
 
         // Migrate dictionaryTokenStatusColors to dictionaryTokenStatusConfig, both are updated on settings change
         for (let i = 0; i < NUM_TOKEN_STATUSES; ++i) {
@@ -856,17 +892,10 @@ export const ensureDictionaryTracksConsistency = ({ dictionaryTracks }: Partial<
             };
         }
 
-        // Existing tracks predate playback settings; new statuses and states need a trigger row.
-        if (!dt.dictionaryPlaybackConfig) (dt as any).dictionaryPlaybackConfig = makeDefaultDictionaryPlaybackConfig();
-        for (const feature of [...dictionaryPlaybackFeatures, 'selectOnPause'] as const) {
-            const playback = dt.dictionaryPlaybackConfig[feature];
-            for (const [triggers, count] of [
-                [playback.onStatuses, NUM_TOKEN_STATUSES],
-                [playback.onStates, NUM_TOKEN_STATES],
-            ] as const) {
-                while (triggers.length < count) triggers.push({ enabled: false });
-                if (triggers.length > count) triggers.length = count;
-            }
+        if (!dt.dictionaryPlaybackConfig) {
+            (dt as any).dictionaryPlaybackConfig = structuredClone(baseTrack.dictionaryPlaybackConfig);
+        } else {
+            fillFromDefault(baseTrack.dictionaryPlaybackConfig, dt.dictionaryPlaybackConfig);
         }
 
         // Ensure dictionaryTokenAnnotationConfig exists
@@ -902,65 +931,28 @@ export const ensureDictionaryTracksConsistency = ({ dictionaryTracks }: Partial<
             }
 
             (dt as any).dictionaryTokenAnnotationConfig = config;
+        } else {
+            fillFromDefault(baseTrack.dictionaryTokenAnnotationConfig, dt.dictionaryTokenAnnotationConfig);
         }
         if (dt.dictionaryTokenAnnotationConfig.colorizeEnabled !== dt.dictionaryColorizeSubtitles) {
             dt.dictionaryTokenAnnotationConfig.colorizeEnabled = dt.dictionaryColorizeSubtitles;
         }
 
-        for (const [target, defaultTarget] of [
-            [dt.dictionaryTokenAnnotationConfig.video, defaultTrack.dictionaryTokenAnnotationConfig.video],
-            [
-                dt.dictionaryTokenAnnotationConfig.subtitlePlayer,
-                defaultTrack.dictionaryTokenAnnotationConfig.subtitlePlayer,
-            ],
-        ] as const) {
-            if (target.gloss === undefined) (target as any).gloss = { ...defaultTarget.gloss };
-        }
-        for (const trigger of [
-            ...dt.dictionaryTokenAnnotationConfig.onStatuses,
-            ...dt.dictionaryTokenAnnotationConfig.onStates,
-        ]) {
-            if (trigger.gloss === undefined) (trigger as any).gloss = false;
-        }
-
-        // Ensure dictionaryTokenAnnotationConfig has the correct length
-        while (dt.dictionaryTokenAnnotationConfig.onStatuses.length < NUM_TOKEN_STATUSES) {
-            dt.dictionaryTokenAnnotationConfig.onStatuses.push({
-                reading: false,
-                frequency: false,
-                gloss: false,
-                pitchAccent: false,
-            });
-        }
-        while (dt.dictionaryTokenAnnotationConfig.onStatuses.length > NUM_TOKEN_STATUSES) {
-            dt.dictionaryTokenAnnotationConfig.onStatuses.pop();
-        }
-        while (dt.dictionaryTokenAnnotationConfig.onStates.length < NUM_TOKEN_STATES) {
-            dt.dictionaryTokenAnnotationConfig.onStates.push({
-                reading: false,
-                frequency: false,
-                gloss: false,
-                pitchAccent: false,
-            });
-        }
-        while (dt.dictionaryTokenAnnotationConfig.onStates.length > NUM_TOKEN_STATES) {
-            dt.dictionaryTokenAnnotationConfig.onStates.pop();
-        }
-
         // Default for new settings
-        if (!dt.dictionaryYomitanParser) (dt as any).dictionaryYomitanParser = defaultTrack.dictionaryYomitanParser;
+        if (!dt.dictionaryYomitanParser) (dt as any).dictionaryYomitanParser = baseTrack.dictionaryYomitanParser;
         if (dt.dictionaryAutoGenerateStatistics === undefined) {
-            (dt as any).dictionaryAutoGenerateStatistics = defaultTrack.dictionaryAutoGenerateStatistics;
+            (dt as any).dictionaryAutoGenerateStatistics = baseTrack.dictionaryAutoGenerateStatistics;
         }
         if (dt.dictionaryWaniKaniApiToken === undefined) {
-            (dt as any).dictionaryWaniKaniApiToken = defaultTrack.dictionaryWaniKaniApiToken;
+            (dt as any).dictionaryWaniKaniApiToken = baseTrack.dictionaryWaniKaniApiToken;
         }
         if (dt.dictionaryMatchAcrossScripts === undefined) {
-            (dt as any).dictionaryMatchAcrossScripts = defaultTrack.dictionaryMatchAcrossScripts;
+            (dt as any).dictionaryMatchAcrossScripts = baseTrack.dictionaryMatchAcrossScripts;
         }
     }
     while (dictionaryTracks.length < NUM_DICTIONARY_TRACKS) {
-        dictionaryTracks.push(defaultTrack);
+        const source = fillSource.dictionaryTracks?.[dictionaryTracks.length] ?? defaultTrack;
+        dictionaryTracks.push(JSON.parse(JSON.stringify(source)));
     }
     while (dictionaryTracks.length > NUM_DICTIONARY_TRACKS) {
         dictionaryTracks.pop();

@@ -86,10 +86,14 @@ export interface PlaybackPosition {
     readonly position: number;
 }
 
+// Express string union types as string arrays so that they're accessible to zod for import validation.
+export const themeTypes = ['dark', 'light'] as const;
+export type ThemeType = (typeof themeTypes)[number];
+
 export interface MiscSettings {
     readonly recipes: Recipe[];
     readonly activeRecipeId: number | null;
-    readonly themeType: 'dark' | 'light';
+    readonly themeType: ThemeType;
     readonly videoSubtitleSplitBehavior: VideoSubtitleSplitBehavior;
     readonly showSubtitleListMiningButton: boolean;
     readonly subtitleListTimestampDisplay: SubtitleListTimestampDisplay;
@@ -209,7 +213,8 @@ export type AnkiSettingsFieldKey =
     | 'track2Field'
     | 'track3Field';
 
-export type MediaFragmentFormatSetting = 'jpeg' | 'webm';
+export const mediaFragmentFormats = ['jpeg', 'webm'] as const;
+export type MediaFragmentFormatSetting = (typeof mediaFragmentFormats)[number];
 
 // Any setting being added here also needs to be added to SettingsAccessor in use-anki.ts
 export interface AnkiSettings {
@@ -379,9 +384,8 @@ export interface TextSubtitleSettings {
     readonly subtitleAlignment: SubtitleAlignment;
 }
 
-export type SubtitlesWidthUnit = '%' | 'px';
-
-export const subtitlesWidthUnits: readonly SubtitlesWidthUnit[] = ['%', 'px'];
+export const subtitlesWidthUnits = ['%', 'px'] as const;
+export type SubtitlesWidthUnit = (typeof subtitlesWidthUnits)[number];
 
 export const maxSubtitlesWidth = (unit: SubtitlesWidthUnit): number => (unit === '%' ? 100 : 10000);
 
@@ -555,7 +559,8 @@ export type ChromeBoundKeyBindName =
     | 'updateSelectedCard'
     | 'exportCard'
     | 'takeScreenshot';
-export type SubtitleAlignment = 'top' | 'bottom';
+export const subtitleAlignments = ['top', 'bottom'] as const;
+export type SubtitleAlignment = (typeof subtitleAlignments)[number];
 export enum SubtitleListPreference {
     noSubtitleList = 'noSubtitleList',
     app = 'app',
@@ -623,7 +628,8 @@ export interface PageSettings {
 
 // The extension captures animated images from the tab, which the website can't, so it has its own setting
 // instead of sharing mediaFragmentFormat
-export type StreamingMediaFragmentFormatSetting = 'jpeg' | 'webp';
+export const streamingMediaFragmentFormats = ['jpeg', 'webp'] as const;
+export type StreamingMediaFragmentFormatSetting = (typeof streamingMediaFragmentFormats)[number];
 
 export interface StreamingVideoSettings {
     readonly streamingAppUrl: string;

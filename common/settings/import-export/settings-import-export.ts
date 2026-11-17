@@ -1,1043 +1,408 @@
+import { z } from 'zod';
 import {
-    minimumWholeSubtitleMatchThreshold,
+    dictionaryAnkiTreatSuspendedNormal,
+    dictionaryYomitanParsers,
     maximumWholeSubtitleMatchThreshold,
+    minimumWholeSubtitleMatchThreshold,
+    TokenFrequencyAnnotation,
+    TokenMatchStrategy,
+    TokenMatchStrategyPriority,
+    TokenReadingAnnotation,
+    TokenStyling,
+    TokenStatus,
 } from '@project/common/settings/settings-dictionary';
-import { Validator } from 'jsonschema';
+import {
+    AutoPauseResumeMode,
+    mediaFragmentFormats,
+    PauseOnHoverMode,
+    streamingMediaFragmentFormats,
+    SubtitleListPreference,
+    SubtitleListTimestampDisplay,
+    SubtitleVisibility,
+    subtitleAlignments,
+    subtitlesWidthUnits,
+    themeTypes,
+    VideoSubtitleSplitBehavior,
+} from '@project/common/settings/settings';
+import { ankiExportModes, SubtitleHtml } from '@project/common/src/model';
 import type { AsbplayerSettings } from '@project/common/settings/settings';
-import { ensureConsistencyOnRead } from '@project/common/settings/settings-provider';
+import { defaultSettings, ensureConsistencyOnRead } from '@project/common/settings/settings-provider';
+import { asbTrace } from '@project/common/util/log';
 import { download, getCurrentTimeString } from '@project/common/util';
 
-const keyBindSchema = {
-    id: '/KeyBind',
-    type: 'object',
-    properties: {
-        keys: {
-            type: 'string',
-        },
-    },
-    required: ['keys'],
-};
-const ankiFieldSchema = {
-    id: '/AnkiField',
-    type: 'object',
-    properties: {
-        order: {
-            type: 'number',
-        },
-        display: {
-            type: 'boolean',
-        },
-    },
-    required: ['order', 'display'],
-};
-const dictionaryTrackSchema = {
-    id: '/DictionaryTrack',
-    type: 'object',
-    properties: {
-        dictionaryColorizeSubtitles: {
-            type: 'boolean',
-        },
-        dictionaryAutoGenerateStatistics: {
-            type: 'boolean',
-        },
-        dictionaryColorizeOnHoverOnly: {
-            type: 'boolean',
-        },
-        dictionaryHighlightOnHover: {
-            type: 'boolean',
-        },
-        dictionaryTokenMatchStrategy: {
-            type: 'string',
-        },
-        dictionaryMatchAcrossScripts: {
-            type: 'boolean',
-        },
-        dictionaryTokenMatchStrategyPriority: {
-            type: 'string',
-        },
-        dictionaryYomitanUrl: {
-            type: 'string',
-        },
-        dictionaryYomitanParser: {
-            type: 'string',
-        },
-        dictionaryYomitanScanLength: {
-            type: 'number',
-        },
-        dictionaryTokenReadingAnnotation: {
-            type: 'string',
-        },
-        dictionaryDisplayIgnoredTokenReadings: {
-            type: 'boolean',
-        },
-        dictionaryTokenFrequencyAnnotation: {
-            type: 'string',
-        },
-        dictionaryAnkiDecks: {
-            type: 'array',
-            items: {
-                type: 'string',
-            },
-        },
-        dictionaryAnkiWordFields: {
-            type: 'array',
-            items: {
-                type: 'string',
-            },
-        },
-        dictionaryAnkiSentenceFields: {
-            type: 'array',
-            items: {
-                type: 'string',
-            },
-        },
-        dictionaryAnkiSentenceTokenMatchStrategy: {
-            type: 'string',
-        },
-        dictionaryAnkiMatureCutoff: {
-            type: 'number',
-        },
-        dictionaryAnkiTreatSuspended: {
-            type: ['string', 'number'],
-        },
-        dictionaryWaniKaniApiToken: {
-            type: 'string',
-        },
-        dictionaryTokenStyling: {
-            type: 'string',
-        },
-        dictionaryTokenStylingThickness: {
-            type: 'number',
-        },
-        dictionaryColorizeFullyKnownTokens: {
-            type: 'boolean',
-        },
-        dictionaryTokenStatusColors: {
-            type: 'array',
-            items: {
-                type: 'string',
-            },
-        },
-        dictionaryTokenStatusConfig: {
-            type: 'array',
-            items: {
-                type: 'object',
-                properties: {
-                    display: { type: 'boolean' },
-                    color: { type: 'string' },
-                    alpha: { type: 'string' },
-                },
-                required: ['display', 'color', 'alpha'],
-            },
-        },
-        dictionaryPlaybackConfig: {
-            type: 'object',
-            properties: {
-                selectOnPause: {
-                    type: 'object',
-                    properties: {
-                        onStatuses: {
-                            type: 'array',
-                            items: {
-                                type: 'object',
-                                properties: { enabled: { type: 'boolean' } },
-                                required: ['enabled'],
-                            },
-                        },
-                        onStates: {
-                            type: 'array',
-                            items: {
-                                type: 'object',
-                                properties: { enabled: { type: 'boolean' } },
-                                required: ['enabled'],
-                            },
-                        },
-                    },
-                    required: ['onStatuses', 'onStates'],
-                },
-                autoPause: {
-                    type: 'object',
-                    properties: {
-                        onStatuses: {
-                            type: 'array',
-                            items: {
-                                type: 'object',
-                                properties: { enabled: { type: 'boolean' } },
-                                required: ['enabled'],
-                            },
-                        },
-                        onStates: {
-                            type: 'array',
-                            items: {
-                                type: 'object',
-                                properties: { enabled: { type: 'boolean' } },
-                                required: ['enabled'],
-                            },
-                        },
-                        rules: {
-                            type: 'object',
-                            properties: {
-                                minWords: { type: 'integer', minimum: 0 },
-                                maxWords: { type: 'integer', minimum: 0 },
-                                minFrequency: { type: 'integer', minimum: 0 },
-                                maxFrequency: { type: 'integer', minimum: 0 },
-                            },
-                            required: ['minWords', 'maxWords', 'minFrequency', 'maxFrequency'],
-                        },
-                    },
-                    required: ['onStatuses', 'onStates', 'rules'],
-                },
-                repeat: {
-                    type: 'object',
-                    properties: {
-                        onStatuses: {
-                            type: 'array',
-                            items: {
-                                type: 'object',
-                                properties: { enabled: { type: 'boolean' } },
-                                required: ['enabled'],
-                            },
-                        },
-                        onStates: {
-                            type: 'array',
-                            items: {
-                                type: 'object',
-                                properties: { enabled: { type: 'boolean' } },
-                                required: ['enabled'],
-                            },
-                        },
-                        rules: {
-                            type: 'object',
-                            properties: {
-                                minWords: { type: 'integer', minimum: 0 },
-                                maxWords: { type: 'integer', minimum: 0 },
-                                minFrequency: { type: 'integer', minimum: 0 },
-                                maxFrequency: { type: 'integer', minimum: 0 },
-                            },
-                            required: ['minWords', 'maxWords', 'minFrequency', 'maxFrequency'],
-                        },
-                    },
-                    required: ['onStatuses', 'onStates', 'rules'],
-                },
-                condensed: {
-                    type: 'object',
-                    properties: {
-                        onStatuses: {
-                            type: 'array',
-                            items: {
-                                type: 'object',
-                                properties: { enabled: { type: 'boolean' } },
-                                required: ['enabled'],
-                            },
-                        },
-                        onStates: {
-                            type: 'array',
-                            items: {
-                                type: 'object',
-                                properties: { enabled: { type: 'boolean' } },
-                                required: ['enabled'],
-                            },
-                        },
-                        rules: {
-                            type: 'object',
-                            properties: {
-                                minWords: { type: 'integer', minimum: 0 },
-                                maxWords: { type: 'integer', minimum: 0 },
-                                minFrequency: { type: 'integer', minimum: 0 },
-                                maxFrequency: { type: 'integer', minimum: 0 },
-                            },
-                            required: ['minWords', 'maxWords', 'minFrequency', 'maxFrequency'],
-                        },
-                    },
-                    required: ['onStatuses', 'onStates', 'rules'],
-                },
-                fastForward: {
-                    type: 'object',
-                    properties: {
-                        onStatuses: {
-                            type: 'array',
-                            items: {
-                                type: 'object',
-                                properties: { enabled: { type: 'boolean' } },
-                                required: ['enabled'],
-                            },
-                        },
-                        onStates: {
-                            type: 'array',
-                            items: {
-                                type: 'object',
-                                properties: { enabled: { type: 'boolean' } },
-                                required: ['enabled'],
-                            },
-                        },
-                        rules: {
-                            type: 'object',
-                            properties: {
-                                minWords: { type: 'integer', minimum: 0 },
-                                maxWords: { type: 'integer', minimum: 0 },
-                                minFrequency: { type: 'integer', minimum: 0 },
-                                maxFrequency: { type: 'integer', minimum: 0 },
-                            },
-                            required: ['minWords', 'maxWords', 'minFrequency', 'maxFrequency'],
-                        },
-                        rateByComprehension: {
-                            type: 'object',
-                            properties: {
-                                enabled: { type: 'boolean' },
-                                minimumPercent: { type: 'integer', minimum: 0, maximum: 99 },
-                            },
-                            required: ['enabled', 'minimumPercent'],
-                        },
-                    },
-                    required: ['onStatuses', 'onStates', 'rules', 'rateByComprehension'],
-                },
-                wordVisibility: {
-                    type: 'object',
-                    properties: {
-                        onStatuses: {
-                            type: 'array',
-                            items: {
-                                type: 'object',
-                                properties: { enabled: { type: 'boolean' } },
-                                required: ['enabled'],
-                            },
-                        },
-                        onStates: {
-                            type: 'array',
-                            items: {
-                                type: 'object',
-                                properties: { enabled: { type: 'boolean' } },
-                                required: ['enabled'],
-                            },
-                        },
-                        rules: {
-                            type: 'object',
-                            properties: {
-                                minWords: { type: 'integer', minimum: 0 },
-                                maxWords: { type: 'integer', minimum: 0 },
-                                minFrequency: { type: 'integer', minimum: 0 },
-                                maxFrequency: { type: 'integer', minimum: 0 },
-                            },
-                            required: ['minWords', 'maxWords', 'minFrequency', 'maxFrequency'],
-                        },
-                        hideWordsIndividuallyUntilThreshold: { type: 'boolean' },
-                        wholeSubtitleMatchThreshold: {
-                            type: 'number',
-                            minimum: minimumWholeSubtitleMatchThreshold,
-                            maximum: maximumWholeSubtitleMatchThreshold,
-                        },
-                    },
-                    required: [
-                        'onStatuses',
-                        'onStates',
-                        'rules',
-                        'hideWordsIndividuallyUntilThreshold',
-                        'wholeSubtitleMatchThreshold',
-                    ],
-                },
-            },
-            required: ['selectOnPause', 'autoPause', 'repeat', 'condensed', 'fastForward', 'wordVisibility'],
-        },
-        dictionaryTokenAnnotationConfig: {
-            type: 'object',
-            properties: {
-                colorizeEnabled: {
-                    type: 'boolean',
-                },
-                video: {
-                    type: 'object',
-                    properties: {
-                        color: {
-                            type: 'object',
-                            properties: { onHoverEnabled: { type: 'boolean' }, size: { type: 'number' } },
-                            required: ['onHoverEnabled', 'size'],
-                        },
-                        reading: {
-                            type: 'object',
-                            properties: { onHoverEnabled: { type: 'boolean' }, size: { type: 'number' } },
-                            required: ['onHoverEnabled', 'size'],
-                        },
-                        frequency: {
-                            type: 'object',
-                            properties: { onHoverEnabled: { type: 'boolean' }, size: { type: 'number' } },
-                            required: ['onHoverEnabled', 'size'],
-                        },
-                        gloss: {
-                            type: 'object',
-                            properties: { onHoverEnabled: { type: 'boolean' }, size: { type: 'number' } },
-                            required: ['onHoverEnabled', 'size'],
-                        },
-                        pitchAccent: {
-                            type: 'object',
-                            properties: { onHoverEnabled: { type: 'boolean' }, size: { type: 'number' } },
-                            required: ['onHoverEnabled', 'size'],
-                        },
-                    },
-                    required: ['color', 'reading', 'frequency', 'pitchAccent'],
-                },
-                subtitlePlayer: {
-                    type: 'object',
-                    properties: {
-                        color: {
-                            type: 'object',
-                            properties: { onHoverEnabled: { type: 'boolean' }, size: { type: 'number' } },
-                            required: ['onHoverEnabled', 'size'],
-                        },
-                        reading: {
-                            type: 'object',
-                            properties: { onHoverEnabled: { type: 'boolean' }, size: { type: 'number' } },
-                            required: ['onHoverEnabled', 'size'],
-                        },
-                        frequency: {
-                            type: 'object',
-                            properties: { onHoverEnabled: { type: 'boolean' }, size: { type: 'number' } },
-                            required: ['onHoverEnabled', 'size'],
-                        },
-                        gloss: {
-                            type: 'object',
-                            properties: { onHoverEnabled: { type: 'boolean' }, size: { type: 'number' } },
-                            required: ['onHoverEnabled', 'size'],
-                        },
-                        pitchAccent: {
-                            type: 'object',
-                            properties: { onHoverEnabled: { type: 'boolean' }, size: { type: 'number' } },
-                            required: ['onHoverEnabled', 'size'],
-                        },
-                    },
-                    required: ['color', 'reading', 'frequency', 'pitchAccent'],
-                },
-                onStatuses: {
-                    type: 'array',
-                    items: {
-                        type: 'object',
-                        properties: {
-                            reading: { type: 'boolean' },
-                            frequency: { type: 'boolean' },
-                            gloss: { type: 'boolean' },
-                            pitchAccent: { type: 'boolean' },
-                        },
-                        required: ['reading', 'frequency', 'pitchAccent'],
-                    },
-                },
-                onStates: {
-                    type: 'array',
-                    items: {
-                        type: 'object',
-                        properties: {
-                            reading: { type: 'boolean' },
-                            frequency: { type: 'boolean' },
-                            gloss: { type: 'boolean' },
-                            pitchAccent: { type: 'boolean' },
-                        },
-                        required: ['reading', 'frequency', 'pitchAccent'],
-                    },
-                },
-            },
-            required: ['colorizeEnabled', 'video', 'subtitlePlayer', 'onStatuses', 'onStates'],
-        },
-    },
-    required: [
-        'dictionaryColorizeSubtitles',
-        'dictionaryColorizeOnHoverOnly',
-        'dictionaryHighlightOnHover',
-        'dictionaryTokenMatchStrategy',
-        'dictionaryTokenMatchStrategyPriority',
-        'dictionaryYomitanUrl',
-        'dictionaryYomitanScanLength',
-        'dictionaryTokenReadingAnnotation',
-        'dictionaryDisplayIgnoredTokenReadings',
-        'dictionaryTokenFrequencyAnnotation',
-        'dictionaryAnkiDecks',
-        'dictionaryAnkiWordFields',
-        'dictionaryAnkiSentenceFields',
-        'dictionaryAnkiSentenceTokenMatchStrategy',
-        'dictionaryAnkiMatureCutoff',
-        'dictionaryAnkiTreatSuspended',
-        'dictionaryTokenStyling',
-        'dictionaryTokenStylingThickness',
-        'dictionaryColorizeFullyKnownTokens',
-        'dictionaryTokenStatusColors',
-    ],
-};
-const textSubtitleSettingsSchema = {
-    id: '/TextSubtitleSettings',
-    type: 'object',
-    properties: {
-        subtitleColor: {
-            type: 'string',
-        },
-        subtitleSize: {
-            type: 'number',
-        },
-        subtitleThickness: {
-            type: 'number',
-        },
-        subtitleOutlineThickness: {
-            type: 'number',
-        },
-        subtitleShadowColor: {
-            type: 'string',
-        },
-        subtitleBackgroundOpacity: {
-            type: 'number',
-        },
-        subtitleBackgroundColor: {
-            type: 'string',
-        },
-        subtitleFontFamily: {
-            type: 'string',
-        },
-        subtitleCustomStyles: {
-            type: 'array',
-            items: {
-                type: 'object',
-                properties: {
-                    key: {
-                        type: 'string',
-                    },
-                    value: {
-                        type: 'string',
-                    },
-                },
-            },
-        },
-        subtitleBlur: {
-            type: 'boolean',
-        },
-    },
-    required: [
-        'subtitleColor',
-        'subtitleSize',
-        'subtitleThickness',
-        'subtitleOutlineThickness',
-        'subtitleShadowColor',
-        'subtitleBackgroundOpacity',
-        'subtitleBackgroundColor',
-        'subtitleFontFamily',
-        'subtitleCustomStyles',
-        'subtitleBlur',
-    ],
-};
-const settingsSchema = {
-    id: '/Settings',
-    type: 'object',
-    properties: {
-        ankiConnectUrl: {
-            type: 'string',
-        },
-        ankiConnectApiKey: {
-            type: 'string',
-        },
-        ankiRefreshBrowserAfterUpdate: {
-            type: 'boolean',
-        },
-        deck: {
-            type: 'string',
-        },
-        noteType: {
-            type: 'string',
-        },
-        sentenceField: {
-            type: 'string',
-        },
-        definitionField: {
-            type: 'string',
-        },
-        audioField: {
-            type: 'string',
-        },
-        imageField: {
-            type: 'string',
-        },
-        wordField: {
-            type: 'string',
-        },
-        sourceField: {
-            type: 'string',
-        },
-        urlField: {
-            type: 'string',
-        },
-        track1Field: {
-            type: 'string',
-        },
-        track2Field: {
-            type: 'string',
-        },
-        track3Field: {
-            type: 'string',
-        },
-        ankiFieldSettings: {
-            type: 'object',
-            properties: {
-                sentence: { $ref: '/AnkiField' },
-                definition: { $ref: '/AnkiField' },
-                audio: { $ref: '/AnkiField' },
-                image: { $ref: '/AnkiField' },
-                word: { $ref: '/AnkiField' },
-                source: { $ref: '/AnkiField' },
-                url: { $ref: '/AnkiField' },
-                track1: { $ref: '/AnkiField' },
-                track2: { $ref: '/AnkiField' },
-                track3: { $ref: '/AnkiField' },
-            },
-        },
-        customAnkiFieldSettings: {
-            type: 'object',
-            additionalProperties: {
-                type: '/AnkiField',
-            },
-        },
-        subtitleSize: {
-            type: 'number',
-        },
-        subtitleColor: {
-            type: 'string',
-        },
-        subtitleThickness: {
-            type: 'number',
-        },
-        subtitleOutlineThickness: {
-            type: 'number',
-        },
-        subtitleShadowThickness: {
-            type: 'number',
-        },
-        subtitleShadowColor: {
-            type: 'string',
-        },
-        subtitleOutlineColor: {
-            type: 'string',
-        },
-        subtitleBackgroundColor: {
-            type: 'string',
-        },
-        subtitleBackgroundOpacity: {
-            type: 'number',
-        },
-        subtitleFontFamily: {
-            type: 'string',
-        },
-        subtitleBlur: {
-            type: 'boolean',
-        },
-        subtitlePreview: {
-            type: 'string',
-        },
-        subtitlePositionOffset: {
-            type: 'number',
-        },
-        topSubtitlePositionOffset: {
-            type: 'number',
-        },
-        subtitleAlignment: {
-            type: 'string',
-        },
-        subtitleTracksV2: {
-            type: 'array',
-            items: {
-                $ref: '/TextSubtitleSettings',
-            },
-        },
-        audioPaddingStart: {
-            type: 'number',
-        },
-        audioPaddingEnd: {
-            type: 'number',
-        },
-        maxImageWidth: {
-            type: 'number',
-        },
-        maxImageHeight: {
-            type: 'number',
-        },
-        mediaFragmentFormat: {
-            type: 'string',
-        },
-        mediaFragmentTrimStart: {
-            type: 'number',
-        },
-        mediaFragmentTrimEnd: {
-            type: 'number',
-        },
-        mediaFragmentMaxClipLength: {
-            type: 'number',
-        },
-        trimBlackBars: {
-            type: 'boolean',
-        },
-        surroundingSubtitlesCountRadius: {
-            type: 'number',
-        },
-        surroundingSubtitlesTimeRadius: {
-            type: 'number',
-        },
-        autoPausePreference: {
-            type: 'number',
-        },
-        subtitleTriggerStartOffset: {
-            type: 'number',
-        },
-        subtitleTriggerEndOffset: {
-            type: 'number',
-        },
-        subtitleTriggerGapEndOffset: {
-            type: 'number',
-        },
-        subtitleTriggerGapStartOffset: {
-            type: 'number',
-        },
-        seekableTracks: {
-            type: 'number',
-        },
-        autoCopyableTracks: {
-            type: 'number',
-        },
-        subtitleHtml: {
-            type: 'number',
-        },
-        seekDuration: {
-            type: 'number',
-        },
-        speedChangeStep: {
-            type: 'number',
-        },
-        playbackRate: {
-            type: 'number',
-        },
-        playbackRateNotificationEnabled: {
-            type: 'boolean',
-        },
-        rememberPlaybackRate: {
-            type: 'boolean',
-        },
-        fastForwardModePlaybackRate: {
-            type: 'number',
-        },
-        fastForwardPlaybackMinimumSkipIntervalMs: {
-            type: 'number',
-        },
-        repeatCountPreference: {
-            type: 'number',
-        },
-        repeatsBeforeShowingSubtitles: {
-            type: 'integer',
-        },
-        autoPauseResumeMode: {
-            type: 'string',
-            enum: ['manual', 'fixed', 'subtitleLength'],
-        },
-        autoPauseResumeDelayMs: {
-            type: 'number',
-        },
-        autoPauseFixedDurationMs: {
-            type: 'number',
-        },
-        autoPauseMinimumDurationMs: {
-            type: 'number',
-        },
-        autoPauseMaximumDurationMs: {
-            type: 'number',
-        },
-        autoPauseTimePerCharacterMs: {
-            type: 'number',
-        },
-        subtitleVisibility: {
-            type: 'string',
-            enum: ['whenDue', 'whilePaused', 'whileManuallyPaused'],
-        },
-        rememberPlaybackModes: {
-            type: 'boolean',
-        },
-        recipes: { type: 'array' },
-        activeRecipeId: { type: ['integer', 'null'] },
-        lastPlaybackModes: {
-            type: 'array',
-            items: {
-                type: 'number',
-            },
-        },
-        lastPlaybackPositions: {
-            type: 'array',
-            items: {
-                type: 'object',
-                properties: {
-                    fileName: { type: 'string' },
-                    position: { type: 'number' },
-                },
-                required: ['fileName', 'position'],
-            },
-        },
-        keyBindSet: {
-            type: 'object',
-            properties: {
-                cycleRecipesForward: { $ref: '/KeyBind' },
-                cycleRecipesBackward: { $ref: '/KeyBind' },
-                toggleRecipe1: { $ref: '/KeyBind' },
-                toggleRecipe2: { $ref: '/KeyBind' },
-                toggleRecipe3: { $ref: '/KeyBind' },
-                toggleRecipe4: { $ref: '/KeyBind' },
-                toggleRecipe5: { $ref: '/KeyBind' },
-                toggleRecipe6: { $ref: '/KeyBind' },
-                toggleRecipe7: { $ref: '/KeyBind' },
-                toggleRecipe8: { $ref: '/KeyBind' },
-                toggleRecipe9: { $ref: '/KeyBind' },
-                toggleRecipe10: { $ref: '/KeyBind' },
-                togglePlay: { $ref: '/KeyBind' },
-                toggleAutoPause: { $ref: '/KeyBind' },
-                toggleCondensedPlayback: { $ref: '/KeyBind' },
-                toggleFastForwardPlayback: { $ref: '/KeyBind' },
-                toggleSubtitles: { $ref: '/KeyBind' },
-                toggleVideoSubtitleTrack1: { $ref: '/KeyBind' },
-                toggleVideoSubtitleTrack2: { $ref: '/KeyBind' },
-                toggleVideoSubtitleTrack3: { $ref: '/KeyBind' },
-                toggleAsbplayerSubtitleTrack1: { $ref: '/KeyBind' },
-                toggleAsbplayerSubtitleTrack2: { $ref: '/KeyBind' },
-                toggleAsbplayerSubtitleTrack3: { $ref: '/KeyBind' },
-                unblurAsbplayerTrack1: { $ref: '/KeyBind' },
-                unblurAsbplayerTrack2: { $ref: '/KeyBind' },
-                unblurAsbplayerTrack3: { $ref: '/KeyBind' },
-                seekBackward: { $ref: '/KeyBind' },
-                seekForward: { $ref: '/KeyBind' },
-                seekToPreviousSubtitle: { $ref: '/KeyBind' },
-                seekToNextSubtitle: { $ref: '/KeyBind' },
-                seekToBeginningOfCurrentSubtitle: { $ref: '/KeyBind' },
-                adjustOffsetToPreviousSubtitle: { $ref: '/KeyBind' },
-                adjustOffsetToNextSubtitle: { $ref: '/KeyBind' },
-                decreaseOffset: { $ref: '/KeyBind' },
-                increaseOffset: { $ref: '/KeyBind' },
-                resetOffset: { $ref: '/KeyBind' },
-                copySubtitle: { $ref: '/KeyBind' },
-                ankiExport: { $ref: '/KeyBind' },
-                updateLastCard: { $ref: '/KeyBind' },
-                updateSelectedCard: { $ref: '/KeyBind' },
-                exportCard: { $ref: '/KeyBind' },
-                takeScreenshot: { $ref: '/KeyBind' },
-                toggleRecording: { $ref: '/KeyBind' },
-                selectSubtitleTrack: { $ref: '/KeyBind' },
-                decreasePlaybackRate: { $ref: '/KeyBind' },
-                increasePlaybackRate: { $ref: '/KeyBind' },
-                toggleSidePanel: { $ref: '/KeyBind' },
-                toggleRepeat: { $ref: '/KeyBind' },
-                toggleSubtitleVisibility: { $ref: '/KeyBind' },
-                cycleAutoPauseResumeMode: { $ref: '/KeyBind' },
-                moveBottomSubtitlesUp: { $ref: '/KeyBind' },
-                moveBottomSubtitlesDown: { $ref: '/KeyBind' },
-                moveTopSubtitlesUp: { $ref: '/KeyBind' },
-                moveTopSubtitlesDown: { $ref: '/KeyBind' },
-                openStatistics: { $ref: '/KeyBind' },
-                jumpToNextToken: { $ref: '/KeyBind' },
-                jumpToPreviousToken: { $ref: '/KeyBind' },
-                markHoveredToken5: { $ref: '/KeyBind' },
-                jumpToNextTokenStatus5: { $ref: '/KeyBind' },
-                jumpToPreviousTokenStatus5: { $ref: '/KeyBind' },
-                markHoveredToken4: { $ref: '/KeyBind' },
-                jumpToNextTokenStatus4: { $ref: '/KeyBind' },
-                jumpToPreviousTokenStatus4: { $ref: '/KeyBind' },
-                markHoveredToken3: { $ref: '/KeyBind' },
-                jumpToNextTokenStatus3: { $ref: '/KeyBind' },
-                jumpToPreviousTokenStatus3: { $ref: '/KeyBind' },
-                markHoveredToken2: { $ref: '/KeyBind' },
-                jumpToNextTokenStatus2: { $ref: '/KeyBind' },
-                jumpToPreviousTokenStatus2: { $ref: '/KeyBind' },
-                markHoveredToken1: { $ref: '/KeyBind' },
-                jumpToNextTokenStatus1: { $ref: '/KeyBind' },
-                jumpToPreviousTokenStatus1: { $ref: '/KeyBind' },
-                markHoveredToken0: { $ref: '/KeyBind' },
-                jumpToNextTokenStatus0: { $ref: '/KeyBind' },
-                jumpToPreviousTokenStatus0: { $ref: '/KeyBind' },
-                toggleHoveredTokenIgnored: { $ref: '/KeyBind' },
-                jumpToNextTokenState0: { $ref: '/KeyBind' },
-                jumpToPreviousTokenState0: { $ref: '/KeyBind' },
-            },
-        },
-        recordWithAudioPlayback: {
-            type: 'boolean',
-        },
-        preferMp3: {
-            type: 'boolean',
-        },
-        alwaysUseSubtitleForSentence: {
-            type: 'boolean',
-        },
-        tabName: {
-            type: 'string',
-        },
-        miningHistoryStorageLimit: {
-            type: 'number',
-        },
-        preCacheSubtitleDom: {
-            type: 'boolean',
-        },
-        clickToMineDefaultAction: {
-            type: 'number',
-        },
-        postMiningPlaybackState: {
-            type: 'number',
-        },
-        themeType: {
-            type: 'string',
-        },
-        videoSubtitleSplitBehavior: {
-            type: 'string',
-        },
-        showSubtitleListMiningButton: {
-            type: 'boolean',
-        },
-        subtitleListTimestampDisplay: {
-            type: 'string',
-        },
-        copyToClipboardOnMine: {
-            type: 'boolean',
-        },
-        updateLastCardForSameSubtitle: {
-            type: 'boolean',
-        },
-        rememberSubtitleOffset: {
-            type: 'boolean',
-        },
-        lastSubtitleOffset: {
-            type: 'number',
-        },
-        autoCopyCurrentSubtitle: {
-            type: 'boolean',
-        },
-        alwaysPlayOnSubtitleRepeat: {
-            type: 'boolean',
-        },
-        subtitleRegexFilter: {
-            type: 'string',
-        },
-        subtitleRegexFilterTextReplacement: {
-            type: 'string',
-        },
-        convertNetflixRuby: {
-            type: 'boolean',
-        },
-        language: {
-            type: 'string',
-        },
-        customAnkiFields: {
-            type: 'object',
-            additionalProperties: {
-                type: 'string',
-            },
-        },
-        tags: {
-            type: 'array',
-            items: {
-                type: 'string',
-            },
-        },
-        imageBasedSubtitleScaleFactor: {
-            type: 'number',
-        },
-        subtitleCustomStyles: {
-            type: 'array',
-            items: {
-                type: 'object',
-                properties: {
-                    key: {
-                        type: 'string',
-                    },
-                    value: {
-                        type: 'string',
-                    },
-                },
-            },
-        },
-        subtitlesWidth: {
-            type: 'number',
-        },
-        subtitlesWidthUnit: {
-            type: 'string',
-        },
-        streamingAppUrl: {
-            type: 'string',
-        },
-        streamingDisplaySubtitles: {
-            type: 'boolean',
-        },
-        streamingRecordMedia: {
-            type: 'boolean',
-        },
-        streamingTakeScreenshot: {
-            type: 'boolean',
-        },
-        streamingCleanScreenshot: {
-            type: 'boolean',
-        },
-        streamingCropScreenshot: {
-            type: 'boolean',
-        },
-        streamingSubsDragAndDrop: {
-            type: 'boolean',
-        },
-        streamingAutoSync: {
-            type: 'boolean',
-        },
-        streamingAutoSyncPromptOnFailure: {
-            type: 'boolean',
-        },
-        streamingLastLanguagesSynced: {
-            type: 'object',
-            additionalProperties: {
-                type: 'array',
-                items: {
-                    type: 'string',
-                },
-            },
-        },
-        streamingCondensedPlaybackMinimumSkipIntervalMs: {
-            type: 'number',
-        },
-        streamingScreenshotDelay: {
-            type: 'number',
-        },
-        streamingMediaFragmentFormat: {
-            type: 'string',
-        },
-        streamingAnimatedImageFps: {
-            type: 'number',
-        },
-        streamingAnimatedImageQuality: {
-            type: 'number',
-        },
-        streamingSubtitleListPreference: {
-            type: 'string',
-        },
-        streamingEnableOverlay: {
-            type: 'boolean',
-        },
-        webSocketClientEnabled: {
-            type: 'boolean',
-        },
-        webSocketServerUrl: {
-            type: 'string',
-        },
-        pauseOnHoverMode: {
-            type: 'number',
-        },
-        lastSelectedAnkiExportMode: {
-            type: 'string',
-        },
-        dictionaryTracks: {
-            type: 'array',
-            items: {
-                $ref: '/DictionaryTrack',
-            },
-        },
-        thumbnailPreview: {
-            type: 'boolean',
-        },
-        subtitleAboveThumbnail: {
-            type: 'boolean',
-        },
-        _schema: {
-            type: 'number',
-        },
-    },
-};
+// All schemas are strict, including nested ones. `validateSettings`
+// strips `deprecatedPaths` and runs `ensureConsistencyOnRead` before
+// validation, filling what older exports lack. That keeps historical exports
+// importable.
+// `settings-schema-conformance.test.ts` keeps the schema in sync with the
+// settings model key-for-key. Nested keys inside containers that consistency
+// fills can stay required; containers without a fill source
+// (`customAnkiFieldSettings` values, `lastPlaybackPositions`) must keep new
+// keys optional.
+
+const keyBindSchema = z.strictObject({
+    keys: z.string(),
+});
+const ankiFieldSchema = z.strictObject({
+    order: z.number(),
+    display: z.boolean(),
+});
+
+const tokenAnnotationDisplaySchema = z.strictObject({
+    onHoverEnabled: z.boolean(),
+    size: z.number(),
+});
+
+const tokenAnnotationDisplayConfigSchema = z.strictObject({
+    color: tokenAnnotationDisplaySchema,
+    reading: tokenAnnotationDisplaySchema,
+    frequency: tokenAnnotationDisplaySchema,
+    gloss: tokenAnnotationDisplaySchema,
+    pitchAccent: tokenAnnotationDisplaySchema,
+});
+
+const playbackTriggerSchema = z.strictObject({
+    enabled: z.boolean(),
+});
+
+const playbackRulesSchema = z.strictObject({
+    minWords: z.number().int().min(0),
+    maxWords: z.number().int().min(0),
+    minFrequency: z.number().int().min(0),
+    maxFrequency: z.number().int().min(0),
+});
+
+const playbackTriggersSchema = z.strictObject({
+    onStatuses: z.array(playbackTriggerSchema),
+    onStates: z.array(playbackTriggerSchema),
+    rules: playbackRulesSchema,
+});
+
+const dictionaryPlaybackConfigSchema = z.strictObject({
+    selectOnPause: z.strictObject({
+        onStatuses: z.array(playbackTriggerSchema),
+        onStates: z.array(playbackTriggerSchema),
+    }),
+    autoPause: playbackTriggersSchema,
+    repeat: playbackTriggersSchema,
+    condensed: playbackTriggersSchema,
+    fastForward: z.strictObject({
+        onStatuses: z.array(playbackTriggerSchema),
+        onStates: z.array(playbackTriggerSchema),
+        rules: playbackRulesSchema,
+        rateByComprehension: z.strictObject({
+            enabled: z.boolean(),
+            minimumPercent: z.number().int().min(0).max(99),
+        }),
+    }),
+    wordVisibility: z.strictObject({
+        onStatuses: z.array(playbackTriggerSchema),
+        onStates: z.array(playbackTriggerSchema),
+        rules: playbackRulesSchema,
+        hideWordsIndividuallyUntilThreshold: z.boolean(),
+        wholeSubtitleMatchThreshold: z
+            .number()
+            .min(minimumWholeSubtitleMatchThreshold)
+            .max(maximumWholeSubtitleMatchThreshold),
+    }),
+});
+
+const tokenStatusConfigSchema = z.strictObject({
+    display: z.boolean(),
+    color: z.string(),
+    alpha: z.string(),
+});
+
+const tokenAnnotationStatusSchema = z.strictObject({
+    reading: z.boolean(),
+    frequency: z.boolean(),
+    gloss: z.boolean(),
+    pitchAccent: z.boolean(),
+});
+
+const dictionaryTrackSchema = z.strictObject({
+    dictionaryColorizeSubtitles: z.boolean(),
+    dictionaryAutoGenerateStatistics: z.boolean(),
+    dictionaryColorizeOnHoverOnly: z.boolean(),
+    dictionaryHighlightOnHover: z.boolean(),
+    dictionaryTokenMatchStrategy: z.enum(TokenMatchStrategy),
+    dictionaryMatchAcrossScripts: z.boolean(),
+    dictionaryTokenMatchStrategyPriority: z.enum(TokenMatchStrategyPriority),
+    dictionaryYomitanUrl: z.string(),
+    dictionaryYomitanParser: z.enum(dictionaryYomitanParsers),
+    dictionaryYomitanScanLength: z.number(),
+    dictionaryTokenReadingAnnotation: z.enum(TokenReadingAnnotation),
+    dictionaryDisplayIgnoredTokenReadings: z.boolean(),
+    dictionaryTokenFrequencyAnnotation: z.enum(TokenFrequencyAnnotation),
+    dictionaryAnkiDecks: z.array(z.string()),
+    dictionaryAnkiWordFields: z.array(z.string()),
+    dictionaryAnkiSentenceFields: z.array(z.string()),
+    dictionaryAnkiSentenceTokenMatchStrategy: z.enum(TokenMatchStrategy),
+    dictionaryAnkiMatureCutoff: z.number(),
+    dictionaryAnkiTreatSuspended: z.union([z.enum(TokenStatus), z.literal(dictionaryAnkiTreatSuspendedNormal)]),
+    dictionaryWaniKaniApiToken: z.string(),
+    dictionaryTokenStyling: z.enum(TokenStyling),
+    dictionaryTokenStylingThickness: z.number(),
+    dictionaryColorizeFullyKnownTokens: z.boolean(),
+    dictionaryTokenStatusColors: z.array(z.string()),
+    dictionaryTokenStatusConfig: z.array(tokenStatusConfigSchema),
+    dictionaryPlaybackConfig: dictionaryPlaybackConfigSchema,
+    dictionaryTokenAnnotationConfig: z.strictObject({
+        colorizeEnabled: z.boolean(),
+        video: tokenAnnotationDisplayConfigSchema,
+        subtitlePlayer: tokenAnnotationDisplayConfigSchema,
+        onStatuses: z.array(tokenAnnotationStatusSchema),
+        onStates: z.array(tokenAnnotationStatusSchema),
+    }),
+});
+
+const subtitleCustomStylesSchema = z.array(
+    z.strictObject({
+        key: z.string().optional(),
+        value: z.string().optional(),
+    })
+);
+
+const textSubtitleSettingsSchema = z.strictObject({
+    subtitleColor: z.string(),
+    subtitleSize: z.number(),
+    subtitleThickness: z.number(),
+    subtitleOutlineThickness: z.number(),
+    subtitleOutlineColor: z.string(),
+    subtitleShadowThickness: z.number(),
+    subtitleShadowColor: z.string(),
+    subtitleBackgroundOpacity: z.number(),
+    subtitleBackgroundColor: z.string(),
+    subtitleFontFamily: z.string(),
+    subtitleCustomStyles: subtitleCustomStylesSchema,
+    subtitleBlur: z.boolean(),
+    subtitleAlignment: z.enum(subtitleAlignments),
+});
+
+const lastPlaybackPositionSchema = z.strictObject({
+    fileName: z.string(),
+    position: z.number(),
+});
+
+export const settingsSchema = z
+    .strictObject({
+        ankiConnectUrl: z.string(),
+        ankiConnectApiKey: z.string(),
+        ankiRefreshBrowserAfterUpdate: z.boolean(),
+        deck: z.string(),
+        noteType: z.string(),
+        sentenceField: z.string(),
+        definitionField: z.string(),
+        audioField: z.string(),
+        imageField: z.string(),
+        wordField: z.string(),
+        sourceField: z.string(),
+        urlField: z.string(),
+        track1Field: z.string(),
+        track2Field: z.string(),
+        track3Field: z.string(),
+        ankiFieldSettings: z.strictObject({
+            sentence: ankiFieldSchema,
+            definition: ankiFieldSchema,
+            audio: ankiFieldSchema,
+            image: ankiFieldSchema,
+            word: ankiFieldSchema,
+            source: ankiFieldSchema,
+            url: ankiFieldSchema,
+            track1: ankiFieldSchema,
+            track2: ankiFieldSchema,
+            track3: ankiFieldSchema,
+        }),
+        customAnkiFieldSettings: z.record(z.string(), ankiFieldSchema),
+        subtitleSize: z.number(),
+        subtitleColor: z.string(),
+        subtitleThickness: z.number(),
+        subtitleOutlineThickness: z.number(),
+        subtitleShadowThickness: z.number(),
+        subtitleShadowColor: z.string(),
+        subtitleOutlineColor: z.string(),
+        subtitleBackgroundColor: z.string(),
+        subtitleBackgroundOpacity: z.number(),
+        subtitleFontFamily: z.string(),
+        subtitleBlur: z.boolean(),
+        subtitlePreview: z.string(),
+        subtitlePositionOffset: z.number(),
+        topSubtitlePositionOffset: z.number(),
+        subtitleAlignment: z.enum(subtitleAlignments),
+        subtitleTracksV2: z.array(textSubtitleSettingsSchema),
+        audioPaddingStart: z.number(),
+        audioPaddingEnd: z.number(),
+        maxImageWidth: z.number(),
+        maxImageHeight: z.number(),
+        mediaFragmentFormat: z.enum(mediaFragmentFormats),
+        mediaFragmentTrimStart: z.number(),
+        mediaFragmentTrimEnd: z.number(),
+        mediaFragmentMaxClipLength: z.number(),
+        trimBlackBars: z.boolean(),
+        surroundingSubtitlesCountRadius: z.number(),
+        surroundingSubtitlesTimeRadius: z.number(),
+        autoPausePreference: z.number(),
+        subtitleTriggerStartOffset: z.number(),
+        subtitleTriggerEndOffset: z.number(),
+        subtitleTriggerGapEndOffset: z.number(),
+        subtitleTriggerGapStartOffset: z.number(),
+        seekableTracks: z.number(),
+        autoCopyableTracks: z.number(),
+        subtitleHtml: z.enum(SubtitleHtml),
+        seekDuration: z.number(),
+        speedChangeStep: z.number(),
+        playbackRate: z.number(),
+        playbackRateNotificationEnabled: z.boolean(),
+        rememberPlaybackRate: z.boolean(),
+        fastForwardModePlaybackRate: z.number(),
+        fastForwardPlaybackMinimumSkipIntervalMs: z.number(),
+        repeatCountPreference: z.number(),
+        repeatsBeforeShowingSubtitles: z.number().int(),
+        autoPauseResumeMode: z.enum(AutoPauseResumeMode),
+        autoPauseResumeDelayMs: z.number(),
+        autoPauseFixedDurationMs: z.number(),
+        autoPauseMinimumDurationMs: z.number(),
+        autoPauseMaximumDurationMs: z.number(),
+        autoPauseTimePerCharacterMs: z.number(),
+        subtitleVisibility: z.enum(SubtitleVisibility),
+        rememberPlaybackModes: z.boolean(),
+        recipes: z.array(z.unknown()),
+        activeRecipeId: z.union([z.number().int(), z.null()]),
+        lastPlaybackModes: z.array(z.number()),
+        lastPlaybackPositions: z.array(lastPlaybackPositionSchema),
+        keyBindSet: z.strictObject({
+            cycleRecipesForward: keyBindSchema,
+            cycleRecipesBackward: keyBindSchema,
+            toggleRecipe1: keyBindSchema,
+            toggleRecipe2: keyBindSchema,
+            toggleRecipe3: keyBindSchema,
+            toggleRecipe4: keyBindSchema,
+            toggleRecipe5: keyBindSchema,
+            toggleRecipe6: keyBindSchema,
+            toggleRecipe7: keyBindSchema,
+            toggleRecipe8: keyBindSchema,
+            toggleRecipe9: keyBindSchema,
+            toggleRecipe10: keyBindSchema,
+            togglePlay: keyBindSchema,
+            toggleAutoPause: keyBindSchema,
+            toggleCondensedPlayback: keyBindSchema,
+            toggleFastForwardPlayback: keyBindSchema,
+            toggleSubtitles: keyBindSchema,
+            toggleVideoSubtitleTrack1: keyBindSchema,
+            toggleVideoSubtitleTrack2: keyBindSchema,
+            toggleVideoSubtitleTrack3: keyBindSchema,
+            toggleAsbplayerSubtitleTrack1: keyBindSchema,
+            toggleAsbplayerSubtitleTrack2: keyBindSchema,
+            toggleAsbplayerSubtitleTrack3: keyBindSchema,
+            unblurAsbplayerTrack1: keyBindSchema,
+            unblurAsbplayerTrack2: keyBindSchema,
+            unblurAsbplayerTrack3: keyBindSchema,
+            seekBackward: keyBindSchema,
+            seekForward: keyBindSchema,
+            seekToPreviousSubtitle: keyBindSchema,
+            seekToNextSubtitle: keyBindSchema,
+            seekToBeginningOfCurrentSubtitle: keyBindSchema,
+            adjustOffsetToPreviousSubtitle: keyBindSchema,
+            adjustOffsetToNextSubtitle: keyBindSchema,
+            decreaseOffset: keyBindSchema,
+            increaseOffset: keyBindSchema,
+            resetOffset: keyBindSchema,
+            copySubtitle: keyBindSchema,
+            ankiExport: keyBindSchema,
+            updateLastCard: keyBindSchema,
+            exportCard: keyBindSchema,
+            takeScreenshot: keyBindSchema,
+            toggleRecording: keyBindSchema,
+            selectSubtitleTrack: keyBindSchema,
+            decreasePlaybackRate: keyBindSchema,
+            increasePlaybackRate: keyBindSchema,
+            toggleSidePanel: keyBindSchema,
+            toggleRepeat: keyBindSchema,
+            toggleSubtitleVisibility: keyBindSchema,
+            cycleAutoPauseResumeMode: keyBindSchema,
+            moveBottomSubtitlesUp: keyBindSchema,
+            moveBottomSubtitlesDown: keyBindSchema,
+            moveTopSubtitlesUp: keyBindSchema,
+            moveTopSubtitlesDown: keyBindSchema,
+            openStatistics: keyBindSchema,
+            jumpToNextToken: keyBindSchema,
+            jumpToPreviousToken: keyBindSchema,
+            markHoveredToken5: keyBindSchema,
+            jumpToNextTokenStatus5: keyBindSchema,
+            jumpToPreviousTokenStatus5: keyBindSchema,
+            markHoveredToken4: keyBindSchema,
+            jumpToNextTokenStatus4: keyBindSchema,
+            jumpToPreviousTokenStatus4: keyBindSchema,
+            markHoveredToken3: keyBindSchema,
+            jumpToNextTokenStatus3: keyBindSchema,
+            jumpToPreviousTokenStatus3: keyBindSchema,
+            markHoveredToken2: keyBindSchema,
+            jumpToNextTokenStatus2: keyBindSchema,
+            jumpToPreviousTokenStatus2: keyBindSchema,
+            markHoveredToken1: keyBindSchema,
+            jumpToNextTokenStatus1: keyBindSchema,
+            jumpToPreviousTokenStatus1: keyBindSchema,
+            markHoveredToken0: keyBindSchema,
+            jumpToNextTokenStatus0: keyBindSchema,
+            jumpToPreviousTokenStatus0: keyBindSchema,
+            toggleHoveredTokenIgnored: keyBindSchema,
+            jumpToNextTokenState0: keyBindSchema,
+            jumpToPreviousTokenState0: keyBindSchema,
+        }),
+        recordWithAudioPlayback: z.boolean(),
+        preferMp3: z.boolean(),
+        alwaysUseSubtitleForSentence: z.boolean(),
+        tabName: z.string(),
+        miningHistoryStorageLimit: z.number(),
+        clickToMineDefaultAction: z.number(),
+        postMiningPlaybackState: z.number(),
+        themeType: z.enum(themeTypes),
+        videoSubtitleSplitBehavior: z.enum(VideoSubtitleSplitBehavior),
+        showSubtitleListMiningButton: z.boolean(),
+        subtitleListTimestampDisplay: z.enum(SubtitleListTimestampDisplay),
+        copyToClipboardOnMine: z.boolean(),
+        updateLastCardForSameSubtitle: z.boolean(),
+        rememberSubtitleOffset: z.boolean(),
+        lastSubtitleOffset: z.number(),
+        autoCopyCurrentSubtitle: z.boolean(),
+        alwaysPlayOnSubtitleRepeat: z.boolean(),
+        subtitleRegexFilter: z.string(),
+        subtitleRegexFilterTextReplacement: z.string(),
+        convertNetflixRuby: z.boolean(),
+        language: z.string(),
+        customAnkiFields: z.record(z.string(), z.string()),
+        tags: z.array(z.string()),
+        imageBasedSubtitleScaleFactor: z.number(),
+        subtitleCustomStyles: subtitleCustomStylesSchema,
+        subtitlesWidth: z.number(),
+        subtitlesWidthUnit: z.enum(subtitlesWidthUnits),
+        streamingAppUrl: z.string(),
+        streamingDisplaySubtitles: z.boolean(),
+        streamingRecordMedia: z.boolean(),
+        streamingTakeScreenshot: z.boolean(),
+        streamingCleanScreenshot: z.boolean(),
+        streamingCropScreenshot: z.boolean(),
+        streamingSubsDragAndDrop: z.boolean(),
+        streamingAutoSync: z.boolean(),
+        streamingAutoSyncPromptOnFailure: z.boolean(),
+        streamingLastLanguagesSynced: z.record(z.string(), z.array(z.string())),
+        streamingCondensedPlaybackMinimumSkipIntervalMs: z.number(),
+        streamingScreenshotDelay: z.number(),
+        streamingMediaFragmentFormat: z.enum(streamingMediaFragmentFormats),
+        streamingAnimatedImageFps: z.number(),
+        streamingAnimatedImageQuality: z.number(),
+        streamingSubtitleListPreference: z.enum(SubtitleListPreference),
+        streamingEnableOverlay: z.boolean(),
+        webSocketClientEnabled: z.boolean(),
+        webSocketServerUrl: z.string(),
+        pauseOnHoverMode: z.enum(PauseOnHoverMode),
+        lastSelectedAnkiExportMode: z.enum(ankiExportModes),
+        dictionaryTracks: z.array(dictionaryTrackSchema),
+        thumbnailPreview: z.boolean(),
+        subtitleAboveThumbnail: z.boolean(),
+    })
+    // Any settings key may be absent in an imported file.
+    .partial();
 
 export type IgnorePathSegment = string | '*';
 export type IgnorePath = readonly IgnorePathSegment[];
@@ -1046,8 +411,25 @@ const ignorePaths: readonly IgnorePath[] = [
     ['ankiConnectApiKey'],
     ['dictionaryTracks', '*', 'dictionaryWaniKaniApiToken'],
     ['streamingPages'], // Ignored due to security risk (e.g. disable CSP)
+    ['lastPlaybackPositions'], // Ignored since it exposes browsing history
 ];
 const validationIgnorePaths: readonly IgnorePath[] = [['streamingPages']];
+
+// Keys older asbplayer versions wrote that no longer exist in the settings
+// model. Strict schemas would reject them as typos, so they are stripped
+// before validation. When removing a setting from the model, add its path
+// here, or keep it as a deprecated model field if its value must migrate. A
+// '*' segment applies to every array item. `settings-schema-conformance.test.ts`
+// checks that each path points at a key the schema no longer knows.
+export const deprecatedPaths: readonly IgnorePath[] = [
+    // Exported up to v1.9.1, before the subtitle DOM was always pre-cached.
+    ['preCacheSubtitleDom'],
+    // Added and removed between releases; the hosted app deploys from main and
+    // could have exported it in between.
+    ['keyBindSet', 'updateSelectedCard'],
+    // Accepted by the old validator despite never being a setting.
+    ['_schema'],
+];
 
 export const omitPath = (value: any, path: IgnorePath): any => {
     if (value === null || typeof value !== 'object' || !path.length) return value;
@@ -1118,74 +500,32 @@ export const exportSettings = (settings: AsbplayerSettings) => {
     );
 };
 
-export const validateSettings = (settings: any) => {
-    const copy = omitPaths(settings, validationIgnorePaths);
-    const validator = new Validator();
-    validator.addSchema(keyBindSchema);
-    validator.addSchema(ankiFieldSchema);
-    validator.addSchema(dictionaryTrackSchema);
-    validator.addSchema(textSubtitleSettingsSchema);
-    const result = validator.validate(copy, settingsSchema);
-    validateAllKnownKeys(copy, []);
+export const validateSettings = (settings: any, fillSource: AsbplayerSettings = defaultSettings) => {
+    const copy = omitPaths(settings, [...validationIgnorePaths, ...deprecatedPaths]);
 
-    if (!result.valid) {
-        throw new Error('Settings validation failed: ' + JSON.stringify(result.errors));
+    // ensureConsistencyOnRead migrates settings from old asbplayer versions.
+    // It assumes the incoming data is valid, so it's possible for garbage data
+    // to cause an exception to be thrown.
+    // Even though the exception is swallowed, later validation would still reject
+    // garbage data.
+    let normalized = copy;
+    try {
+        normalized = ensureConsistencyOnRead(copy, fillSource);
+    } catch (error) {
+        // Also catches bugs in consistency itself; trace so a bug that rejects
+        // valid imports stays diagnosable.
+        asbTrace('settings/import', 'Consistency threw on imported settings; validating the partially migrated copy', {
+            error,
+        });
     }
 
-    return ensureConsistencyOnRead(copy as AsbplayerSettings);
-};
+    // `streamingPages` is stripped above and absent from the schema, so the
+    // normalized input is validated, not zod's parsed output.
+    const result = settingsSchema.safeParse(normalized);
 
-const validateAllKnownKeys = (object: any, path: string[]) => {
-    for (const key of Object.keys(object)) {
-        const schema = schemaAtPath(settingsSchema, path);
-
-        // Empty string is sentinel value for 'additional properties' which can have any key
-        if (schema === undefined || (schema !== '' && !(key in schema))) {
-            throw new Error(`Unknown key '${[...path, key].join('.')}'`);
-        }
-
-        const value = object[key];
-
-        if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
-            validateAllKnownKeys(value, [...path, key]);
-        }
-    }
-};
-
-const schemaAtPath = (schema: any, path: string[]) => {
-    let value = schema['properties'];
-
-    for (const key of path) {
-        if (typeof value[key] === 'object' && 'additionalProperties' in value[key]) {
-            return '';
-        }
-
-        value = value[key]?.['properties'] ?? schemaForRef(value[key]?.['$ref'])?.['properties'];
-
-        if (value === undefined) {
-            return undefined;
-        }
+    if (!result.success) {
+        throw new Error('Settings validation failed: ' + z.prettifyError(result.error));
     }
 
-    return value;
-};
-
-const schemaForRef = (ref: string) => {
-    if (ref === '/KeyBind') {
-        return keyBindSchema;
-    }
-
-    if (ref === '/AnkiField') {
-        return ankiFieldSchema;
-    }
-
-    if (ref === '/DictionaryTrack') {
-        return dictionaryTrackSchema;
-    }
-
-    if (ref === '/TextSubtitleSettings') {
-        return textSubtitleSettingsSchema;
-    }
-
-    return undefined;
+    return normalized as Partial<AsbplayerSettings>;
 };

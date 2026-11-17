@@ -5,6 +5,8 @@ import {
     TokenStyling,
     TokenReadingAnnotation,
     TokenFrequencyAnnotation,
+    TokenState,
+    TokenStatus,
 } from '@project/common/settings';
 import {
     mergeImportedSettings,
@@ -14,20 +16,230 @@ import {
 } from '@project/common/settings/import-export';
 import { defaultSettings } from '@project/common/settings/settings-provider';
 import { describe, expect, it } from '@jest/globals';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { PlayMode } from '@project/common';
 
 it('validates the default settings', () => {
     validateSettings(defaultSettings);
 });
 
+it('imports a file old enough to exercise the consistency migration paths', () => {
+    // Hand-built export from before annotation configs, playback settings,
+    // recipes, and newer key binds.
+    const imported = validateSettings({
+        ankiConnectUrl: 'http://127.0.0.1:8765',
+        deck: 'Sentences',
+        themeType: 'dark',
+        language: 'en',
+        subtitleAlignment: 'top',
+        subtitleSize: 36,
+        subtitleColor: '#ffffff',
+        subtitleTracksV2: [
+            {
+                subtitleColor: '#ffffff',
+                subtitleSize: 36,
+                subtitleThickness: 700,
+                subtitleCustomStyles: [],
+                subtitleBlur: false,
+            },
+        ],
+        ankiFieldSettings: {
+            sentence: { order: 1, display: true },
+            definition: { order: 2, display: true },
+            word: { order: 3, display: true },
+            audio: { order: 4, display: true },
+            image: { order: 5, display: true },
+            source: { order: 6, display: true },
+            url: { order: 7, display: true },
+        },
+        keyBindSet: {
+            togglePlay: { keys: 'space' },
+            toggleAutoPause: { keys: '⇧+P' },
+        },
+        recipes: [
+            { name: 'Test recipe', playbackModes: [PlayMode.normal], settings: { playbackRate: 1.5 } },
+            'garbage',
+        ],
+        activeRecipeId: 1,
+        dictionaryTracks: [
+            {
+                dictionaryColorizeSubtitles: true,
+                dictionaryColorizeOnHoverOnly: true,
+                dictionaryHighlightOnHover: true,
+                dictionaryTokenMatchStrategy: TokenMatchStrategy.ANY_FORM_COLLECTED,
+                dictionaryTokenMatchStrategyPriority: TokenMatchStrategyPriority.EXACT,
+                dictionaryYomitanUrl: 'http://127.0.0.1:19633',
+                dictionaryYomitanScanLength: 16,
+                dictionaryTokenReadingAnnotation: TokenReadingAnnotation.ALWAYS,
+                dictionaryDisplayIgnoredTokenReadings: true,
+                dictionaryTokenFrequencyAnnotation: TokenFrequencyAnnotation.ALWAYS,
+                dictionaryAnkiDecks: [],
+                dictionaryAnkiWordFields: [],
+                dictionaryAnkiSentenceFields: [],
+                dictionaryAnkiSentenceTokenMatchStrategy: TokenMatchStrategy.EXACT_FORM_COLLECTED,
+                dictionaryAnkiMatureCutoff: 21,
+                dictionaryAnkiTreatSuspended: 'NORMAL',
+                dictionaryTokenStyling: TokenStyling.UNDERLINE,
+                dictionaryTokenStylingThickness: 3,
+                dictionaryColorizeFullyKnownTokens: true,
+            },
+        ],
+    });
+
+    // Track count padded to the current number of tracks.
+    expect(imported.dictionaryTracks).toHaveLength(3);
+    const track = imported.dictionaryTracks![0];
+
+    // Per-track keys the old version could not have written are filled from
+    // the fill source; this direct call has no current settings, so defaults.
+    expect(imported.subtitleTracksV2).toHaveLength(1);
+    const trackEntry = imported.subtitleTracksV2![0];
+    expect(trackEntry.subtitleAlignment).toBe(defaultSettings.subtitleAlignment);
+    expect(trackEntry.subtitleOutlineColor).toBe(defaultSettings.subtitleOutlineColor);
+    expect(trackEntry.subtitleShadowThickness).toBe(defaultSettings.subtitleShadowThickness);
+
+    // Token colors/config absent from the file are created and padded.
+    expect(track.dictionaryTokenStatusColors).toEqual([
+        '#FF0000',
+        '#FFA500',
+        '#FFFF00',
+        '#00FF00',
+        '#0000FF',
+        '#FFFFFF',
+    ]);
+    expect(track.dictionaryTokenStatusConfig).toHaveLength(6);
+    expect(track.dictionaryTokenStatusConfig[TokenStatus.MATURE].display).toBe(true);
+
+    // The flat deprecated fields migrate into the annotation config.
+    const annotation = track.dictionaryTokenAnnotationConfig;
+    expect(annotation.colorizeEnabled).toBe(true);
+    expect(annotation.video.color.onHoverEnabled).toBe(true);
+    expect(annotation.video.gloss).toEqual({ onHoverEnabled: true, size: 0.5 });
+    expect(annotation.onStates[TokenState.IGNORED].reading).toBe(true);
+    expect(annotation.onStatuses.every((s) => s.reading && s.frequency && !s.gloss && !s.pitchAccent)).toBe(true);
+
+    // Playback settings absent from the file are synthesized.
+    expect(track.dictionaryPlaybackConfig.autoPause.onStatuses).toHaveLength(6);
+    expect(track.dictionaryPlaybackConfig.autoPause.rules).toEqual({
+        minWords: 0,
+        maxWords: 0,
+        minFrequency: 0,
+        maxFrequency: 0,
+    });
+
+    // Later per-track settings are filled from defaults.
+    expect(track.dictionaryYomitanParser).toBe('scanning-parser');
+    expect(track.dictionaryWaniKaniApiToken).toBe('');
+    expect(track.dictionaryMatchAcrossScripts).toBe(true);
+    expect(track.dictionaryAutoGenerateStatistics).toBe(false);
+
+    // Key binds added after the file's era are filled; provided ones survive.
+    for (const key of Object.keys(defaultSettings.keyBindSet)) {
+        expect(imported.keyBindSet).toHaveProperty(key);
+    }
+    expect(imported.keyBindSet!.togglePlay).toEqual({ keys: 'space' });
+    expect(imported.keyBindSet!.toggleRecipe1).toEqual(defaultSettings.keyBindSet.toggleRecipe1);
+
+    // Anki field settings added after the file's era are filled.
+    expect(imported.ankiFieldSettings!.track1).toEqual(defaultSettings.ankiFieldSettings.track1);
+    expect(imported.ankiFieldSettings!.sentence).toEqual({ order: 1, display: true });
+
+    // Malformed recipes are dropped and the dangling selection is cleared.
+    expect(imported.recipes).toHaveLength(1);
+    expect(imported.recipes![0].name).toBe('Test recipe');
+    expect(imported.activeRecipeId).toBeNull();
+
+    // Keys absent from the file stay absent (imports are patches over current
+    // settings), and `streamingPages` is never part of an import.
+    expect(imported.subtitlePreview).toBeUndefined();
+    expect(imported.streamingPages).toBeUndefined();
+});
+
+it('imports a real v1.22.0 export through the settings dialog path', () => {
+    // Produced by the v1.22.0 release. Catches key removals and renames that
+    // were not added to `deprecatedPaths`, which hand-built fixtures miss.
+    const legacyExport = JSON.parse(
+        readFileSync(join(__dirname, '__fixtures__', 'v1.22.0-settings-export.json'), 'utf-8')
+    );
+
+    const imported = validateSettings(mergeImportedSettings(legacyExport, defaultSettings), defaultSettings);
+
+    expect(imported.customAnkiFieldSettings).toEqual({ MyCustomField: { order: 99, display: true } });
+    expect(imported.customAnkiFields).toEqual({ MyCustomField: 'カスタム' });
+});
+
 it('fails validation when an unknown key is encountered', () => {
-    expect(() => validateSettings({ ...defaultSettings, asdf: 'jkl;' })).toThrow("Unknown key 'asdf'");
+    expect(() => validateSettings({ ...defaultSettings, asdf: 'jkl;' })).toThrow('Unrecognized key: "asdf"');
 });
 
 it('fails validation when an unknown key bind key is encountered', () => {
     expect(() =>
         validateSettings({ ...defaultSettings, keyBindSet: { ...defaultSettings.keyBindSet, asdf: { keys: 'a' } } })
-    ).toThrow("Unknown key 'keyBindSet.asdf'");
+    ).toThrow('Unrecognized key: "asdf"\n  → at keyBindSet');
+});
+
+it('fails validation when an unknown key is encountered inside an Anki field setting', () => {
+    expect(() =>
+        validateSettings({
+            ...defaultSettings,
+            ankiFieldSettings: { ...defaultSettings.ankiFieldSettings, sentence: { order: 0, display: true, asdf: 1 } },
+        })
+    ).toThrow('Unrecognized key: "asdf"\n  → at ankiFieldSettings.sentence');
+});
+
+it('rejects unknown keys inside dictionary track settings', () => {
+    // Strict schemas treat unrecognized keys as typos everywhere, including
+    // inside array items; legacy keys must be listed in `deprecatedPaths`.
+    const settings = {
+        ...defaultSettings,
+        dictionaryTracks: defaultSettings.dictionaryTracks.map((track) => ({ ...track, newKeyFromNewerVersion: 1 })),
+    };
+    expect(() => validateSettings(settings)).toThrow('Unrecognized key: "newKeyFromNewerVersion"');
+});
+
+it('imports files containing settings that were later removed from the model', () => {
+    // v1.9.1 and earlier exported `preCacheSubtitleDom`, the hosted app briefly
+    // exported `keyBindSet.updateSelectedCard`, and earlier versions accepted
+    // `_schema`. Removing them from the model must not make those files
+    // unimportable.
+    const imported = validateSettings({
+        ...defaultSettings,
+        preCacheSubtitleDom: true,
+        _schema: 1,
+        keyBindSet: { ...defaultSettings.keyBindSet, updateSelectedCard: { keys: 'Q+U' } },
+    });
+
+    expect(imported).not.toHaveProperty('preCacheSubtitleDom');
+    expect(imported).not.toHaveProperty('_schema');
+    expect(imported.keyBindSet).not.toHaveProperty('updateSelectedCard');
+    expect(imported.keyBindSet!.togglePlay).toEqual(defaultSettings.keyBindSet.togglePlay);
+});
+
+it('rejects null values where an object is expected instead of repairing them', () => {
+    // No legitimate export contains these. Consistency throws on them; the
+    // catch falls back to validating the raw copy, which must still reject.
+    expect(() => validateSettings({ ...defaultSettings, keyBindSet: null })).toThrow('Settings validation failed');
+    expect(() =>
+        validateSettings({ ...defaultSettings, dictionaryTracks: [null, ...defaultSettings.dictionaryTracks.slice(1)] })
+    ).toThrow('Settings validation failed');
+});
+
+it('validates custom Anki field settings', () => {
+    const settings = {
+        ...defaultSettings,
+        customAnkiFieldSettings: { myCustomField: { order: 99, display: false } },
+    };
+    const imported = validateSettings(settings);
+    expect(imported.customAnkiFieldSettings).toEqual({ myCustomField: { order: 99, display: false } });
+});
+
+it('fails validation when a custom Anki field setting is malformed', () => {
+    const settings = {
+        ...defaultSettings,
+        customAnkiFieldSettings: { myCustomField: { order: 'not-a-number', display: true } },
+    };
+    expect(() => validateSettings(settings)).toThrow('Settings validation failed');
 });
 
 it('validates last languages synced', () => {
@@ -136,10 +348,17 @@ it('preserves dictionary playback rules through settings export and import', () 
     expect(imported.dictionaryTracks?.[0].dictionaryPlaybackConfig).toEqual(playback);
 });
 
-it('requires current playback fields when a dictionary playback config is present', () => {
+it('fills missing playback fields from defaults instead of rejecting them', () => {
+    // A file whose playback config predates a field is indistinguishable from
+    // a corrupt one, so missing fields are synthesized; corruption that is
+    // distinguishable (wrong types, unknown keys, out-of-range values) still
+    // fails, as asserted by the tests below.
     const legacy = JSON.parse(JSON.stringify(defaultSettings));
     delete legacy.dictionaryTracks[0].dictionaryPlaybackConfig;
-    expect(() => validateSettings(legacy)).not.toThrow();
+    const imported = validateSettings(legacy);
+    expect(imported.dictionaryTracks![0].dictionaryPlaybackConfig).toEqual(
+        defaultSettings.dictionaryTracks[0].dictionaryPlaybackConfig
+    );
 
     const missingFields = [
         (config: any) => delete config.selectOnPause,
@@ -163,8 +382,28 @@ it('requires current playback fields when a dictionary playback config is presen
     for (const removeField of missingFields) {
         const settings = JSON.parse(JSON.stringify(defaultSettings));
         removeField(settings.dictionaryTracks[0].dictionaryPlaybackConfig);
-        expect(() => validateSettings(settings)).toThrow('Settings validation failed');
+        const imported = validateSettings(settings);
+        expect(imported.dictionaryTracks![0].dictionaryPlaybackConfig).toEqual(
+            defaultSettings.dictionaryTracks[0].dictionaryPlaybackConfig
+        );
     }
+});
+
+it('fills playback features and subkeys an older version could not have written', () => {
+    // Mirrors a real pre-selectOnPause, pre-minimumPercent export.
+    const settings = JSON.parse(JSON.stringify(defaultSettings));
+    const playback = settings.dictionaryTracks[0].dictionaryPlaybackConfig;
+    delete playback.selectOnPause;
+    playback.fastForward.rateByComprehension = { enabled: true };
+
+    const imported = validateSettings(settings);
+    const config = imported.dictionaryTracks![0].dictionaryPlaybackConfig;
+    expect(config.selectOnPause).toEqual({
+        onStatuses: Array.from({ length: 6 }, () => ({ enabled: false })),
+        onStates: [{ enabled: false }],
+    });
+    // Values the file did write are preserved, not reset.
+    expect(config.fastForward.rateByComprehension).toEqual({ enabled: true, minimumPercent: 60 });
 });
 
 it('accepts only whole-number minimum comprehension percentages from zero through ninety-nine', () => {
@@ -195,8 +434,10 @@ it('validates and round trips pause-selection playback triggers without rules', 
             trigger.enabled = invalid;
             expect(() => validateSettings(settings)).toThrow('Settings validation failed');
         }
+        // A deleted `enabled` field is filled from defaults; it is
+        // indistinguishable from a version that predates the field.
         delete trigger.enabled;
-        expect(() => validateSettings(settings)).toThrow('Settings validation failed');
+        expect(() => validateSettings(settings)).not.toThrow();
         trigger.enabled = true;
     }
 });
@@ -229,10 +470,11 @@ it('requires a boolean for individual word hiding before the threshold', () => {
     }
 });
 
-it('excludes credentials from settings exports without mutating the settings', () => {
+it('excludes ignored keys from settings exports without mutating the settings', () => {
     const settings = {
         ...defaultSettings,
         ankiConnectApiKey: 'anki-secret',
+        lastPlaybackPositions: [{ fileName: 'video.mp4', position: 1234 }],
         dictionaryTracks: defaultSettings.dictionaryTracks.map((track, index) => ({
             ...track,
             dictionaryWaniKaniApiToken: `wanikani-secret-${index}`,
@@ -243,6 +485,7 @@ it('excludes credentials from settings exports without mutating the settings', (
 
     expect(exportedSettings).not.toHaveProperty('ankiConnectApiKey');
     expect(exportedSettings).not.toHaveProperty('streamingPages');
+    expect(exportedSettings).not.toHaveProperty('lastPlaybackPositions');
     expect(exportedSettings.dictionaryTracks).toHaveLength(3);
     expect(exportedSettings.dictionaryTracks).toEqual([
         expect.not.objectContaining({ dictionaryWaniKaniApiToken: expect.any(String) }),
@@ -307,6 +550,54 @@ it('preserves current ignored values when they are explicitly present in an impo
         'existing-wanikani-secret',
     ]);
     expect(mergedSettings.streamingPages?.netflix).toEqual(currentSettings.streamingPages.netflix);
+});
+
+it('merges current settings under an import for containers the file may predate', () => {
+    // The file models an older export: keys added since are absent, so the
+    // current settings fill them instead of defaults. Keys the file did write
+    // win over current values.
+    const currentSettings = JSON.parse(JSON.stringify(defaultSettings));
+    currentSettings.subtitleAlignment = 'top';
+    currentSettings.keyBindSet.toggleRecipe1 = { keys: 'R+1' };
+    currentSettings.ankiFieldSettings.track1 = { order: 77, display: true };
+    currentSettings.dictionaryTracks[0].dictionaryPlaybackConfig.fastForward.rateByComprehension.minimumPercent = 80;
+
+    const file = JSON.parse(JSON.stringify(currentSettings));
+    delete file.keyBindSet.toggleRecipe1;
+    delete file.ankiFieldSettings.track1;
+    delete file.dictionaryTracks[0].dictionaryPlaybackConfig.selectOnPause;
+    delete file.dictionaryTracks[0].dictionaryPlaybackConfig.fastForward.rateByComprehension.minimumPercent;
+    file.dictionaryTracks[0].dictionaryTokenMatchStrategy = TokenMatchStrategy.LEMMA_OR_EXACT_FORM_COLLECTED;
+    file.subtitleTracksV2 = [
+        {
+            subtitleColor: '#ffffff',
+            subtitleSize: 40,
+            subtitleThickness: 700,
+            subtitleCustomStyles: [],
+            subtitleBlur: false,
+        },
+    ];
+
+    const imported = validateSettings(mergeImportedSettings(file, currentSettings), currentSettings);
+
+    expect(imported.keyBindSet!.toggleRecipe1).toEqual({ keys: 'R+1' });
+    expect(imported.keyBindSet!.togglePlay).toEqual({ keys: 'space' });
+    expect(imported.ankiFieldSettings!.track1).toEqual({ order: 77, display: true });
+    expect(imported.dictionaryTracks![0].dictionaryPlaybackConfig.selectOnPause).toEqual(
+        currentSettings.dictionaryTracks[0].dictionaryPlaybackConfig.selectOnPause
+    );
+    expect(imported.dictionaryTracks![0].dictionaryPlaybackConfig.fastForward.rateByComprehension).toEqual({
+        enabled: false,
+        minimumPercent: 80,
+    });
+    expect(imported.dictionaryTracks![0].dictionaryTokenMatchStrategy).toBe(
+        TokenMatchStrategy.LEMMA_OR_EXACT_FORM_COLLECTED
+    );
+    // Per-track keys the file predates are filled from the current settings;
+    // keys the file wrote are kept.
+    expect(imported.subtitleTracksV2![0].subtitleAlignment).toBe('top');
+    expect(imported.subtitleTracksV2![0].subtitleSize).toBe(40);
+    expect(() => validateSettings(mergeImportedSettings(file, currentSettings), currentSettings)).not.toThrow();
 });
 
 it('validates exported settings', () => {
@@ -439,7 +730,6 @@ it('validates exported settings', () => {
         preferMp3: true,
         tabName: 'asbplayer',
         miningHistoryStorageLimit: 25,
-        preCacheSubtitleDom: true,
         clickToMineDefaultAction: 1,
         postMiningPlaybackState: 0,
         themeType: 'dark',

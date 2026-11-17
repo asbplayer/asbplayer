@@ -29,6 +29,13 @@ import {
     TokenStyling,
 } from '@project/common/settings';
 
+beforeEach(() => {
+    // Publishing is throttled to one batch per ANNOTATIONS_UPDATE_BATCH_DELAY, which would make
+    // these tests sleep. Date stays real or DictionaryStatistics drops snapshots whose startTime
+    // equals lastCancelledAt.
+    jest.useFakeTimers({ doNotFake: ['Date'] });
+});
+
 afterEach(() => {
     jest.useRealTimers();
 });
@@ -52,8 +59,20 @@ const makeFetcher = (): Fetcher => ({
     }),
 });
 
-const waitForAsyncBuild = () => new Promise((resolve) => setTimeout(resolve, 1001));
-const waitForPublication = () => new Promise((resolve) => setTimeout(resolve, 0));
+// Publishing is batched every ANNOTATIONS_UPDATE_BATCH_DELAY in build-annotations.ts.
+const waitForAsyncBuild = () => jest.advanceTimersByTimeAsync(1000);
+const waitForPublication = () => jest.advanceTimersByTimeAsync(0);
+// Yomitan releases its term-lookup semaphore on a 10ms timer, so advance the clock while waiting,
+// otherwise a build that lemmatizes never finishes.
+const settleBuild = async <T>(promise: Promise<T>): Promise<T> => {
+    let settled = false;
+    const tracked = promise.then((value) => {
+        settled = true;
+        return value;
+    });
+    while (!settled) await jest.advanceTimersByTimeAsync(10);
+    return tracked;
+};
 
 const deferred = <T>() => {
     let resolve!: (value: T | PromiseLike<T>) => void;
@@ -140,10 +159,6 @@ describe('BuildAnnotations public boundary', () => {
     });
 
     describe('publication queue', () => {
-        beforeEach(() => {
-            jest.useFakeTimers();
-        });
-
         it('paces all build publications without blocking annotation building', async () => {
             const { subtitles, updated } = await makeBuiltSubtitles(201);
 
@@ -683,6 +698,7 @@ describe('BuildAnnotations public boundary', () => {
         let settingsProvider: SettingsProvider;
 
         beforeEach(async () => {
+            jest.useRealTimers();
             await Dexie.delete('DictionaryDatabase');
             const settingsStorage = new MockSettingsStorage();
             settingsStorage.setData(
@@ -1059,7 +1075,7 @@ describe('BuildAnnotations public boundary', () => {
         );
         build.setSubtitles(subtitles, true);
 
-        await build.buildInitial();
+        await settleBuild(build.buildInitial());
         await waitForPublication();
 
         expect(subtitles[0].text).toBe('first word last');

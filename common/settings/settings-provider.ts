@@ -533,9 +533,28 @@ const ensureStreamingPagesConsistency = (settings: Partial<AsbplayerSettings>) =
     (settings as any).streamingPages = newStreamingPages;
 };
 
-export const ensureConsistencyOnRead = (settings: Partial<AsbplayerSettings>) => {
+/**
+ * Fills incoming text subtitle settings with key/value pairs from fillSource.
+ * Intended to migrate old settings to the latest type.
+ */
+const ensureTextSubtitleSettingsConsistency = (settings: Partial<AsbplayerSettings>, fillSource: AsbplayerSettings) => {
+    if (!settings.subtitleTracksV2) return;
+    for (const entry of settings.subtitleTracksV2) {
+        for (const key of textSubtitleSettingsKeys) {
+            if ((entry as any)[key] === undefined) {
+                (entry as any)[key] = structuredClone((fillSource as any)[key]);
+            }
+        }
+    }
+};
+
+export const ensureConsistencyOnRead = (
+    settings: Partial<AsbplayerSettings>,
+    fillSource: AsbplayerSettings = defaultSettings
+) => {
     ensureRecipeConsistency(settings);
-    ensureDictionaryTracksConsistency(settings);
+    ensureDictionaryTracksConsistency(settings, fillSource);
+    ensureTextSubtitleSettingsConsistency(settings, fillSource);
     ensureStreamingPagesConsistency(settings);
 
     let keyBindSetModified = false;
@@ -546,11 +565,11 @@ export const ensureConsistencyOnRead = (settings: Partial<AsbplayerSettings>) =>
     if (settings.keyBindSet !== undefined) {
         const keyBindSet = settings.keyBindSet;
 
-        for (const key of Object.keys(defaultSettings.keyBindSet)) {
+        for (const key of Object.keys(fillSource.keyBindSet)) {
             const keyBindName = key as KeyBindName;
 
             if (keyBindSet[keyBindName] === undefined) {
-                newKeyBindSet[keyBindName] = defaultSettings.keyBindSet[keyBindName];
+                newKeyBindSet[keyBindName] = fillSource.keyBindSet[keyBindName];
                 keyBindSetModified = true;
             } else {
                 newKeyBindSet[keyBindName] = keyBindSet[keyBindName];
@@ -561,11 +580,11 @@ export const ensureConsistencyOnRead = (settings: Partial<AsbplayerSettings>) =>
     if (settings.ankiFieldSettings !== undefined) {
         const ankiFieldSettings = settings.ankiFieldSettings;
 
-        for (const key of Object.keys(defaultSettings.ankiFieldSettings)) {
+        for (const key of Object.keys(fillSource.ankiFieldSettings)) {
             const fieldName = key as keyof AnkiFieldSettings;
 
             if (ankiFieldSettings[fieldName] === undefined) {
-                newAnkiFieldSettings[fieldName] = defaultSettings.ankiFieldSettings[fieldName];
+                newAnkiFieldSettings[fieldName] = fillSource.ankiFieldSettings[fieldName];
                 ankiFieldSettingsModified = true;
             } else {
                 newAnkiFieldSettings[fieldName] = ankiFieldSettings[fieldName];
@@ -577,7 +596,11 @@ export const ensureConsistencyOnRead = (settings: Partial<AsbplayerSettings>) =>
         return settings;
     }
 
-    return { ...settings, ...{ ankiFieldSettings: newAnkiFieldSettings }, ...{ keyBindSet: newKeyBindSet } };
+    return {
+        ...settings,
+        ...(ankiFieldSettingsModified ? { ankiFieldSettings: newAnkiFieldSettings } : {}),
+        ...(keyBindSetModified ? { keyBindSet: newKeyBindSet } : {}),
+    };
 };
 
 type SettingsKey = keyof AsbplayerSettings;
@@ -663,7 +686,7 @@ export class SettingsProvider {
                         : null,
             };
         }
-        ensureDictionaryTracksConsistency(settings);
+        ensureDictionaryTracksConsistency(settings, defaultSettings);
 
         if (settings.customAnkiFields === undefined) {
             return settings;
