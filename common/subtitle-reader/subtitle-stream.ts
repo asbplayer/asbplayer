@@ -187,26 +187,6 @@ export function originalTokenizationsEqual(a: Tokenization | undefined, b: Token
 export const sameSubtitleSourceContent = (a: SubtitleModel, b: SubtitleModel): boolean =>
     sameSubtitleText(a, b) && originalTokenizationsEqual(a.tokenization, b.tokenization);
 
-/** Reconcile asynchronous annotation results by identity and source text, rather than an obsolete array index. */
-export const mergeSubtitleAnnotations = <T extends IndexedSubtitleModel>(
-    subtitles: readonly T[],
-    updates: readonly IndexedSubtitleModel[]
-): T[] => {
-    const byKey = indexCuesByKey(updates.filter((cue) => cue.source));
-    const legacy = new Map(updates.filter((cue) => !cue.source).map((cue) => [cue.index, cue]));
-    return subtitles.map((cue) => {
-        const update = cue.source ? byKey.get(subtitleKey(cue)) : legacy.get(cue.index);
-        return update && sameSubtitleSourceContent(cue, update)
-            ? {
-                  ...cue,
-                  text: update.text,
-                  originalText: update.originalText ?? cue.originalText,
-                  tokenization: update.tokenization,
-              }
-            : cue;
-    });
-};
-
 /** Applies source timing to the current offset while retaining annotations on unchanged cues. */
 export const displaySubtitleSnapshot = (
     snapshot: SubtitleStreamSnapshot,

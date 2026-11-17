@@ -1,4 +1,4 @@
-import { mergeSubtitleAnnotations, resolveSubtitleReference } from '@project/common/subtitle-reader/subtitle-stream';
+import { resolveSubtitleReference } from '@project/common/subtitle-reader/subtitle-stream';
 import type { SubtitleSourceProducer, SubtitleSourceState } from '@project/common/subtitle-reader/subtitle-stream';
 import { effectiveSettings } from '@project/common/settings/settings-recipes';
 import { AudioClip } from '@project/common/audio-clip';
@@ -31,7 +31,7 @@ import type { AsbplayerSettings, SettingsProvider } from '@project/common/settin
 
 import type { DictionaryProvider } from '@project/common/dictionary-db';
 import { SubtitleCollection } from '@project/common/subtitle-collection';
-import { HoveredToken, SubtitleAnnotations } from '@project/common/annotations';
+import { HoveredToken, mergeSubtitleAnnotations, SubtitleAnnotations } from '@project/common/annotations';
 import type { SubtitleReader } from '@project/common/subtitle-reader';
 import type { KeyBinder } from '@project/common/key-binder';
 import { asbTrace } from '@project/common/util/log';

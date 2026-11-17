@@ -1126,6 +1126,34 @@ describe('areTokenizationsEqual', () => {
         expect(areTokenizationsEqual(tokenization, undefined)).toBe(false);
     });
 
+    it('compares serialized external status metadata by value', () => {
+        const annotated = {
+            ...tokenization,
+            tokens: [
+                {
+                    ...tokenization.tokens[0],
+                    externalCandidateStatuses: [
+                        { cardId: 1, status: 'known', suspended: false },
+                        {
+                            status: 'known',
+                            suspended: false,
+                            waniKani: {
+                                subjectId: 2,
+                                subjectLevel: 3,
+                                assignmentId: 4,
+                                availableAt: null,
+                            },
+                        },
+                    ],
+                },
+            ],
+        };
+        const copy = JSON.parse(JSON.stringify(annotated));
+        expect(areTokenizationsEqual(annotated, copy)).toBe(true);
+        copy.tokens[0].externalCandidateStatuses[1].waniKani.assignmentId = 5;
+        expect(areTokenizationsEqual(annotated, copy)).toBe(false);
+    });
+
     it('returns true for structurally equal tokenizations', () => {
         expect(
             areTokenizationsEqual(tokenization, {

@@ -82,15 +82,10 @@ export interface BuildAnnotationsOptions {
 function untokenize(s: InternalSubtitleModel) {
     s.__tokenized = undefined;
     if (s.tokenization) {
-        s.tokenization.tokens = s.tokenization.tokens.filter((t) => !(t as InternalToken).__internal);
-        if (s.tokenization.tokens.length) {
-            s.tokenization.error = undefined;
-            for (const [index, { pos, readings }] of s.tokenization.tokens.entries()) {
-                s.tokenization.tokens[index] = { pos, readings, states: [] };
-            }
-        } else {
-            s.tokenization = undefined;
-        }
+        const tokens = s.tokenization.tokens.filter((t) => !(t as InternalToken).__internal);
+        s.tokenization = tokens.length
+            ? { tokens: tokens.map(({ pos, readings }) => ({ pos, readings, states: [] })) }
+            : undefined;
     }
     if (s.originalText !== undefined) s.text = s.originalText;
 }
@@ -1167,8 +1162,7 @@ export class BuildAnnotations {
         if (!ts.yt) {
             this.tokenRequestFailedForTracks.add(ts.track);
             asbError('annotations/yomitan', `Yomitan not initialized`);
-            existingTokenization.error = true;
-            return { reconstructedText: fullText, tokenization: existingTokenization };
+            return { reconstructedText: fullText, tokenization: { ...existingTokenization, error: true } };
         }
         if (!existingTokenization.tokens.length) return this.tokenizationModel(fullText, index, ts);
 
@@ -1262,8 +1256,7 @@ export class BuildAnnotations {
             this.tokenRequestFailedForTracks.add(ts.track);
             asbError('annotations/tokenization', `Tokenization request failed for index ${index}:`, e);
             this.erroredCache.add(index);
-            existingTokenization.error = true;
-            return { reconstructedText: fullText, tokenization: existingTokenization };
+            return { reconstructedText: fullText, tokenization: { ...existingTokenization, error: true } };
         }
         if (this.shouldCancelBuild) return;
         return { reconstructedText: reconstructedTextParts.join(''), tokenization: { tokens: allTokens, error } };

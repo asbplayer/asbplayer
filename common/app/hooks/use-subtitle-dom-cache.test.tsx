@@ -3,7 +3,11 @@ import { createRoot } from 'react-dom/client';
 import type { Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it } from '@jest/globals';
 import type { IndexedSubtitleModel, OffscreenDomCache } from '@project/common';
-import { ASB_SUBTITLE_INDEX_ATTRIBUTE } from '@project/common/annotations';
+import {
+    ASB_SUBTITLE_INDEX_ATTRIBUTE,
+    selectTokenInRoot,
+    restorableTokenSelectionInRoot,
+} from '@project/common/annotations';
 import { useSubtitleDomCache } from '@project/common/app/hooks/use-subtitle-dom-cache';
 import { makeSubtitle } from '@project/common/playback/playback-test-utils';
 import { subtitleKey } from '@project/common/subtitle-reader/subtitle-stream';
@@ -24,7 +28,7 @@ describe('useSubtitleDomCache', () => {
         subtitles: IndexedSubtitleModel[];
         render?: (cue: IndexedSubtitleModel) => string;
     }) {
-        cache = useSubtitleDomCache(subtitles, render).getSubtitleDomCache();
+        cache = useSubtitleDomCache(subtitles, render);
         return null;
     }
     beforeEach(() => {
@@ -63,6 +67,78 @@ describe('useSubtitleDomCache', () => {
         await act(async () => root.render(<Player subtitles={[replacement]} />));
         expect(cache.has(subtitleKey(cue))).toBe(false);
         expect(cache.get(subtitleKey(replacement)).textContent?.trim()).toBe('original');
+    });
+
+    it('keeps equivalent DOM when the renderer changes and replaces only changed markup', async () => {
+        const cues = [makeSubtitle({ index: 0, text: 'first' }), makeSubtitle({ index: 1, text: 'second' })];
+        await act(async () => root.render(<Player subtitles={cues} />));
+        const first = cache.get(subtitleKey(cues[0])).firstElementChild;
+        const second = cache.get(subtitleKey(cues[1])).firstElementChild;
+        const render = (cue: IndexedSubtitleModel) =>
+            cue.index === 0 ? `<i>${renderSubtitle(cue)}</i>` : renderSubtitle(cue);
+
+        await act(async () => root.render(<Player subtitles={cues} render={render} />));
+        expect(cache.get(subtitleKey(cues[0])).firstElementChild).not.toBe(first);
+        expect(cache.get(subtitleKey(cues[0])).querySelector('i')?.textContent).toBe('first');
+        expect(cache.get(subtitleKey(cues[1])).firstElementChild).toBe(second);
+
+        await act(async () => root.render(<Player subtitles={cues} />));
+        expect(cache.get(subtitleKey(cues[0])).querySelector('i')).toBeNull();
+        expect(cache.get(subtitleKey(cues[1])).firstElementChild).toBe(second);
+    });
+
+    it('refreshes index attributes after reindexing and a renderer change', async () => {
+        const cue = makeSubtitle({ text: 'word', source: { loadId: 'stream', cueId: 0 } });
+        await act(async () => root.render(<Player subtitles={[cue]} />));
+        const earlier = makeSubtitle({ text: 'earlier', source: { loadId: 'other', cueId: 0 } });
+        await act(async () => root.render(<Player subtitles={[earlier, { ...cue, index: 1 }]} />));
+        expect(cache.get(subtitleKey(cue)).firstElementChild?.getAttribute(ASB_SUBTITLE_INDEX_ATTRIBUTE)).toBe('1');
+
+        const render = (cue: IndexedSubtitleModel) => renderSubtitle(cue);
+        await act(async () => root.render(<Player subtitles={[cue]} render={render} />));
+        expect(cache.get(subtitleKey(cue)).firstElementChild?.getAttribute(ASB_SUBTITLE_INDEX_ATTRIBUTE)).toBe('0');
+    });
+
+    it.each(['settings', 'annotations'] as const)('preserves a selected token across a %s batch', async (change) => {
+        const cues = [makeSubtitle({ index: 0, text: 'first' }), makeSubtitle({ index: 1, text: 'second' })];
+        const tokenHtml = (cue: IndexedSubtitleModel) =>
+            `<span class="asbplayer-subtitles" ${ASB_SUBTITLE_INDEX_ATTRIBUTE}="${cue.index}"><span data-asb-token-start="0">${cue.text}</span></span>`;
+        await act(async () => root.render(<Player subtitles={cues} render={tokenHtml} />));
+        const selectedRoot = cache.get(subtitleKey(cues[1]));
+        const previousToken = selectedRoot.querySelector('[data-asb-token-start]');
+        expect(
+            selectTokenInRoot(
+                selectedRoot,
+                { subtitleIndex: 1, tokenStart: 0 },
+                {
+                    focusContainer: false,
+                    scrollIntoView: false,
+                    autoPause: true,
+                }
+            )
+        ).toBe(true);
+
+        if (change === 'settings') {
+            const styledHtml = (cue: IndexedSubtitleModel) => `<i>${tokenHtml(cue)}</i>`;
+            await act(async () => root.render(<Player subtitles={cues} render={styledHtml} />));
+            expect(selectedRoot.querySelector('i')).not.toBeNull();
+        } else {
+            const updated = cues.map((cue) => ({ ...cue, tokenization: { tokens: [] } }));
+            await act(async () => root.render(<Player subtitles={updated} render={tokenHtml} />));
+        }
+
+        expect(cache.get(subtitleKey(cues[1]))).toBe(selectedRoot);
+        if (change === 'settings') {
+            expect(selectedRoot.querySelector('[data-asb-token-start]')).not.toBe(previousToken);
+        } else {
+            expect(selectedRoot.querySelector('[data-asb-token-start]')).toBe(previousToken);
+        }
+        expect(document.getSelection()?.toString()).toBe('second');
+        expect(restorableTokenSelectionInRoot(selectedRoot)).toEqual({
+            location: { subtitleIndex: 1, tokenStart: 0 },
+            options: { autoPause: true, selectText: true },
+        });
+        expect(restorableTokenSelectionInRoot(cache.get(subtitleKey(cues[0])))).toBeUndefined();
     });
 
     it('refreshes retained cues when the renderer changes and clears removed cues', async () => {
