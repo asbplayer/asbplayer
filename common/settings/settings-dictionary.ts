@@ -851,12 +851,11 @@ const fillFromDefault = <T>(base: T, override: unknown): T => {
 };
 
 /**
- * Upgrades `dictionaryTracks` in place: fills keys older versions could not write, migrates
- * deprecated fields, and pads or trims to NUM_DICTIONARY_TRACKS.
+ * Ensures `dictionaryTracks` are consistent, according to this version of the code. If
+ * dictionaryTracks is an older version of the model, migrates it to the current one.
  *
- * @param dictionaryTracks The tracks being upgraded; partial, or from an older version.
- * @param fillSource Fallbacks for missing keys, matched by track index: the settings being
- * replaced on import, or defaults on read. Values already in `dictionaryTracks` win.
+ * @param dictionaryTracks The data being being migrated.
+ * @param fillSource Fallbacks for missing keys.
  */
 export const ensureDictionaryTracksConsistency = (
     { dictionaryTracks }: Partial<DictionarySettings>,
