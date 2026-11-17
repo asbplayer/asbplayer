@@ -363,7 +363,7 @@ function PlayerComponent(
     clockRef.current = clock;
     const syntheticPlaybackEngineRef = useRef<PlaybackEngine<DisplaySubtitleModel>>(undefined);
     const getSubtitleOffset = useCallback(
-        () => syntheticPlaybackEngineRef.current?.lastSubtitleOffset ?? offsetRef.current,
+        () => syntheticPlaybackEngineRef.current?.currentSubtitleOffset ?? offsetRef.current,
         []
     );
     const subtitlePlayerRef = useRef<SubtitlePlayerHandle>(null);

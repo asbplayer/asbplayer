@@ -209,6 +209,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
     private readonly appIntegration: boolean;
     private readonly autoPauseCorrectionDisabled: boolean;
     private readonly subtitleOffsetStorage = new CachedLocalStorage();
+    private subtitleOffset = 0;
     private subtitles: readonly T[];
     private lastSubtitleEndMs?: number;
     private subtitleSources: readonly SubtitleSourceState[];
@@ -550,6 +551,11 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         }
     }
 
+    /** Uses the live offset during playback and the startup preference before subtitles are bound. */
+    get currentSubtitleOffset(): number {
+        return this.timingDriver.bound ? this.subtitleOffset : this.lastSubtitleOffset;
+    }
+
     get lastSubtitleOffset(): number {
         if (!this.settings.rememberSubtitleOffset) return 0;
         if (this.appIntegration) return this.settings.lastSubtitleOffset;
@@ -611,6 +617,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         this.rebuildPlan({ initializePlaybackRate: true });
 
         const subtitleOffset = this.lastSubtitleOffset;
+        this.subtitleOffset = subtitleOffset;
         this.callbacks.setSubtitleOffset(subtitleOffset, { notifyPlayer: false }, subtitleOffsetNotificationKey);
         const fastForwarding = this.executor.isFastForwarding;
         const playbackRate = this.executor.playbackRate;
@@ -988,6 +995,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
             notifyPlayer: options.notifyPlayer,
             offset,
         });
+        this.subtitleOffset = offset;
         if (this.appIntegration) {
             this.settings = { ...this.settings, lastSubtitleOffset: offset };
             this.callbacks.saveSettings({ lastSubtitleOffset: offset });

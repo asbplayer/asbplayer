@@ -1146,11 +1146,38 @@ describe('PlaybackEngine', () => {
         });
 
         expect(harness.playbackEngine.lastSubtitleOffset).toBe(0);
+        expect(harness.playbackEngine.currentSubtitleOffset).toBe(0);
 
         harness.playbackEngine.settingsChanged({ ...harness.settings, rememberSubtitleOffset: true });
 
         expect(harness.playbackEngine.lastSubtitleOffset).toBe(375);
+        expect(harness.playbackEngine.currentSubtitleOffset).toBe(0);
     });
+
+    it.each([true, false])(
+        'initializes and resets the live offset with remembering %s',
+        async (rememberSubtitleOffset) => {
+            const harness = await makePlaybackEngine([PlayMode.normal], {
+                subtitles: [],
+                settings: { lastSubtitleOffset: 375, rememberSubtitleOffset },
+            });
+            try {
+                expect(harness.playbackEngine.currentSubtitleOffset).toBe(rememberSubtitleOffset ? 375 : 0);
+                harness.playbackEngine.subtitlesChanged([subtitle], { sources: [] });
+                await flushPlaybackInitialization();
+                expect(harness.subtitleOffsets.at(-1)).toBe(rememberSubtitleOffset ? 375 : 0);
+                harness.playbackEngine.subtitleOffsetChanged(-250, { notifyPlayer: false });
+                expect(harness.playbackEngine.currentSubtitleOffset).toBe(-250);
+                harness.playbackEngine.subtitlesChanged([], { sources: [] });
+                expect(harness.playbackEngine.currentSubtitleOffset).toBe(rememberSubtitleOffset ? -250 : 0);
+                harness.playbackEngine.subtitlesChanged([subtitle], { sources: [] });
+                await flushPlaybackInitialization();
+                expect(harness.subtitleOffsets.at(-1)).toBe(rememberSubtitleOffset ? -250 : 0);
+            } finally {
+                harness.playbackEngine.unbind();
+            }
+        }
+    );
 
     it('retains engine-owned playback modes when settings updates echo stale modes', async () => {
         const harness = await makePlaybackEngine([PlayMode.normal]);
@@ -1244,6 +1271,7 @@ describe('PlaybackEngine', () => {
         });
 
         expect(harness.playbackEngine.lastSubtitleOffset).toBe(0);
+        expect(harness.playbackEngine.currentSubtitleOffset).toBe(250);
         expect(harness.subtitleOffsets).toEqual([0, 250]);
         expect(harness.savedSettings).toEqual([{ lastSubtitleOffset: 250 }]);
     });
@@ -1261,6 +1289,7 @@ describe('PlaybackEngine', () => {
 
         harness.playbackEngine.subtitleOffsetChanged(250, { notifyPlayer: false });
 
+        expect(harness.playbackEngine.currentSubtitleOffset).toBe(250);
         expect(localStorage.getItem('offset')).toBe('250');
         expect(harness.savedSettings).toEqual([]);
     });
@@ -1276,6 +1305,7 @@ describe('PlaybackEngine', () => {
 
         expect(harness.playbackRates).toEqual([1.4]);
         expect(harness.subtitleOffsets).toEqual([375]);
+        expect(harness.playbackEngine.currentSubtitleOffset).toBe(375);
         expect(harness.subtitleOffsetOptions).toEqual([{ offset: 375, notifyPlayer: false, key: 'subtitle-offset' }]);
         expect(harness.initialPlaybackSettings).toEqual([
             {

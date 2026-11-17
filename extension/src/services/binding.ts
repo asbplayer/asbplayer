@@ -1103,7 +1103,7 @@ export default class Binding {
                                 update: {
                                     type: 'snapshot',
                                     ...this.subtitleStream.sourceSnapshot(),
-                                    offset: this.playbackEngine.lastSubtitleOffset ?? 0,
+                                    offset: this.playbackEngine.currentSubtitleOffset,
                                 },
                             } satisfies SubtitleSourceMessage,
                         });
@@ -2335,7 +2335,7 @@ export default class Binding {
                 command: 'subtitleSource',
                 update:
                     update.type === 'snapshot'
-                        ? { ...update, offset: this.playbackEngine.lastSubtitleOffset ?? 0 }
+                        ? { ...update, offset: this.playbackEngine.currentSubtitleOffset }
                         : update,
             } satisfies SubtitleSourceMessage,
         });
@@ -2348,7 +2348,7 @@ export default class Binding {
         const subtitles = displaySubtitleSnapshot(
             snapshot,
             this.subtitleController.subtitles,
-            this.playbackEngine.lastSubtitleOffset ?? 0
+            this.playbackEngine.currentSubtitleOffset
         );
         this.subtitleController.setSourceSubtitles(subtitles, snapshot.tracks);
         const names = subtitleSourceNames(snapshot.tracks);

@@ -659,6 +659,7 @@ describe('Binding playback mode integration', () => {
     it.each([0, 500, -500])(
         'uses the video offset %s for app-owned snapshots and later cue batches',
         async (offset) => {
+            await storage.set({ rememberSubtitleOffset: false });
             const binding = new Binding(createVideo(), bindingOptions(false, false));
             binding.bind();
             await flushPlaybackTiming();
@@ -716,72 +717,85 @@ describe('Binding playback mode integration', () => {
         }
     );
 
-    it('loads progressive cues, replays their source on attachment, and ignores them after file replacement', async () => {
-        const binding = new Binding(createVideo(), bindingOptions(false, false));
-        binding.bind();
-        await flushPlaybackTiming();
-        try {
-            binding.updateSubtitleSource({ type: 'start', track: 0, loadId: 'stream', name: 'progressive.srt' });
-            binding.updateSubtitleSource({
-                type: 'cues',
-                track: 0,
-                loadId: 'stream',
-                cues: [{ cueId: 0, start: 1000, end: 2000, text: 'First' }],
-            });
-            expect(binding.subtitleController.subtitles).toMatchObject([
-                { text: 'First', source: { loadId: 'stream', cueId: 0 } },
-            ]);
-            binding.subtitleOffsetChanged(500, { notifyPlayer: false });
-            const requestSource = () => {
-                for (const listener of runtimeListeners) {
-                    listener(
+    it.each([true, false])(
+        'preserves progressive cue offsets and replay with remembering %s',
+        async (rememberSubtitleOffset) => {
+            await storage.set({ rememberSubtitleOffset });
+            const binding = new Binding(createVideo(), bindingOptions(false, false));
+            binding.bind();
+            await flushPlaybackTiming();
+            try {
+                binding.updateSubtitleSource({ type: 'start', track: 0, loadId: 'stream', name: 'progressive.srt' });
+                binding.updateSubtitleSource({
+                    type: 'cues',
+                    track: 0,
+                    loadId: 'stream',
+                    cues: [{ cueId: 0, start: 1000, end: 2000, text: 'First' }],
+                });
+                expect(binding.subtitleController.subtitles).toMatchObject([
+                    { text: 'First', source: { loadId: 'stream', cueId: 0 } },
+                ]);
+                binding.subtitleOffsetChanged(500, { notifyPlayer: false });
+                const requestSource = () => {
+                    for (const listener of runtimeListeners) {
+                        listener(
+                            {
+                                sender: 'asbplayer-extension-to-video',
+                                src: binding.registeredVideoSrc,
+                                message: { command: 'requestSubtitleSource' },
+                            },
+                            {},
+                            () => undefined
+                        );
+                    }
+                };
+                requestSource();
+                const calls = sendRuntimeMessage.mock.calls as unknown as [{ message?: SubtitleSourceMessage }][];
+                const replay = calls
+                    .map(([command]) => command.message)
+                    .findLast((message) => message?.command === 'subtitleSource');
+                expect(replay?.update).toMatchObject({
+                    type: 'snapshot',
+                    offset: 500,
+                    tracks: [
                         {
-                            sender: 'asbplayer-extension-to-video',
-                            src: binding.registeredVideoSrc,
-                            message: { command: 'requestSubtitleSource' },
+                            name: 'progressive.srt',
+                            status: 'loading',
+                            loadId: 'stream',
+                            cues: [{ cueId: 0, text: 'First', start: 1000, end: 2000 }],
                         },
-                        {},
-                        () => undefined
-                    );
-                }
-            };
-            requestSource();
-            const calls = sendRuntimeMessage.mock.calls as unknown as [{ message?: SubtitleSourceMessage }][];
-            const replay = calls
-                .map(([command]) => command.message)
-                .findLast((message) => message?.command === 'subtitleSource');
-            expect(replay?.update).toMatchObject({
-                type: 'snapshot',
-                offset: 500,
-                tracks: [
-                    {
-                        name: 'progressive.srt',
-                        status: 'loading',
-                        loadId: 'stream',
-                        cues: [{ cueId: 0, text: 'First', start: 1000, end: 2000 }],
-                    },
-                ],
-            });
-            sendSubtitles(binding, [
-                { text: 'File', start: 0, end: 1000, originalStart: 0, originalEnd: 1000, track: 0, index: 0 },
-            ]);
-            binding.updateSubtitleSource({
-                type: 'cues',
-                track: 0,
-                loadId: 'stream',
-                cues: [{ cueId: 1, start: 3000, end: 4000, text: 'Stale' }],
-            });
-            expect(binding.subtitleController.subtitles.map((cue) => cue.text)).toEqual(['File']);
-            requestSource();
-            expect(
-                calls.map(([command]) => command.message).findLast((message) => message?.command === 'subtitleSource')
-            ).toMatchObject({
-                update: { type: 'snapshot', tracks: [{ cues: [{ text: 'File' }] }] },
-            });
-        } finally {
-            binding.unbind();
+                    ],
+                });
+                binding.updateSubtitleSource({
+                    type: 'cues',
+                    track: 0,
+                    loadId: 'stream',
+                    cues: [{ cueId: 1, start: 3000, end: 4000, text: 'Second' }],
+                });
+                expect(binding.subtitleController.subtitles.map((cue) => cue.start)).toEqual([1500, 3500]);
+                sendSubtitles(binding, [
+                    { text: 'File', start: 0, end: 1000, originalStart: 0, originalEnd: 1000, track: 0, index: 0 },
+                ]);
+                binding.updateSubtitleSource({
+                    type: 'cues',
+                    track: 0,
+                    loadId: 'stream',
+                    cues: [{ cueId: 1, start: 3000, end: 4000, text: 'Stale' }],
+                });
+                expect(binding.subtitleController.subtitles.map((cue) => cue.text)).toEqual(['File']);
+                requestSource();
+                expect(
+                    calls
+                        .map(([command]) => command.message)
+                        .findLast((message) => message?.command === 'subtitleSource')
+                ).toMatchObject({
+                    update: { type: 'snapshot', tracks: [{ cues: [{ text: 'File' }] }] },
+                });
+            } finally {
+                binding.unbind();
+            }
         }
-    });
+    );
 
     it('attaches a progressive source and keeps complete companion tracks without placeholder files', async () => {
         await storage.set({ streamingSubtitleListPreference: SubtitleListPreference.app });
