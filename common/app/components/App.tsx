@@ -35,6 +35,8 @@ import type { AsbplayerSettings, DictionaryTrack, Profile, SettingsProvider } fr
 import { AudioClip, Mp3Encoder } from '@project/common/audio-clip';
 import type { ExportParams } from '@project/common/anki';
 import { SubtitleReader } from '@project/common/subtitle-reader';
+import { subtitleSourceNames } from '@project/common/subtitle-reader/subtitle-stream';
+import type { SubtitleSourceState } from '@project/common/subtitle-reader/subtitle-stream';
 import { v4 as uuidv4 } from 'uuid';
 import clsx from 'clsx';
 import Alert from '@project/common/app/components/Alert';
@@ -1027,7 +1029,7 @@ function App({
     const handleSources = useCallback(
         (mediaSources: MediaSources) => {
             const remoteSubtitles = mediaSources.subtitleSource.kind === 'video';
-            if (mediaSources.videoFile || mediaSources.subtitleFileNames.length > 0) {
+            if (remoteSubtitles || mediaSources.videoFile || mediaSources.subtitleFileNames.length > 0) {
                 setJumpToSubtitle(undefined);
             }
 
@@ -1509,39 +1511,51 @@ function App({
         async (videoElement: VideoTabModel) => {
             const { id: tabId, synced, src } = videoElement;
 
-            if (synced) {
-                // Filenames establish the remote source and modern extensions replay its cues through the channel.
-                const response = (await extension.requestSubtitles(tabId, src)) as RequestSubtitlesResponse | undefined;
-
-                if (response !== undefined) {
-                    const { subtitles, subtitleFileNames } = response;
-
-                    if (subtitleFileNames.length > 0) {
-                        if (sources.videoFileUrl) handleUnloadVideo(sources.videoFileUrl);
-                        handleSources(new MediaSources({ kind: 'video', names: subtitleFileNames }));
-                        setTab((previous) =>
-                            previous?.id === videoElement.id && previous.src === videoElement.src
-                                ? previous
-                                : videoElement
-                        );
-                        if (!extension.supportsProgressiveSubtitles) {
-                            const length = subtitles.length > 0 ? subtitles[subtitles.length - 1].end : 0;
-                            setSubtitles(
-                                subtitles.map((s, i) => ({
-                                    ...s,
-                                    displayTime: timeDurationDisplay(s.start, length),
-                                    displayEndTime: timeDurationDisplay(s.end, length),
-                                    index: i,
-                                }))
-                            );
-                        }
-                    }
-                }
-            } else {
+            if (!synced) {
                 extension.loadSubtitles(tabId, src);
+                return;
             }
+
+            let subtitleFileNames: string[] = [];
+            if (!extension.supportsProgressiveSubtitles) {
+                const response = (await extension.requestSubtitles(tabId, src)) as RequestSubtitlesResponse | undefined;
+                if (response === undefined || response.subtitleFileNames.length === 0) return;
+                subtitleFileNames = response.subtitleFileNames;
+                const { subtitles } = response;
+                const length = subtitles.length > 0 ? subtitles[subtitles.length - 1].end : 0;
+                setSubtitles(
+                    subtitles.map((s, i) => ({
+                        ...s,
+                        displayTime: timeDurationDisplay(s.start, length),
+                        displayEndTime: timeDurationDisplay(s.end, length),
+                        index: i,
+                    }))
+                );
+            }
+
+            if (sources.videoFileUrl) handleUnloadVideo(sources.videoFileUrl);
+            handleSources(new MediaSources({ kind: 'video', names: subtitleFileNames }));
+            setTab((previous) =>
+                previous?.id === videoElement.id && previous.src === videoElement.src ? previous : videoElement
+            );
         },
         [extension, sources.videoFileUrl, handleUnloadVideo, handleSources]
+    );
+
+    const handleSubtitleSourcesChanged = useCallback(
+        (sourceStates: readonly SubtitleSourceState[]) => {
+            if (sources.subtitleSource.kind !== 'video') return;
+            const names = subtitleSourceNames(sourceStates);
+            if (
+                names.length === sources.subtitleFileNames.length &&
+                names.every((name, track) => name === sources.subtitleFileNames[track])
+            ) {
+                return;
+            }
+            setSources(new MediaSources({ kind: 'video', names }));
+            setFileName(names.find((name) => name)?.replace(fileExtensionPattern, ''));
+        },
+        [sources]
     );
 
     const handleDownloadSubtitleFilesAsSrt = useCallback(async () => {
@@ -2066,6 +2080,7 @@ function App({
                                     onError={handleError}
                                     onUnloadVideo={handleUnloadVideo}
                                     onLoaded={handleFilesLoaded}
+                                    onSubtitleSourcesChanged={handleSubtitleSourcesChanged}
                                     onTabSelected={handleTabSelected}
                                     onAnkiDialogRequest={handleAnkiDialogRequest}
                                     onAnkiDialogRewind={handleAnkiDialogRewind}

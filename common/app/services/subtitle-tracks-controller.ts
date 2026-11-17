@@ -28,6 +28,7 @@ type SubtitleTrackSource =
           kind: 'remote';
           supportsProgressiveSubtitles: boolean;
           onOffset: (offset: number) => void;
+          onSourcesChanged?: (sources: readonly SubtitleSourceState[]) => void;
       }
     | {
           /** App-owned incremental source that emits subtitle updates while loading. */
@@ -127,7 +128,7 @@ export class SubtitleTracksController {
                 this.sendSnapshotToVideo();
             } else {
                 void this.options
-                    .shouldRestoreSubtitles(this.stream.snapshot.subtitles.length)
+                    .shouldRestoreSubtitles(this.stream.snapshot().subtitles.length)
                     .then((restore) => {
                         if (active && restore) this.sendSnapshotToVideo();
                     })
@@ -203,6 +204,7 @@ export class SubtitleTracksController {
         if (!this.stream.update(update)) return;
         if (update.type === 'snapshot') source.onOffset(update.offset);
         this.updateDisplayedSubtitles();
+        source.onSourcesChanged?.(this.sources);
         if (update.type === 'failed') this.options.onError(new Error(update.error));
     }
 
@@ -213,16 +215,14 @@ export class SubtitleTracksController {
         const source = this.options.source;
         if (!this.channel || !this.ready || source.kind !== 'producer') return;
         if (source.supportsProgressiveSubtitles) {
-            this.channel.subtitleSource(
-                update.type === 'snapshot' ? { ...update, offset: this.options.getSubtitleOffset() } : update
-            );
+            this.channel.subtitleSource(update);
         } else {
             this.sendSnapshotToVideo();
         }
     }
 
     private updateDisplayedSubtitles(): void {
-        const snapshot = this.stream.snapshot;
+        const snapshot = this.stream.snapshot();
         const source = this.options.source;
         if (
             source.kind === 'producer' &&
@@ -252,7 +252,7 @@ export class SubtitleTracksController {
         if (source.kind === 'remote') return;
         if (source.kind === 'local' && this.activity.kind !== 'files') return;
         if (source.kind === 'producer' && this.activity.kind !== 'producer') return;
-        const snapshot = this.stream.snapshot;
+        const snapshot = this.stream.snapshot();
         const displayed = displaySubtitleSnapshot(
             snapshot,
             this.options.subtitles ?? [],
@@ -261,8 +261,7 @@ export class SubtitleTracksController {
         if (source.kind === 'producer' && source.supportsProgressiveSubtitles) {
             channel.subtitleSource({
                 type: 'snapshot',
-                ...this.stream.sourceSnapshot,
-                offset: this.options.getSubtitleOffset(),
+                ...this.stream.sourceSnapshot(),
             });
             const annotated = displayed.filter((cue) => cue.tokenization !== undefined);
             if (annotated.length) channel.subtitlesUpdated(annotated);

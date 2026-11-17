@@ -44,6 +44,7 @@ import {
 } from '@project/common';
 import type {
     SubtitleSourceMessage,
+    SubtitleSourceToVideoMessage,
     AckMessage,
     AnkiUiSavedState,
     AudioBase64Message,
@@ -452,7 +453,7 @@ export default class Binding {
     subtitlesChanged(options?: { readonly timingChanged?: boolean }): void {
         this.playbackEngine.subtitlesChanged(this.subtitleController.subtitles, {
             ...options,
-            sources: this.subtitleStream.sourceStates,
+            sources: this.subtitleStream.sourceStates(),
         });
     }
 
@@ -545,7 +546,7 @@ export default class Binding {
             appIntegration: true,
             autoPauseCorrectionDisabled: disneyPlus,
             subtitles,
-            sources: this.subtitleStream.sourceStates,
+            sources: this.subtitleStream.sourceStates(),
             playbackModesDisabled: false,
             playbackModesSuppressed: this.recordingMedia,
             playbackPositionKeys: this._playbackPositionKeys(
@@ -1088,7 +1089,7 @@ export default class Binding {
                         // ignore
                         break;
                     case 'subtitleSource': {
-                        if (this.applySubtitleSource((request.message as SubtitleSourceMessage).update)) {
+                        if (this.applySubtitleSource((request.message as SubtitleSourceToVideoMessage).update)) {
                             this.videoDataSyncController.cancelSubtitleLoad({ clearSubtitles: false });
                         }
                         break;
@@ -1101,7 +1102,7 @@ export default class Binding {
                                 command: 'subtitleSource',
                                 update: {
                                     type: 'snapshot',
-                                    ...this.subtitleStream.sourceSnapshot,
+                                    ...this.subtitleStream.sourceSnapshot(),
                                     offset: this.playbackEngine.lastSubtitleOffset ?? 0,
                                 },
                             } satisfies SubtitleSourceMessage,
@@ -2258,7 +2259,7 @@ export default class Binding {
             message: {
                 command: 'sync',
                 subtitles: [],
-                subtitleSource: { tracks: source.sourceStates },
+                subtitleSource: { tracks: source.sourceStates() },
                 withSyncedAsbplayerOnly:
                     settings.streamingSubtitleListPreference === SubtitleListPreference.noSubtitleList &&
                     syncWithAsbplayerId === undefined,
@@ -2266,7 +2267,7 @@ export default class Binding {
             } satisfies ExtensionSyncMessage,
         });
         signal.throwIfAborted();
-        this.updateSubtitleSource({ type: 'snapshot', ...source.sourceSnapshot });
+        this.updateSubtitleSource({ type: 'snapshot', ...source.sourceSnapshot() });
     }
 
     private async _parseSubtitles(source: SubtitleSource) {
@@ -2310,7 +2311,7 @@ export default class Binding {
             ),
         });
         this.subtitleStream.replace(subtitles, subtitleFileNames);
-        this.subtitleController.subtitles = [...this.subtitleStream.snapshot.subtitles];
+        this.subtitleController.subtitles = [...this.subtitleStream.snapshot().subtitles];
         this.subtitleController.cacheHtml();
         this.subtitleController.refreshCurrentSubtitle = true;
 
@@ -2343,7 +2344,7 @@ export default class Binding {
     private applySubtitleSource(update: SubtitleSourceUpdate): boolean {
         if (!this.subtitleStream.update(update)) return false;
         this._subtitleSource = undefined;
-        const snapshot = this.subtitleStream.snapshot;
+        const snapshot = this.subtitleStream.snapshot();
         const subtitles = displaySubtitleSnapshot(
             snapshot,
             this.subtitleController.subtitles,
@@ -2380,7 +2381,7 @@ export default class Binding {
 
     private _updateSubtitles(subtitles: IndexedSubtitleModel[], subtitleFileNames: string[]) {
         this.subtitleStream.replace(subtitles, subtitleFileNames);
-        subtitles = [...this.subtitleStream.snapshot.subtitles];
+        subtitles = [...this.subtitleStream.snapshot().subtitles];
         asbTrace('playback/binding', 'Updating media-owner subtitles', {
             subtitleCount: subtitles.length,
             trackCount: this._nonEmptyTrackIndexes(subtitles).length,

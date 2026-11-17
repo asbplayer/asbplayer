@@ -100,18 +100,18 @@ describe('progressive subtitle responses', () => {
         expect(stream.updates).toEqual([]);
         stream.response.enqueue(new Uint8Array([...first.slice(first.length - 2), ...encoder.encode('\r\n')]));
         await stream.firstPublished;
-        expect(stream.source.snapshot.subtitles).toMatchObject([{ text: '日本語', source: { cueId: 0 } }]);
-        expect(stream.source.sourceStates[0].status).toBe('loading');
+        expect(stream.source.snapshot().subtitles).toMatchObject([{ text: '日本語', source: { cueId: 0 } }]);
+        expect(stream.source.sourceStates()[0].status).toBe('loading');
         stream.response.enqueue(
             encoder.encode(`${dialogue('speaker: 日本語')}\n${dialogue('speaker: Second', '0:00:03.00', '0:00:04.00')}`)
         );
         stream.response.close();
         await stream.loading;
-        expect(stream.source.snapshot.subtitles).toMatchObject([
+        expect(stream.source.snapshot().subtitles).toMatchObject([
             { text: '日本語', start: 1000, source: { cueId: 0 } },
             { text: 'Second', start: 3000, source: { cueId: 1 } },
         ]);
-        expect(stream.source.sourceStates[0].status).toBe('complete');
+        expect(stream.source.sourceStates()[0].status).toBe('complete');
         expect(stream.updates.filter((update) => update.type === 'cues')).toHaveLength(2);
     });
 
@@ -122,7 +122,7 @@ describe('progressive subtitle responses', () => {
         stream.abort.abort();
         await expect(stream.loading).rejects.toMatchObject({ name: 'AbortError' });
         expect(stream.cancelled()).toBe(true);
-        expect(stream.source.snapshot.subtitles.map((cue) => cue.text)).toEqual(['First']);
+        expect(stream.source.snapshot().subtitles.map((cue) => cue.text)).toEqual(['First']);
         expect(stream.updates.some((update) => update.type === 'complete')).toBe(false);
     });
 
@@ -132,7 +132,7 @@ describe('progressive subtitle responses', () => {
         await stream.firstPublished;
         stream.response.error(new Error('Connection lost'));
         await expect(stream.loading).rejects.toThrow('Connection lost');
-        expect(stream.source.snapshot.subtitles.map((cue) => cue.text)).toEqual(['First']);
+        expect(stream.source.snapshot().subtitles.map((cue) => cue.text)).toEqual(['First']);
     });
 
     it('rejects a response that is not ASS instead of silently completing an empty track', async () => {
@@ -140,7 +140,7 @@ describe('progressive subtitle responses', () => {
         stream.response.enqueue(encoder.encode('<html>Error</html>'));
         stream.response.close();
         await expect(stream.loading).rejects.toThrow('ASS events header');
-        expect(stream.source.sourceStates[0].status).toBe('failed');
+        expect(stream.source.sourceStates()[0].status).toBe('failed');
     });
 
     it('publishes the first batch immediately and coalesces subsequent batches within 100 ms', async () => {
@@ -148,18 +148,23 @@ describe('progressive subtitle responses', () => {
         const stream = openResponse();
         stream.response.enqueue(encoder.encode(`${header}${dialogue('First')}\n`));
         await jest.advanceTimersByTimeAsync(0);
-        expect(stream.source.snapshot.subtitles.map((cue) => cue.text)).toEqual(['First']);
+        expect(stream.source.snapshot().subtitles.map((cue) => cue.text)).toEqual(['First']);
         stream.response.enqueue(encoder.encode(`${dialogue('Second', '0:00:03.00', '0:00:04.00')}\n`));
         stream.response.enqueue(encoder.encode(`${dialogue('Third', '0:00:05.00', '0:00:06.00')}\n`));
         await jest.advanceTimersByTimeAsync(99);
         expect(stream.updates.filter((update) => update.type === 'cues')).toHaveLength(1);
         await jest.advanceTimersByTimeAsync(1);
-        expect(stream.source.snapshot.subtitles.map((cue) => cue.text)).toEqual(['First', 'Second', 'Third']);
+        expect(stream.source.snapshot().subtitles.map((cue) => cue.text)).toEqual(['First', 'Second', 'Third']);
         expect(stream.updates.filter((update) => update.type === 'cues')).toHaveLength(2);
         await jest.advanceTimersByTimeAsync(150);
         stream.response.enqueue(encoder.encode(`${dialogue('Fourth', '0:00:07.00', '0:00:08.00')}\n`));
         await jest.advanceTimersByTimeAsync(0);
-        expect(stream.source.snapshot.subtitles.map((cue) => cue.text)).toEqual(['First', 'Second', 'Third', 'Fourth']);
+        expect(stream.source.snapshot().subtitles.map((cue) => cue.text)).toEqual([
+            'First',
+            'Second',
+            'Third',
+            'Fourth',
+        ]);
         stream.response.close();
         await jest.advanceTimersByTimeAsync(0);
         await stream.loading;
@@ -175,7 +180,7 @@ describe('progressive subtitle responses', () => {
             await jest.advanceTimersByTimeAsync(0);
             stream.response.enqueue(encoder.encode(`${dialogue('Buffered', '0:00:03.00', '0:00:04.00')}\n`));
             await jest.advanceTimersByTimeAsync(0);
-            expect(stream.source.snapshot.subtitles.map((cue) => cue.text)).toEqual(['First']);
+            expect(stream.source.snapshot().subtitles.map((cue) => cue.text)).toEqual(['First']);
             if (action === 'complete') stream.response.close();
             else if (action === 'fail') stream.response.error(new Error('Connection lost'));
             else stream.abort.abort();
@@ -183,14 +188,14 @@ describe('progressive subtitle responses', () => {
             const error = await result;
             if (action === 'complete') expect(error).toBeUndefined();
             else expect(error).toMatchObject({ name: action === 'cancel' ? 'AbortError' : 'Error' });
-            expect(stream.source.snapshot.subtitles.map((cue) => cue.text)).toEqual(
+            expect(stream.source.snapshot().subtitles.map((cue) => cue.text)).toEqual(
                 action === 'cancel' ? ['First'] : ['First', 'Buffered']
             );
             const updates = stream.updates.length;
             await jest.advanceTimersByTimeAsync(200);
             expect(stream.updates).toHaveLength(updates);
             if (action !== 'cancel') {
-                expect(stream.source.sourceStates[0].status).toBe(action === 'complete' ? 'complete' : 'failed');
+                expect(stream.source.sourceStates()[0].status).toBe(action === 'complete' ? 'complete' : 'failed');
             }
         }
     );

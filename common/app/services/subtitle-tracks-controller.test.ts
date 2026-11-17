@@ -8,7 +8,7 @@ import type { DisplaySubtitleModel, LoadableSubtitleTrack, SubtitleSourceMessage
 import type { FileWithId } from '@project/common/file-selector';
 import SubtitleReader from '@project/common/subtitle-reader/subtitle-reader';
 import { SubtitleStream } from '@project/common/subtitle-reader/subtitle-stream';
-import type { SubtitleSourceUpdate } from '@project/common/subtitle-reader/subtitle-stream';
+import type { SubtitleSourceState, SubtitleSourceUpdate } from '@project/common/subtitle-reader/subtitle-stream';
 import VideoChannel from '@project/common/app/services/video-channel';
 import { SubtitleTracksController } from '@project/common/app/services/subtitle-tracks-controller';
 import type {
@@ -35,6 +35,7 @@ describe('SubtitleTracksController', () => {
     let disconnect: () => void;
     let offset: number;
     const onInitialized = jest.fn<() => void>();
+    const onSourcesChanged = jest.fn<(sources: readonly SubtitleSourceState[]) => void>();
     const onError = jest.fn<(error: unknown) => void>();
     const shouldRestoreSubtitles = jest.fn<(subtitleCount: number) => Promise<boolean>>();
 
@@ -48,6 +49,7 @@ describe('SubtitleTracksController', () => {
         onOffset: (value) => {
             offset = value;
         },
+        onSourcesChanged,
     });
     const receive = (update: SubtitleSourceMessage['update']) =>
         protocol.onMessage?.({ data: { command: 'subtitleSource', update } });
@@ -62,6 +64,7 @@ describe('SubtitleTracksController', () => {
 
     beforeEach(() => {
         onInitialized.mockClear();
+        onSourcesChanged.mockClear();
         onError.mockClear();
         shouldRestoreSubtitles.mockReset().mockResolvedValue(true);
         offset = 500;
@@ -128,7 +131,7 @@ describe('SubtitleTracksController', () => {
                 [{ track: 0, start: 1000, end: 2000, text: 'Loaded', originalStart: 1000, originalEnd: 2000 }],
                 ['Loaded.vtt']
             );
-            protocol.source = remote.sourceSnapshot;
+            protocol.source = remote.sourceSnapshot();
             controller.setSource(remoteSource());
             protocol.ready();
         }
@@ -304,6 +307,29 @@ describe('SubtitleTracksController', () => {
         expect(options.subtitles?.map((cue) => cue.text)).toEqual(['New']);
     });
 
+    it('reports remote track metadata before cues arrive and clears it for an empty snapshot', () => {
+        controller.setSource(remoteSource());
+        expect(onSourcesChanged).not.toHaveBeenCalled();
+        receive({
+            type: 'snapshot',
+            tracks: [{ track: 2, loadId: 'companion', name: 'companion.vtt', status: 'complete', cues: [] }],
+            offset: 0,
+        });
+        expect(onSourcesChanged).toHaveBeenLastCalledWith([
+            { track: 2, loadId: 'companion', name: 'companion.vtt', status: 'complete' },
+        ]);
+        receive({ type: 'start', track: 0, loadId: 'embedded', name: 'embedded.ass' });
+        expect(onSourcesChanged.mock.calls.at(-1)?.[0]).toEqual(
+            expect.arrayContaining([
+                { track: 2, loadId: 'companion', name: 'companion.vtt', status: 'complete' },
+                { track: 0, loadId: 'embedded', name: 'embedded.ass', status: 'loading' },
+            ])
+        );
+        receive({ type: 'snapshot', tracks: [], offset: 0 });
+        expect(onSourcesChanged).toHaveBeenLastCalledWith([]);
+        expect(protocol.subtitleMessages).toEqual([]);
+    });
+
     it('applies the current offset to both retained and newly received remote cues', () => {
         controller.setSource(remoteSource());
         receive({ type: 'start', track: 0, loadId: 'stream', name: 'progressive.srt' });
@@ -332,7 +358,7 @@ describe('SubtitleTracksController', () => {
             loadId: 'remote',
             cues: [{ cueId: 0, start: 1000, end: 2000, text: 'Remote' }],
         });
-        protocol.source = remote.sourceSnapshot;
+        protocol.source = remote.sourceSnapshot();
         controller.setSource(remoteSource());
         protocol.ready();
         receive({ type: 'failed', track: 0, loadId: 'remote', error: 'Disconnected' });
@@ -352,7 +378,7 @@ describe('SubtitleTracksController', () => {
             loadId: 'remote',
             cues: [{ cueId: 0, start: 1000, end: 2000, text: 'First' }],
         });
-        protocol.source = remote.sourceSnapshot;
+        protocol.source = remote.sourceSnapshot();
         protocol.offset = ownerOffset;
         controller.setSource(remoteSource());
         protocol.ready();
@@ -369,7 +395,7 @@ describe('SubtitleTracksController', () => {
     it('remembers the owner offset when the initial replay has no cues', () => {
         const remote = new SubtitleStream();
         remote.update({ type: 'start', track: 0, loadId: 'remote', name: 'remote.ass' });
-        protocol.source = remote.sourceSnapshot;
+        protocol.source = remote.sourceSnapshot();
         protocol.offset = -250;
         controller.setSource(remoteSource());
         protocol.ready();
@@ -389,6 +415,7 @@ describe('SubtitleTracksController', () => {
         expect(options.subtitles?.map((cue) => cue.text)).toEqual(['Local']);
         expect(options.subtitles?.[0].start).toBe(1500);
         expect(offset).toBe(500);
+        expect(onSourcesChanged).not.toHaveBeenCalled();
         expect(protocol.sent.some((message) => message.command === 'requestSubtitleSource')).toBe(false);
     });
 
@@ -409,7 +436,6 @@ describe('SubtitleTracksController', () => {
                 update: {
                     type: 'snapshot',
                     tracks: [{ track: 0, loadId: 'producer', name: 'producer.srt', status: 'loading', cues: [] }],
-                    offset: 500,
                 },
             },
         ]);
@@ -539,11 +565,13 @@ describe('SubtitleTracksController', () => {
         }
         const before = options.subtitles;
         const sent = protocol.sent.length;
+        const reported = onSourcesChanged.mock.calls.length;
         const obsolete: SubtitleSourceUpdate = { type: 'failed', track: 0, loadId: 'obsolete', error: 'Old failure' };
         if (kind === 'remote') receive(obsolete);
         else source.publish(obsolete);
         expect(options.subtitles).toBe(before);
         expect(protocol.sent).toHaveLength(sent);
+        expect(onSourcesChanged).toHaveBeenCalledTimes(reported);
         expect(onError).not.toHaveBeenCalled();
     });
 

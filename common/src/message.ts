@@ -482,6 +482,13 @@ export interface ToggleSubtitleTrackInListFromVideoMessage extends Message {
     readonly track: number;
 }
 
+/** App-to-video source data. Offset changes use the separate offset command. */
+export interface SubtitleSourceToVideoMessage extends Message {
+    readonly command: 'subtitleSource';
+    readonly update: SubtitleSourceUpdate;
+}
+
+/** Video-to-app updates include the owner's current offset on snapshot replay. */
 export interface SubtitleSourceMessage extends Message {
     readonly command: 'subtitleSource';
     readonly update:

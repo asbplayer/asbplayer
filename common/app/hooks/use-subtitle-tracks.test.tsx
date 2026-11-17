@@ -7,13 +7,14 @@ import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals
 jest.mock('@qgustavor/srt-parser', () => ({ __esModule: true, default: class {} }));
 
 import { SubtitleHtml } from '@project/common';
-import type { DisplaySubtitleModel, LoadableSubtitleTrack } from '@project/common';
+import type { DisplaySubtitleModel, LoadableSubtitleTrack, SubtitleSourceMessage } from '@project/common';
 import type { FileWithId } from '@project/common/file-selector';
 import SubtitleReader from '@project/common/subtitle-reader/subtitle-reader';
 import VideoChannel from '@project/common/app/services/video-channel';
 import { useSubtitleTracks } from '@project/common/app/hooks/use-subtitle-tracks';
-import { SubtitleStream } from '@project/common/subtitle-reader/subtitle-stream';
-import type { SubtitleSourceProducer } from '@project/common/subtitle-reader/subtitle-stream';
+import { SubtitleStream, subtitleSourceNames } from '@project/common/subtitle-reader/subtitle-stream';
+import type { SubtitleSourceProducer, SubtitleSourceState } from '@project/common/subtitle-reader/subtitle-stream';
+import { MediaSources } from '@project/common/app/services/media-sources';
 
 import {
     TestVideoProtocol,
@@ -44,12 +45,14 @@ describe('useSubtitleTracks React integration', () => {
         progressive = false,
         ownership = 'local',
         producer,
+        onSourcesChanged,
     }: {
         tracks: LoadableSubtitleTrack<FileWithId>[] | undefined;
         activeChannel?: VideoChannel;
         progressive?: boolean;
         ownership?: 'local' | 'remote';
         producer?: SubtitleSourceProducer;
+        onSourcesChanged?: (sources: readonly SubtitleSourceState[]) => void;
     }) {
         const [subtitles, setSubtitles] = useState<DisplaySubtitleModel[] | undefined>();
         const onInitialized = () =>
@@ -63,6 +66,7 @@ describe('useSubtitleTracks React integration', () => {
                           onOffset: (offset) => {
                               subtitleOffset = offset;
                           },
+                          onSourcesChanged,
                       }
                     : producer
                       ? { kind: 'producer', producer, supportsProgressiveSubtitles: progressive, onInitialized }
@@ -226,7 +230,7 @@ describe('useSubtitleTracks React integration', () => {
             loadId: 'remote',
             cues: [{ cueId: 0, start: 1000, end: 2000, text: 'First' }],
         });
-        protocol.source = remote.sourceSnapshot;
+        protocol.source = remote.sourceSnapshot();
         protocol.ready();
         await act(async () => root.render(<Player tracks={undefined} ownership="remote" progressive />));
         await act(async () => annotate());
@@ -238,7 +242,7 @@ describe('useSubtitleTracks React integration', () => {
             cues: [{ cueId: 1, start: 3000, end: 4000, text: 'Second' }],
         });
         const nextProtocol = new TestVideoProtocol();
-        nextProtocol.source = remote.sourceSnapshot;
+        nextProtocol.source = remote.sourceSnapshot();
         nextProtocol.offset = -125;
         const nextChannel = new VideoChannel(nextProtocol);
         await act(async () =>
@@ -252,6 +256,55 @@ describe('useSubtitleTracks React integration', () => {
             '2875',
         ]);
         expect(nextProtocol.sent.map((message) => message.command)).toEqual(['requestSubtitleSource']);
+    });
+
+    it('fills remote media-source names from the channel without restarting or echoing the source', async () => {
+        function App() {
+            const [sources, setSources] = useState(() => new MediaSources({ kind: 'video', names: [] }));
+            return (
+                <>
+                    <header>{sources.subtitleFileNames.join('|')}</header>
+                    <Player
+                        tracks={sources.subtitleTracks}
+                        ownership="remote"
+                        progressive
+                        onSourcesChanged={(states) => {
+                            const names = subtitleSourceNames(states);
+                            setSources((previous) =>
+                                names.length === previous.subtitleFileNames.length &&
+                                names.every((name, track) => name === previous.subtitleFileNames[track])
+                                    ? previous
+                                    : new MediaSources({ kind: 'video', names })
+                            );
+                        }}
+                    />
+                </>
+            );
+        }
+        protocol.source = {
+            tracks: [{ track: 2, loadId: 'remote', name: 'remote.ass', status: 'loading', cues: [] }],
+        };
+        protocol.ready();
+        await act(async () => root.render(<App />));
+        expect(container.querySelector('header')?.textContent).toBe('||remote.ass');
+        const receive = (update: SubtitleSourceMessage['update']) =>
+            act(async () => protocol.onMessage?.({ data: { command: 'subtitleSource', update } }));
+        await receive({
+            type: 'cues',
+            track: 2,
+            loadId: 'remote',
+            cues: [{ cueId: 0, start: 1000, end: 2000, text: 'First' }],
+        });
+        await act(async () => annotate());
+        await receive({ type: 'start', track: 0, loadId: 'companion', name: 'companion.vtt' });
+        expect(container.querySelector('header')?.textContent).toBe('companion.vtt||remote.ass');
+        expect(container.querySelector('span')?.textContent).toBe('<b>First</b>');
+        await receive({ type: 'snapshot', tracks: [], offset: 0 });
+        expect(container.querySelector('header')?.textContent).toBe('');
+        expect(container.querySelector('span')).toBeNull();
+        expect(protocol.sent.map((message) => message.command)).toEqual(['requestSubtitleSource']);
+        expect(onLoaded).not.toHaveBeenCalled();
+        expect(onError).not.toHaveBeenCalled();
     });
 
     it('replays a producer snapshot and annotations on reconnection without restarting production', async () => {
@@ -274,7 +327,6 @@ describe('useSubtitleTracks React integration', () => {
                 command: 'subtitleSource',
                 update: {
                     type: 'snapshot',
-                    offset: 500,
                     tracks: [{ status: 'loading', cues: [{ cueId: 0, text: 'First' }] }],
                 },
             },
@@ -345,7 +397,7 @@ describe('useSubtitleTracks React integration', () => {
             loadId: 'remote',
             cues: [{ cueId: 0, start: 1000, end: 2000, text: 'Remote' }],
         });
-        protocol.source = source.sourceSnapshot;
+        protocol.source = source.sourceSnapshot();
         await act(async () => root.render(<Player tracks={undefined} ownership="remote" progressive />));
         expect(container.textContent).toBe('Remote');
         await act(async () => finish(vttText('Old')));

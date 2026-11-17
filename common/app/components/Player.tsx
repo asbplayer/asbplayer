@@ -187,6 +187,7 @@ interface PlayerProps {
     onHideSubtitlePlayer: () => void;
     onVideoPopOut: () => void;
     onSubtitles: React.Dispatch<React.SetStateAction<DisplaySubtitleModel[] | undefined>>;
+    onSubtitleSourcesChanged?: (sources: readonly SubtitleSourceState[]) => void;
     onLoadFiles?: () => void;
     onLoadSubtitles?: () => void;
     disableKeyEvents: boolean;
@@ -275,6 +276,7 @@ function PlayerComponent(
         onHideSubtitlePlayer,
         onVideoPopOut,
         onSubtitles,
+        onSubtitleSourcesChanged,
         onLoadFiles,
         onLoadSubtitles,
         disableKeyEvents,
@@ -733,6 +735,7 @@ function PlayerComponent(
                       kind: 'remote',
                       supportsProgressiveSubtitles: extension.supportsProgressiveSubtitles,
                       onOffset: (offset) => applyOffsetRef.current?.(offset, false),
+                      onSourcesChanged: onSubtitleSourcesChanged,
                   }
                 : subtitleProducer
                   ? {

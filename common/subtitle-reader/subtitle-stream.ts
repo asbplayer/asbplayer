@@ -338,11 +338,11 @@ export class SubtitleStream {
         return true;
     }
 
-    get sourceStates(): readonly SubtitleSourceState[] {
+    sourceStates(): readonly SubtitleSourceState[] {
         return [...this.tracks.values()].map(({ state }) => state).sort((a, b) => a.track - b.track);
     }
 
-    get sourceSnapshot(): SubtitleSourceSnapshot {
+    sourceSnapshot(): SubtitleSourceSnapshot {
         return {
             tracks: [...this.tracks.values()]
                 .sort((a, b) => a.state.track - b.state.track)
@@ -360,12 +360,12 @@ export class SubtitleStream {
         };
     }
 
-    get snapshot(): SubtitleStreamSnapshot {
+    snapshot(): SubtitleStreamSnapshot {
         const tracks = [...this.tracks.values()].sort((a, b) => a.state.track - b.state.track);
         const subtitles = tracks
             .flatMap((track) => [...track.cues.values()])
             .sort((a, b) => a.originalStart - b.originalStart || a.track - b.track || a.source!.cueId - b.source!.cueId)
             .map((cue, index) => (cue.index === index ? cue : { ...cue, index }));
-        return { tracks: this.sourceStates, subtitles };
+        return { tracks: this.sourceStates(), subtitles };
     }
 }

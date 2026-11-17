@@ -1,5 +1,5 @@
 import type {
-    SubtitleSourceMessage,
+    SubtitleSourceToVideoMessage,
     AlertMessage,
     AnkiSettingsToVideoMessage,
     AppBarToggleMessageToVideoMessage,
@@ -190,7 +190,7 @@ export default class PlayerChannel {
                     break;
                 }
                 case 'subtitleSource': {
-                    const { update } = event.data as SubtitleSourceMessage;
+                    const { update } = event.data as SubtitleSourceToVideoMessage;
                     for (const callback of this.subtitleSourceCallbacks) callback(update);
                     break;
                 }

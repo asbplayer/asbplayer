@@ -1,5 +1,6 @@
 import type {
     SubtitleSourceMessage,
+    SubtitleSourceToVideoMessage,
     AlertMessage,
     AnkiSettingsToVideoMessage,
     AppBarToggleMessageToVideoMessage,
@@ -500,8 +501,8 @@ export default class VideoChannel {
         this.protocol.postMessage({ command: 'requestSubtitleSource' });
     }
 
-    subtitleSource(update: SubtitleSourceMessage['update']) {
-        const message: SubtitleSourceMessage = { command: 'subtitleSource', update };
+    subtitleSource(update: SubtitleSourceToVideoMessage['update']) {
+        const message: SubtitleSourceToVideoMessage = { command: 'subtitleSource', update };
         this.protocol.postMessage(message);
     }
 

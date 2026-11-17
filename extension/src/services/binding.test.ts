@@ -12,6 +12,8 @@ import type {
     IndexedSubtitleModel,
     LoadableSubtitleTrack,
     SubtitleSourceMessage,
+    SubtitleSourceToVideoMessage,
+    OffsetToVideoMessage,
     DictionaryRequestStatisticsMineSentencesMessage,
 } from '@project/common';
 import { defaultSettings, SubtitleListPreference, TokenStatus } from '@project/common/settings';
@@ -653,6 +655,66 @@ describe('Binding playback mode integration', () => {
             binding.unbind();
         }
     });
+
+    it.each([0, 500, -500])(
+        'uses the video offset %s for app-owned snapshots and later cue batches',
+        async (offset) => {
+            const binding = new Binding(createVideo(), bindingOptions(false, false));
+            binding.bind();
+            await flushPlaybackTiming();
+            const send = (message: SubtitleSourceToVideoMessage | OffsetToVideoMessage) => {
+                for (const listener of runtimeListeners) {
+                    listener(
+                        { sender: 'asbplayer-extension-to-video', src: binding.registeredVideoSrc, message },
+                        {},
+                        () => undefined
+                    );
+                }
+            };
+            const snapshot: SubtitleSourceToVideoMessage = {
+                command: 'subtitleSource',
+                update: {
+                    type: 'snapshot',
+                    tracks: [
+                        {
+                            track: 0,
+                            loadId: 'app-owned',
+                            name: 'embedded.ass',
+                            status: 'loading',
+                            cues: [{ cueId: 0, start: 1000, end: 2000, text: 'First' }],
+                        },
+                    ],
+                },
+            };
+            try {
+                send(snapshot);
+                await flushPlaybackTiming();
+                binding.subtitleOffsetChanged(offset, { notifyPlayer: false });
+                send(snapshot);
+                expect(binding.subtitleController.subtitles).toMatchObject([
+                    { start: 1000 + offset, end: 2000 + offset, originalStart: 1000, text: 'First' },
+                ]);
+                send({ command: 'offset', value: 750 });
+                send({
+                    command: 'subtitleSource',
+                    update: {
+                        type: 'cues',
+                        track: 0,
+                        loadId: 'app-owned',
+                        cues: [{ cueId: 1, start: 3000, end: 4000, text: 'Second' }],
+                    },
+                } satisfies SubtitleSourceToVideoMessage);
+                expect(binding.subtitleController.subtitles).toMatchObject([
+                    { start: 1750, end: 2750, originalStart: 1000, text: 'First' },
+                    { start: 3750, end: 4750, originalStart: 3000, text: 'Second' },
+                ]);
+                send(snapshot);
+                expect(binding.subtitleController.subtitles).toMatchObject([{ start: 1750, end: 2750, text: 'First' }]);
+            } finally {
+                binding.unbind();
+            }
+        }
+    );
 
     it('loads progressive cues, replays their source on attachment, and ignores them after file replacement', async () => {
         const binding = new Binding(createVideo(), bindingOptions(false, false));

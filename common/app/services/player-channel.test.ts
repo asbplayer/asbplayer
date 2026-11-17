@@ -49,20 +49,25 @@ describe('PlayerChannel playback state', () => {
         });
         const received = new SubtitleStream();
         const remove = player.onSubtitleSource((update) => received.update(update));
-        video.subtitleSource({ type: 'start', track: 0, loadId: 'stream', name: 'progressive.srt' });
+        video.subtitleSource({
+            type: 'snapshot',
+            tracks: [{ track: 0, loadId: 'stream', name: 'progressive.srt', status: 'loading', cues: [] }],
+        });
         video.subtitleSource({
             type: 'cues',
             track: 0,
             loadId: 'stream',
             cues: [{ cueId: 0, text: 'First', start: 1000, end: 2000 }],
         });
-        expect(received.snapshot.subtitles).toMatchObject([{ text: 'First', source: { loadId: 'stream', cueId: 0 } }]);
-        expect(received.sourceStates[0].status).toBe('loading');
+        expect(received.snapshot().subtitles).toMatchObject([
+            { text: 'First', source: { loadId: 'stream', cueId: 0 } },
+        ]);
+        expect(received.sourceStates()[0].status).toBe('loading');
         video.subtitleSource({ type: 'complete', track: 0, loadId: 'stream' });
-        expect(received.sourceStates[0].status).toBe('complete');
+        expect(received.sourceStates()[0].status).toBe('complete');
         remove();
         video.subtitleSource({ type: 'start', track: 0, loadId: 'new', name: 'new.srt' });
-        expect(received.sourceStates[0].loadId).toBe('stream');
+        expect(received.sourceStates()[0].loadId).toBe('stream');
         player.close();
     });
 

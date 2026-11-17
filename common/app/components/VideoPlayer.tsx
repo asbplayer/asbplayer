@@ -770,7 +770,7 @@ export default function VideoPlayer({
             appIntegration: extension.supportsAppIntegration,
             autoPauseCorrectionDisabled: false,
             subtitles: subtitlesRef.current,
-            sources: subtitleStream.current.sourceStates,
+            sources: subtitleStream.current.sourceStates(),
             playbackModesDisabled: false,
             playbackModesSuppressed: false,
             playbackPositionKeys: videoFileNameRef.current ? [videoFileNameRef.current] : [],
@@ -1022,7 +1022,7 @@ export default function VideoPlayer({
         if (!playerChannelSubscribed || !playbackEngine) return;
         playbackEngine.subtitlesChanged(subtitles, {
             timingChanged: subtitles !== annotationSubtitlesRef.current,
-            sources: subtitleStream.current.sourceStates,
+            sources: subtitleStream.current.sourceStates(),
         });
     }, [playerChannelSubscribed, subtitles, video]);
 
@@ -1083,7 +1083,7 @@ export default function VideoPlayer({
 
         playerChannel.onSubtitleSource((update) => {
             if (!subtitleStream.current.update(update)) return;
-            const snapshot = subtitleStream.current.snapshot;
+            const snapshot = subtitleStream.current.snapshot();
             const current = displaySubtitleSnapshot(snapshot, subtitlesRef.current, offsetRef.current);
             subtitlesRef.current = current;
             setSubtitles(current);

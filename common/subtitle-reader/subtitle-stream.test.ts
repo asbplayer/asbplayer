@@ -182,18 +182,18 @@ describe('SubtitleStream', () => {
         const stream = new SubtitleStream();
         start(stream);
         stream.update({ type: 'cues', track: 0, loadId: 'first', cues: [cue(0, 3000)] });
-        const first = stream.snapshot.subtitles[0];
+        const first = stream.snapshot().subtitles[0];
         start(stream, 1, 'translation');
         stream.update({ type: 'cues', track: 1, loadId: 'translation', cues: [cue(0, 1000, 'translation')] });
         stream.update({ type: 'cues', track: 0, loadId: 'first', cues: [cue(0, 3000), cue(1, 5000)] });
-        expect(stream.snapshot.subtitles.map(({ track, index, text }) => ({ track, index, text }))).toEqual([
+        expect(stream.snapshot().subtitles.map(({ track, index, text }) => ({ track, index, text }))).toEqual([
             { track: 1, index: 0, text: 'translation' },
             { track: 0, index: 1, text: 'word' },
             { track: 0, index: 2, text: 'word' },
         ]);
-        expect(subtitleKey(stream.snapshot.subtitles[1])).toBe(subtitleKey(first));
+        expect(subtitleKey(stream.snapshot().subtitles[1])).toBe(subtitleKey(first));
         stream.update({ type: 'cues', track: 0, loadId: 'first', cues: [cue(0, 2000, 'corrected')] });
-        expect(stream.snapshot.subtitles[1]).toMatchObject({ index: 1, start: 2000, text: 'corrected' });
+        expect(stream.snapshot().subtitles[1]).toMatchObject({ index: 1, start: 2000, text: 'corrected' });
     });
 
     it('ignores stale and terminal updates, retaining partial cues after failure', () => {
@@ -203,8 +203,8 @@ describe('SubtitleStream', () => {
         expect(stream.update({ type: 'cues', track: 0, loadId: 'first', cues: [cue(0, 0)] })).toBe(false);
         stream.update({ type: 'cues', track: 0, loadId: 'replacement', cues: [cue(0, 1000)] });
         stream.update({ type: 'failed', track: 0, loadId: 'replacement', error: 'Disconnected' });
-        expect(stream.snapshot.tracks[0]).toMatchObject({ status: 'failed', error: 'Disconnected' });
-        expect(stream.snapshot.subtitles).toHaveLength(1);
+        expect(stream.snapshot().tracks[0]).toMatchObject({ status: 'failed', error: 'Disconnected' });
+        expect(stream.snapshot().subtitles).toHaveLength(1);
         expect(stream.update({ type: 'complete', track: 0, loadId: 'replacement' })).toBe(false);
         expect(stream.update({ type: 'cues', track: 0, loadId: 'replacement', cues: [cue(1, 3000)] })).toBe(false);
     });
@@ -217,12 +217,12 @@ describe('SubtitleStream', () => {
         stream.update({ type: 'complete', track: 1, loadId: 'load-1' });
         stream.update({ type: 'failed', track: 2, loadId: 'load-2', error: 'Interrupted' });
         const receiver = new SubtitleStream();
-        receiver.update({ type: 'snapshot', ...stream.sourceSnapshot });
-        expect(receiver.snapshot).toEqual(stream.snapshot);
+        receiver.update({ type: 'snapshot', ...stream.sourceSnapshot() });
+        expect(receiver.snapshot()).toEqual(stream.snapshot());
         receiver.update({ type: 'cues', track: 0, loadId: 'load-0', cues: [cue(8, 3000)] });
-        expect(receiver.snapshot.subtitles).toHaveLength(3);
+        expect(receiver.snapshot().subtitles).toHaveLength(3);
         receiver.update({ type: 'snapshot', tracks: [] });
-        expect(receiver.snapshot).toEqual({ tracks: [], subtitles: [] });
+        expect(receiver.snapshot()).toEqual({ tracks: [], subtitles: [] });
     });
 
     it('replays tracks beyond the subtitle selector UI slots', () => {
@@ -232,9 +232,9 @@ describe('SubtitleStream', () => {
         stream.update({ type: 'complete', track: 3, loadId: 'fourth' });
 
         const receiver = new SubtitleStream();
-        receiver.update({ type: 'snapshot', ...stream.sourceSnapshot });
-        expect(receiver.snapshot).toEqual(stream.snapshot);
-        expect(receiver.snapshot.subtitles).toMatchObject([{ track: 3, text: 'word' }]);
+        receiver.update({ type: 'snapshot', ...stream.sourceSnapshot() });
+        expect(receiver.snapshot()).toEqual(stream.snapshot());
+        expect(receiver.snapshot().subtitles).toMatchObject([{ track: 3, text: 'word' }]);
     });
 
     it('rejects invalid batches and snapshots atomically', () => {
@@ -246,19 +246,19 @@ describe('SubtitleStream', () => {
             loadId: 'first',
             cues: [cue(0, 0, '<b>word</b>')],
         });
-        expect(stream.snapshot.subtitles[0].text).toBe('<b>word</b>');
-        const previous = stream.snapshot;
+        expect(stream.snapshot().subtitles[0].text).toBe('<b>word</b>');
+        const previous = stream.snapshot();
         expect(() =>
             stream.update({ type: 'cues', track: 0, loadId: 'first', cues: [cue(1, 2000), cue(-1, 3000)] })
         ).toThrow();
-        expect(stream.snapshot).toEqual(previous);
+        expect(stream.snapshot()).toEqual(previous);
         expect(() =>
             stream.update({
                 type: 'snapshot',
                 tracks: [previous.tracks[0], previous.tracks[0]].map((state) => ({ ...state, cues: [] })),
             })
         ).toThrow();
-        expect(stream.snapshot).toEqual(previous);
+        expect(stream.snapshot()).toEqual(previous);
     });
 
     it('transports compact source cues with original timing, images, and readings per track', () => {
@@ -293,7 +293,7 @@ describe('SubtitleStream', () => {
             ],
             ['source.ass', 'empty.srt']
         );
-        const wire = JSON.parse(JSON.stringify(stream.sourceSnapshot));
+        const wire = JSON.parse(JSON.stringify(stream.sourceSnapshot()));
         expect(wire).toEqual({
             tracks: [
                 {
@@ -308,7 +308,7 @@ describe('SubtitleStream', () => {
         });
         const receiver = new SubtitleStream();
         receiver.update({ type: 'snapshot', ...wire });
-        expect(displaySubtitleSnapshot(receiver.snapshot, [], 1250)).toMatchObject([
+        expect(displaySubtitleSnapshot(receiver.snapshot(), [], 1250)).toMatchObject([
             {
                 index: 0,
                 start: 2250,
@@ -326,7 +326,7 @@ describe('SubtitleStream', () => {
         const stream = new SubtitleStream();
         start(stream);
         stream.update({ type: 'cues', track: 0, loadId: 'first', cues: [cue(0, 1000)] });
-        const previous = stream.snapshot;
+        const previous = stream.snapshot();
         expect(() =>
             stream.update({
                 type: 'snapshot',
@@ -336,7 +336,7 @@ describe('SubtitleStream', () => {
                 ],
             })
         ).toThrow('Invalid subtitle cue');
-        expect(stream.snapshot).toEqual(previous);
+        expect(stream.snapshot()).toEqual(previous);
     });
 
     it('sorts unordered cues within a batch without changing their identities', () => {
@@ -344,7 +344,7 @@ describe('SubtitleStream', () => {
         start(stream);
         stream.update({ type: 'cues', track: 0, loadId: 'first', cues: [cue(2, 3000), cue(0, 1000), cue(1, 2000)] });
         expect(
-            stream.snapshot.subtitles.map(({ index, originalStart, source }) => ({ index, originalStart, source }))
+            stream.snapshot().subtitles.map(({ index, originalStart, source }) => ({ index, originalStart, source }))
         ).toEqual([
             { index: 0, originalStart: 1000, source: { loadId: 'first', cueId: 0 } },
             { index: 1, originalStart: 2000, source: { loadId: 'first', cueId: 1 } },
@@ -356,11 +356,11 @@ describe('SubtitleStream', () => {
         const stream = new SubtitleStream();
         start(stream);
         stream.update({ type: 'cues', track: 0, loadId: 'first', cues: [cue(0, 3000)] });
-        const displayed = displaySubtitleSnapshot(stream.snapshot, [], 500);
+        const displayed = displaySubtitleSnapshot(stream.snapshot(), [], 500);
         const annotated = { ...displayed[0], originalText: 'word', text: '<span>word</span>' };
         start(stream, 1, 'other');
         stream.update({ type: 'cues', track: 1, loadId: 'other', cues: [cue(0, 1000, 'other')] });
-        const current = displaySubtitleSnapshot(stream.snapshot, [annotated], 500);
+        const current = displaySubtitleSnapshot(stream.snapshot(), [annotated], 500);
         expect(current[1]).toMatchObject({ index: 1, start: 3500, originalStart: 3000, text: annotated.text });
         expect(mergeSubtitleAnnotations(current, [annotated])[1]).toMatchObject({
             index: 1,
@@ -368,12 +368,12 @@ describe('SubtitleStream', () => {
             text: annotated.text,
         });
         stream.update({ type: 'cues', track: 0, loadId: 'first', cues: [cue(0, 3000, 'corrected')] });
-        const corrected = displaySubtitleSnapshot(stream.snapshot, current, 500);
+        const corrected = displaySubtitleSnapshot(stream.snapshot(), current, 500);
         expect(mergeSubtitleAnnotations(corrected, [annotated])[1].text).toBe('corrected');
         start(stream, 0, 'replacement');
         stream.update({ type: 'cues', track: 0, loadId: 'replacement', cues: [cue(0, 3000)] });
         expect(
-            mergeSubtitleAnnotations(displaySubtitleSnapshot(stream.snapshot, corrected, 500), [annotated])[1].text
+            mergeSubtitleAnnotations(displaySubtitleSnapshot(stream.snapshot(), corrected, 500), [annotated])[1].text
         ).toBe('word');
     });
 
@@ -393,10 +393,10 @@ describe('SubtitleStream', () => {
                 },
             ],
         });
-        const displayed = displaySubtitleSnapshot(stream.snapshot, [], 0);
+        const displayed = displaySubtitleSnapshot(stream.snapshot(), [], 0);
         displayed[0].tokenization!.error = true;
         displayed[0].tokenization!.tokens[0].readings[0].reading = 'generated';
-        expect(stream.snapshot.subtitles[0].tokenization).toEqual({
+        expect(stream.snapshot().subtitles[0].tokenization).toEqual({
             tokens: [{ pos: [0, 4], states: [], readings: [{ pos: [0, 4], reading: 'source' }] }],
         });
     });
@@ -413,7 +413,7 @@ describe('SubtitleStream', () => {
         ];
         stream.update({ type: 'cues', track: 0, loadId: 'first', cues: [{ ...cue(0, 0), tokenization: { tokens } }] });
         const annotated = {
-            ...displaySubtitleSnapshot(stream.snapshot, [], 0)[0],
+            ...displaySubtitleSnapshot(stream.snapshot(), [], 0)[0],
             text: '<span>word</span>',
             originalText: 'word',
         };
@@ -428,7 +428,7 @@ describe('SubtitleStream', () => {
                 },
             ],
         });
-        const current = displaySubtitleSnapshot(stream.snapshot, [annotated], 0);
+        const current = displaySubtitleSnapshot(stream.snapshot(), [annotated], 0);
         expect(current[0].text).toBe('word');
         expect(mergeSubtitleAnnotations(current, [annotated])[0].tokenization?.tokens[0].readings[0].reading).toBe(
             'second'
