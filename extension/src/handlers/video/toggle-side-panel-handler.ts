@@ -1,4 +1,4 @@
-import { asbError, asbTrace } from '@project/common/util/log';
+import { asbError, asbTrace, asbWarn } from '@project/common/util/log';
 import type {
     CloseSidePanelMessage,
     Command,
@@ -70,6 +70,7 @@ export default class ToggleSidePanelHandler {
             if (!isFirefoxBuild) {
                 const windowId = sender.tab?.windowId;
                 if (windowId === undefined) {
+                    asbWarn('toggle-side-panel', 'Message sender window is undefined, unable to toggle side panel');
                     return false;
                 }
 

@@ -1,6 +1,6 @@
 import { isFirefoxBuild } from '@/services/build-flags';
 import type { Command, Message } from '@project/common';
-import { asbError } from '@project/common/util/log';
+import { asbError, asbWarn } from '@project/common/util/log';
 
 export default class BrowserFeaturesHandler {
     get sender() {
@@ -22,13 +22,15 @@ export default class BrowserFeaturesHandler {
         }
         const windowId = sender.tab?.windowId;
         if (windowId === undefined) {
-            sendResponse({ sidePanel: true });
+            asbWarn('browser-features', 'Message sender is undefined, assuming side panel is unsupported');
+            sendResponse({ sidePanel: false });
             return false;
         }
         browser.windows.get(windowId, (w) => {
             if (browser.runtime.lastError) {
                 asbError(
-                    'Failed to get last focused window when determining browser features:',
+                    'browser-features',
+                    'Failed to get sending window when determining browser features:',
                     browser.runtime.lastError
                 );
                 sendResponse({ sidePanel: false });
