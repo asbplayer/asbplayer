@@ -733,7 +733,8 @@ export default class VideoDataSyncController {
         try {
             const tracks: LoadableSubtitleTrack<SerializedSubtitleFile>[] = [];
             for (const track of data) {
-                const { name, language, extension, url, file } = track;
+                const { name, language, extension, file } = track;
+                const url = track.url ?? (file !== undefined ? URL.createObjectURL(file) : undefined);
                 const fileParts = track.progressive
                     ? []
                     : await this._subtitleFilePartsForUrl(name, language, extension, url!, file !== undefined, signal);
@@ -793,7 +794,10 @@ export default class VideoDataSyncController {
         const tracks = serializedTracks.map(({ fileParts }) => ({
             fileParts: fileParts.map((file) => new File([base64ToBlob(file.base64, 'text/plain')], file.name)),
         }));
-        load.selection = { tracks: selected, syncWithAsbplayerId };
+        load.selection = {
+            tracks: selected.map((track) => (track.file === undefined ? track : { ...track, url: undefined })), // Local file URLs are revoked after their first read, so restarts recreate them from the file.
+            syncWithAsbplayerId,
+        };
         await this._context.loadProgressiveSubtitles(tracks, pending, signal, syncWithAsbplayerId);
         signal.throwIfAborted();
         // The picker closes while the selected responses continue loading in the background.

@@ -540,6 +540,54 @@ describe('Binding playback mode integration', () => {
         }
     });
 
+    it('rereads a local companion file after its object URL is revoked when parsing settings change', async () => {
+        const stream = await openProgressivePicker();
+        const { binding } = stream;
+        const revoked = new Set<string>();
+        let objectUrls = 0;
+        Object.assign(URL, {
+            createObjectURL: () => `blob:recreated-${++objectUrls}`,
+            revokeObjectURL: (url: string) => revoked.add(url),
+        });
+        try {
+            const local: ConfirmedVideoDataSubtitleTrack = {
+                id: 'local',
+                name: 'Local',
+                label: 'Local',
+                extension: 'vtt',
+                url: 'blob:picker',
+                file: new File(['WEBVTT\n\n00:00:01.000 --> 00:00:02.000\nspeaker: Companion\n'], 'local.vtt'),
+            };
+            stream.fetcher.mockImplementation(async (input) => {
+                const url = String(input);
+                if (url !== progressiveChoice.url) {
+                    if (revoked.has(url)) throw new TypeError('Failed to fetch');
+                    return { ok: true, arrayBuffer: () => local.file!.arrayBuffer() } as Response;
+                }
+                return stream.openResponse();
+            });
+            await stream.confirm([progressiveChoice, local]);
+            await stream.append(assHeader + assDialogue('First', 1));
+            expect(binding.subtitleController.subtitles.map((cue) => cue.text)).toEqual([
+                'First',
+                'speaker: Companion',
+            ]);
+            expect(revoked).toContain('blob:picker');
+
+            await storage.set({ subtitleRegexFilter: 'speaker: ' });
+            sendSettingsUpdated(binding);
+            await flushPlaybackTiming();
+            await stream.append(assHeader + assDialogue('First', 1));
+            expect(binding.subtitleController.subtitles.map((cue) => cue.text)).toEqual(['First', 'Companion']);
+            expect(stream.fetcher).toHaveBeenCalledWith('blob:recreated-1', expect.anything());
+            expect(revoked).toContain('blob:recreated-1');
+        } finally {
+            binding.unbind();
+            delete (URL as Partial<typeof URL>).createObjectURL;
+            delete (URL as Partial<typeof URL>).revokeObjectURL;
+        }
+    });
+
     it.each(['timeout', 'dismiss'] as const)('handles a progressive resume offer after %s', async (action) => {
         await storage.set({
             lastPlaybackPositions: [{ fileName: 'progressive.srt', position: 63_000 }],

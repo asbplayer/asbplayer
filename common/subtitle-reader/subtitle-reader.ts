@@ -200,7 +200,10 @@ export default class SubtitleReader {
         return this._processSubtitles(allNodes);
     }
 
-    /** Creates an independent parser for a single progressive track. */
+    /**
+     * Parses one ASS track incrementally, assuming a fixed header followed by chronological dialogue.
+     * Feed text chunks in file order so each published batch extends the track's timeline prefix.
+     */
     createProgressiveReader(extension: string) {
         if (extension !== 'ass') throw new Error(`Unsupported progressive subtitle format: ${extension}`);
         let pending = '';

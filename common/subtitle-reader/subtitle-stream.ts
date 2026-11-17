@@ -195,7 +195,7 @@ export const mergeSubtitleAnnotations = <T extends IndexedSubtitleModel>(
     const byKey = indexCuesByKey(updates.filter((cue) => cue.source));
     const legacy = new Map(updates.filter((cue) => !cue.source).map((cue) => [cue.index, cue]));
     return subtitles.map((cue) => {
-        const update = byKey.get(subtitleKey(cue)) ?? legacy.get(cue.index);
+        const update = cue.source ? byKey.get(subtitleKey(cue)) : legacy.get(cue.index);
         return update && sameSubtitleSourceContent(cue, update)
             ? {
                   ...cue,

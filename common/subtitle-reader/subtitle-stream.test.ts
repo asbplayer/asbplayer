@@ -377,6 +377,17 @@ describe('SubtitleStream', () => {
         ).toBe('word');
     });
 
+    it('matches index-only annotation updates only to subtitles without source identities', () => {
+        const legacy = makeSubtitle({ text: 'word' });
+        const annotated = { ...legacy, originalText: 'word', text: '<span>word</span>' };
+        const stream = new SubtitleStream();
+        stream.replace([legacy], ['subtitles.srt']);
+        const identified = displaySubtitleSnapshot(stream.snapshot(), [], 0);
+
+        expect(mergeSubtitleAnnotations(identified, [annotated])[0]).toBe(identified[0]);
+        expect(mergeSubtitleAnnotations([legacy], [annotated])[0].text).toBe(annotated.text);
+    });
+
     it('keeps source-provided readings separate from mutable annotation state', () => {
         const stream = new SubtitleStream();
         start(stream);
