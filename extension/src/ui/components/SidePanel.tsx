@@ -18,6 +18,7 @@ import type {
     ExtensionToAsbPlayerCommand,
     CopySubtitleMessage,
     CardModel,
+    CurrentTimeToVideoMessage,
     RequestSubtitlesResponse,
     JumpToSubtitleMessage,
     DownloadImageMessage,
@@ -141,6 +142,7 @@ export default function SidePanel({
     const playerRef = useRef<PlayerRef>(null);
     const [recordingAudio, setRecordingAudio] = useState<boolean>(false);
     const [viewingAsbplayer, setViewingAsbplayer] = useState<AsbplayerInstance>();
+    const [asbplayerInCurrentTab, setAsbplayerInCurrentTab] = useState<AsbplayerInstance>();
 
     const keyBinder = useAppKeyBinder(settings.keyBindSet, extension);
     const currentTabId = useCurrentTabId();
@@ -254,6 +256,17 @@ export default function SidePanel({
             }
         });
     }, [currentTabId, viewingAsbplayer, extension]);
+
+    useEffect(() => {
+        if (currentTabId === undefined) {
+            setAsbplayerInCurrentTab(undefined);
+            return;
+        }
+
+        return extension.subscribeTabs(() => {
+            setAsbplayerInCurrentTab(extension.asbplayers?.find((a) => a.tabId === currentTabId));
+        });
+    }, [currentTabId, extension]);
 
     useEffect(() => {
         return extension.subscribe((message) => {
@@ -534,21 +547,32 @@ export default function SidePanel({
     );
     const handleJumpToSubtitle = useCallback(
         (card: CardModel) => {
-            if (!currentTabId || !viewingAsbplayer) {
+            const asbplayer = viewingAsbplayer ?? asbplayerInCurrentTab;
+
+            if (asbplayer && currentTabId) {
+                const asbplayerCommand: ExtensionToAsbPlayerCommand<JumpToSubtitleMessage> = {
+                    sender: 'asbplayer-extension-to-player',
+                    message: {
+                        command: 'jump-to-subtitle',
+                        subtitle: card.subtitle,
+                        subtitleFileName: card.subtitleFileName,
+                    },
+                };
+                void browser.tabs.sendMessage(currentTabId, asbplayerCommand);
                 return;
             }
 
-            const asbplayerCommand: ExtensionToAsbPlayerCommand<JumpToSubtitleMessage> = {
-                sender: 'asbplayer-extension-to-player',
-                message: {
-                    command: 'jump-to-subtitle',
-                    subtitle: card.subtitle,
-                    subtitleFileName: card.subtitleFileName,
-                },
-            };
-            void browser.tabs.sendMessage(currentTabId, asbplayerCommand);
+            if (syncedVideoTab) {
+                const command: AsbPlayerToVideoCommandV2<CurrentTimeToVideoMessage> = {
+                    sender: 'asbplayerv2',
+                    message: { command: 'currentTime', value: card.subtitle.start / 1000 },
+                    tabId: syncedVideoTab.id,
+                    src: syncedVideoTab.src,
+                };
+                void browser.runtime.sendMessage(command);
+            }
         },
-        [currentTabId, viewingAsbplayer]
+        [currentTabId, viewingAsbplayer, asbplayerInCurrentTab, syncedVideoTab]
     );
     const handleAnki = useCallback(
         (copyHistoryItem: CopyHistoryItem) => {
@@ -747,6 +771,7 @@ export default function SidePanel({
                         onAnki={handleAnki}
                         onClipAudio={handleClipAudio}
                         onDownloadImage={handleDownloadImage}
+                        onSelect={handleJumpToSubtitle}
                     />
                     {subtitles === undefined ? (
                         <SidePanelHome

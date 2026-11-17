@@ -58,6 +58,12 @@ const useStyles = makeStyles<Theme>((theme) => ({
             backgroundColor: theme.palette.action.hover,
         },
     },
+    jumpableListItem: {
+        cursor: 'pointer',
+    },
+    jumpableText: {
+        cursor: 'text',
+    },
     listItemGutters: {
         paddingLeft: 5,
         paddingRight: 5,
@@ -347,37 +353,68 @@ export default function CopyHistoryList({
             itemsBySection[currentKey!].push(item);
             const ref = i === items.length - 1 ? scrollToBottomRefCallback : null;
 
+            const jumpPossible = onSelect !== undefined;
             elements.push(
                 <ListItem
                     ref={ref}
                     key={item.id}
-                    className={classes.listItem}
+                    className={`${classes.listItem} ${jumpPossible ? classes.jumpableListItem : ''}`}
                     classes={{ gutters: classes.listItemGutters }}
+                    onClick={
+                        jumpPossible
+                            ? (event) => {
+                                  const selection = document.getSelection();
+                                  const row = event.currentTarget;
+                                  const selectingText =
+                                      selection !== null &&
+                                      selection.type === 'Range' &&
+                                      !selection.isCollapsed &&
+                                      selection.anchorNode !== null &&
+                                      row.contains(selection.anchorNode);
+                                  if (selectingText) return;
+                                  onSelect?.(item);
+                              }
+                            : undefined
+                    }
                 >
                     <ListItemIcon classes={{ root: classes.listItemIconRoot }}>
                         <Tooltip title={t('copyHistory.exportToAnki')}>
-                            <IconButton onClick={() => onAnki(item)}>
+                            <IconButton
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onAnki(item);
+                                }}
+                            >
                                 <NoteAddIcon fontSize="small" />
                             </IconButton>
                         </Tooltip>
                     </ListItemIcon>
                     <ListItemIcon classes={{ root: classes.listItemIconRoot }}>
-                        <IconButton onClick={(e) => handleMenu(e, item)}>
+                        <IconButton
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                handleMenu(e, item);
+                            }}
+                        >
                             <MoreVertIcon fontSize="small" />
                         </IconButton>
                     </ListItemIcon>
-                    <ListItemText
-                        primary={
-                            <Grid wrap="nowrap" container>
-                                <Grid item className={item.subtitle.text === '' ? classes.emptyText : classes.text}>
-                                    {item.subtitle.text === '' ? t('copyHistory.blank') : item.subtitle.text}
+                    <Tooltip title={t('action.jumpTo')} disabled={!jumpPossible}>
+                        <ListItemText
+                            primary={
+                                <Grid wrap="nowrap" container>
+                                    <Grid item className={item.subtitle.text === '' ? classes.emptyText : classes.text}>
+                                        <span className={jumpPossible ? classes.jumpableText : undefined}>
+                                            {item.subtitle.text === '' ? t('copyHistory.blank') : item.subtitle.text}
+                                        </span>
+                                    </Grid>
+                                    <Grid item className={classes.timestamp}>
+                                        {timeDurationDisplay(item.subtitle.start, item.subtitle.start, false)}
+                                    </Grid>
                                 </Grid>
-                                <Grid item className={classes.timestamp}>
-                                    {timeDurationDisplay(item.subtitle.start, item.subtitle.start, false)}
-                                </Grid>
-                            </Grid>
-                        }
-                    />
+                            }
+                        />
+                    </Tooltip>
                 </ListItem>
             );
 
