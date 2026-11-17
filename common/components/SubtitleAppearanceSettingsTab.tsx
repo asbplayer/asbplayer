@@ -27,7 +27,6 @@ import {
     textSubtitleSettingsAreDirty,
     textSubtitleSettingsForTrack,
 } from '@project/common/settings';
-import { isNumeric } from '@project/common/util';
 import Typography from '@mui/material/Typography';
 import Switch from '@mui/material/Switch';
 import RadioGroup from '@mui/material/RadioGroup';
@@ -53,7 +52,6 @@ const cssStyles = (() => {
     const keys = new Set<string>();
     for (const key in style) {
         if (
-            !isNumeric(key) &&
             /^[a-zA-Z]+$/.test(key) &&
             key !== 'cssText' &&
             typeof style[key as keyof CSSStyleDeclaration] === 'string'
