@@ -1,3 +1,8 @@
+/**
+ * External readers such as JPDB Reader parse and modify cached subtitles before they are displayed.
+ * Preserve unchanged nodes and external edits. Cached ruby must remain readable through innerText:
+ * content-visibility: hidden makes those readings empty in Chrome.
+ */
 export default class OffscreenDomCache {
     private offscreenElement?: HTMLElement;
     private _cachedContentElements: { [key: string]: HTMLElement } = {};

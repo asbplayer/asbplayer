@@ -2,7 +2,6 @@ import { describe, expect, it } from '@jest/globals';
 import {
     displaySubtitleSnapshot,
     diffCues,
-    mergeSubtitleAnnotations,
     originalTokenizationsEqual,
     SubtitleStream,
     subtitleKey,
@@ -15,6 +14,7 @@ import {
 } from '@project/common/subtitle-reader/subtitle-stream';
 import type { SubtitleSourceStatus } from '@project/common/subtitle-reader/subtitle-stream';
 import type { Token, Tokenization } from '@project/common';
+import { mergeSubtitleAnnotations } from '@project/common/annotations/subtitle-annotations';
 import { TokenState, TokenStatus } from '@project/common/settings';
 import { makeSubtitle } from '@project/common/playback/playback-test-utils';
 

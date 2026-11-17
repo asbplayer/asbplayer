@@ -8,7 +8,9 @@ import {
 } from '@project/common/settings';
 import { Yomitan } from '@project/common/yomitan';
 import { renderRichTextOntoSubtitles } from '@project/common/annotations/render-annotations';
-import { needsReset } from '@project/common/annotations/subtitle-annotations';
+import { mergeSubtitleAnnotations, needsReset } from '@project/common/annotations/subtitle-annotations';
+import type { IndexedSubtitleModel } from '@project/common';
+import type { InternalToken } from '@project/common/annotations/render-annotations';
 import type { DictionaryStatisticsSnapshot } from '@project/common/dictionary-statistics';
 import { TrackState } from '@project/common/annotations/track-state';
 import {
@@ -62,6 +64,121 @@ describe('needsReset', () => {
         ).toBe(true);
         expect(needsReset([], previous)).toBe(true);
         expect(needsReset([makeSubtitle({ text: 'word', index: 1 })], previous)).toBe(true);
+    });
+});
+
+describe('mergeSubtitleAnnotations', () => {
+    const annotatedCue = (index = 0): IndexedSubtitleModel => {
+        const token: InternalToken = {
+            pos: [0, 4],
+            readings: [{ pos: [0, 4], reading: 'わーど' }],
+            states: [],
+            status: TokenStatus.UNKNOWN,
+            frequency: 7,
+            gloss: 'definition',
+            pitchAccent: 1,
+            __internal: true,
+            __usingExternalReadings: false,
+            externalCandidateStatuses: [
+                { cardId: 1, status: TokenStatus.LEARNING, suspended: false },
+                {
+                    status: TokenStatus.MATURE,
+                    suspended: false,
+                    waniKani: {
+                        subjectId: 2,
+                        subjectLevel: 3,
+                        assignmentId: 4,
+                        availableAt: null,
+                    },
+                },
+            ],
+        };
+        return {
+            index,
+            track: 0,
+            start: 500,
+            end: 1500,
+            originalStart: 0,
+            originalEnd: 1000,
+            text: 'word',
+            originalText: 'word',
+            source: { loadId: 'source', cueId: index },
+            tokenization: { tokens: [token] },
+        };
+    };
+
+    it.each([0, 1, 2])('retains array and cue identities for %i unchanged serialized cues', (count) => {
+        const current = Array.from({ length: count }, (_, index) => annotatedCue(index));
+        const updates = JSON.parse(JSON.stringify(current));
+        expect(mergeSubtitleAnnotations(current, updates)).toBe(current);
+        expect(mergeSubtitleAnnotations(current, [])).toBe(current);
+    });
+
+    it.each<[string, Partial<InternalToken>]>([
+        ['status', { status: TokenStatus.MATURE }],
+        ['state', { states: [TokenState.IGNORED] }],
+        ['frequency', { frequency: 9 }],
+        ['gloss', { gloss: 'new definition' }],
+        ['pitch accent', { pitchAccent: 2 }],
+        ['reading', { readings: [{ pos: [0, 4], reading: 'new reading' }] }],
+        ['authored reading provenance', { __usingExternalReadings: true }],
+        [
+            'external status metadata',
+            { externalCandidateStatuses: [{ cardId: 1, status: TokenStatus.YOUNG, suspended: false }] },
+        ],
+    ])('applies changed %s while retaining other cue identities and current timing', (_, change) => {
+        const current = [annotatedCue(), annotatedCue(1)];
+        const update = { ...annotatedCue(), index: 99, start: 9000 };
+        Object.assign(update.tokenization!.tokens[0], change);
+        const result = mergeSubtitleAnnotations(current, [update]);
+        expect(result).not.toBe(current);
+        expect(result[0].tokenization).toEqual(update.tokenization);
+        expect(result[0]).toMatchObject({ index: 0, start: 500, end: 1500 });
+        expect(result[1]).toBe(current[1]);
+        expect(current[0].tokenization).not.toEqual(update.tokenization);
+    });
+
+    it('applies reconstructed text without replacing equivalent tokenization', () => {
+        const current = [annotatedCue()];
+        const update = { ...annotatedCue(), text: '<b>word</b>' };
+        const result = mergeSubtitleAnnotations(current, [update]);
+        expect(result[0].text).toBe('<b>word</b>');
+        expect(result[0].tokenization).toBe(current[0].tokenization);
+    });
+
+    it('applies error and cleared annotation results', () => {
+        const current = [annotatedCue()];
+        const failed = { ...annotatedCue(), tokenization: { tokens: [], error: true } };
+        expect(mergeSubtitleAnnotations(current, [failed])[0].tokenization).toEqual(failed.tokenization);
+        expect(
+            mergeSubtitleAnnotations(current, [{ ...annotatedCue(), tokenization: undefined }])[0].tokenization
+        ).toBeUndefined();
+    });
+
+    it('retains a read-only snapshot for stale source or text updates', () => {
+        const current = Object.freeze([annotatedCue()]);
+        expect(mergeSubtitleAnnotations(current, [{ ...annotatedCue(), source: { loadId: 'stale', cueId: 0 } }])).toBe(
+            current
+        );
+        expect(mergeSubtitleAnnotations(current, [{ ...annotatedCue(), originalText: 'stale' }])).toBe(current);
+        const changed = { ...annotatedCue(), tokenization: undefined };
+        expect(mergeSubtitleAnnotations(current, [changed])).not.toBe(current);
+        expect(current[0].tokenization).toBeDefined();
+    });
+
+    it('keeps published snapshots independent of subsequent builder mutations', () => {
+        const initial: IndexedSubtitleModel = { ...annotatedCue(), tokenization: undefined };
+        const update = annotatedCue();
+        const published = mergeSubtitleAnnotations([initial], [update]);
+        const previous = JSON.parse(JSON.stringify(published));
+        update.tokenization!.tokens[0].status = TokenStatus.MATURE;
+        update.tokenization!.tokens[0].states.push(TokenState.IGNORED);
+        update.tokenization!.tokens[0].externalCandidateStatuses![1].waniKani!.assignmentId = 5;
+        expect(published).toEqual(previous);
+        const refreshed = mergeSubtitleAnnotations(published, [update]);
+        expect(refreshed).not.toBe(published);
+        expect(refreshed[0].tokenization).toEqual(update.tokenization);
+        expect(mergeSubtitleAnnotations(refreshed, [update])).toBe(refreshed);
     });
 });
 
@@ -147,6 +264,21 @@ describe('SubtitleAnnotations public boundary', () => {
         expect(subtitleAnnotations.subtitles[0]).not.toBe(input);
         expect(subtitleAnnotations.subtitles[0].tokenization).toBe(tokenization);
         expect(subtitleAnnotationsUpdated).not.toHaveBeenCalled();
+    });
+
+    it('does not mutate a published tokenization when disabling annotations', async () => {
+        const track = makeDictionaryTrack({ dictionaryColorizeSubtitles: true });
+        const { subtitleAnnotations } = makeSubtitleAnnotations(
+            makeSettings(makeDictionaryTracks(track)),
+            makeFetcher()
+        );
+        subtitleAnnotations.setSubtitles([makeSubtitle({ text: 'word' })], []);
+        await waitForTokenization(subtitleAnnotations);
+        const published = subtitleAnnotations.subtitles[0].tokenization;
+        const expected = JSON.parse(JSON.stringify(published));
+        subtitleAnnotations.settingsUpdated(makeSettings(makeDictionaryTracks()), { force: false });
+        expect(published).toEqual(expected);
+        expect(subtitleAnnotations.subtitles[0].tokenization).toBeUndefined();
     });
 
     it('keeps annotations and current timing when subtitles change during tokenization', async () => {

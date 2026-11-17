@@ -1052,6 +1052,20 @@ const tokenReadingComparators: FieldComparators<TokenReading> = {
 
 const areTokenReadingsEqual = (a: TokenReading, b: TokenReading) => fieldsEqual(a, b, tokenReadingComparators);
 
+const tokenStatusInfoComparators: FieldComparators<TokenStatusInfo> = {
+    cardId: (a, b) => a === b,
+    status: (a, b) => a === b,
+    suspended: (a, b) => a === b,
+    waniKani: (a, b) =>
+        a === b ||
+        (!!a &&
+            !!b &&
+            a.subjectId === b.subjectId &&
+            a.subjectLevel === b.subjectLevel &&
+            a.assignmentId === b.assignmentId &&
+            a.availableAt === b.availableAt),
+};
+
 const tokenComparators: FieldComparators<Token> = {
     pos: (a, b) => arrayEquals(a, b),
     states: (a, b) => arrayEquals(a, b),
@@ -1062,7 +1076,8 @@ const tokenComparators: FieldComparators<Token> = {
     pitchAccent: (a, b) => a === b,
     groupingKey: (a, b) => a === b,
     lemmasGroupingKey: (a, b) => a === b,
-    externalCandidateStatuses: (a, b) => arrayEquals(a, b),
+    externalCandidateStatuses: (a, b) =>
+        arrayEquals(a, b, (left, right) => fieldsEqual(left, right, tokenStatusInfoComparators)),
 };
 
 const areTokensEqual = (aToken: Token, bToken: Token) => fieldsEqual(aToken, bToken, tokenComparators);

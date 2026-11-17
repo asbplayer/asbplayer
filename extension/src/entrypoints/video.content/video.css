@@ -325,6 +325,7 @@ div.asbplayer-fullscreen-subtitles > span {
     opacity: 1;
 }
 
+/* Keep cached ruby readable via innerText for JPDB Reader. */
 .asbplayer-offscreen {
     position: fixed !important;
     left: 100% !important;
