@@ -178,7 +178,8 @@ export interface AudioModel {
     readonly error?: AudioErrorCode;
 }
 
-export type AnkiExportMode = 'gui' | 'updateLast' | 'updateSpecific' | 'default';
+export const ankiExportModes = ['gui', 'updateLast', 'updateSpecific', 'default'] as const;
+export type AnkiExportMode = (typeof ankiExportModes)[number];
 
 export interface AnkiDialogSettings extends AnkiSettings {
     themeType: string;

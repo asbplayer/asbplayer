@@ -1,6 +1,7 @@
 import project from '@project/common/project';
 import { asbError } from '@project/common/util/log';
 import type { LogProvider } from '@project/common/util/log';
+import Alert from '@mui/material/Alert';
 import FormControl from '@mui/material/FormControl';
 import FormLabel from '@mui/material/FormLabel';
 import MenuItem from '@mui/material/MenuItem';
@@ -156,19 +157,28 @@ const MiscSettingTab: React.FC<Props> = ({
     }
 
     const settingsFileInputRef = useRef<HTMLInputElement>(null);
+    const [importError, setImportError] = useState<string | undefined>();
     const handleSettingsFileInputChange = useCallback(async () => {
+        const input = settingsFileInputRef.current;
+        const file = input?.files?.[0];
+
         try {
-            const file = settingsFileInputRef.current?.files?.[0];
+            setImportError(undefined);
 
             if (file === undefined) {
                 return;
             }
 
             const importedSettings = JSON.parse(await file.text());
-            const validatedSettings = validateSettings(mergeImportedSettings(importedSettings, settings));
+            const validatedSettings = validateSettings(mergeImportedSettings(importedSettings, settings), settings);
             onSettingsChanged(validatedSettings);
         } catch (e) {
             asbError('settings/import', e);
+            setImportError(e instanceof Error ? e.message : String(e));
+        } finally {
+            if (input) {
+                input.value = '';
+            }
         }
     }, [onSettingsChanged, settings]);
 
@@ -200,6 +210,7 @@ const MiscSettingTab: React.FC<Props> = ({
                         {t('settings.logs')}
                     </NoWrapButton>
                 </ButtonGroup>
+                {importError && <Alert severity="error">{importError}</Alert>}
 
                 <SettingsSection>{t('settings.ui')}</SettingsSection>
                 <FormControl>

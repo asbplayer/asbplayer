@@ -28,7 +28,7 @@ const appTestCard = () => {
 
 const useStyles = makeStyles<Theme>((theme) => ({
     root: {
-        '& .MuiPaper-root': {
+        '& .MuiDialog-paper': {
             height: '100dvh',
         },
     },
