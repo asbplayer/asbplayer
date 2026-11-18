@@ -23,11 +23,13 @@ import type { Theme } from '@mui/material/styles';
 import type { CopyHistoryItem } from '@project/common';
 import { AudioClip } from '@project/common/audio-clip';
 import { MediaFragment } from '@project/common';
+import type { MediaSources } from '@project/common/app/services/media-sources';
 
 interface CopyHistoryListProps {
     open: boolean;
     forceShowDownloadOptions?: boolean;
     items: CopyHistoryItem[];
+    sources?: MediaSources;
     onClose: () => void;
     onDelete: (item: CopyHistoryItem) => void;
     onDeleteAll: () => void;
@@ -131,6 +133,7 @@ interface MenuProps {
     item: CopyHistoryItem;
     anchorEl?: Element;
     forceShowDownloadOptions?: boolean;
+    jumpPossible?: boolean;
     onClose: () => void;
     onSelect?: (item: CopyHistoryItem) => void;
     onClipAudio: (item: CopyHistoryItem) => void;
@@ -142,6 +145,7 @@ function Menu({
     open,
     anchorEl,
     forceShowDownloadOptions,
+    jumpPossible = false,
     onClose,
     onSelect,
     onClipAudio,
@@ -156,13 +160,12 @@ function Menu({
     }, [item, onClose]);
 
     const handleJumpTo = useCallback(() => {
-        if (onSelect === undefined) {
+        if (onSelect === undefined || !jumpPossible) {
             return;
         }
-
         onSelect(item);
         onClose();
-    }, [item, onSelect, onClose]);
+    }, [item, onSelect, jumpPossible, onClose]);
 
     const handleClipAudio = useCallback(() => {
         onClipAudio(item);
@@ -203,7 +206,7 @@ function Menu({
                         <ListItemText primaryTypographyProps={{ variant: 'body2' }} primary={t('action.copy')} />
                     </ListItemButton>
                 </ListItem>
-                {onSelect && (
+                {onSelect && jumpPossible && (
                     <ListItem disablePadding onClick={handleJumpTo}>
                         <ListItemButton>
                             <ListItemText primaryTypographyProps={{ variant: 'body2' }} primary={t('action.jumpTo')} />
@@ -244,6 +247,7 @@ export default function CopyHistoryList({
     open,
     items,
     forceShowDownloadOptions,
+    sources,
     onSelect,
     onClipAudio,
     onDownloadImage,
@@ -283,18 +287,21 @@ export default function CopyHistoryList({
     }, []);
 
     const [menuItem, setMenuItem] = useState<CopyHistoryItem>();
+    const [menuJumpPossible, setMenuJumpPossible] = useState<boolean>(false);
     const [menuOpen, setMenuOpen] = useState<boolean>(false);
     const [menuAnchorEl, setMenuAnchorEl] = useState<Element>();
     const { t } = useTranslation();
 
-    const handleMenu = useCallback((e: React.MouseEvent, item: CopyHistoryItem) => {
+    const handleMenu = useCallback((e: React.MouseEvent, item: CopyHistoryItem, jumpPossible: boolean) => {
         setMenuItem(item);
+        setMenuJumpPossible(jumpPossible);
         setMenuOpen(true);
         setMenuAnchorEl(e.currentTarget);
     }, []);
 
     const handleMenuClosed = useCallback(() => {
         setMenuItem(undefined);
+        setMenuJumpPossible(false);
         setMenuOpen(false);
         setMenuAnchorEl(undefined);
     }, []);
@@ -353,7 +360,7 @@ export default function CopyHistoryList({
             itemsBySection[currentKey!].push(item);
             const ref = i === items.length - 1 ? scrollToBottomRefCallback : null;
 
-            const jumpPossible = onSelect !== undefined;
+            const jumpPossible = onSelect !== undefined && (sources?.hasSubtitleFile(item.subtitleFileName) ?? false);
             elements.push(
                 <ListItem
                     ref={ref}
@@ -393,7 +400,7 @@ export default function CopyHistoryList({
                         <IconButton
                             onClick={(e) => {
                                 e.stopPropagation();
-                                handleMenu(e, item);
+                                handleMenu(e, item, jumpPossible);
                             }}
                         >
                             <MoreVertIcon fontSize="small" />
@@ -452,6 +459,7 @@ export default function CopyHistoryList({
                     forceShowDownloadOptions={forceShowDownloadOptions}
                     anchorEl={menuAnchorEl}
                     item={menuItem}
+                    jumpPossible={menuJumpPossible}
                     onClose={handleMenuClosed}
                     onSelect={onSelect}
                     onClipAudio={onClipAudio}

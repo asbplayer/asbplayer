@@ -2,6 +2,7 @@ import Drawer from '@project/common/components/Drawer';
 import type { CopyHistoryItem } from '@project/common';
 import { useTranslation } from 'react-i18next';
 import CopyHistoryList from '@project/common/app/components/CopyHistoryList';
+import type { MediaSources } from '@project/common/app/services/media-sources';
 
 interface CopyHistoryProps {
     open: boolean;
@@ -9,6 +10,7 @@ interface CopyHistoryProps {
     items: CopyHistoryItem[];
     showBackButton?: boolean;
     forceShowDownloadOptions?: boolean;
+    sources?: MediaSources;
     onClose: () => void;
     onDelete: (item: CopyHistoryItem) => void;
     onDeleteAll: () => void;
