@@ -2340,6 +2340,13 @@ export default class Binding {
         void this.mobileVideoOverlayController.updateModel();
     }
 
+    /** Seals retained tracks whose producers were interrupted by a failed reload. */
+    failSubtitleLoad(error: string): void {
+        for (const { track, loadId, status } of this.subtitleStream.sourceStates()) {
+            if (status === 'loading') this.updateSubtitleSource({ type: 'failed', track, loadId, error });
+        }
+    }
+
     /** Entry point for progressive producers owned by this video binding. */
     updateSubtitleSource(update: SubtitleSourceUpdate, options?: { isNewSource: boolean }): void {
         if (!this.applySubtitleSource(update, options)) return;

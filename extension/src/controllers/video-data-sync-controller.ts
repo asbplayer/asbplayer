@@ -715,9 +715,11 @@ export default class VideoDataSyncController {
         }
     }
 
-    private _beginSubtitleLoad(options: { clearSubtitles: boolean }): SubtitleLoad {
-        this.cancelSubtitleLoad(options); // Selections clear old cues immediately; settings refreshes keep them until replacement is ready.
-        const load = { controller: new AbortController(), location: window.location.href };
+    private _beginSubtitleLoad({ clearSubtitles }: { clearSubtitles: boolean }): SubtitleLoad {
+        // A refresh retains the active selection until its replacement is ready, including while fetching companions.
+        const selection = clearSubtitles ? undefined : this._subtitleLoad?.selection;
+        this.cancelSubtitleLoad({ clearSubtitles });
+        const load = { controller: new AbortController(), location: window.location.href, selection };
         this._subtitleLoad = load;
         return load;
     }
@@ -745,11 +747,26 @@ export default class VideoDataSyncController {
             for (const track of data) {
                 const { name, language, extension, file } = track;
                 const url = track.url ?? (file !== undefined ? URL.createObjectURL(file) : undefined);
-                const fileParts = track.progressive
-                    ? []
-                    : await this._subtitleFilePartsForUrl(name, language, extension, url!, file !== undefined, signal);
+                // Progressive sources use track names for export; don't give unselected slots a filename.
+                const fileParts =
+                    track.progressive || (progressive && url === '-')
+                        ? []
+                        : await this._subtitleFilePartsForUrl(
+                              name,
+                              language,
+                              extension,
+                              url!,
+                              file !== undefined,
+                              signal
+                          );
                 signal.throwIfAborted();
-                if (fileParts === undefined) return false;
+                if (fileParts === undefined) {
+                    load.controller.abort();
+                    if (!options.isNewSource) {
+                        this._context.failSubtitleLoad(`Failed to retrieve ${name}.${extension}`);
+                    }
+                    return false;
+                }
                 tracks.push({ fileParts });
             }
             if (progressive) {
@@ -761,9 +778,9 @@ export default class VideoDataSyncController {
         } catch (error) {
             if (signal.aborted) return false;
             load.controller.abort();
-            if (typeof (error as Error).message !== 'undefined') {
-                await this._reportError(`Data Sync failed: ${(error as Error).message}`);
-            }
+            const message = error instanceof Error ? error.message : String(error);
+            if (!options.isNewSource) this._context.failSubtitleLoad(message);
+            await this._reportError(`Data Sync failed: ${message}`);
             return false;
         } finally {
             if ((!load.selection || signal.aborted) && this._subtitleLoad === load) this._subtitleLoad = undefined;

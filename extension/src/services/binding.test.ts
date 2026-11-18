@@ -25,6 +25,8 @@ import { MockStorageArea } from '@project/extension/src/services/mock-storage-ar
 import { uiFrameForHtml } from '@project/extension/src/services/ui-frame';
 import { subtitleReference } from '@project/common/subtitle-reader/subtitle-stream';
 import type { InternalToken } from '@project/common/annotations/render-annotations';
+import { MediaSources } from '@project/common/app/services/media-sources';
+import SubtitleReader from '@project/common/subtitle-reader/subtitle-reader';
 
 let mockUseRealSyncController = false;
 
@@ -33,11 +35,19 @@ const bindingOptions = (hasPageScript: boolean, videoSrcChangesIndicateNewVideo:
     videoSrcChangesIndicateNewVideo,
 });
 
-// The tests parse WebVTT and ASS with the real SubtitleReader. This unused dependency
-// ships as ESM, which the extension's Jest configuration does not transform.
+// The tests parse WebVTT and ASS with the real SubtitleReader. Its SRT dependency
+// ships as ESM; the fake handles empty picker placeholders and exposes downloaded cue data.
 jest.mock('@qgustavor/srt-parser', () => ({
     __esModule: true,
-    default: class {},
+    default: class {
+        fromSrt(text: string) {
+            if (text !== '') throw new Error('These tests only parse empty SRT placeholders');
+            return [];
+        }
+        toSrt(cues: unknown[]) {
+            return JSON.stringify(cues);
+        }
+    },
 }));
 jest.mock('@project/extension/src/services/localization-fetcher', () => ({
     fetchLocalization: jest.fn(async () => ({})),
@@ -241,6 +251,28 @@ describe('Binding playback mode integration', () => {
             message: { command: 'playbackRate', value },
         };
         for (const listener of runtimeListeners) listener(request, {}, () => undefined);
+    };
+
+    const requestSourceSnapshot = (binding: Binding) => {
+        const callCount = sendRuntimeMessage.mock.calls.length;
+        for (const listener of runtimeListeners) {
+            listener(
+                {
+                    sender: 'asbplayer-extension-to-video',
+                    src: binding.registeredVideoSrc,
+                    message: { command: 'requestSubtitleSource' },
+                },
+                {},
+                () => undefined
+            );
+        }
+        const calls = sendRuntimeMessage.mock.calls as unknown as [{ message?: SubtitleSourceMessage }][];
+        const message = calls
+            .slice(callCount)
+            .map(([command]) => command.message)
+            .find((message) => message?.command === 'subtitleSource' && message.update.type === 'snapshot');
+        if (message?.update.type !== 'snapshot') throw new Error('Expected subtitle source snapshot');
+        return message.update;
     };
 
     const sendPlayMode = (binding: Binding, playMode: PlayMode) => {
@@ -541,6 +573,218 @@ describe('Binding playback mode integration', () => {
             sendSettingsUpdated(binding);
             await flushPlaybackTiming();
             expect(stream.fetcher).toHaveBeenCalledTimes(6);
+        } finally {
+            binding.unbind();
+        }
+    });
+
+    it.each(['http', 'network', 'parse'] as const)(
+        'marks interrupted tracks failed and cancels a queued resume when a settings refresh has a companion %s failure',
+        async (failure) => {
+            await storage.set({ lastPlaybackPositions: [{ fileName: 'Internal.ass', position: 63_000 }] });
+            const stream = await openProgressivePicker();
+            const { binding } = stream;
+            const companion: ConfirmedVideoDataSubtitleTrack = {
+                id: 'companion',
+                name: 'Companion',
+                label: 'Companion',
+                extension: 'vtt',
+                url: 'https://example.test/companion',
+            };
+            let refreshing = false;
+            stream.fetcher.mockImplementation(async (url) => {
+                if (url !== companion.url) return stream.openResponse();
+                if (refreshing && failure === 'http') {
+                    return { ok: false, status: 503, statusText: 'Unavailable' } as Response;
+                }
+                if (refreshing && failure === 'network') throw new TypeError('Failed to fetch');
+                return {
+                    ok: true,
+                    arrayBuffer: async () =>
+                        new TextEncoder().encode('WEBVTT\n\n00:00:01.000 --> 00:00:02.000\nCompanion\n').buffer,
+                } as Response;
+            });
+            try {
+                await stream.confirm([progressiveChoice, companion]);
+                await stream.append(assHeader + assDialogue('First', 1));
+                const previous = requestSourceSnapshot(binding);
+                expect(binding.notificationController.onAction).toBeDefined();
+                binding.notificationController.onAction?.();
+                refreshing = true;
+                if (failure === 'parse') {
+                    jest.spyOn(SubtitleReader.prototype, 'subtitles').mockRejectedValueOnce(
+                        new Error('Parsing failed')
+                    );
+                }
+                await storage.set({ subtitleRegexFilter: 'speaker: ' });
+                sendSettingsUpdated(binding);
+                await flushPlaybackTiming();
+
+                expect(stream.cancelled()).toBe(true);
+                const snapshot = requestSourceSnapshot(binding);
+                expect(snapshot.tracks).toMatchObject([
+                    {
+                        track: 0,
+                        loadId: previous.tracks[0].loadId,
+                        status: 'failed',
+                        error: expect.any(String),
+                        cues: [{ text: 'First' }],
+                    },
+                    { track: 1, status: 'complete', cues: [{ text: 'Companion' }] },
+                ]);
+                expect(binding.notificationController.onAction).toBeUndefined();
+                binding.updateSubtitleSource({
+                    type: 'cues',
+                    track: 0,
+                    loadId: previous.tracks[0].loadId,
+                    cues: [{ cueId: 1, start: 65_000, end: 66_000, text: 'Late' }],
+                });
+                expect(binding.video.currentTime).toBe(0);
+                expect(binding.subtitleController.subtitles.map((cue) => cue.text)).toEqual(['First', 'Companion']);
+            } finally {
+                binding.unbind();
+            }
+        }
+    );
+
+    it('clears retained cues on replacement and ignores an obsolete settings refresh failure', async () => {
+        const stream = await openProgressivePicker();
+        const { binding } = stream;
+        const companion: ConfirmedVideoDataSubtitleTrack = {
+            id: 'companion',
+            name: 'Companion',
+            label: 'Companion',
+            extension: 'vtt',
+            url: 'https://example.test/companion',
+        };
+        const companionResponse = {
+            ok: true,
+            arrayBuffer: async () =>
+                new TextEncoder().encode('WEBVTT\n\n00:00:01.000 --> 00:00:02.000\nCompanion\n').buffer,
+        } as Response;
+        let rejectRefresh: ((error: Error) => void) | undefined;
+        let refreshing = false;
+        stream.fetcher.mockImplementation(async (url) => {
+            if (url !== companion.url) return stream.openResponse();
+            if (refreshing) {
+                return new Promise<Response>((_, reject) => {
+                    rejectRefresh = reject;
+                });
+            }
+            return companionResponse;
+        });
+        try {
+            await stream.confirm([progressiveChoice, companion]);
+            await stream.append(assHeader + assDialogue('First', 1));
+            refreshing = true;
+            await storage.set({ subtitleRegexFilter: 'speaker: ' });
+            sendSettingsUpdated(binding);
+            await flushPlaybackTiming();
+            expect(rejectRefresh).toBeDefined();
+            let finishReplacement!: () => void;
+            stream.fetcher.mockImplementationOnce(
+                () =>
+                    new Promise<Response>((resolve) => {
+                        finishReplacement = () => resolve(companionResponse);
+                    })
+            );
+            await stream.confirm([{ ...progressiveChoice, url: 'https://example.test/replacement' }, companion]);
+            expect(requestSourceSnapshot(binding).tracks).toEqual([]);
+            finishReplacement();
+            await flushPlaybackTiming();
+            await stream.append(assHeader + assDialogue('Replacement', 1));
+            rejectRefresh!(new Error('Obsolete refresh failed'));
+            await flushPlaybackTiming();
+            expect(requestSourceSnapshot(binding).tracks).toMatchObject([
+                { status: 'loading', cues: [{ text: 'Replacement' }] },
+                { status: 'complete', cues: [{ text: 'Companion' }] },
+            ]);
+            expect(pickerStates.at(-1)?.error).toBeFalsy();
+        } finally {
+            binding.unbind();
+        }
+    });
+
+    it.each([0, 1, 2])('keeps unused picker slots out of a single-track SRT download in slot %s', async (slot) => {
+        const stream = await openProgressivePicker();
+        const { binding } = stream;
+        const empty: ConfirmedVideoDataSubtitleTrack = {
+            id: '-',
+            name: 'Unused',
+            label: 'Unused',
+            url: '-',
+            extension: 'srt',
+        };
+        try {
+            await stream.confirm(Array.from({ length: 3 }, (_, index) => (index === slot ? progressiveChoice : empty)));
+            await stream.append(assHeader + assDialogue('First', 1));
+            stream.response.close();
+            await flushPlaybackTiming();
+            const snapshot = requestSourceSnapshot(binding);
+            const sources = MediaSources.fromSync({
+                command: 'syncv2',
+                subtitles: [],
+                subtitleSource: { tracks: snapshot.tracks },
+            });
+            const reader = new SubtitleReader({
+                regexFilter: '',
+                regexFilterTextReplacement: '',
+                subtitleHtml: SubtitleHtml.remove,
+                convertNetflixRuby: false,
+                pgsParserWorkerFactory: () => Promise.reject(new Error('Not an image source')),
+            });
+            const tracks = await sources.subtitleTracksForExport(reader, binding.subtitleController.subtitles);
+            expect(reader.createSrtDownload(tracks, 'subtitles')?.name).toBe(`[Track${slot + 1}]Internal.srt`);
+            expect(tracks).toMatchObject([{ track: slot, name: 'Internal.ass', subtitles: [{ text: 'First' }] }]);
+        } finally {
+            binding.unbind();
+        }
+    });
+
+    it('downloads one SRT after attaching to a video with one ordinary track and unused picker slots', async () => {
+        await storage.set({ streamingSubtitleListPreference: SubtitleListPreference.noSubtitleList });
+        const stream = await openProgressivePicker();
+        const { binding } = stream;
+        stream.fetcher.mockResolvedValue({
+            ok: true,
+            arrayBuffer: async () =>
+                new TextEncoder().encode('WEBVTT\n\n00:00:01.000 --> 00:00:02.000\nOrdinary\n').buffer,
+        } as Response);
+        const empty: ConfirmedVideoDataSubtitleTrack = {
+            id: '-',
+            name: 'Unused',
+            label: 'Unused',
+            url: '-',
+            extension: 'srt',
+        };
+        try {
+            await stream.confirm([
+                empty,
+                {
+                    id: 'ordinary',
+                    name: 'Ordinary',
+                    label: 'Ordinary',
+                    extension: 'vtt',
+                    url: 'https://example.test/ordinary',
+                },
+                empty,
+            ]);
+            const snapshot = requestSourceSnapshot(binding);
+            const sources = MediaSources.fromSync({
+                command: 'syncv2',
+                subtitles: [],
+                subtitleSource: { tracks: snapshot.tracks },
+            });
+            const reader = new SubtitleReader({
+                regexFilter: '',
+                regexFilterTextReplacement: '',
+                subtitleHtml: SubtitleHtml.remove,
+                convertNetflixRuby: false,
+                pgsParserWorkerFactory: () => Promise.reject(new Error('Not an image source')),
+            });
+            const tracks = await sources.subtitleTracksForExport(reader, binding.subtitleController.subtitles);
+            expect(reader.createSrtDownload(tracks, sources.subtitleFileNames[0])?.name).toBe('[Track2]Ordinary.srt');
+            expect(tracks).toMatchObject([{ track: 1, name: 'Ordinary.vtt', subtitles: [{ text: 'Ordinary' }] }]);
         } finally {
             binding.unbind();
         }
