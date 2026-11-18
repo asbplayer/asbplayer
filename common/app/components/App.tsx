@@ -35,7 +35,7 @@ import type { AsbplayerSettings, DictionaryTrack, Profile, SettingsProvider } fr
 import { AudioClip, Mp3Encoder } from '@project/common/audio-clip';
 import type { ExportParams } from '@project/common/anki';
 import { SubtitleReader } from '@project/common/subtitle-reader';
-import { subtitleSourceNames } from '@project/common/subtitle-reader/subtitle-stream';
+import { subtitleSourceNames, subtitleSourceStatus } from '@project/common/subtitle-reader/subtitle-stream';
 import type { SubtitleSourceState } from '@project/common/subtitle-reader/subtitle-stream';
 import { v4 as uuidv4 } from 'uuid';
 import clsx from 'clsx';
@@ -1534,7 +1534,13 @@ function App({
             }
 
             if (sources.videoFileUrl) handleUnloadVideo(sources.videoFileUrl);
-            handleSources(new MediaSources({ kind: 'video', names: subtitleFileNames }));
+            handleSources(
+                new MediaSources({
+                    kind: 'video',
+                    names: subtitleFileNames,
+                    status: extension.supportsProgressiveSubtitles ? 'loading' : 'complete',
+                })
+            );
             setTab((previous) =>
                 previous?.id === videoElement.id && previous.src === videoElement.src ? previous : videoElement
             );
@@ -1546,13 +1552,15 @@ function App({
         (sourceStates: readonly SubtitleSourceState[]) => {
             if (sources.subtitleSource.kind !== 'video') return;
             const names = subtitleSourceNames(sourceStates);
+            const status = subtitleSourceStatus(sourceStates);
             if (
+                status === sources.subtitleSource.status &&
                 names.length === sources.subtitleFileNames.length &&
                 names.every((name, track) => name === sources.subtitleFileNames[track])
             ) {
                 return;
             }
-            setSources(new MediaSources({ kind: 'video', names }));
+            setSources(new MediaSources({ kind: 'video', names, status }));
             setFileName(names.find((name) => name)?.replace(fileExtensionPattern, ''));
         },
         [sources]
@@ -1560,26 +1568,16 @@ function App({
 
     const handleDownloadSubtitleFilesAsSrt = useCallback(async () => {
         try {
-            const sourceTracks = sources.subtitleTracks.map(({ fileParts }) => ({
-                fileParts: fileParts
-                    .map(({ file }) => file)
-                    .filter((file) => file.size > 0 && getExtension(file.name) !== '.sup'),
-            }));
-            const subtitles = await subtitleReader.subtitles(sourceTracks);
-            const tracks = sourceTracks.flatMap(({ fileParts }, track) =>
-                fileParts.length === 0
-                    ? []
-                    : [{ track, name: fileParts[0].name, subtitles: subtitles.filter((cue) => cue.track === track) }]
-            );
+            const tracks = await sources.subtitleTracksForExport(subtitleReader, subtitles);
             const result = subtitleReader.createSrtDownload(
                 tracks,
-                sources.videoFile?.file.name ?? sources.firstSubtitleSourceFiles[0]?.file.name ?? 'subtitles'
+                sources.videoFile?.file.name ?? sources.subtitleFileNames.find((name) => name) ?? 'subtitles'
             );
             if (result !== undefined) download(result.blob, result.name);
         } catch (error) {
             handleError(error);
         }
-    }, [sources, subtitleReader, handleError]);
+    }, [sources, subtitles, subtitleReader, handleError]);
 
     const handleDownloadSubtitleTimeline = useCallback(() => {
         playerRef.current?.downloadSubtitleTimeline();
@@ -2012,7 +2010,7 @@ function App({
                                 drawerWidth={drawerWidth}
                                 drawerOpen={effectiveDrawerOpen}
                                 hidden={appBarHidden}
-                                subtitleFiles={firstSubtitleSourceFiles}
+                                canDownloadSubtitles={sources.canDownloadSubtitles}
                                 onOpenCopyHistory={handleOpenCopyHistory}
                                 onOpenStatistics={supportsDictionaryStatistics ? handleOpenStatistics : undefined}
                                 onDownloadSubtitleFilesAsSrt={handleDownloadSubtitleFilesAsSrt}

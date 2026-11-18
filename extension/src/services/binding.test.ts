@@ -24,6 +24,9 @@ import type ActualVideoDataSyncController from '@project/extension/src/controlle
 import { MockStorageArea } from '@project/extension/src/services/mock-storage-area';
 import { uiFrameForHtml } from '@project/extension/src/services/ui-frame';
 import { subtitleReference } from '@project/common/subtitle-reader/subtitle-stream';
+import type { InternalToken } from '@project/common/annotations/render-annotations';
+import { MediaSources } from '@project/common/app/services/media-sources';
+import SubtitleReader from '@project/common/subtitle-reader/subtitle-reader';
 
 let mockUseRealSyncController = false;
 
@@ -32,11 +35,19 @@ const bindingOptions = (hasPageScript: boolean, videoSrcChangesIndicateNewVideo:
     videoSrcChangesIndicateNewVideo,
 });
 
-// The tests parse WebVTT and ASS with the real SubtitleReader. This unused dependency
-// ships as ESM, which the extension's Jest configuration does not transform.
+// The tests parse WebVTT and ASS with the real SubtitleReader. Its SRT dependency
+// ships as ESM; the fake handles empty picker placeholders and exposes downloaded cue data.
 jest.mock('@qgustavor/srt-parser', () => ({
     __esModule: true,
-    default: class {},
+    default: class {
+        fromSrt(text: string) {
+            if (text !== '') throw new Error('These tests only parse empty SRT placeholders');
+            return [];
+        }
+        toSrt(cues: unknown[]) {
+            return JSON.stringify(cues);
+        }
+    },
 }));
 jest.mock('@project/extension/src/services/localization-fetcher', () => ({
     fetchLocalization: jest.fn(async () => ({})),
@@ -242,6 +253,28 @@ describe('Binding playback mode integration', () => {
         for (const listener of runtimeListeners) listener(request, {}, () => undefined);
     };
 
+    const requestSourceSnapshot = (binding: Binding) => {
+        const callCount = sendRuntimeMessage.mock.calls.length;
+        for (const listener of runtimeListeners) {
+            listener(
+                {
+                    sender: 'asbplayer-extension-to-video',
+                    src: binding.registeredVideoSrc,
+                    message: { command: 'requestSubtitleSource' },
+                },
+                {},
+                () => undefined
+            );
+        }
+        const calls = sendRuntimeMessage.mock.calls as unknown as [{ message?: SubtitleSourceMessage }][];
+        const message = calls
+            .slice(callCount)
+            .map(([command]) => command.message)
+            .find((message) => message?.command === 'subtitleSource' && message.update.type === 'snapshot');
+        if (message?.update.type !== 'snapshot') throw new Error('Expected subtitle source snapshot');
+        return message.update;
+    };
+
     const sendPlayMode = (binding: Binding, playMode: PlayMode) => {
         const request = {
             sender: 'asbplayer-extension-to-video',
@@ -360,8 +393,13 @@ describe('Binding playback mode integration', () => {
     };
     const assHeader =
         '[Script Info]\nScriptType: v4.00+\n[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n';
-    const assDialogue = (text: string, second: number) =>
-        `Dialogue: 0,0:00:${second.toString().padStart(2, '0')}.00,0:00:${(second + 1).toString().padStart(2, '0')}.00,Default,,0,0,0,,${text}\n`;
+    const assDialogue = (text: string, second: number) => {
+        const time = (value: number) =>
+            `0:${Math.floor(value / 60)
+                .toString()
+                .padStart(2, '0')}:${(value % 60).toString().padStart(2, '0')}.00`;
+        return `Dialogue: 0,${time(second)},${time(second + 1)},Default,,0,0,0,,${text}\n`;
+    };
 
     async function openProgressivePicker() {
         mockUseRealSyncController = true;
@@ -540,6 +578,218 @@ describe('Binding playback mode integration', () => {
         }
     });
 
+    it.each(['http', 'network', 'parse'] as const)(
+        'marks interrupted tracks failed and cancels a queued resume when a settings refresh has a companion %s failure',
+        async (failure) => {
+            await storage.set({ lastPlaybackPositions: [{ fileName: 'Internal.ass', position: 63_000 }] });
+            const stream = await openProgressivePicker();
+            const { binding } = stream;
+            const companion: ConfirmedVideoDataSubtitleTrack = {
+                id: 'companion',
+                name: 'Companion',
+                label: 'Companion',
+                extension: 'vtt',
+                url: 'https://example.test/companion',
+            };
+            let refreshing = false;
+            stream.fetcher.mockImplementation(async (url) => {
+                if (url !== companion.url) return stream.openResponse();
+                if (refreshing && failure === 'http') {
+                    return { ok: false, status: 503, statusText: 'Unavailable' } as Response;
+                }
+                if (refreshing && failure === 'network') throw new TypeError('Failed to fetch');
+                return {
+                    ok: true,
+                    arrayBuffer: async () =>
+                        new TextEncoder().encode('WEBVTT\n\n00:00:01.000 --> 00:00:02.000\nCompanion\n').buffer,
+                } as Response;
+            });
+            try {
+                await stream.confirm([progressiveChoice, companion]);
+                await stream.append(assHeader + assDialogue('First', 1));
+                const previous = requestSourceSnapshot(binding);
+                expect(binding.notificationController.onAction).toBeDefined();
+                binding.notificationController.onAction?.();
+                refreshing = true;
+                if (failure === 'parse') {
+                    jest.spyOn(SubtitleReader.prototype, 'subtitles').mockRejectedValueOnce(
+                        new Error('Parsing failed')
+                    );
+                }
+                await storage.set({ subtitleRegexFilter: 'speaker: ' });
+                sendSettingsUpdated(binding);
+                await flushPlaybackTiming();
+
+                expect(stream.cancelled()).toBe(true);
+                const snapshot = requestSourceSnapshot(binding);
+                expect(snapshot.tracks).toMatchObject([
+                    {
+                        track: 0,
+                        loadId: previous.tracks[0].loadId,
+                        status: 'failed',
+                        error: expect.any(String),
+                        cues: [{ text: 'First' }],
+                    },
+                    { track: 1, status: 'complete', cues: [{ text: 'Companion' }] },
+                ]);
+                expect(binding.notificationController.onAction).toBeUndefined();
+                binding.updateSubtitleSource({
+                    type: 'cues',
+                    track: 0,
+                    loadId: previous.tracks[0].loadId,
+                    cues: [{ cueId: 1, start: 65_000, end: 66_000, text: 'Late' }],
+                });
+                expect(binding.video.currentTime).toBe(0);
+                expect(binding.subtitleController.subtitles.map((cue) => cue.text)).toEqual(['First', 'Companion']);
+            } finally {
+                binding.unbind();
+            }
+        }
+    );
+
+    it('clears retained cues on replacement and ignores an obsolete settings refresh failure', async () => {
+        const stream = await openProgressivePicker();
+        const { binding } = stream;
+        const companion: ConfirmedVideoDataSubtitleTrack = {
+            id: 'companion',
+            name: 'Companion',
+            label: 'Companion',
+            extension: 'vtt',
+            url: 'https://example.test/companion',
+        };
+        const companionResponse = {
+            ok: true,
+            arrayBuffer: async () =>
+                new TextEncoder().encode('WEBVTT\n\n00:00:01.000 --> 00:00:02.000\nCompanion\n').buffer,
+        } as Response;
+        let rejectRefresh: ((error: Error) => void) | undefined;
+        let refreshing = false;
+        stream.fetcher.mockImplementation(async (url) => {
+            if (url !== companion.url) return stream.openResponse();
+            if (refreshing) {
+                return new Promise<Response>((_, reject) => {
+                    rejectRefresh = reject;
+                });
+            }
+            return companionResponse;
+        });
+        try {
+            await stream.confirm([progressiveChoice, companion]);
+            await stream.append(assHeader + assDialogue('First', 1));
+            refreshing = true;
+            await storage.set({ subtitleRegexFilter: 'speaker: ' });
+            sendSettingsUpdated(binding);
+            await flushPlaybackTiming();
+            expect(rejectRefresh).toBeDefined();
+            let finishReplacement!: () => void;
+            stream.fetcher.mockImplementationOnce(
+                () =>
+                    new Promise<Response>((resolve) => {
+                        finishReplacement = () => resolve(companionResponse);
+                    })
+            );
+            await stream.confirm([{ ...progressiveChoice, url: 'https://example.test/replacement' }, companion]);
+            expect(requestSourceSnapshot(binding).tracks).toEqual([]);
+            finishReplacement();
+            await flushPlaybackTiming();
+            await stream.append(assHeader + assDialogue('Replacement', 1));
+            rejectRefresh!(new Error('Obsolete refresh failed'));
+            await flushPlaybackTiming();
+            expect(requestSourceSnapshot(binding).tracks).toMatchObject([
+                { status: 'loading', cues: [{ text: 'Replacement' }] },
+                { status: 'complete', cues: [{ text: 'Companion' }] },
+            ]);
+            expect(pickerStates.at(-1)?.error).toBeFalsy();
+        } finally {
+            binding.unbind();
+        }
+    });
+
+    it.each([0, 1, 2])('keeps unused picker slots out of a single-track SRT download in slot %s', async (slot) => {
+        const stream = await openProgressivePicker();
+        const { binding } = stream;
+        const empty: ConfirmedVideoDataSubtitleTrack = {
+            id: '-',
+            name: 'Unused',
+            label: 'Unused',
+            url: '-',
+            extension: 'srt',
+        };
+        try {
+            await stream.confirm(Array.from({ length: 3 }, (_, index) => (index === slot ? progressiveChoice : empty)));
+            await stream.append(assHeader + assDialogue('First', 1));
+            stream.response.close();
+            await flushPlaybackTiming();
+            const snapshot = requestSourceSnapshot(binding);
+            const sources = MediaSources.fromSync({
+                command: 'syncv2',
+                subtitles: [],
+                subtitleSource: { tracks: snapshot.tracks },
+            });
+            const reader = new SubtitleReader({
+                regexFilter: '',
+                regexFilterTextReplacement: '',
+                subtitleHtml: SubtitleHtml.remove,
+                convertNetflixRuby: false,
+                pgsParserWorkerFactory: () => Promise.reject(new Error('Not an image source')),
+            });
+            const tracks = await sources.subtitleTracksForExport(reader, binding.subtitleController.subtitles);
+            expect(reader.createSrtDownload(tracks, 'subtitles')?.name).toBe(`[Track${slot + 1}]Internal.srt`);
+            expect(tracks).toMatchObject([{ track: slot, name: 'Internal.ass', subtitles: [{ text: 'First' }] }]);
+        } finally {
+            binding.unbind();
+        }
+    });
+
+    it('downloads one SRT after attaching to a video with one ordinary track and unused picker slots', async () => {
+        await storage.set({ streamingSubtitleListPreference: SubtitleListPreference.noSubtitleList });
+        const stream = await openProgressivePicker();
+        const { binding } = stream;
+        stream.fetcher.mockResolvedValue({
+            ok: true,
+            arrayBuffer: async () =>
+                new TextEncoder().encode('WEBVTT\n\n00:00:01.000 --> 00:00:02.000\nOrdinary\n').buffer,
+        } as Response);
+        const empty: ConfirmedVideoDataSubtitleTrack = {
+            id: '-',
+            name: 'Unused',
+            label: 'Unused',
+            url: '-',
+            extension: 'srt',
+        };
+        try {
+            await stream.confirm([
+                empty,
+                {
+                    id: 'ordinary',
+                    name: 'Ordinary',
+                    label: 'Ordinary',
+                    extension: 'vtt',
+                    url: 'https://example.test/ordinary',
+                },
+                empty,
+            ]);
+            const snapshot = requestSourceSnapshot(binding);
+            const sources = MediaSources.fromSync({
+                command: 'syncv2',
+                subtitles: [],
+                subtitleSource: { tracks: snapshot.tracks },
+            });
+            const reader = new SubtitleReader({
+                regexFilter: '',
+                regexFilterTextReplacement: '',
+                subtitleHtml: SubtitleHtml.remove,
+                convertNetflixRuby: false,
+                pgsParserWorkerFactory: () => Promise.reject(new Error('Not an image source')),
+            });
+            const tracks = await sources.subtitleTracksForExport(reader, binding.subtitleController.subtitles);
+            expect(reader.createSrtDownload(tracks, sources.subtitleFileNames[0])?.name).toBe('[Track2]Ordinary.srt');
+            expect(tracks).toMatchObject([{ track: 1, name: 'Ordinary.vtt', subtitles: [{ text: 'Ordinary' }] }]);
+        } finally {
+            binding.unbind();
+        }
+    });
+
     it('rereads a local companion file after its object URL is revoked when parsing settings change', async () => {
         const stream = await openProgressivePicker();
         const { binding } = stream;
@@ -587,6 +837,64 @@ describe('Binding playback mode integration', () => {
             delete (URL as Partial<typeof URL>).revokeObjectURL;
         }
     });
+
+    it('offers resume when switching from ordinary subtitles to a progressive selection on the same video', async () => {
+        await storage.set({ lastPlaybackPositions: [{ fileName: 'Internal.ass', position: 63_000 }] });
+        const stream = await openProgressivePicker();
+        const { binding } = stream;
+        const showSnackbar = jest.spyOn(binding.notificationController, 'showSnackbar');
+        try {
+            sendSubtitles(binding, [makeSubtitle({ text: 'Previous' })], ['previous.vtt']);
+            await flushPlaybackTiming();
+            await stream.confirm([progressiveChoice]);
+            await stream.append(assHeader + assDialogue('First', 1));
+            expect(showSnackbar).toHaveBeenCalledWith('info.resumePlaybackPrompt', expect.anything());
+            binding.notificationController.onAction?.();
+            await stream.append(assDialogue('Later', 65));
+            expect(binding.video.currentTime).toBe(63);
+        } finally {
+            binding.unbind();
+        }
+    });
+
+    it.each(['replay', 'settings refresh'] as const)(
+        'preserves a resume accepted before coverage is ready across a progressive %s',
+        async (change) => {
+            await storage.set({ lastPlaybackPositions: [{ fileName: 'Internal.ass', position: 63_000 }] });
+            const stream = await openProgressivePicker();
+            const { binding } = stream;
+            try {
+                await stream.confirm([progressiveChoice]);
+                await stream.append(assHeader + assDialogue('First', 1));
+                expect(binding.notificationController.onAction).toBeDefined();
+                binding.notificationController.onAction?.();
+                if (change === 'replay') {
+                    const calls = sendRuntimeMessage.mock.calls as unknown as [{ message?: SubtitleSourceMessage }][];
+                    const snapshot = calls
+                        .map(([command]) => command.message)
+                        .findLast(
+                            (message) => message?.command === 'subtitleSource' && message.update.type === 'snapshot'
+                        )!;
+                    if (snapshot.update.type !== 'snapshot') throw new Error('Expected snapshot');
+                    binding.updateSubtitleSource({
+                        ...snapshot.update,
+                        tracks: snapshot.update.tracks.map((track) => ({
+                            ...track,
+                            cues: [{ cueId: 0, start: 1000, end: 2000, text: 'First' }],
+                        })),
+                    });
+                } else {
+                    await storage.set({ subtitleRegexFilter: 'speaker: ' });
+                    sendSettingsUpdated(binding);
+                    await flushPlaybackTiming();
+                }
+                await stream.append((change === 'settings refresh' ? assHeader : '') + assDialogue('Later', 65));
+                expect(binding.video.currentTime).toBe(63);
+            } finally {
+                binding.unbind();
+            }
+        }
+    );
 
     it.each(['timeout', 'dismiss'] as const)('handles a progressive resume offer after %s', async (action) => {
         await storage.set({
@@ -845,6 +1153,88 @@ describe('Binding playback mode integration', () => {
         }
     );
 
+    it.each(['ordinary', 'progressive'] as const)(
+        'replays existing annotations after the source snapshot on late attachment to %s subtitles',
+        async (kind) => {
+            const binding = new Binding(createVideo(), bindingOptions(false, false));
+            binding.bind();
+            await flushPlaybackTiming();
+            try {
+                const cues = [
+                    makeSubtitle({ text: 'First' }),
+                    makeSubtitle({ text: 'Second', index: 1, start: 3000, end: 4000 }),
+                ];
+                if (kind === 'ordinary') {
+                    sendSubtitles(binding, cues);
+                } else {
+                    binding.updateSubtitleSource({ type: 'start', track: 0, loadId: 'stream', name: 'embedded.ass' });
+                    binding.updateSubtitleSource({
+                        type: 'cues',
+                        track: 0,
+                        loadId: 'stream',
+                        cues: cues.map(({ start, end, text }, cueId) => ({ cueId, start, end, text })),
+                    });
+                }
+                const annotated = binding.subtitleController.subtitles[0];
+                const token: InternalToken = {
+                    pos: [0, 5],
+                    readings: [],
+                    states: [],
+                    status: TokenStatus.MATURE,
+                    __internal: true,
+                };
+                annotated.tokenization = { tokens: [token] };
+                annotated.originalText = 'First';
+                annotated.text = '<b>First</b>';
+                sendRuntimeMessage.mockClear();
+
+                for (const listener of runtimeListeners) {
+                    listener(
+                        {
+                            sender: 'asbplayer-extension-to-video',
+                            src: binding.registeredVideoSrc,
+                            message: { command: 'requestSubtitleSource' },
+                        },
+                        {},
+                        () => undefined
+                    );
+                }
+                await flushPlaybackTiming();
+                const messages = (sendRuntimeMessage.mock.calls as unknown as [{ message: Message }][])
+                    .map(([command]) => command.message)
+                    .filter(
+                        (message) => message.command === 'subtitleSource' || message.command === 'subtitlesUpdated'
+                    );
+                expect(messages).toEqual([
+                    expect.objectContaining({
+                        command: 'subtitleSource',
+                        update: expect.objectContaining({
+                            type: 'snapshot',
+                            tracks: [
+                                expect.objectContaining({
+                                    cues: [expect.objectContaining({ text: 'First' }), expect.anything()],
+                                }),
+                            ],
+                        }),
+                    }),
+                    {
+                        command: 'subtitlesUpdated',
+                        updatedSubtitles: [
+                            expect.objectContaining({
+                                source: annotated.source,
+                                originalText: 'First',
+                                text: '<b>First</b>',
+                                tokenization: { tokens: [expect.objectContaining({ status: TokenStatus.MATURE })] },
+                            }),
+                        ],
+                    },
+                ]);
+            } finally {
+                binding.unbind();
+            }
+        }
+    );
+
     it('attaches a progressive source and keeps complete companion tracks without placeholder files', async () => {
         await storage.set({ streamingSubtitleListPreference: SubtitleListPreference.app });
         const binding = new Binding(createVideo(), bindingOptions(false, false));
@@ -855,7 +1245,7 @@ describe('Binding playback mode integration', () => {
                 [{ fileParts: [] }, { fileParts: [vttFile('External', 'external.vtt')] }],
                 [{ track: 0, loadId: 'progressive', name: 'embedded.ass' }],
                 new AbortController().signal,
-                'selected-app'
+                { isNewSource: true, syncWithAsbplayerId: 'selected-app' }
             );
             const calls = sendRuntimeMessage.mock.calls as unknown as [{ message?: ExtensionSyncMessage }][];
             const sync = calls.map(([command]) => command.message).findLast((message) => message?.command === 'sync');
@@ -917,7 +1307,8 @@ describe('Binding playback mode integration', () => {
                 binding.loadProgressiveSubtitles(
                     [{ fileParts: [] }],
                     [{ track: 0, loadId: 'cancelled', name: 'cancelled.ass' }],
-                    abort.signal
+                    abort.signal,
+                    { isNewSource: true }
                 )
             ).rejects.toMatchObject({ name: 'AbortError' });
             expect(binding.subtitleController.subtitleFileNames).toEqual(['current.srt']);

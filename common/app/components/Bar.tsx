@@ -16,7 +16,7 @@ import Toolbar from '@mui/material/Toolbar';
 import type { TooltipProps } from '@mui/material/Tooltip';
 import Tooltip from '@project/common/components/Tooltip';
 import Typography from '@mui/material/Typography';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import GitHubIcon from '@mui/icons-material/GitHub';
 import List from '@mui/material/List';
 import ListItemButton from '@mui/material/ListItemButton';
@@ -28,14 +28,13 @@ import ListItemIcon from '@mui/material/ListItemIcon';
 import Popover from '@mui/material/Popover';
 import ErrorIcon from '@mui/icons-material/Error';
 import BarChartIcon from '@mui/icons-material/BarChart';
-import type { FileWithId } from '@project/common/file-selector';
 
 interface BarProps {
     drawerWidth: number;
     drawerOpen: boolean;
     hidden: boolean;
     title: string;
-    subtitleFiles?: FileWithId[];
+    canDownloadSubtitles: boolean;
     lastError?: any;
     onFileSelector?: () => void;
     onDownloadSubtitleFilesAsSrt: () => void;
@@ -131,7 +130,7 @@ export default function Bar({
     drawerOpen,
     hidden,
     title,
-    subtitleFiles,
+    canDownloadSubtitles,
     lastError,
     onOpenSettings,
     onOpenCopyHistory,
@@ -141,8 +140,6 @@ export default function Bar({
     onOpenStatistics,
 }: BarProps) {
     const classes = useStyles({ drawerWidth });
-    const canSaveAsSrt =
-        subtitleFiles !== undefined && subtitleFiles.find((f) => !f.file.name.endsWith('.sup')) !== undefined;
     const { t } = useTranslation();
 
     const [downloadMenuAnchorEl, setDownloadMenuAnchorEl] = useState<HTMLElement>();
@@ -154,6 +151,9 @@ export default function Bar({
     const handleDownloadMenuClose = useCallback(() => {
         setDownloadMenuOpen(false);
     }, []);
+    useEffect(() => {
+        if (!canDownloadSubtitles) handleDownloadMenuClose();
+    }, [canDownloadSubtitles, handleDownloadMenuClose]);
     const handleDownloadSrt = useCallback(() => {
         handleDownloadMenuClose();
         onDownloadSubtitleFilesAsSrt();
@@ -199,7 +199,7 @@ export default function Bar({
                 })}
             >
                 <Toolbar>
-                    {canSaveAsSrt && (
+                    {canDownloadSubtitles && (
                         <Tooltip title={t('action.downloadSubtitlesAsSrt')}>
                             <IconButton
                                 edge="start"
@@ -253,7 +253,7 @@ export default function Bar({
                 </Toolbar>
             </AppBar>
             <Popover
-                open={downloadMenuOpen}
+                open={downloadMenuOpen && canDownloadSubtitles}
                 anchorEl={downloadMenuAnchorEl}
                 onClose={handleDownloadMenuClose}
                 anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}

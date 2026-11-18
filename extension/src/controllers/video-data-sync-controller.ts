@@ -173,7 +173,10 @@ export default class VideoDataSyncController {
         this._lastLanguagesSynced = settings.streamingLastLanguagesSynced;
         const selection = this._subtitleLoad?.selection;
         if (selection && previous && subtitleParsingSettingsKeys.some((key) => previous[key] !== settings[key])) {
-            void this._syncDataArray(selection.tracks, selection.syncWithAsbplayerId);
+            void this._syncDataArray(selection.tracks, {
+                isNewSource: false,
+                syncWithAsbplayerId: selection.syncWithAsbplayerId,
+            });
         }
 
         if (this._frame.clientIfLoaded !== undefined) {
@@ -591,10 +594,13 @@ export default class VideoDataSyncController {
 
                         const data = confirmMessage.data;
 
-                        dataWasSynced = await this._syncDataArray(data, confirmMessage.syncWithAsbplayerId);
+                        dataWasSynced = await this._syncDataArray(data, {
+                            isNewSource: true,
+                            syncWithAsbplayerId: confirmMessage.syncWithAsbplayerId,
+                        });
                     } else if ('openFile' === message.command) {
                         dataWasSynced = false;
-                        const load = this._beginSubtitleLoad();
+                        const load = this._beginSubtitleLoad({ clearSubtitles: true });
                         const openFileMessage = message as VideoDataUiBridgeOpenFileMessage;
                         const subtitleFiles = openFileMessage.subtitles;
 
@@ -709,10 +715,11 @@ export default class VideoDataSyncController {
         }
     }
 
-    private _beginSubtitleLoad(): SubtitleLoad {
-        // Cancel the previous load and clear its progressive cues before starting the replacement.
-        this.cancelSubtitleLoad({ clearSubtitles: true });
-        const load = { controller: new AbortController(), location: window.location.href };
+    private _beginSubtitleLoad({ clearSubtitles }: { clearSubtitles: boolean }): SubtitleLoad {
+        // A refresh retains the active selection until its replacement is ready, including while fetching companions.
+        const selection = clearSubtitles ? undefined : this._subtitleLoad?.selection;
+        this.cancelSubtitleLoad({ clearSubtitles });
+        const load = { controller: new AbortController(), location: window.location.href, selection };
         this._subtitleLoad = load;
         return load;
     }
@@ -722,12 +729,17 @@ export default class VideoDataSyncController {
             data.map((track) => ({
                 ...track,
                 name: this._defaultVideoName(this._syncedData?.basename, track),
-            }))
+            })),
+            { isNewSource: true }
         );
     }
 
-    private async _syncDataArray(data: ConfirmedVideoDataSubtitleTrack[], syncWithAsbplayerId?: string) {
-        const load = this._beginSubtitleLoad();
+    private async _syncDataArray(
+        data: ConfirmedVideoDataSubtitleTrack[],
+        options: { isNewSource: boolean; syncWithAsbplayerId?: string }
+    ) {
+        const load = this._beginSubtitleLoad({ clearSubtitles: options.isNewSource });
+        const { syncWithAsbplayerId } = options;
         const { signal } = load.controller;
         const progressive = data.some((track) => track.progressive);
         try {
@@ -735,15 +747,30 @@ export default class VideoDataSyncController {
             for (const track of data) {
                 const { name, language, extension, file } = track;
                 const url = track.url ?? (file !== undefined ? URL.createObjectURL(file) : undefined);
-                const fileParts = track.progressive
-                    ? []
-                    : await this._subtitleFilePartsForUrl(name, language, extension, url!, file !== undefined, signal);
+                // Progressive sources use track names for export; don't give unselected slots a filename.
+                const fileParts =
+                    track.progressive || (progressive && url === '-')
+                        ? []
+                        : await this._subtitleFilePartsForUrl(
+                              name,
+                              language,
+                              extension,
+                              url!,
+                              file !== undefined,
+                              signal
+                          );
                 signal.throwIfAborted();
-                if (fileParts === undefined) return false;
+                if (fileParts === undefined) {
+                    load.controller.abort();
+                    if (!options.isNewSource) {
+                        this._context.failSubtitleLoad(`Failed to retrieve ${name}.${extension}`);
+                    }
+                    return false;
+                }
                 tracks.push({ fileParts });
             }
             if (progressive) {
-                await this._startProgressiveSubtitles(data, tracks, load, syncWithAsbplayerId);
+                await this._startProgressiveSubtitles(data, tracks, load, options);
             } else {
                 await this._syncSubtitles(tracks, signal, syncWithAsbplayerId);
             }
@@ -751,9 +778,9 @@ export default class VideoDataSyncController {
         } catch (error) {
             if (signal.aborted) return false;
             load.controller.abort();
-            if (typeof (error as Error).message !== 'undefined') {
-                await this._reportError(`Data Sync failed: ${(error as Error).message}`);
-            }
+            const message = error instanceof Error ? error.message : String(error);
+            if (!options.isNewSource) this._context.failSubtitleLoad(message);
+            await this._reportError(`Data Sync failed: ${message}`);
             return false;
         } finally {
             if ((!load.selection || signal.aborted) && this._subtitleLoad === load) this._subtitleLoad = undefined;
@@ -764,9 +791,10 @@ export default class VideoDataSyncController {
         selected: ConfirmedVideoDataSubtitleTrack[],
         serializedTracks: LoadableSubtitleTrack<SerializedSubtitleFile>[],
         load: SubtitleLoad,
-        syncWithAsbplayerId?: string
+        options: { isNewSource: boolean; syncWithAsbplayerId?: string }
     ) {
         const { signal } = load.controller;
+        const { syncWithAsbplayerId } = options;
         const settings = await this._settings.getAll();
         signal.throwIfAborted();
         this._subtitleParsingSettings ??= settings;
@@ -798,7 +826,7 @@ export default class VideoDataSyncController {
             tracks: selected.map((track) => (track.file === undefined ? track : { ...track, url: undefined })), // Local file URLs are revoked after their first read, so restarts recreate them from the file.
             syncWithAsbplayerId,
         };
-        await this._context.loadProgressiveSubtitles(tracks, pending, signal, syncWithAsbplayerId);
+        await this._context.loadProgressiveSubtitles(tracks, pending, signal, options);
         signal.throwIfAborted();
         // The picker closes while the selected responses continue loading in the background.
         for (const { track, loadId, url, extension } of pending) {

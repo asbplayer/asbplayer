@@ -72,23 +72,28 @@ const copyTokenization = (tokenization: Tokenization | undefined): Tokenization 
 /** Reconcile annotation results by source identity and retain references when nothing changed. */
 export function mergeSubtitleAnnotations<T extends IndexedSubtitleModel>(
     subtitles: T[],
-    updates: readonly IndexedSubtitleModel[]
+    updates: readonly IndexedSubtitleModel[],
+    options?: { allowLegacyIndexFallback: boolean }
 ): T[];
 export function mergeSubtitleAnnotations<T extends IndexedSubtitleModel>(
     subtitles: readonly T[],
-    updates: readonly IndexedSubtitleModel[]
+    updates: readonly IndexedSubtitleModel[],
+    options?: { allowLegacyIndexFallback: boolean }
 ): readonly T[];
 export function mergeSubtitleAnnotations<T extends IndexedSubtitleModel>(
     subtitles: readonly T[],
-    updates: readonly IndexedSubtitleModel[]
+    updates: readonly IndexedSubtitleModel[],
+    { allowLegacyIndexFallback }: { allowLegacyIndexFallback: boolean } = { allowLegacyIndexFallback: false }
 ): readonly T[] {
     if (!subtitles.length || !updates.length) return subtitles;
     const byKey = indexCuesByKey(updates.filter((cue) => cue.source));
     const legacy = new Map(updates.filter((cue) => !cue.source).map((cue) => [cue.index, cue]));
     let merged: T[] | undefined;
     for (const [index, cue] of subtitles.entries()) {
-        const update = cue.source ? byKey.get(subtitleKey(cue)) : legacy.get(cue.index);
-        if (!update || !sameSubtitleSourceContent(cue, update)) continue;
+        const update =
+            byKey.get(subtitleKey(cue)) ??
+            (!cue.source || allowLegacyIndexFallback ? legacy.get(cue.index) : undefined);
+        if (!update || update.track !== cue.track || !sameSubtitleSourceContent(cue, update)) continue;
         const originalText = update.originalText ?? cue.originalText;
         const sameTokenization = annotationTokenizationsEqual(cue.tokenization, update.tokenization);
         if (cue.text === update.text && cue.originalText === originalText && sameTokenization) continue;

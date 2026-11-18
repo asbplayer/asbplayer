@@ -1,6 +1,6 @@
 import project from '@project/common/project';
 import { asbError } from '@project/common/util/log';
-import { download, timeDurationDisplay } from '@project/common/util';
+import { download } from '@project/common/util';
 import { MediaFragment } from '@project/common';
 import type {
     AsbplayerInstance,
@@ -34,6 +34,8 @@ import { useCopyHistory, LocalizedError } from '@project/common/app';
 import { ExtensionCopyHistoryRepository } from '@project/extension/src/services/copy-history-repository';
 import { useI18n } from '@project/extension/src/ui/hooks/use-i18n';
 import { SubtitleReader } from '@project/common/subtitle-reader';
+import { subtitleSourceNames, subtitleSourceStatus } from '@project/common/subtitle-reader/subtitle-stream';
+import type { SubtitleSourceState, SubtitleSourceStatus } from '@project/common/subtitle-reader/subtitle-stream';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { PlayerRef } from '@project/common/app/components/Player';
 import Player from '@project/common/app/components/Player';
@@ -130,7 +132,7 @@ export default function SidePanel({
     );
     const [subtitles, setSubtitles] = useState<DisplaySubtitleModel[]>();
     const [subtitleFileNames, setSubtitleFileNames] = useState<string[]>();
-    const [canDownloadSubtitles, setCanDownloadSubtitles] = useState<boolean>(true);
+    const [sourceStatus, setSourceStatus] = useState<SubtitleSourceStatus>();
     const [alert, setAlert] = useState<string>();
     const [alertOpen, setAlertOpen] = useState<boolean>(false);
     const [alertSeverity, setAlertSeverity] = useState<AlertColor>();
@@ -149,9 +151,12 @@ export default function SidePanel({
         extension.startHeartbeat();
     }, [extension, subtitles]);
 
-    useEffect(() => {
-        setCanDownloadSubtitles(subtitles?.some((s) => s.textImage === undefined && s.text.trim() !== '') ?? false);
-    }, [subtitles]);
+    const hasTextSubtitles = subtitles?.some((s) => s.textImage === undefined && s.text.trim() !== '') ?? false;
+    const canDownloadSubtitles = hasTextSubtitles && sourceStatus === 'complete';
+    const handleSubtitleSourcesChanged = useCallback((sources: readonly SubtitleSourceState[]) => {
+        setSourceStatus(subtitleSourceStatus(sources));
+        setSubtitleFileNames(subtitleSourceNames(sources));
+    }, []);
 
     useEffect(() => {
         if (currentTabId === undefined) {
@@ -159,62 +164,37 @@ export default function SidePanel({
         }
 
         return extension.subscribeTabs((tabs) => {
-            void (async () => {
-                const currentVideoTabs = tabs.filter((t) => t.id === currentTabId);
-
-                if (currentVideoTabs.length > 0) {
-                    let lastSyncedVideoTab: VideoTabModel | undefined;
-
-                    for (const t of currentVideoTabs) {
-                        if (!t.synced) {
-                            continue;
-                        }
-
-                        if (
-                            lastSyncedVideoTab === undefined ||
-                            t.syncedTimestamp! > lastSyncedVideoTab.syncedTimestamp!
-                        ) {
-                            lastSyncedVideoTab = t;
-                        }
-                    }
-
-                    if (
-                        lastSyncedVideoTab !== undefined &&
-                        (syncedVideoTab === undefined || !sameVideoTab(lastSyncedVideoTab, syncedVideoTab))
-                    ) {
-                        const message: ExtensionToVideoCommand<RequestSubtitlesMessage> = {
-                            sender: 'asbplayer-extension-to-video',
-                            message: {
-                                command: 'request-subtitles',
-                            },
-                            src: lastSyncedVideoTab.src,
-                        };
-                        const response: RequestSubtitlesResponse | undefined = await browser.tabs.sendMessage(
-                            lastSyncedVideoTab.id,
-                            message
-                        );
-
-                        if (response !== undefined) {
-                            const subs = response.subtitles;
-                            const length = subs.length > 0 ? subs[subs.length - 1].end : 0;
-                            setSyncedVideoElement(lastSyncedVideoTab);
-                            setSubtitles(
-                                subs.map((s, index) => ({
-                                    ...s,
-                                    index,
-                                    displayTime: timeDurationDisplay(s.start, length),
-                                    displayEndTime: timeDurationDisplay(s.end, length),
-                                }))
-                            );
-                            setSubtitleFileNames(response.subtitleFileNames);
-                        }
-                    }
+            let lastSyncedVideoTab: VideoTabModel | undefined;
+            for (const tab of tabs) {
+                if (tab.id !== currentTabId || !tab.synced) continue;
+                if (lastSyncedVideoTab === undefined || tab.syncedTimestamp! > lastSyncedVideoTab.syncedTimestamp!) {
+                    lastSyncedVideoTab = tab;
                 }
+            }
 
-                setInitializing(false);
-            })().catch((error) => asbError('side-panel', error));
+            if (
+                lastSyncedVideoTab !== undefined &&
+                (syncedVideoTab === undefined || !sameVideoTab(lastSyncedVideoTab, syncedVideoTab))
+            ) {
+                setSourceStatus(undefined);
+                if (syncedVideoTab?.id !== lastSyncedVideoTab.id || syncedVideoTab.src !== lastSyncedVideoTab.src) {
+                    // Mount Player so it can request the subtitle snapshot.
+                    setSubtitles([]);
+                    setSubtitleFileNames(undefined);
+                } else {
+                    // The Player channel stays connected when the same video loads a new subtitle selection.
+                    extension.sendMessageToVideoElement(
+                        { command: 'requestSubtitleSource' },
+                        lastSyncedVideoTab.id,
+                        lastSyncedVideoTab.src
+                    );
+                }
+                setSyncedVideoElement(lastSyncedVideoTab);
+            }
+
+            setInitializing(false);
         });
-    }, [extension, subtitles, initializing, currentTabId, syncedVideoTab]);
+    }, [extension, currentTabId, syncedVideoTab]);
 
     useEffect(() => {
         return extension.subscribe((message) => {
@@ -248,7 +228,9 @@ export default function SidePanel({
 
             if (!tabStillExists) {
                 setSubtitles(undefined);
+                setSubtitleFileNames(undefined);
                 setSyncedVideoElement(undefined);
+                setSourceStatus(undefined);
             }
         });
     }, [extension, currentTabId, syncedVideoTab]);
@@ -268,6 +250,7 @@ export default function SidePanel({
 
             if (viewingAsbplayer === undefined || !sameAsbplayerInstance(asbplayer, viewingAsbplayer)) {
                 setViewingAsbplayer(asbplayer);
+                setSourceStatus(undefined);
             }
         });
     }, [currentTabId, viewingAsbplayer, extension]);
@@ -340,7 +323,7 @@ export default function SidePanel({
     }, [currentTabId]);
 
     const handleDownloadSubtitles = useCallback(() => {
-        if (subtitles === undefined) return;
+        if (!canDownloadSubtitles || subtitles === undefined) return;
         try {
             const cuesByTrack = new Map<number, DisplaySubtitleModel[]>();
             for (const subtitle of subtitles) {
@@ -359,11 +342,11 @@ export default function SidePanel({
         } catch (error) {
             handleError(error);
         }
-    }, [subtitles, subtitleFileNames, subtitleReader, handleError]);
+    }, [canDownloadSubtitles, subtitles, subtitleFileNames, subtitleReader, handleError]);
 
     const handleDownloadSubtitleTimeline = useCallback(() => {
-        playerRef.current?.downloadSubtitleTimeline();
-    }, []);
+        if (canDownloadSubtitles) playerRef.current?.downloadSubtitleTimeline();
+    }, [canDownloadSubtitles]);
 
     const handleBulkExportSubtitles = useCallback(async () => {
         if (!syncedVideoTab) return;
@@ -802,6 +785,7 @@ export default function SidePanel({
                                 onHideSubtitlePlayer={noOp}
                                 onVideoPopOut={noOp}
                                 onSubtitles={setSubtitles}
+                                onSubtitleSourcesChanged={handleSubtitleSourcesChanged}
                                 playbackTimelineFileName={subtitleFileNames?.[0]}
                                 playbackTimelineModeLabels={{
                                     normal: t('controls.normalMode'),
@@ -858,6 +842,7 @@ export default function SidePanel({
                                 canDownloadSubtitles={canDownloadSubtitles}
                                 onDownloadSubtitles={handleDownloadSubtitles}
                                 onDownloadSubtitleTimeline={handleDownloadSubtitleTimeline}
+                                showBulkExport={hasTextSubtitles}
                                 onBulkExportSubtitles={handleBulkExportSubtitles}
                                 disableBulkExport={recordingAudio}
                                 onShowMiningHistory={handleShowCopyHistory}

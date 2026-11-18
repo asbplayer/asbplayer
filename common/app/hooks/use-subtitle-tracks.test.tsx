@@ -12,7 +12,11 @@ import type { FileWithId } from '@project/common/file-selector';
 import SubtitleReader from '@project/common/subtitle-reader/subtitle-reader';
 import VideoChannel from '@project/common/app/services/video-channel';
 import { useSubtitleTracks } from '@project/common/app/hooks/use-subtitle-tracks';
-import { SubtitleStream, subtitleSourceNames } from '@project/common/subtitle-reader/subtitle-stream';
+import {
+    SubtitleStream,
+    subtitleSourceNames,
+    subtitleSourceStatus,
+} from '@project/common/subtitle-reader/subtitle-stream';
 import type { SubtitleSourceProducer, SubtitleSourceState } from '@project/common/subtitle-reader/subtitle-stream';
 import { MediaSources } from '@project/common/app/services/media-sources';
 
@@ -260,21 +264,26 @@ describe('useSubtitleTracks React integration', () => {
 
     it('fills remote media-source names from the channel without restarting or echoing the source', async () => {
         function App() {
-            const [sources, setSources] = useState(() => new MediaSources({ kind: 'video', names: [] }));
+            const [sources, setSources] = useState(
+                () => new MediaSources({ kind: 'video', names: [], status: 'loading' })
+            );
             return (
                 <>
-                    <header>{sources.subtitleFileNames.join('|')}</header>
+                    <header data-downloads={sources.canDownloadSubtitles}>{sources.subtitleFileNames.join('|')}</header>
                     <Player
                         tracks={sources.subtitleTracks}
                         ownership="remote"
                         progressive
                         onSourcesChanged={(states) => {
                             const names = subtitleSourceNames(states);
+                            const status = subtitleSourceStatus(states);
                             setSources((previous) =>
+                                previous.subtitleSource.kind === 'video' &&
+                                previous.subtitleSource.status === status &&
                                 names.length === previous.subtitleFileNames.length &&
                                 names.every((name, track) => name === previous.subtitleFileNames[track])
                                     ? previous
-                                    : new MediaSources({ kind: 'video', names })
+                                    : new MediaSources({ kind: 'video', names, status })
                             );
                         }}
                     />
@@ -287,6 +296,7 @@ describe('useSubtitleTracks React integration', () => {
         protocol.ready();
         await act(async () => root.render(<App />));
         expect(container.querySelector('header')?.textContent).toBe('||remote.ass');
+        expect(container.querySelector('header')?.getAttribute('data-downloads')).toBe('false');
         const receive = (update: SubtitleSourceMessage['update']) =>
             act(async () => protocol.onMessage?.({ data: { command: 'subtitleSource', update } }));
         await receive({
@@ -299,9 +309,15 @@ describe('useSubtitleTracks React integration', () => {
         await receive({ type: 'start', track: 0, loadId: 'companion', name: 'companion.vtt' });
         expect(container.querySelector('header')?.textContent).toBe('companion.vtt||remote.ass');
         expect(container.querySelector('span')?.textContent).toBe('<b>First</b>');
+        await receive({ type: 'complete', track: 0, loadId: 'companion' });
+        expect(container.querySelector('header')?.getAttribute('data-downloads')).toBe('false');
+        await receive({ type: 'complete', track: 2, loadId: 'remote' });
+        expect(container.querySelector('header')?.getAttribute('data-downloads')).toBe('true');
+        expect(container.querySelector('span')?.textContent).toBe('<b>First</b>');
         await receive({ type: 'snapshot', tracks: [], offset: 0 });
         expect(container.querySelector('header')?.textContent).toBe('');
         expect(container.querySelector('span')).toBeNull();
+        expect(container.querySelector('header')?.getAttribute('data-downloads')).toBe('false');
         expect(protocol.sent.map((message) => message.command)).toEqual(['requestSubtitleSource']);
         expect(onLoaded).not.toHaveBeenCalled();
         expect(onError).not.toHaveBeenCalled();

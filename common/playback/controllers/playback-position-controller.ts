@@ -104,8 +104,8 @@ export default class PlaybackPositionController<T extends IndexedSubtitleModel> 
         this.restorePlaybackPosition();
     }
 
-    unbind(): void {
-        this.dismissPlaybackPosition();
+    unbind({ preservePendingResume }: { preservePendingResume: boolean }): void {
+        if (!preservePendingResume) this.dismissPlaybackPosition();
         if (this.playbackPositionSaveTimer === undefined) return;
         asbTrace('playback/position', 'Unbound playback position controller');
         clearInterval(this.playbackPositionSaveTimer);

@@ -178,7 +178,7 @@ describe('PlaybackPositionController', () => {
         expect(harness.seekCalls).toEqual([subtitle.start]);
         expect(harness.playCalls).toEqual([1]);
         expect(harness.playbackPositionChanges).toEqual([61_000, undefined]);
-        harness.controller.unbind();
+        harness.controller.unbind({ preservePendingResume: false });
     });
 
     it('announces readiness without automatically resuming an unrequested offer', () => {
@@ -193,7 +193,7 @@ describe('PlaybackPositionController', () => {
         expect(harness.resumeReadiness).toEqual([false, true]);
         expect(harness.playbackPositionChanges).toEqual([61_000, 61_000]);
         expect(harness.seekCalls).toEqual([]);
-        harness.controller.unbind();
+        harness.controller.unbind({ preservePendingResume: false });
     });
 
     it.each(['dismiss', 'unbind', 'replace'] as const)('cancels a queued resume on %s', async (action) => {
@@ -204,14 +204,14 @@ describe('PlaybackPositionController', () => {
         harness.controller.bind();
         await harness.controller.resumePlaybackPosition();
         if (action === 'dismiss') harness.controller.dismissPlaybackPosition();
-        else if (action === 'unbind') harness.controller.unbind();
+        else if (action === 'unbind') harness.controller.unbind({ preservePendingResume: false });
         else harness.controller.playbackPositionKeysChanged(['video.mp4'], { isNewSource: true });
         harness.state.subtitlesReady = true;
         harness.controller.subtitlesChanged();
         await flushSave();
         expect(harness.seekCalls).toEqual([]);
         expect(harness.playCalls).toEqual([]);
-        harness.controller.unbind();
+        harness.controller.unbind({ preservePendingResume: false });
     });
 
     it('respects the minimum when saving and restoring, removing positions below it', async () => {
@@ -257,7 +257,7 @@ describe('PlaybackPositionController', () => {
                 lastPlaybackPositions: [{ fileName: 'other.mp4', position: 10_000 }],
             },
         ]);
-        restoreHarness.controller.unbind();
+        restoreHarness.controller.unbind({ preservePendingResume: false });
     });
 
     it('restores a position at the minimum boundary', () => {
@@ -270,7 +270,7 @@ describe('PlaybackPositionController', () => {
         harness.controller.bind();
 
         expect(harness.playbackPositionChanges).toEqual([minimumPlaybackPositionMs]);
-        harness.controller.unbind();
+        harness.controller.unbind({ preservePendingResume: false });
     });
 
     it('does not save a position at or beyond the last subtitle end', async () => {
@@ -313,7 +313,7 @@ describe('PlaybackPositionController', () => {
                 lastPlaybackPositions: [{ fileName: 'other.mp4', position: 130_000 }],
             },
         ]);
-        harness.controller.unbind();
+        harness.controller.unbind({ preservePendingResume: false });
     });
 
     it('does nothing when playback position keys change to the same normalized keys', () => {
@@ -329,7 +329,7 @@ describe('PlaybackPositionController', () => {
 
         expect(harness.playbackPositionChanges).toEqual([61_000]);
         expect(harness.savedSettings).toEqual([]);
-        harness.controller.unbind();
+        harness.controller.unbind({ preservePendingResume: false });
     });
 
     it('offers a restore position only once across later settings changes', () => {
@@ -346,7 +346,7 @@ describe('PlaybackPositionController', () => {
         });
 
         expect(harness.playbackPositionChanges).toEqual([61_000]);
-        harness.controller.unbind();
+        harness.controller.unbind({ preservePendingResume: false });
     });
 
     it('uses the provider array when updating a remembered position', async () => {
@@ -450,7 +450,7 @@ describe('PlaybackPositionController', () => {
         await flushSave();
 
         expect(harness.playbackPositionChanges).toEqual([61_000, undefined, 62_000]);
-        harness.controller.unbind();
+        harness.controller.unbind({ preservePendingResume: false });
     });
 
     it('does not restore while unbound', () => {
@@ -485,7 +485,7 @@ describe('PlaybackPositionController', () => {
 
         expect(harness.seekCalls).toEqual([subtitle.start]);
         expect(harness.playCalls).toEqual([1]);
-        harness.controller.unbind();
+        harness.controller.unbind({ preservePendingResume: false });
     });
 
     it('does not save for invalid keys, timestamps, or a repeated timestamp', async () => {
@@ -539,7 +539,7 @@ describe('PlaybackPositionController', () => {
         await flushSave();
         expect(harness.savedSettings).toHaveLength(1);
 
-        harness.controller.unbind();
+        harness.controller.unbind({ preservePendingResume: false });
         harness.controller.bind();
         harness.controller.discontinuity(63_000);
         expect(harness.savedSettings).toHaveLength(1);
@@ -547,7 +547,7 @@ describe('PlaybackPositionController', () => {
         harness.controller.discontinuity(64_000);
         await flushSave();
         expect(harness.savedSettings).toHaveLength(2);
-        harness.controller.unbind();
+        harness.controller.unbind({ preservePendingResume: false });
     });
 
     it('saves on pause, at intervals, and after a seek discontinuity', async () => {
@@ -568,6 +568,6 @@ describe('PlaybackPositionController', () => {
             { lastPlaybackPositions: [{ fileName: 'video.mp4', position: 66_000 }] },
             { lastPlaybackPositions: [{ fileName: 'video.mp4', position: 67_000 }] },
         ]);
-        harness.controller.unbind();
+        harness.controller.unbind({ preservePendingResume: false });
     });
 });
