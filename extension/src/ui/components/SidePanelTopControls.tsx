@@ -26,6 +26,7 @@ interface Props {
     onLoadSubtitles: () => void;
     onDownloadSubtitles: () => void;
     onDownloadSubtitleTimeline: () => void;
+    showBulkExport: boolean;
     onBulkExportSubtitles: () => void;
     onShowMiningHistory: () => void;
     miningHistoryCount: number;
@@ -40,6 +41,7 @@ const SidePanelTopControls = React.forwardRef(function SidePanelTopControls(
         onLoadSubtitles,
         onDownloadSubtitles,
         onDownloadSubtitleTimeline,
+        showBulkExport,
         onBulkExportSubtitles,
         onShowMiningHistory,
         miningHistoryCount,
@@ -57,6 +59,10 @@ const SidePanelTopControls = React.forwardRef(function SidePanelTopControls(
         return () => clearTimeout(timeoutId);
     }, []);
 
+    useEffect(() => {
+        if (!canDownloadSubtitles) setDownloadMenuAnchorEl(undefined);
+    }, [canDownloadSubtitles]);
+
     return (
         <>
             <Fade in={show || forceShow}>
@@ -70,24 +76,24 @@ const SidePanelTopControls = React.forwardRef(function SidePanelTopControls(
                             </Tooltip>
                         </Grid>
                         {canDownloadSubtitles && (
-                            <>
-                                <Grid item>
-                                    <Tooltip title={t('action.downloadSubtitlesAsSrt')}>
-                                        <IconButton onClick={(event) => setDownloadMenuAnchorEl(event.currentTarget)}>
-                                            <SaveAltIcon />
+                            <Grid item>
+                                <Tooltip title={t('action.downloadSubtitlesAsSrt')}>
+                                    <IconButton onClick={(event) => setDownloadMenuAnchorEl(event.currentTarget)}>
+                                        <SaveAltIcon />
+                                    </IconButton>
+                                </Tooltip>
+                            </Grid>
+                        )}
+                        {showBulkExport && (
+                            <Grid item>
+                                <Tooltip title={t('action.bulkExportSubtitles')} disabled={!!disableBulkExport}>
+                                    <span>
+                                        <IconButton onClick={onBulkExportSubtitles} disabled={!!disableBulkExport}>
+                                            <ImportExportIcon />
                                         </IconButton>
-                                    </Tooltip>
-                                </Grid>
-                                <Grid item>
-                                    <Tooltip title={t('action.bulkExportSubtitles')} disabled={!!disableBulkExport}>
-                                        <span>
-                                            <IconButton onClick={onBulkExportSubtitles} disabled={!!disableBulkExport}>
-                                                <ImportExportIcon />
-                                            </IconButton>
-                                        </span>
-                                    </Tooltip>
-                                </Grid>
-                            </>
+                                    </span>
+                                </Tooltip>
+                            </Grid>
                         )}
                         <Grid item>
                             <IconButton onClick={onShowMiningHistory}>
@@ -109,7 +115,7 @@ const SidePanelTopControls = React.forwardRef(function SidePanelTopControls(
                 </Box>
             </Fade>
             <Popover
-                open={downloadMenuAnchorEl !== undefined}
+                open={canDownloadSubtitles && downloadMenuAnchorEl !== undefined}
                 anchorEl={downloadMenuAnchorEl}
                 onClose={() => setDownloadMenuAnchorEl(undefined)}
                 anchorOrigin={{ vertical: 'center', horizontal: 'left' }}

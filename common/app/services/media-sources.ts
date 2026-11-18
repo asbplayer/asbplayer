@@ -4,8 +4,11 @@ import type {
     PlayerSyncMessage,
     LoadableSubtitleTrack,
     SerializedSubtitleFile,
+    IndexedSubtitleModel,
 } from '@project/common';
-import { subtitleSourceNames } from '@project/common/subtitle-reader/subtitle-stream';
+import { subtitleSourceNames, subtitleSourceStatus } from '@project/common/subtitle-reader/subtitle-stream';
+import type { SubtitleSourceStatus } from '@project/common/subtitle-reader/subtitle-stream';
+import type SubtitleReader from '@project/common/subtitle-reader/subtitle-reader';
 import { base64ToBlob } from '@project/common/base64';
 import type { FileWithId } from '@project/common/file-selector';
 import { LocalizedError } from '@project/common/app/components/localized-error';
@@ -18,7 +21,7 @@ export type SubtitleSourceFile = FileWithId & { track: number };
 
 type MediaSubtitleSource =
     | { readonly kind: 'files'; readonly tracks: LoadableSubtitleTrack<SubtitleSourceFile>[] }
-    | { readonly kind: 'video'; readonly names: string[] };
+    | { readonly kind: 'video'; readonly names: string[]; readonly status: SubtitleSourceStatus };
 
 export const videoExtensions = ['.mkv', '.mp4', '.m4v', '.avi', '.webm'] as const;
 export const audioExtensions = ['.mp3', '.m4a', '.aac', '.flac', '.ogg', '.wav', '.opus', '.m4b'] as const;
@@ -110,9 +113,53 @@ export class MediaSources {
             return MediaSources.fromFiles(decodeSubtitleSourceFiles([message.subtitles]));
         }
         if (message.subtitleSource) {
-            return new MediaSources({ kind: 'video', names: subtitleSourceNames(message.subtitleSource.tracks) });
+            return new MediaSources({
+                kind: 'video',
+                names: subtitleSourceNames(message.subtitleSource.tracks),
+                status: subtitleSourceStatus(message.subtitleSource.tracks),
+            });
         }
         return MediaSources.fromFiles(decodeSubtitleSourceFiles(message.subtitles, message.flatten));
+    }
+
+    get canDownloadSubtitles(): boolean {
+        return (
+            (this.subtitleSource.kind === 'files' || this.subtitleSource.status === 'complete') &&
+            this.subtitleFileNames.some((name) => name.length > 0 && getExtension(name) !== '.sup')
+        );
+    }
+
+    /** Exports completed video-owned text tracks with cues, or reparses files using the current parsing settings. */
+    async subtitleTracksForExport(
+        reader: Pick<SubtitleReader, 'subtitles'>,
+        subtitles: readonly IndexedSubtitleModel[]
+    ) {
+        if (!this.canDownloadSubtitles) return [];
+        if (this.subtitleSource.kind === 'video') {
+            return this.subtitleFileNames.flatMap((name, track) => {
+                if (name.length === 0 || getExtension(name) === '.sup') return [];
+                const cues = subtitles
+                    .filter((cue) => cue.track === track && cue.textImage === undefined)
+                    .map((cue) => ({
+                        track,
+                        text: cue.originalText ?? cue.text,
+                        start: cue.originalStart,
+                        end: cue.originalEnd,
+                    }));
+                return cues.length === 0 ? [] : [{ track, name, subtitles: cues }];
+            });
+        }
+        const sourceTracks = this.subtitleTracks.map(({ fileParts }) => ({
+            fileParts: fileParts
+                .map(({ file }) => file)
+                .filter((file) => file.size > 0 && getExtension(file.name) !== '.sup'),
+        }));
+        const parsed = await reader.subtitles(sourceTracks);
+        return sourceTracks.flatMap(({ fileParts }, track) =>
+            fileParts.length === 0
+                ? []
+                : [{ track, name: fileParts[0].name, subtitles: parsed.filter((cue) => cue.track === track) }]
+        );
     }
 
     hasSubtitleFile(name: string): boolean {

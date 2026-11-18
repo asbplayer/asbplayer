@@ -1,8 +1,14 @@
-import { describe, expect, it } from '@jest/globals';
+import { describe, expect, it, jest } from '@jest/globals';
+// These tests use the real WebVTT reader, not its unrelated ESM-only SRT dependency.
+jest.mock('@qgustavor/srt-parser', () => ({ __esModule: true, default: class {} }));
+
 import type { MediaSourceFile } from '@project/common/app/services/media-sources';
 import type { SerializedSubtitleFile } from '@project/common';
 import { MediaSources, decodeSubtitleSourceFiles } from '@project/common/app/services/media-sources';
 import { LocalizedError } from '@project/common/app/components/localized-error';
+import SubtitleReader from '@project/common/subtitle-reader/subtitle-reader';
+import { SubtitleHtml } from '@project/common';
+import { makeSubtitle } from '@project/common/playback/playback-test-utils';
 
 const source = (name: string, track?: number): MediaSourceFile => ({
     id: name,
@@ -128,6 +134,101 @@ const serializedSourceFile = (name: string, track?: number): SerializedSubtitleF
 
 const decodedTrackNames = (serializedSourceFiles: SerializedSubtitleFile[], flatten?: boolean) =>
     trackNames(MediaSources.fromFiles(decodeSubtitleSourceFiles(serializedSourceFiles, flatten)));
+
+describe('subtitle downloads', () => {
+    const reader = new SubtitleReader({
+        regexFilter: 'speaker: ',
+        regexFilterTextReplacement: '',
+        subtitleHtml: SubtitleHtml.remove,
+        convertNetflixRuby: false,
+        pgsParserWorkerFactory: () => Promise.reject(new Error('Image tracks must not be exported')),
+    });
+
+    it.each(['loading', 'failed'] as const)('withholds every track while a selected track is %s', async (status) => {
+        const sources = MediaSources.fromSync({
+            command: 'syncv2',
+            subtitles: [],
+            subtitleSource: {
+                tracks: [
+                    { track: 0, loadId: 'embedded', name: 'embedded.ass', status },
+                    { track: 1, loadId: 'companion', name: 'companion.vtt', status: 'complete' },
+                ],
+            },
+        });
+        expect(sources.canDownloadSubtitles).toBe(false);
+        expect(await sources.subtitleTracksForExport(reader, [makeSubtitle()])).toEqual([]);
+    });
+
+    it('exports completed remote text tracks in their slots with original text and timing', async () => {
+        const sources = new MediaSources({
+            kind: 'video',
+            names: ['embedded.ass', '', 'companion.vtt', 'image.SUP'],
+            status: 'complete',
+        });
+        const cues = [
+            makeSubtitle({
+                text: '<b>annotated</b>',
+                originalText: 'original',
+                start: 1500,
+                end: 2500,
+                originalStart: 1000,
+                originalEnd: 2000,
+            }),
+            makeSubtitle({
+                text: 'companion',
+                track: 2,
+                start: 3500,
+                end: 4500,
+                originalStart: 3000,
+                originalEnd: 4000,
+            }),
+            makeSubtitle({ text: 'image', track: 3 }),
+        ];
+        expect(sources.canDownloadSubtitles).toBe(true);
+        const exported = await sources.subtitleTracksForExport(reader, cues);
+        expect(exported).toMatchObject([
+            { track: 0, name: 'embedded.ass', subtitles: [{ text: 'original', start: 1000, end: 2000 }] },
+            { track: 2, name: 'companion.vtt', subtitles: [{ text: 'companion', start: 3000, end: 4000 }] },
+        ]);
+        expect(cues[0]).toMatchObject({ text: '<b>annotated</b>', start: 1500 });
+    });
+
+    it.each([{ names: [] }, { names: ['image.sup'] }, { names: ['image.SUP'] }])(
+        'hides downloads for an empty or image-only selection $names',
+        ({ names }) => {
+            expect(new MediaSources({ kind: 'video', names, status: 'complete' }).canDownloadSubtitles).toBe(false);
+            expect(MediaSources.fromFiles(names.map((name) => source(name))).canDownloadSubtitles).toBe(false);
+        }
+    );
+
+    it('reparses complete file fragments with current settings and excludes image and empty tracks', async () => {
+        const vtt = (name: string, text: string, second: number, track: number): MediaSourceFile => {
+            const content = `WEBVTT\n\n00:00:0${second}.000 --> 00:00:0${second + 1}.000\nspeaker: ${text}\n\n`;
+            const file = new File([content], name);
+            Object.defineProperty(file, 'text', { value: async () => content });
+            return { id: name, file, track };
+        };
+        const sources = MediaSources.fromFiles([
+            vtt('part1.vtt', 'First', 1, 0),
+            vtt('part2.vtt', 'Second', 3, 0),
+            source('.srt', 1),
+            vtt('companion.vtt', 'Companion', 1, 2),
+            { id: 'image', file: new File(['image data'], 'image.SUP'), track: 3 },
+        ]);
+        expect(sources.canDownloadSubtitles).toBe(true);
+        expect(await sources.subtitleTracksForExport(reader, [])).toMatchObject([
+            {
+                track: 0,
+                name: 'part1.vtt',
+                subtitles: [
+                    { text: 'First', start: 1000, end: 2000 },
+                    { text: 'Second', start: 3000, end: 4000 },
+                ],
+            },
+            { track: 2, name: 'companion.vtt', subtitles: [{ text: 'Companion', start: 1000, end: 2000 }] },
+        ]);
+    });
+});
 
 describe('subtitle source messages', () => {
     it('keeps video-owned track names available to history jumps and rewind without creating local files', () => {
