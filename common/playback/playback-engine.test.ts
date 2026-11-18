@@ -3082,6 +3082,43 @@ describe('PlaybackEngine', () => {
         }
     );
 
+    it.each(['coverage', 'clear', 'failure', 'unbind', 'replacement'] as const)(
+        'preserves a resume across an empty loading prefix and handles %s',
+        async (event) => {
+            const harness = await makePlaybackEngine([PlayMode.normal], {
+                timestampMs: 0,
+                paused: true,
+                subtitles: [],
+                durationMs: 90_000,
+                playbackPositionKeys: ['video.mp4'],
+                settings: { lastPlaybackPositions: [{ fileName: 'video.mp4', position: 63_000 }] },
+            });
+            const source = { track: 0, loadId: 'stream', name: 'stream.ass', status: 'loading' as const };
+            harness.playbackEngine.subtitlesChanged([subtitle], { sources: [source] });
+            await harness.playbackEngine.resumePlaybackPosition();
+            harness.playbackEngine.subtitlesChanged([], { sources: [{ ...source, loadId: 'reparsed' }] });
+            expect(harness.seeks).toEqual([]);
+
+            if (event === 'clear') {
+                harness.playbackEngine.subtitlesChanged([], { sources: [] });
+            } else if (event === 'failure') {
+                harness.playbackEngine.subtitlesChanged([], { sources: [{ ...source, status: 'failed' }] });
+            } else if (event === 'unbind') {
+                harness.playbackEngine.unbind();
+            } else if (event === 'replacement') {
+                harness.playbackEngine.playbackPositionKeysChanged(['other.mp4'], { isNewSource: true });
+            }
+
+            harness.playbackEngine.subtitlesChanged([{ ...subtitle, start: 65_000, end: 66_000 }], {
+                sources: [{ ...source, loadId: 'reparsed' }],
+            });
+            await flushPlaybackSaves();
+            expect(harness.seeks).toEqual(event === 'coverage' ? [63_000] : []);
+            expect(harness.plays).toHaveLength(event === 'coverage' ? 1 : 0);
+            harness.playbackEngine.unbind();
+        }
+    );
+
     it.each(['complete', 'loading'] as const)(
         'waits for every loading track before resuming with a %s companion track',
         async (companionStatus) => {

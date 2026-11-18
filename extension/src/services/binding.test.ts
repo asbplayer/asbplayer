@@ -361,8 +361,13 @@ describe('Binding playback mode integration', () => {
     };
     const assHeader =
         '[Script Info]\nScriptType: v4.00+\n[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n';
-    const assDialogue = (text: string, second: number) =>
-        `Dialogue: 0,0:00:${second.toString().padStart(2, '0')}.00,0:00:${(second + 1).toString().padStart(2, '0')}.00,Default,,0,0,0,,${text}\n`;
+    const assDialogue = (text: string, second: number) => {
+        const time = (value: number) =>
+            `0:${Math.floor(value / 60)
+                .toString()
+                .padStart(2, '0')}:${(value % 60).toString().padStart(2, '0')}.00`;
+        return `Dialogue: 0,${time(second)},${time(second + 1)},Default,,0,0,0,,${text}\n`;
+    };
 
     async function openProgressivePicker() {
         mockUseRealSyncController = true;
@@ -588,6 +593,64 @@ describe('Binding playback mode integration', () => {
             delete (URL as Partial<typeof URL>).revokeObjectURL;
         }
     });
+
+    it('offers resume when switching from ordinary subtitles to a progressive selection on the same video', async () => {
+        await storage.set({ lastPlaybackPositions: [{ fileName: 'Internal.ass', position: 63_000 }] });
+        const stream = await openProgressivePicker();
+        const { binding } = stream;
+        const showSnackbar = jest.spyOn(binding.notificationController, 'showSnackbar');
+        try {
+            sendSubtitles(binding, [makeSubtitle({ text: 'Previous' })], ['previous.vtt']);
+            await flushPlaybackTiming();
+            await stream.confirm([progressiveChoice]);
+            await stream.append(assHeader + assDialogue('First', 1));
+            expect(showSnackbar).toHaveBeenCalledWith('info.resumePlaybackPrompt', expect.anything());
+            binding.notificationController.onAction?.();
+            await stream.append(assDialogue('Later', 65));
+            expect(binding.video.currentTime).toBe(63);
+        } finally {
+            binding.unbind();
+        }
+    });
+
+    it.each(['replay', 'settings refresh'] as const)(
+        'preserves a resume accepted before coverage is ready across a progressive %s',
+        async (change) => {
+            await storage.set({ lastPlaybackPositions: [{ fileName: 'Internal.ass', position: 63_000 }] });
+            const stream = await openProgressivePicker();
+            const { binding } = stream;
+            try {
+                await stream.confirm([progressiveChoice]);
+                await stream.append(assHeader + assDialogue('First', 1));
+                expect(binding.notificationController.onAction).toBeDefined();
+                binding.notificationController.onAction?.();
+                if (change === 'replay') {
+                    const calls = sendRuntimeMessage.mock.calls as unknown as [{ message?: SubtitleSourceMessage }][];
+                    const snapshot = calls
+                        .map(([command]) => command.message)
+                        .findLast(
+                            (message) => message?.command === 'subtitleSource' && message.update.type === 'snapshot'
+                        )!;
+                    if (snapshot.update.type !== 'snapshot') throw new Error('Expected snapshot');
+                    binding.updateSubtitleSource({
+                        ...snapshot.update,
+                        tracks: snapshot.update.tracks.map((track) => ({
+                            ...track,
+                            cues: [{ cueId: 0, start: 1000, end: 2000, text: 'First' }],
+                        })),
+                    });
+                } else {
+                    await storage.set({ subtitleRegexFilter: 'speaker: ' });
+                    sendSettingsUpdated(binding);
+                    await flushPlaybackTiming();
+                }
+                await stream.append((change === 'settings refresh' ? assHeader : '') + assDialogue('Later', 65));
+                expect(binding.video.currentTime).toBe(63);
+            } finally {
+                binding.unbind();
+            }
+        }
+    );
 
     it.each(['timeout', 'dismiss'] as const)('handles a progressive resume offer after %s', async (action) => {
         await storage.set({
@@ -938,7 +1001,7 @@ describe('Binding playback mode integration', () => {
                 [{ fileParts: [] }, { fileParts: [vttFile('External', 'external.vtt')] }],
                 [{ track: 0, loadId: 'progressive', name: 'embedded.ass' }],
                 new AbortController().signal,
-                'selected-app'
+                { isNewSource: true, syncWithAsbplayerId: 'selected-app' }
             );
             const calls = sendRuntimeMessage.mock.calls as unknown as [{ message?: ExtensionSyncMessage }][];
             const sync = calls.map(([command]) => command.message).findLast((message) => message?.command === 'sync');
@@ -1000,7 +1063,8 @@ describe('Binding playback mode integration', () => {
                 binding.loadProgressiveSubtitles(
                     [{ fileParts: [] }],
                     [{ track: 0, loadId: 'cancelled', name: 'cancelled.ass' }],
-                    abort.signal
+                    abort.signal,
+                    { isNewSource: true }
                 )
             ).rejects.toMatchObject({ name: 'AbortError' });
             expect(binding.subtitleController.subtitleFileNames).toEqual(['current.srt']);

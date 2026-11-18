@@ -652,7 +652,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         this.playbackAudio.unbind();
         this.timingDriver.unbindMedia();
         this.restoreOriginalAudioMuting();
-        this.teardown({ saveSettings: true });
+        this.teardown({ saveSettings: true, preservePendingResume: false });
     }
 
     profileChanged(profile?: string): void {
@@ -661,13 +661,19 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
             previousProfile: this.lastProfile,
             profile,
         });
-        this.teardown({ saveSettings: false });
+        this.teardown({ saveSettings: false, preservePendingResume: false });
         this.ready.settings = false;
         ++this.settingsChangedOperationId;
         this.initializeSettings();
     }
 
-    private teardown({ saveSettings }: { readonly saveSettings: boolean }): void {
+    private teardown({
+        saveSettings,
+        preservePendingResume,
+    }: {
+        readonly saveSettings: boolean;
+        readonly preservePendingResume: boolean;
+    }): void {
         const wasBound = this.timingDriver.bound;
         asbTrace('playback/lifecycle', 'Tearing down playback engine', {
             saveSettings,
@@ -680,11 +686,11 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         this.autoPauseController.cancel();
         this.subtitleVisibilityController.cancel();
         if (!saveSettings) this.playbackPositionController.profileChanged();
+        this.playbackPositionController.unbind({ preservePendingResume });
         if (!this.timingDriver.bound) {
             asbTrace('playback/lifecycle', 'Playback engine teardown finished while already unbound', { saveSettings });
             return;
         }
-        this.playbackPositionController.unbind();
         this.timingDriver.unbind();
         if (!saveSettings) {
             asbTrace('playback/lifecycle', 'Playback engine unbound', { saveSettings });
@@ -849,10 +855,19 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
                 savePlaybackModes: false,
                 rebuildWhenUnchanged: true,
             }); // Reset to normal while subtitles are unavailable
-            this.teardown({ saveSettings: true }); // Subtitle timing can stop while media and converted audio keep playing.
+            this.teardown({
+                saveSettings: true,
+                preservePendingResume: this.subtitleSourceStatus === 'loading',
+            }); // A reparse can temporarily stop subtitle timing while an accepted resume waits for coverage.
         }
-        if (this.subtitleSourceStatus === 'failed') this.playbackPositionController.dismissPlaybackPosition();
-        else this.playbackPositionController.subtitlesChanged();
+        if (
+            this.subtitleSourceStatus === 'failed' ||
+            (subtitles.length === 0 && this.subtitleSourceStatus === 'complete')
+        ) {
+            this.playbackPositionController.dismissPlaybackPosition();
+        } else {
+            this.playbackPositionController.subtitlesChanged();
+        }
     }
 
     private reevaluatePausedSelection(): void {

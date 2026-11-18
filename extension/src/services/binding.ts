@@ -2253,7 +2253,7 @@ export default class Binding {
         tracks: LoadableSubtitleTrack[],
         pending: readonly Pick<SubtitleSourceState, 'track' | 'loadId' | 'name'>[],
         signal: AbortSignal,
-        syncWithAsbplayerId?: string
+        { isNewSource, syncWithAsbplayerId }: { isNewSource: boolean; syncWithAsbplayerId?: string }
     ): Promise<void> {
         const settings = await this.settings.getAll();
         const subtitles = await this._parseSubtitles({
@@ -2282,7 +2282,7 @@ export default class Binding {
             } satisfies ExtensionSyncMessage,
         });
         signal.throwIfAborted();
-        this.updateSubtitleSource({ type: 'snapshot', ...source.sourceSnapshot() });
+        this.updateSubtitleSource({ type: 'snapshot', ...source.sourceSnapshot() }, { isNewSource });
     }
 
     private async _parseSubtitles(source: SubtitleSource) {
@@ -2341,8 +2341,8 @@ export default class Binding {
     }
 
     /** Entry point for progressive producers owned by this video binding. */
-    updateSubtitleSource(update: SubtitleSourceUpdate): void {
-        if (!this.applySubtitleSource(update)) return;
+    updateSubtitleSource(update: SubtitleSourceUpdate, options?: { isNewSource: boolean }): void {
+        if (!this.applySubtitleSource(update, options)) return;
         void browser.runtime.sendMessage({
             sender: 'asbplayer-video',
             src: this._registeredVideoSrc,
@@ -2356,7 +2356,10 @@ export default class Binding {
         });
     }
 
-    private applySubtitleSource(update: SubtitleSourceUpdate): boolean {
+    private applySubtitleSource(
+        update: SubtitleSourceUpdate,
+        { isNewSource }: { isNewSource: boolean } = { isNewSource: update.type === 'start' }
+    ): boolean {
         if (!this.subtitleStream.update(update)) return false;
         this._subtitleSource = undefined;
         const snapshot = this.subtitleStream.snapshot();
@@ -2368,19 +2371,21 @@ export default class Binding {
         this.subtitleController.setSourceSubtitles(subtitles, snapshot.tracks);
         const names = subtitleSourceNames(snapshot.tracks);
         this.subtitleController.subtitleFileNames = names;
-        if (update.type === 'start' || update.type === 'snapshot') {
+        const initialized = update.type === 'start' || update.type === 'snapshot';
+        if (initialized && isNewSource) this.playbackEngine.dismissPlaybackPosition(); // Cancel the previous resume before new cues can satisfy it, then evaluate the new source's bounds
+        this.subtitlesChanged();
+        if (initialized) {
             this.playbackEngine.playbackPositionKeysChanged(
                 this._playbackPositionKeys(
                     snapshot.tracks.map((track) => track.track),
                     names
                 ),
-                { isNewSource: update.type === 'start' }
+                { isNewSource }
             );
             this.ankiUiSavedState = undefined;
             this._syncedTimestamp = Date.now();
             this._lastSyncedLocation = window.location.href;
         }
-        this.subtitlesChanged();
         this._synced = true;
         if (update.type === 'failed') {
             asbError('playback/subtitles', 'Progressive subtitle source failed', {
