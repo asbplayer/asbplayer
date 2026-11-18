@@ -5,49 +5,42 @@
  */
 export default class OffscreenDomCache {
     private offscreenElement?: HTMLElement;
-    private _cachedContentElements: { [key: string]: HTMLElement } = {};
-    private _empty = true;
-
-    constructor() {}
+    private readonly _cachedContentElements = new Map<string, HTMLElement>();
 
     public get empty() {
-        return this._empty;
+        return this._cachedContentElements.size === 0;
     }
 
     clear() {
         this.offscreenElement?.remove();
         this.offscreenElement = undefined;
-        this._cachedContentElements = {};
-        this._empty = true;
+        this._cachedContentElements.clear();
     }
 
     has(key: string) {
-        return this._cachedContentElements[key] !== undefined;
+        return this._cachedContentElements.has(key);
     }
 
     keys() {
-        return Object.keys(this._cachedContentElements);
+        return [...this._cachedContentElements.keys()];
     }
 
     add(key: string, html: string) {
-        let cached = this._cachedContentElements[key];
+        let cached = this._cachedContentElements.get(key);
         if (!cached) {
             cached = document.createElement('div');
-            this._cachedContentElements[key] = cached;
+            this._cachedContentElements.set(key, cached);
             this._offscreenElement().appendChild(cached);
         }
         cached.innerHTML = `${html}\n`;
-        this._empty = false;
     }
 
     delete(key: string) {
-        const cached = this._cachedContentElements[key];
+        const cached = this._cachedContentElements.get(key);
         if (cached) {
             cached.remove();
-            delete this._cachedContentElements[key];
-            if (Object.keys(this._cachedContentElements).length === 0) {
-                this.clear();
-            }
+            this._cachedContentElements.delete(key);
+            if (this.empty) this.clear();
         }
     }
 
@@ -56,7 +49,7 @@ export default class OffscreenDomCache {
     }
 
     get(key: string, html?: () => string) {
-        let cached = this._cachedContentElements[key];
+        let cached = this._cachedContentElements.get(key);
 
         if (!cached) {
             if (html === undefined) {
@@ -65,7 +58,7 @@ export default class OffscreenDomCache {
 
             cached = document.createElement('div');
             cached.innerHTML = html();
-            this._cachedContentElements[key] = cached;
+            this._cachedContentElements.set(key, cached);
             this._offscreenElement().appendChild(cached);
         }
 

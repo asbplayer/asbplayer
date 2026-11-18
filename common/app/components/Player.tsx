@@ -911,17 +911,20 @@ function PlayerComponent(
         subtitleCollectionRef.current.settingsUpdated(settings, { force: false });
     }, [settings]);
 
+    const allowLegacyIndexFallback = tab !== undefined && !extension.supportsProgressiveSubtitles; // Older extensions drop cue identities when applying a subtitle offset
     useEffect(() => {
         return channel?.onSubtitlesUpdated((updatedSubtitles) => {
             const playerSubtitles = subtitlesForPlayer(updatedSubtitles);
             onSubtitles((prevSubtitles) => {
                 if (!prevSubtitles?.length) return prevSubtitles;
-                const allSubtitles = mergeSubtitleAnnotations(prevSubtitles, playerSubtitles);
+                const allSubtitles = mergeSubtitleAnnotations(prevSubtitles, playerSubtitles, {
+                    allowLegacyIndexFallback,
+                });
                 annotationSubtitlesRef.current = allSubtitles;
                 return allSubtitles;
             });
         });
-    }, [channel, onSubtitles]);
+    }, [channel, onSubtitles, allowLegacyIndexFallback]);
 
     useEffect(() => {
         if (!tab) return; // Only matters for extension

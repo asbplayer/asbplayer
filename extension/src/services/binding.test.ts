@@ -24,6 +24,7 @@ import type ActualVideoDataSyncController from '@project/extension/src/controlle
 import { MockStorageArea } from '@project/extension/src/services/mock-storage-area';
 import { uiFrameForHtml } from '@project/extension/src/services/ui-frame';
 import { subtitleReference } from '@project/common/subtitle-reader/subtitle-stream';
+import type { InternalToken } from '@project/common/annotations/render-annotations';
 
 let mockUseRealSyncController = false;
 
@@ -839,6 +840,88 @@ describe('Binding playback mode integration', () => {
                 ).toMatchObject({
                     update: { type: 'snapshot', tracks: [{ cues: [{ text: 'File' }] }] },
                 });
+            } finally {
+                binding.unbind();
+            }
+        }
+    );
+
+    it.each(['ordinary', 'progressive'] as const)(
+        'replays existing annotations after the source snapshot on late attachment to %s subtitles',
+        async (kind) => {
+            const binding = new Binding(createVideo(), bindingOptions(false, false));
+            binding.bind();
+            await flushPlaybackTiming();
+            try {
+                const cues = [
+                    makeSubtitle({ text: 'First' }),
+                    makeSubtitle({ text: 'Second', index: 1, start: 3000, end: 4000 }),
+                ];
+                if (kind === 'ordinary') {
+                    sendSubtitles(binding, cues);
+                } else {
+                    binding.updateSubtitleSource({ type: 'start', track: 0, loadId: 'stream', name: 'embedded.ass' });
+                    binding.updateSubtitleSource({
+                        type: 'cues',
+                        track: 0,
+                        loadId: 'stream',
+                        cues: cues.map(({ start, end, text }, cueId) => ({ cueId, start, end, text })),
+                    });
+                }
+                const annotated = binding.subtitleController.subtitles[0];
+                const token: InternalToken = {
+                    pos: [0, 5],
+                    readings: [],
+                    states: [],
+                    status: TokenStatus.MATURE,
+                    __internal: true,
+                };
+                annotated.tokenization = { tokens: [token] };
+                annotated.originalText = 'First';
+                annotated.text = '<b>First</b>';
+                sendRuntimeMessage.mockClear();
+
+                for (const listener of runtimeListeners) {
+                    listener(
+                        {
+                            sender: 'asbplayer-extension-to-video',
+                            src: binding.registeredVideoSrc,
+                            message: { command: 'requestSubtitleSource' },
+                        },
+                        {},
+                        () => undefined
+                    );
+                }
+                await flushPlaybackTiming();
+                const messages = (sendRuntimeMessage.mock.calls as unknown as [{ message: Message }][])
+                    .map(([command]) => command.message)
+                    .filter(
+                        (message) => message.command === 'subtitleSource' || message.command === 'subtitlesUpdated'
+                    );
+                expect(messages).toEqual([
+                    expect.objectContaining({
+                        command: 'subtitleSource',
+                        update: expect.objectContaining({
+                            type: 'snapshot',
+                            tracks: [
+                                expect.objectContaining({
+                                    cues: [expect.objectContaining({ text: 'First' }), expect.anything()],
+                                }),
+                            ],
+                        }),
+                    }),
+                    {
+                        command: 'subtitlesUpdated',
+                        updatedSubtitles: [
+                            expect.objectContaining({
+                                source: annotated.source,
+                                originalText: 'First',
+                                text: '<b>First</b>',
+                                tokenization: { tokens: [expect.objectContaining({ status: TokenStatus.MATURE })] },
+                            }),
+                        ],
+                    },
+                ]);
             } finally {
                 binding.unbind();
             }

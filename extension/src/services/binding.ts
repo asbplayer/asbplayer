@@ -93,6 +93,7 @@ import type {
     StopRecordingResponse,
     SubtitleModel,
     SubtitlesToVideoMessage,
+    SubtitlesUpdatedFromVideoMessage,
     TakeScreenshotFromExtensionMessage,
     VideoDisappearedMessage,
     VideoHeartbeatMessage,
@@ -1107,6 +1108,20 @@ export default class Binding {
                                 },
                             } satisfies SubtitleSourceMessage,
                         });
+                        // Generated annotations are separate from the source snapshot.
+                        const annotated = this.subtitleController.subtitles.filter(
+                            (subtitle) => subtitle.tokenization !== undefined
+                        );
+                        if (annotated.length) {
+                            void browser.runtime.sendMessage({
+                                sender: 'asbplayer-video',
+                                src: this._registeredVideoSrc,
+                                message: {
+                                    command: 'subtitlesUpdated',
+                                    updatedSubtitles: annotated,
+                                } satisfies SubtitlesUpdatedFromVideoMessage,
+                            });
+                        }
                         break;
                     }
                     case 'subtitles': {

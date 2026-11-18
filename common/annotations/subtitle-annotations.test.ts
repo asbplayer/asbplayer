@@ -166,6 +166,23 @@ describe('mergeSubtitleAnnotations', () => {
         expect(current[0].tokenization).toBeDefined();
     });
 
+    it('accepts index-only replies from older extensions without weakening identity checks for other replies', () => {
+        const current = [annotatedCue()];
+        const update = { ...annotatedCue(), source: undefined, start: 9000 };
+        update.tokenization!.tokens[0].status = TokenStatus.MATURE;
+        const options = { allowLegacyIndexFallback: true };
+
+        expect(mergeSubtitleAnnotations(current, [update])).toBe(current);
+        const merged = mergeSubtitleAnnotations(current, [update], options);
+        expect(merged[0].tokenization?.tokens[0].status).toBe(TokenStatus.MATURE);
+        expect(merged[0]).toMatchObject({ source: current[0].source, start: 500, end: 1500 });
+        expect(mergeSubtitleAnnotations(current, [{ ...update, originalText: 'different' }], options)).toBe(current);
+        expect(mergeSubtitleAnnotations(current, [{ ...update, track: 1 }], options)).toBe(current);
+        expect(mergeSubtitleAnnotations(current, [{ ...update, source: { loadId: 'stale', cueId: 0 } }], options)).toBe(
+            current
+        );
+    });
+
     it('keeps published snapshots independent of subsequent builder mutations', () => {
         const initial: IndexedSubtitleModel = { ...annotatedCue(), tokenization: undefined };
         const update = annotatedCue();
