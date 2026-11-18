@@ -1908,6 +1908,7 @@ function App({
                                 items={copyHistoryItems}
                                 open={effectiveDrawerOpen}
                                 drawerWidth={drawerWidth}
+                                sources={sources}
                                 onClose={handleCloseCopyHistory}
                                 onDelete={deleteCopyHistoryItem}
                                 onDeleteAll={deleteAllCopyHistoryItems}

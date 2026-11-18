@@ -32,6 +32,7 @@ import type { AsbplayerSettings, SettingsProvider } from '@project/common/settin
 import { AudioClip } from '@project/common/audio-clip';
 import type { ChromeExtension } from '@project/common/app';
 import { useCopyHistory, LocalizedError } from '@project/common/app';
+import { MediaSources } from '@project/common/app/services/media-sources';
 import { ExtensionCopyHistoryRepository } from '@project/extension/src/services/copy-history-repository';
 import { useI18n } from '@project/extension/src/ui/hooks/use-i18n';
 import { SubtitleReader } from '@project/common/subtitle-reader';
@@ -142,7 +143,6 @@ export default function SidePanel({
     const playerRef = useRef<PlayerRef>(null);
     const [recordingAudio, setRecordingAudio] = useState<boolean>(false);
     const [viewingAsbplayer, setViewingAsbplayer] = useState<AsbplayerInstance>();
-    const [asbplayerInCurrentTab, setAsbplayerInCurrentTab] = useState<AsbplayerInstance>();
 
     const keyBinder = useAppKeyBinder(settings.keyBindSet, extension);
     const currentTabId = useCurrentTabId();
@@ -256,17 +256,6 @@ export default function SidePanel({
             }
         });
     }, [currentTabId, viewingAsbplayer, extension]);
-
-    useEffect(() => {
-        if (currentTabId === undefined) {
-            setAsbplayerInCurrentTab(undefined);
-            return;
-        }
-
-        return extension.subscribeTabs(() => {
-            setAsbplayerInCurrentTab(extension.asbplayers?.find((a) => a.tabId === currentTabId));
-        });
-    }, [currentTabId, extension]);
 
     useEffect(() => {
         return extension.subscribe((message) => {
@@ -545,11 +534,28 @@ export default function SidePanel({
         },
         [settings, currentTabId, viewingAsbplayer]
     );
+    const sources = useMemo(() => {
+        if (viewingAsbplayer) {
+            return new MediaSources({
+                kind: 'video',
+                names: viewingAsbplayer.subtitleTracks?.map((t) => t.fileName) ?? [],
+                status: 'complete',
+            });
+        }
+
+        if (syncedVideoTab) {
+            return new MediaSources({
+                kind: 'video',
+                names: subtitleFileNames ?? syncedVideoTab.subtitleTracks?.map((t) => t.fileName) ?? [],
+                status: 'complete',
+            });
+        }
+
+        return undefined;
+    }, [viewingAsbplayer, syncedVideoTab, subtitleFileNames]);
     const handleJumpToSubtitle = useCallback(
         (card: CardModel) => {
-            const asbplayer = viewingAsbplayer ?? asbplayerInCurrentTab;
-
-            if (asbplayer && currentTabId) {
+            if (viewingAsbplayer && currentTabId) {
                 const asbplayerCommand: ExtensionToAsbPlayerCommand<JumpToSubtitleMessage> = {
                     sender: 'asbplayer-extension-to-player',
                     message: {
@@ -572,7 +578,7 @@ export default function SidePanel({
                 void browser.runtime.sendMessage(command);
             }
         },
-        [currentTabId, viewingAsbplayer, asbplayerInCurrentTab, syncedVideoTab]
+        [currentTabId, viewingAsbplayer, syncedVideoTab]
     );
     const handleAnki = useCallback(
         (copyHistoryItem: CopyHistoryItem) => {
@@ -736,6 +742,7 @@ export default function SidePanel({
                     showBackButton={false}
                     items={copyHistoryItems}
                     forceShowDownloadOptions={true}
+                    sources={sources}
                     onClose={noOp}
                     onDelete={handleDeleteCopyHistoryItem}
                     onDeleteAll={handleDeleteAllCopyHistoryItems}
@@ -765,6 +772,7 @@ export default function SidePanel({
                     <CopyHistory
                         open={showCopyHistory || extensionRequestedLocation === 'mining-history'}
                         items={copyHistoryItems}
+                        sources={sources}
                         onClose={handleCloseCopyHistory}
                         onDelete={handleDeleteCopyHistoryItem}
                         onDeleteAll={handleDeleteAllCopyHistoryItems}
