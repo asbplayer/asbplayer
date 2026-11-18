@@ -233,7 +233,9 @@
         "unsupportedExtension": "Unsupported extension {{extension}}",
         "audioConversionFailed": "Failed to convert {{codec}} audio",
         "videoPlayerDragAndDropNotAllowed": "Video player cannot receive dropped files. Drop outside of the video frame instead.",
-        "restoreSessionFailed": "Failed to restore last session. The files may have been moved or deleted."
+        "restoreSessionFailed": "Failed to restore last session. The files may have been moved or deleted.",
+        "unsupportedFormat": "Unsupported format: {{format}}",
+        "embeddedSubtitlesLoadFailed": "Failed to load embedded subtitles"
     },
     "extension": {
         "settings": {

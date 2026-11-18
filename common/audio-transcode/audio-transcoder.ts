@@ -1,6 +1,7 @@
 export interface AudioTranscodeOptions {
     readonly file: File;
     readonly fileId: string;
+    /** Zero-based position among audio tracks. */
     readonly trackIndex: number;
     readonly signal: AbortSignal;
     /** Cumulative immutable audio prefix; the host owns chunk accumulation. */

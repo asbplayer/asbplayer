@@ -7,8 +7,13 @@ ARG ASB_STACK_BYTES
 
 COPY .cache/sources/ffmpeg /src/ffmpeg
 COPY .cache/sources/opus /src/opus
+COPY .cache/sources/zlib /src/zlib
 COPY .cache/build/ffmpeg-configure-args /src/asbplayer/ffmpeg-configure-args
 COPY .cache/build/asb-build-config.hpp /src/asbplayer/generated/asb-build-config.hpp
+
+WORKDIR /src/zlib
+RUN emconfigure ./configure --static --prefix=/build/zlib \
+    && emmake make -j"$(nproc)" && emmake make install
 
 WORKDIR /src/opus
 RUN emconfigure ./configure --host=wasm32-unknown-emscripten --prefix=/build/opus \
@@ -34,18 +39,18 @@ RUN mkdir -p /build/ffmpeg /output \
 COPY native/runtime.cpp native/*.hpp native/asb_ffmpeg.h /src/asbplayer/native/
 WORKDIR /build/ffmpeg
 RUN em++ -std=c++23 -O3 -fno-exceptions -fno-rtti \
-        -I/build/opus/include \
+        -I/build/opus/include -I/build/zlib/include \
         -I/src/asbplayer/generated -I/src/asbplayer/native \
         -I/build/ffmpeg -I/src/ffmpeg \
         -c /src/asbplayer/native/runtime.cpp -o /build/runtime.o \
     && em++ -std=c++23 -O3 -fno-exceptions -fno-rtti --no-entry \
-        /build/runtime.o libavformat/libavformat.a libavcodec/libavcodec.a libswresample/libswresample.a libavutil/libavutil.a /build/opus/lib/libopus.a \
+        /build/runtime.o libavformat/libavformat.a libavcodec/libavcodec.a libswresample/libswresample.a libavutil/libavutil.a /build/opus/lib/libopus.a /build/zlib/lib/libz.a \
         -o /output/ffmpeg-core.js \
         -sMODULARIZE=1 -sEXPORT_ES6=1 -sENVIRONMENT=worker \
         -sFILESYSTEM=0 -sDYNAMIC_EXECUTION=0 \
         -sALLOW_MEMORY_GROWTH=1 -sINITIAL_MEMORY=${ASB_INITIAL_MEMORY_BYTES} \
         -sMAXIMUM_MEMORY=${ASB_MAXIMUM_MEMORY_BYTES} -sSTACK_SIZE=${ASB_STACK_BYTES} \
-        -sEXPORTED_FUNCTIONS='["_asb_runtime_info_json","_asb_transcode_audio","_asb_last_error"]' \
+        -sEXPORTED_FUNCTIONS='["_asb_runtime_info_json","_asb_transcode_audio","_asb_last_error","_asb_extract_subtitles","_malloc","_free"]' \
         -sEXPORTED_RUNTIME_METHODS='["UTF8ToString","HEAPU8"]' \
         -Wl,-Map=/output/ffmpeg-core.map \
     && em++ --version > /output/compiler-version.txt
@@ -64,12 +69,14 @@ RUN set -eux; \
 
 FROM cpp-test AS wasm-test
 RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg && rm -rf /var/lib/apt/lists/*
-COPY scripts/verify/runtime-smoke.mjs scripts/verify/runtime-audio.mjs /src/asbplayer/scripts/verify/
+COPY scripts/verify/runtime-smoke.mjs scripts/verify/runtime-audio.mjs scripts/verify/runtime-subtitles.mjs /src/asbplayer/scripts/verify/
+COPY scripts/verify/subtitle-test-media.mjs /src/asbplayer/scripts/verify/
 ARG ASB_RUNTIME_VERSION
 ARG ASB_FFMPEG_VERSION
 RUN ASB_RUNTIME_VERSION="$ASB_RUNTIME_VERSION" ASB_FFMPEG_VERSION="$ASB_FFMPEG_VERSION" \
     node /src/asbplayer/scripts/verify/runtime-smoke.mjs /output \
-    && timeout 120s node /src/asbplayer/scripts/verify/runtime-audio.mjs /output
+    && timeout 120s node /src/asbplayer/scripts/verify/runtime-audio.mjs /output \
+    && node /src/asbplayer/scripts/verify/runtime-subtitles.mjs /output
 
 FROM scratch AS runtime
 COPY --from=builder /output /

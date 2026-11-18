@@ -18,8 +18,8 @@ import { activeRecipe, effectiveSettings, defaultSettings, isTrackSeekable } fro
 import type { AsbplayerSettings, SettingsProvider } from '@project/common/settings';
 
 import { PlayMode } from '@project/common';
-import { indexCuesByKey, subtitleKey, subtitleSourceStatus } from '@project/common/subtitle-reader/subtitle-stream';
-import type { SubtitleSourceState } from '@project/common/subtitle-reader/subtitle-stream';
+import { indexCuesByKey, subtitleKey } from '@project/common/subtitle-reader/subtitle-stream';
+import type { SubtitleSourceState, SubtitleSourceStatus } from '@project/common/subtitle-reader/subtitle-stream';
 import type { IndexedSubtitleModel, PlaybackState } from '@project/common';
 
 import { asbError, asbTrace, asbWarn } from '@project/common/util/log';
@@ -267,8 +267,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         this.settingsProvider = settingsProvider;
         this.subtitles = subtitles;
         this.subtitleSources = sources;
-        this.lastSubtitleEndMs =
-            this.subtitleSourceStatus === 'complete' ? this.calculateLastSubtitleEndMs(subtitles) : undefined;
+        this.lastSubtitleEndMs = this.calculateLastSubtitleEndMs();
         this.ready = { settings: false, subtitles: subtitles.length > 0 };
         this.playbackModesSuppressed = playbackModesSuppressed;
         this.playbackModeController = new PlaybackModeController(new Set([PlayMode.normal]), playbackModesDisabled);
@@ -392,7 +391,10 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
                 playbackPositionChanged: callbacks.playbackPositionChanged,
                 seek: (timestampMs) => this.seek(timestampMs, { restorePlaybackPosition: true }),
                 play: () => this.play(),
-                showingSubtitlesAt: (timestampMs) => this.executor.showingSubtitlesAt(timestampMs),
+                showingSubtitlesAt: (timestampMs) =>
+                    this.executor
+                        .showingSubtitlesAt(timestampMs)
+                        .filter(({ track }) => !this.subtitleTrackFailed(track)),
                 playbackPositionsChanged: (positions) => {
                     this.settings = { ...this.settings, lastPlaybackPositions: [...positions] };
                 },
@@ -712,9 +714,17 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         asbTrace('playback/lifecycle', 'Playback engine unbound', { saveSettings });
     }
 
-    private calculateLastSubtitleEndMs(subtitles: readonly T[]): number | undefined {
-        if (!subtitles.length) return;
-        return Math.max(...subtitles.map((subtitle) => subtitle.end));
+    private subtitleTrackFailed(track: number): boolean {
+        return this.subtitleSources.some((source) => source.track === track && source.status === 'failed');
+    }
+
+    private calculateLastSubtitleEndMs(): number | undefined {
+        if (this.subtitleSources.some(({ status }) => status === 'loading')) return;
+        let endMs: number | undefined;
+        for (const subtitle of this.subtitles) {
+            if (!this.subtitleTrackFailed(subtitle.track)) endMs = Math.max(endMs ?? -Infinity, subtitle.end);
+        }
+        return endMs;
     }
 
     settingsChanged(settings: AsbplayerSettings): void {
@@ -790,12 +800,17 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         this.playbackPositionController.playbackPositionKeysChanged(playbackPositionKeys, options);
     }
 
-    private get subtitleSourceStatus() {
-        return subtitleSourceStatus(this.subtitleSources);
+    /** Failed tracks can have partial cues. Only surviving tracks can satisfy resume. */
+    private playbackPositionSubtitleStatus(): SubtitleSourceStatus {
+        if (this.subtitleSources.some(({ status }) => status === 'loading')) return 'loading';
+        if (this.lastSubtitleEndMs === undefined && this.subtitleSources.some(({ status }) => status === 'failed')) {
+            return 'failed';
+        }
+        return 'complete';
     }
 
     private subtitlesReadyAt(timestampMs: number): boolean {
-        if (this.subtitleSourceStatus === 'failed') return false;
+        if (this.playbackPositionSubtitleStatus() === 'failed') return false;
         const pendingTracks = new Set(
             this.subtitleSources.filter((source) => source.status === 'loading').map((source) => source.track)
         );
@@ -830,8 +845,8 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         const snapshotCleared = timingChanged && !existingTimingUnchanged && this.clearAutoPauseTimestamp();
         this.subtitles = subtitles;
         this.subtitleSources = sources;
-        this.lastSubtitleEndMs =
-            this.subtitleSourceStatus === 'complete' ? this.calculateLastSubtitleEndMs(subtitles) : undefined;
+        this.lastSubtitleEndMs = this.calculateLastSubtitleEndMs();
+        const resumeStatus = this.playbackPositionSubtitleStatus();
         asbTrace('playback/subtitles', 'Playback subtitles changed', {
             hadSubtitles,
             newSubtitleCount: subtitles.length,
@@ -857,13 +872,10 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
             }); // Reset to normal while subtitles are unavailable
             this.teardown({
                 saveSettings: true,
-                preservePendingResume: this.subtitleSourceStatus === 'loading',
+                preservePendingResume: resumeStatus === 'loading',
             }); // A reparse can temporarily stop subtitle timing while an accepted resume waits for coverage.
         }
-        if (
-            this.subtitleSourceStatus === 'failed' ||
-            (subtitles.length === 0 && this.subtitleSourceStatus === 'complete')
-        ) {
+        if (resumeStatus === 'failed' || (subtitles.length === 0 && resumeStatus === 'complete')) {
             this.playbackPositionController.dismissPlaybackPosition();
         } else {
             this.playbackPositionController.subtitlesChanged();

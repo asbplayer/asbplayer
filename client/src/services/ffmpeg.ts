@@ -2,6 +2,8 @@ import project from '@project/common/project';
 import { webmOpusMimeType } from '@project/common/audio-transcode/webm-audio';
 import type { AudioTranscodeHost } from '@project/common/audio-transcode';
 import { transcodeAudioTrack } from '@project/common/audio-transcode/ffmpeg-audio-transcoder';
+import { extractSubtitleTracks } from '@project/common/embedded-subtitles/ffmpeg-subtitle-extractor';
+import type { SubtitleHost } from '@project/common/embedded-subtitles/subtitle-source';
 import { createFfmpegObjectUrls, createFfmpegSession, ffmpegMetadata, unpackFfmpegRuntime } from '@project/ffmpeg';
 import { prepareFfmpegRuntimeArchive } from '@project/client/src/services/ffmpeg-cache';
 import { asbError, asbTrace, asbWarn } from '@project/common/util/log';
@@ -74,4 +76,8 @@ export const webAudioTranscodeHost: AudioTranscodeHost = {
         return result !== '';
     },
     transcodeAudio: (options) => transcodeAudioTrack({ ...options, createSession }),
+};
+
+export const webSubtitleHost: SubtitleHost = {
+    extractSubtitles: (options) => extractSubtitleTracks({ ...options, createSession }),
 };

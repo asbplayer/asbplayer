@@ -127,7 +127,8 @@ describe('subtitle reader security', () => {
             },
         ]);
 
-        expect(subtitle).toEqual({ start: 0, end: 1000, text: 'Hello\n & 語', track: 0 });
+        expect(subtitle).toEqual({ start: 0, end: 1000, text: 'Hello\n &amp; 語', track: 0 });
+        expect(assertSafeSink(subtitle.text).textContent).toBe('Hello\n & 語');
     });
 
     it.each([
@@ -160,7 +161,7 @@ describe('subtitle reader security', () => {
                 ],
             },
         ]);
-        expect(assertSafeSink(plain.text).textContent).toBe('safe');
+        expect(assertSafeSink(plain.text).textContent).toBe('<img src=x onerror=alert(1)>safe');
     });
 
     it('preserves allowed subtitle formatting, strips every attribute, and is idempotent', () => {

@@ -26,12 +26,16 @@ export function languageDisplayName(language: string, locale: Intl.Locale | unde
 
     try {
         const displayLocale = canonicalLanguageTag(locale);
-        const displayName = new Intl.DisplayNames([displayLocale], {
-            type: 'language',
-            languageDisplay: 'standard',
-            fallback: 'none',
-        }).of(canonical);
-        return displayName === undefined ? language : capitalizeFirstLetter(displayName, displayLocale);
+        // Some browsers only name tags such as ar-001 in their dialect data.
+        for (const languageDisplay of ['standard', 'dialect'] as const) {
+            const displayName = new Intl.DisplayNames([displayLocale], {
+                type: 'language',
+                languageDisplay,
+                fallback: 'none',
+            }).of(canonical);
+            if (displayName !== undefined) return capitalizeFirstLetter(displayName, displayLocale);
+        }
+        return language;
     } catch {
         return language;
     }
