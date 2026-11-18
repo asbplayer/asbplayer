@@ -30,6 +30,16 @@ describe('nextFlightText', () => {
     it('returns undefined for other scripts', () => {
         expect(nextFlightText('window.x = [1, "a"]')).toBeUndefined();
     });
+
+    it('ignores quoted or commented-out pushes and expressions in the chunk value', () => {
+        const script = `
+            const example = 'self.__next_f.push([1,"fake text"])';
+            // self.__next_f.push([1,"comment"])
+            self.__next_f.push([1,"not plain" + suffix]);
+            self.__next_f.push([1, "real chunk"]);
+        `;
+        expect(nextFlightText(script)).toBe('real chunk');
+    });
 });
 
 describe('subtitleArraysFromScript', () => {
@@ -46,5 +56,53 @@ describe('subtitleArraysFromScript', () => {
     it('skips arrays that are not plain literals', () => {
         expect(subtitleArraysFromScript('player.setup({ tracks: buildTracks(lang) })')).toEqual([]);
         expect(subtitleArraysFromScript('player.setup({ tracks: [makeTrack("en")] })')).toEqual([]);
+    });
+
+    it('rejects arithmetic in metadata but retains signed and exponential numbers', () => {
+        const script = `
+            player.setup({ tracks: [{file: "not-a-literal.vtt", offset: 1+2}] });
+            player.setup({ tracks: [{file: "literal.vtt", offset: -2.5e+1}] });
+        `;
+        expect(subtitleArraysFromScript(script)).toEqual([[{ file: 'literal.vtt', offset: -25 }]]);
+    });
+
+    it('rejects arrays used as part of a larger expression, even after a comment', () => {
+        const script = `
+            player.setup({ tracks: [{file: "mapped.vtt"}].map(rewrite) });
+            player.setup({ tracks: [{file: "computed.vtt"}] /* note */ + suffix });
+            player.setup({ tracks: [{file: "literal.vtt"}] /* note */, enabled: true });
+        `;
+        expect(subtitleArraysFromScript(script)).toEqual([[{ file: 'literal.vtt' }]]);
+    });
+
+    it('skips regex literals without treating division as a regex', () => {
+        const script = `
+            const pattern = /{tracks:[{file:"regex.vtt"}]}/;
+            if ((enabled)) /{tracks:[{file:"condition.vtt"}]}/.test(text);
+            const ratio = duration / player.setup({ tracks: [{file: "literal.vtt"}] }) / scale;
+        `;
+        expect(subtitleArraysFromScript(script)).toEqual([[{ file: 'literal.vtt' }]]);
+    });
+
+    it('decodes Unicode code-point escapes and skips malformed ones', () => {
+        const script = String.raw`
+            player.setup({ tracks: [{file: '/caps/\u{1F600}.vtt', label: "Fran\u{E7}ais"}] });
+            player.setup({ tracks: [{file: '/caps/\u{110000}.vtt'}] });
+        `;
+        expect(subtitleArraysFromScript(script)).toEqual([[{ file: '/caps/😀.vtt', label: 'Français' }]]);
+    });
+
+    it('ignores examples in comments and strings and unrelated property names', () => {
+        const script = `
+            // tracks: [{file: "/comment.vtt"}]
+            /* {"subtitles": [{"url": "/block-comment.vtt"}]} */
+            const example = 'player.setup({ tracks: [{file: "/example.vtt"}] })';
+            const template = \`{captions: [{file: "/template.vtt"}]}\`;
+            player.setup({
+                previewCaptionSettings: [{file: "/preview.vtt"}],
+                tracks: [{file: "/real.vtt"}]
+            });
+        `;
+        expect(subtitleArraysFromScript(script)).toEqual([[{ file: '/real.vtt' }]]);
     });
 });

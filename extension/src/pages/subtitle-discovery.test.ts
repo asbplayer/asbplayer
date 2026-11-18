@@ -103,6 +103,15 @@ it('accepts a supported format as strict subtitle evidence', () => {
     ]);
 });
 
+it('preserves an existing subtitle MIME type when encodingFormat also appears', () => {
+    const media = { type: 'text/vtt', src: '/caption?id=42' };
+    for (const encodingFormat of ['WebVTT', 'application/srt']) {
+        expect(tracksFromJson({ ...media, encodingFormat }, 'https://example.com').tracks).toMatchObject([
+            { url: 'https://example.com/caption?id=42', extension: 'vtt' },
+        ]);
+    }
+});
+
 it('uses baseUrl as a source only inside strong subtitle context', () => {
     const contextual = tracksFromJson(
         {

@@ -118,12 +118,19 @@ function metadataString(value: JsonRecord, keys: readonly string[]) {
     return;
 }
 
-// encodingFormat and inLanguage are the schema.org MediaObject names.
-const contentTypeKeys = ['mimetype', 'contenttype', 'encodingformat', 'type'];
+function metadataContentType(value: JsonRecord) {
+    const declared = normalizedContentType(metadataString(value, ['mimetype', 'contenttype', 'type']));
+    if (declared?.includes('/')) return declared;
 
-function subtitleContentType(value: JsonRecord) {
-    const contentType = normalizedContentType(metadataString(value, contentTypeKeys));
-    return subtitleExtensionsByContentType[contentType ?? ''] === undefined ? undefined : contentType;
+    // Schema.org's encodingFormat supplements existing MIME fields; it doesn't override them.
+    const encodingFormat = normalizedContentType(metadataString(value, ['encodingformat']));
+    return subtitleExtensionsByContentType[encodingFormat ?? ''] !== undefined ? encodingFormat : declared;
+}
+
+function metadataTrackKind(value: JsonRecord) {
+    const kind = metadataString(value, ['kind'])?.toLowerCase();
+    const type = metadataString(value, ['type'])?.toLowerCase();
+    return kind ?? (type === 'subtitles' || type === 'captions' ? type : undefined);
 }
 
 const languageKeys = ['srclang', 'language', 'languagecodename', 'lang', 'locale', 'inlanguage'] as const;
@@ -183,13 +190,10 @@ function subtitleReferenceUrl(key: string, value: string, baseUrl: string) {
 function trackDefinitionFromMetadata(
     value: JsonRecord,
     baseUrl: string,
+    declaredKind: string | undefined,
+    declaredContentType: string | undefined,
     { strict, subtitleContext, inheritedContentType, inheritedLanguage }: TrackDefinitionOptions
 ): VideoDataSubtitleTrackDef | undefined {
-    const kind = metadataString(value, ['kind'])?.toLowerCase();
-    const semanticType = metadataString(value, ['type'])?.toLowerCase();
-    const declaredKind =
-        kind ?? (semanticType === 'subtitles' || semanticType === 'captions' ? semanticType : undefined);
-    const declaredContentType = normalizedContentType(metadataString(value, contentTypeKeys));
     const declaredContentTypeExtension = subtitleExtensionsByContentType[declaredContentType ?? ''];
     const contentTypeExtension =
         declaredContentTypeExtension ?? subtitleExtensionsByContentType[inheritedContentType ?? ''];
@@ -281,12 +285,21 @@ export function tracksFromJson(value: unknown, baseUrl: string, options: JsonDis
 
         try {
             const record = current.value as JsonRecord;
-            const inheritedContentType = subtitleContentType(record) ?? current.inheritedContentType;
+            const kind = metadataTrackKind(record);
+            const nonSubtitleKind = kind !== undefined && kind !== 'subtitles' && kind !== 'captions';
+            const declaredContentType = metadataContentType(record);
+            const inheritedContentType =
+                subtitleExtensionsByContentType[declaredContentType ?? ''] === undefined
+                    ? current.inheritedContentType
+                    : declaredContentType;
             const inheritedLanguage = metadataLanguage(record) ?? current.inheritedLanguage;
             const manifestUrl = manifestUrlFromJson(record, baseUrl);
             if (manifestUrl !== undefined) manifestUrls.add(manifestUrl);
 
-            const definition = trackDefinitionFromMetadata(record, baseUrl, {
+            // A rejected chapter/thumbnail record must not reappear through contextual URL inference.
+            if (current.subtitleContext && nonSubtitleKind) continue;
+
+            const definition = trackDefinitionFromMetadata(record, baseUrl, kind, declaredContentType, {
                 strict: !contextual,
                 subtitleContext: current.subtitleContext,
                 inheritedContentType,
@@ -295,8 +308,6 @@ export function tracksFromJson(value: unknown, baseUrl: string, options: JsonDis
             if (definition !== undefined) {
                 tracks.push(trackFromDef(definition));
             } else if (contextual && current.subtitleContext) {
-                const kind = metadataString(record, ['kind'])?.toLowerCase();
-                const declaredType = normalizedContentType(metadataString(record, contentTypeKeys));
                 const hasExplicitSubtitleMetadata = Object.keys(record).some((key) => {
                     const normalizedKey = normalizedMetadataKey(key);
                     return (
@@ -319,10 +330,9 @@ export function tracksFromJson(value: unknown, baseUrl: string, options: JsonDis
                         kind === 'captions' ||
                         formatExtension !== undefined ||
                         (url !== undefined && (language !== undefined || label !== undefined))) &&
-                    (kind === undefined || kind === 'subtitles' || kind === 'captions') &&
-                    (declaredType === undefined ||
-                        !declaredType.includes('/') ||
-                        subtitleExtensionsByContentType[declaredType] !== undefined) &&
+                    (declaredContentType === undefined ||
+                        !declaredContentType.includes('/') ||
+                        subtitleExtensionsByContentType[declaredContentType] !== undefined) &&
                     url !== undefined &&
                     extractExtension(url, '') === '' &&
                     !extensionlessTracks.some((track) => track.url === url)
@@ -347,7 +357,7 @@ export function tracksFromJson(value: unknown, baseUrl: string, options: JsonDis
                         inheritedContentType,
                         inheritedLanguage,
                     });
-                } else if (contextual && typeof child === 'string') {
+                } else if (contextual && !nonSubtitleKind && typeof child === 'string') {
                     const referenceUrl = subtitleReferenceUrl(key, child, baseUrl);
                     const referenceExtension =
                         referenceUrl === undefined ? undefined : subtitleExtensionForUrl(referenceUrl);
@@ -453,11 +463,17 @@ function trackResourceKey(track: VideoDataSubtitleTrack) {
     return Array.isArray(track.url) ? track.url.join('|') : track.url;
 }
 
-export function deduplicateTracks(tracks: readonly VideoDataSubtitleTrack[]) {
+export function deduplicateTracks(
+    tracks: readonly VideoDataSubtitleTrack[],
+    mergeDuplicate?: (preferred: VideoDataSubtitleTrack, duplicate: VideoDataSubtitleTrack) => VideoDataSubtitleTrack
+) {
     const byResource = new Map<string, VideoDataSubtitleTrack>();
     for (const track of tracks) {
         const key = trackResourceKey(track);
-        if (key !== undefined && !byResource.has(key)) byResource.set(key, track);
+        if (key === undefined) continue;
+        const preferred = byResource.get(key);
+        if (preferred === undefined) byResource.set(key, track);
+        else if (mergeDuplicate !== undefined) byResource.set(key, mergeDuplicate(preferred, track));
     }
     return Array.from(byResource.values());
 }

@@ -47,14 +47,29 @@ function appendJson(value: unknown, type = 'application/json') {
     return script;
 }
 
-function mockPerformanceEntries(entries: readonly PerformanceEntry[]) {
+function appendScript(text: string) {
+    const script = document.createElement('script');
+    script.textContent = text;
+    document.body.appendChild(script);
+    return script;
+}
+
+function appendFlightChunk(chunk: string) {
+    appendScript(`self.__next_f.push([1,${JSON.stringify(chunk)}])`);
+}
+
+function mockPerformanceEntries(entries: readonly PerformanceEntry[], navigationUrl?: string) {
     const performanceWithEntries = performance as Performance & {
         getEntriesByType?: (entryType: string) => PerformanceEntryList;
     };
     const original = performanceWithEntries.getEntriesByType;
     Object.defineProperty(performanceWithEntries, 'getEntriesByType', {
         configurable: true,
-        value: () => entries,
+        value: (entryType: string) => {
+            if (entryType === 'resource') return entries;
+            if (entryType === 'navigation' && navigationUrl !== undefined) return [{ name: navigationUrl }];
+            return [];
+        },
     });
     return () => {
         if (original === undefined) Reflect.deleteProperty(performanceWithEntries, 'getEntriesByType');
@@ -244,7 +259,7 @@ it('discovers subtitle arrays declared as object literals in executable inline s
     });
 });
 
-it('discovers closed-caption arrays keyed with the cc abbreviation and keeps one format', async () => {
+it('keeps distinct caption resources with the same language and label', async () => {
     const video = appendVideo();
     const bridge = document.createElement('script');
     bridge.textContent = `
@@ -256,11 +271,12 @@ it('discovers closed-caption arrays keyed with the cc abbreviation and keeps one
 
     const { subtitles } = await new BaseGenericPageDiscovery().videoData(video);
     expect(subtitles).toMatchObject([
+        { label: 'English', language: 'en', url: 'https://cdn.example/c/en.dfxp', extension: 'dfxp' },
         { label: 'English', language: 'en', url: 'https://cdn.example/c/en.vtt', extension: 'vtt' },
     ]);
 });
 
-it('discovers subtitle metadata in Next.js flight data and keeps one format per subtitle', async () => {
+it('discovers subtitle metadata in Next.js flight data and enriches duplicate URLs', async () => {
     const video = appendVideo();
     const payload = JSON.stringify({
         closed_captions: [
@@ -282,6 +298,8 @@ it('discovers subtitle metadata in Next.js flight data and keeps one format per 
 
     const { subtitles } = await new BaseGenericPageDiscovery().videoData(video);
     expect(subtitles).toEqual([
+        expect.objectContaining({ language: 'en', url: 'https://cdn.example/c/en.dfxp', extension: 'dfxp' }),
+        expect.objectContaining({ language: 'en', url: 'https://cdn.example/c/en.srt', extension: 'srt' }),
         expect.objectContaining({ language: 'en', url: 'https://cdn.example/c/en.vtt', extension: 'vtt' }),
         expect.objectContaining({ language: 'es', url: 'https://cdn.example/c/es.vtt', extension: 'vtt' }),
         expect.objectContaining({ language: 'fr', url: 'http://localhost/c/fr', extension: 'vtt' }),
@@ -296,12 +314,9 @@ it('joins Next.js flight chunks split across scripts before reading them', async
             { language: { bcp47: 'ja' }, vttSrc: 'https://cdn.example/c/ja.vtt' },
         ],
     })}\n`;
-    const middle = payload.indexOf('"vttSrc"');
-    for (const chunk of [payload.slice(0, middle), payload.slice(middle)]) {
-        const script = document.createElement('script');
-        script.textContent = `self.__next_f.push([1,${JSON.stringify(chunk)}])`;
-        document.body.append(script);
-    }
+    const middle = payload.indexOf('subtitles') + 4;
+    appendFlightChunk(payload.slice(0, middle));
+    appendFlightChunk(payload.slice(middle));
 
     const { subtitles } = await new BaseGenericPageDiscovery().videoData(video);
     expect(subtitles).toEqual([
@@ -310,20 +325,106 @@ it('joins Next.js flight chunks split across scripts before reading them', async
     ]);
 });
 
-it('ignores inline script metadata after client-side navigation to another path', async () => {
+it('ignores inline script metadata after path or query navigation but not a hash change', async () => {
     const video = appendVideo();
-    const script = document.createElement('script');
-    script.textContent = 'window.config = { tracks: [{ file: "/subs/ja.vtt", kind: "captions", srclang: "ja" }] };';
-    document.body.append(script);
-    const restore = mockPerformanceEntries([{ name: 'http://localhost/watch/episode-1' } as PerformanceEntry]);
+    appendScript('window.config = { tracks: [{ file: "/subs/ja.vtt", kind: "captions", srclang: "ja" }] };');
+    const restore = mockPerformanceEntries([], 'http://localhost/watch?v=one');
+    const discovery = new BaseGenericPageDiscovery();
     try {
-        history.replaceState(null, '', '/watch/episode-1');
-        expect((await new BaseGenericPageDiscovery().videoData(video)).subtitles).toHaveLength(1);
-        history.replaceState(null, '', '/watch/episode-2');
-        expect((await new BaseGenericPageDiscovery().videoData(video)).subtitles).toEqual([]);
+        history.replaceState(null, '', '/watch?v=one#player');
+        expect((await discovery.videoData(video)).subtitles).toHaveLength(1);
+        history.replaceState(null, '', '/watch?v=two');
+        expect((await discovery.videoData(video)).subtitles).toEqual([]);
+        history.replaceState(null, '', '/another?v=one');
+        expect((await discovery.videoData(video)).subtitles).toEqual([]);
     } finally {
         restore();
     }
+});
+
+it('counts Flight and ordinary scripts against a shared scan budget', async () => {
+    const video = appendVideo();
+    for (let index = 0; index < 24; index++) {
+        appendScript('window.unrelated = {};');
+        appendFlightChunk('1:[]\n');
+    }
+    appendFlightChunk('2:{"subtitles":[{"url":"/first.vtt"}]}\n');
+    appendScript('window.player = {tracks: [{file: "/second.srt"}]};');
+    appendFlightChunk('3:{"subtitles":[{"url":"/beyond-limit.vtt"}]}\n');
+
+    const { subtitles } = await new BaseGenericPageDiscovery().videoData(video);
+    expect(subtitles?.map(({ url }) => url).sort()).toEqual([
+        'http://localhost/first.vtt',
+        'http://localhost/second.srt',
+    ]);
+});
+
+it('bounds the total script input even when each Flight chunk fits the per-script limit', async () => {
+    const video = appendVideo();
+    appendFlightChunk('1:{"subtitles":[{"url":"/within-budget.vtt"}]}\n');
+    for (let index = 0; index < 4; index++) appendFlightChunk('x'.repeat(500_000));
+    appendScript('window.player = {tracks: [{file: "/beyond-budget.vtt"}]};');
+
+    expect((await new BaseGenericPageDiscovery().videoData(video)).subtitles).toMatchObject([
+        { url: 'http://localhost/within-budget.vtt' },
+    ]);
+});
+
+it('keeps the inline name after the site requests the same subtitle', async () => {
+    const video = appendVideo();
+    video.innerHTML = '<track kind="captions" src="/native.vtt" label="Native">';
+    appendScript(`window.player = {tracks: [
+        {file: "/en.vtt", language: "en", label: "English SDH"},
+        {file: "/native.vtt", language: "ja", label: "Not the native label"}
+    ]};`);
+    const discovery = new BaseGenericPageDiscovery();
+    const expected = [
+        expect.objectContaining({ url: 'http://localhost/native.vtt', label: 'Native', language: 'ja' }),
+        expect.objectContaining({ url: 'http://localhost/en.vtt', label: 'English · SDH', language: 'en' }),
+    ];
+    expect((await discovery.videoData(video)).subtitles).toEqual(expected);
+
+    const restore = mockPerformanceEntries([
+        { name: 'http://localhost/en.vtt', initiatorType: 'fetch' } as PerformanceResourceTiming,
+    ]);
+    try {
+        expect((await discovery.videoData(video)).subtitles).toEqual(expected);
+        const track = document.createElement('track');
+        track.kind = 'captions';
+        track.src = '/en.vtt';
+        track.srclang = 'en';
+        video.appendChild(track);
+        expect((await discovery.videoData(video)).subtitles).toEqual(expected);
+    } finally {
+        restore();
+    }
+});
+
+it('excludes chapter files from literal track arrays', async () => {
+    const video = appendVideo();
+    appendScript('window.player = {tracks: [{kind: "chapters", file: "/chapters.vtt"}, {file: "/captions.vtt"}]};');
+
+    expect((await new BaseGenericPageDiscovery().videoData(video)).subtitles).toMatchObject([
+        { url: 'http://localhost/captions.vtt' },
+    ]);
+});
+
+it('returns existing results if reading an inline script throws', async () => {
+    const video = appendVideo();
+    video.innerHTML = '<track kind="captions" src="/native.vtt" label="Native">';
+    appendJson({ kind: 'captions', src: '/metadata.vtt', label: 'Metadata' });
+    const script = appendScript('window.player = {tracks: [{file: "/captions.vtt"}]};');
+    Object.defineProperty(script, 'textContent', {
+        get: () => {
+            throw new Error('Unable to read script');
+        },
+    });
+    jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    expect((await new BaseGenericPageDiscovery().videoData(video)).subtitles).toMatchObject([
+        { url: 'http://localhost/native.vtt' },
+        { url: 'http://localhost/metadata.vtt' },
+    ]);
 });
 
 it('does not scan a large late hydration payload in base mode', async () => {
@@ -356,65 +457,67 @@ it('does not scan a large late hydration payload in base mode', async () => {
     await expect(new BaseGenericPageDiscovery().videoData(video)).resolves.toMatchObject({ subtitles: [] });
 });
 
-it('discovers bounded HLS subtitles from an explicit inline manifest URL', async () => {
-    const video = appendVideo();
-    appendJson({ player: { hlsUrl: 'https://cdn.example/media/master.m3u8' } });
+it.each([['segment-1.vtt'], ['segment-1.vtt', 'segment-2.vtt']].map((segments) => ({ segments })))(
+    'preserves HLS subtitle renditions ahead of literal tracks ($segments)',
+    async ({ segments }) => {
+        const video = appendVideo();
+        appendJson({ player: { hlsUrl: 'https://cdn.example/media/master.m3u8' } });
+        if (segments.length === 1) {
+            appendScript('window.player = {tracks: [{file: "https://cdn.example/media/subs/segment-1.vtt"}]};');
+        }
+        appendScript('window.player = {tracks: [{file: "/extra.vtt"}]};');
 
-    const manifests = new Map([
-        [
-            'https://cdn.example/media/master.m3u8',
-            `#EXTM3U
+        const manifests = new Map([
+            [
+                'https://cdn.example/media/master.m3u8',
+                `#EXTM3U
 #EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID="subs",NAME="English",LANGUAGE="en",URI="subs/en.m3u8"
 #EXT-X-STREAM-INF:BANDWIDTH=1280000,SUBTITLES="subs"
 video.m3u8`,
-        ],
-        [
-            'https://cdn.example/media/subs/en.m3u8',
-            `#EXTM3U
-#EXTINF:10,
-segment-1.vtt
-#EXTINF:10,
-segment-2.vtt
-#EXT-X-ENDLIST`,
-        ],
-    ]);
-    const originalFetch = globalThis.fetch;
-    const fetchSpy = jest.fn(async (input: RequestInfo | URL) => {
-        const url = typeof Request !== 'undefined' && input instanceof Request ? input.url : input.toString();
-        const text = manifests.get(url);
-        if (text === undefined) {
-            return { ok: false, status: 404, headers: { get: () => null } } as unknown as Response;
-        }
-        return {
-            ok: true,
-            status: 200,
-            url,
-            headers: { get: () => null },
-            text: async () => text,
-        } as unknown as Response;
-    });
-    Object.defineProperty(globalThis, 'fetch', { configurable: true, writable: true, value: fetchSpy });
-
-    try {
-        await expect(new BaseGenericPageDiscovery().videoData(video)).resolves.toMatchObject({
-            subtitles: [
-                {
-                    label: 'English',
-                    language: 'en',
-                    extension: 'vtt',
-                    url: [
-                        'https://cdn.example/media/subs/segment-1.vtt',
-                        'https://cdn.example/media/subs/segment-2.vtt',
-                    ],
-                },
             ],
+            [
+                'https://cdn.example/media/subs/en.m3u8',
+                `#EXTM3U
+${segments.map((segment) => `#EXTINF:10,\n${segment}`).join('\n')}
+#EXT-X-ENDLIST`,
+            ],
+        ]);
+        const originalFetch = globalThis.fetch;
+        const fetchSpy = jest.fn(async (input: RequestInfo | URL) => {
+            const url = typeof Request !== 'undefined' && input instanceof Request ? input.url : input.toString();
+            const text = manifests.get(url);
+            if (text === undefined) {
+                return { ok: false, status: 404, headers: { get: () => null } } as unknown as Response;
+            }
+            return {
+                ok: true,
+                status: 200,
+                url,
+                headers: { get: () => null },
+                text: async () => text,
+            } as unknown as Response;
         });
-        expect(fetchSpy).toHaveBeenCalledTimes(2);
-    } finally {
-        if (originalFetch === undefined) delete (globalThis as { fetch?: typeof fetch }).fetch;
-        else globalThis.fetch = originalFetch;
+        Object.defineProperty(globalThis, 'fetch', { configurable: true, writable: true, value: fetchSpy });
+
+        try {
+            await expect(new BaseGenericPageDiscovery().videoData(video)).resolves.toMatchObject({
+                subtitles: [
+                    {
+                        label: 'English',
+                        language: 'en',
+                        extension: 'vtt',
+                        url: segments.map((segment) => `https://cdn.example/media/subs/${segment}`),
+                    },
+                    { url: 'http://localhost/extra.vtt' },
+                ],
+            });
+            expect(fetchSpy).toHaveBeenCalledTimes(2);
+        } finally {
+            if (originalFetch === undefined) delete (globalThis as { fetch?: typeof fetch }).fetch;
+            else globalThis.fetch = originalFetch;
+        }
     }
-});
+);
 
 it('discovers direct subtitle resources from the bounded performance timeline', async () => {
     const video = appendVideo();

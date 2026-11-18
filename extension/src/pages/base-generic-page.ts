@@ -1,5 +1,6 @@
 import type { VideoData, VideoDataSubtitleTrack } from '@project/common';
 import { subtitlesToSrt } from '@project/common/subtitle-reader/subtitles-to-srt';
+import { asbWarn } from '@project/common/util/log';
 import { genericSubtitleDisplayLabel } from '@project/common/util/subtitle-language';
 import {
     limitM3U8SubtitleRenditions,
@@ -29,9 +30,8 @@ export const maximumInlineJsonLength = 128_000;
 const maximumInlineJsonTotalLength = 256_000;
 const maximumInlineScripts = 50;
 const maximumInlineScriptLength = 512_000;
-const maximumFlightLength = 2_000_000;
-// Also matches the escaped `\"captions\":[` form found inside Next.js flight strings.
-const inlineScriptSubtitleHint = /(?:caption|subtit|texttrack|tracks|\bcc(?:_\w*)?\b)\w*\\?["']?\s*:\s*\[/i;
+const maximumInlineScriptTotalLength = 2_000_000;
+const inlineScriptSubtitleHint = /caption|subtit|texttrack|tracks|\bcc\b|cc_/i;
 export const maximumTextTrackCues = 10_000;
 export const maximumTextTrackTextLength = 1_000_000;
 export const capturedDuringPlaybackLabelSuffix = ' (captured during playback)';
@@ -75,12 +75,16 @@ function tracksFromInlineJson(): JsonDiscovery {
     return { tracks, manifestUrls, metadataUrls: new Set(), extensionlessTracks: [] };
 }
 
-// Inline scripts describe the page as it was first loaded. After client-side navigation (pushState) to
-// another path they belong to a different video, so they must not be used.
+// Inline scripts can still describe the initial video after a client-side navigation.
+// Query changes can select a different video; fragment changes usually stay within the same page.
 function navigatedAwayFromLoadedPage() {
     try {
         const navigation = performance.getEntriesByType('navigation')[0];
-        return navigation !== undefined && new URL(navigation.name).pathname !== window.location.pathname;
+        if (navigation === undefined) return false;
+        const loaded = new URL(navigation.name);
+        const current = new URL(window.location.href);
+        loaded.hash = current.hash = '';
+        return loaded.href !== current.href;
     } catch {
         return false;
     }
@@ -89,35 +93,31 @@ function navigatedAwayFromLoadedPage() {
 function tracksFromInlineScriptLiterals(): VideoDataSubtitleTrack[] {
     if (navigatedAwayFromLoadedPage()) return [];
     const sources: string[] = [];
-    // Next.js splits its data into chunks wherever the stream happened to flush, one `<script>` per chunk, so an
-    // array can start in one script and end in the next. The chunks are joined in order, as Next.js does.
-    const flightScripts: string[] = [];
-    let flightHinted = false;
+    let flight = '';
     let scannedScripts = 0;
-    for (const script of Array.from(document.querySelectorAll<HTMLScriptElement>('script:not([src])'))) {
+    let totalLength = 0;
+    for (const script of document.querySelectorAll<HTMLScriptElement>('script:not([src])')) {
+        if (scannedScripts++ >= maximumInlineScripts) break;
         const type = normalizedContentType(script.type);
         if (type && type !== 'module' && !type.endsWith('javascript') && !type.endsWith('ecmascript')) continue;
 
         const text = script.textContent;
-        if (!text || text.length > maximumInlineScriptLength) continue;
-        if (text.includes('self.__next_f.push(')) {
-            flightScripts.push(text);
-            flightHinted ||= inlineScriptSubtitleHint.test(text);
-        } else if (scannedScripts++ < maximumInlineScripts && inlineScriptSubtitleHint.test(text)) {
-            // Cheap check on the raw text first, so scripts without subtitle keys are never converted.
-            sources.push(text);
+        if (!text) continue;
+        totalLength += text.length;
+        if (totalLength > maximumInlineScriptTotalLength) break;
+        if (text.length > maximumInlineScriptLength) {
+            // Don't join Flight data across a script whose contents we skipped.
+            if (inlineScriptSubtitleHint.test(flight)) sources.push(flight);
+            flight = '';
+            continue;
         }
+
+        const decoded = text.includes('self.__next_f') ? nextFlightText(text) : undefined;
+        if (decoded !== undefined) flight += decoded;
+        else if (inlineScriptSubtitleHint.test(text)) sources.push(text);
     }
-    if (flightHinted) {
-        let flight = '';
-        for (const text of flightScripts) {
-            const decoded = nextFlightText(text);
-            if (decoded === undefined) continue;
-            if (flight.length + decoded.length > maximumFlightLength) break;
-            flight += decoded;
-        }
-        sources.push(flight);
-    }
+    // A Flight flush can split the subtitle key itself, not just its array.
+    if (inlineScriptSubtitleHint.test(flight)) sources.push(flight);
 
     const tracks: VideoDataSubtitleTrack[] = [];
     for (const source of sources) {
@@ -127,29 +127,31 @@ function tracksFromInlineScriptLiterals(): VideoDataSubtitleTrack[] {
             tracks.push(...discovered.tracks);
         }
     }
-    return collapseAlternateFormats(tracks);
+    return deduplicateTracks(tracks, enrichTrack);
 }
 
-const formatPreference = ['vtt', 'srt', 'ass', 'ttml2', 'dfxp'];
-
-// Page data often lists the same subtitle twice (with and without a language) and in several formats.
-// Keep the entry that carries a language, and one format per subtitle.
-function collapseAlternateFormats(tracks: readonly VideoDataSubtitleTrack[]) {
-    const rank = (track: VideoDataSubtitleTrack) => {
-        const index = formatPreference.indexOf(track.extension);
-        return index < 0 ? formatPreference.length : index;
-    };
-    const withLanguageFirst = [...tracks].sort((a, b) => Number(!a.language) - Number(!b.language));
-    const kept: VideoDataSubtitleTrack[] = [];
-    for (const track of deduplicateTracks(withLanguageFirst)) {
-        const index = kept.findIndex(
-            (other) =>
-                other.label === track.label && other.language === track.language && other.extension !== track.extension
-        );
-        if (index < 0) kept.push(track);
-        else if (rank(track) < rank(kept[index])) kept[index] = track;
+function enrichTrack(
+    preferred: VideoDataSubtitleTrack,
+    metadata: VideoDataSubtitleTrack,
+    source: 'performance' | 'unlabeled-native' | 'other' = 'other'
+) {
+    const inferred = source === 'performance';
+    const language = inferred ? (metadata.language ?? preferred.language) : (preferred.language ?? metadata.language);
+    let label = preferred.label;
+    const canReplaceNativeLabel =
+        source === 'unlabeled-native' &&
+        (preferred.language === undefined ||
+            metadata.language === undefined ||
+            preferred.language === metadata.language);
+    if (
+        metadata.label !== detectedSubtitleLabel &&
+        (inferred || canReplaceNativeLabel || label === detectedSubtitleLabel)
+    ) {
+        label = metadata.label;
     }
-    return kept;
+    return label === preferred.label && language === preferred.language
+        ? preferred
+        : trackFromDef({ ...preferred, label, language });
 }
 
 function directSubtitleTracksFromPerformance(): VideoDataSubtitleTrack[] {
@@ -304,7 +306,12 @@ export function nativeSubtitleTracks(
     video: HTMLVideoElement,
     cueProvider?: TextTrackCueProvider
 ): VideoDataSubtitleTrack[] {
+    return collectNativeSubtitleTracks(video, cueProvider).tracks;
+}
+
+function collectNativeSubtitleTracks(video: HTMLVideoElement, cueProvider?: TextTrackCueProvider) {
     const tracks: VideoDataSubtitleTrack[] = [];
+    const unlabeledTracks = new Set<VideoDataSubtitleTrack>();
     const elementTextTracks = new Set<TextTrack>();
     const trackElements = Array.from(video.querySelectorAll('track'));
 
@@ -317,19 +324,16 @@ export function nativeSubtitleTracks(
         if (url === undefined) continue;
 
         const language = element.getAttribute('srclang')?.trim().toLowerCase() || undefined;
-        tracks.push(
-            trackFromDef({
-                label: genericSubtitleDisplayLabel(
-                    element.getAttribute('label') ?? undefined,
-                    language,
-                    `Subtitle ${index + 1}`
-                ),
-                language,
-                url,
-                // HTML track resources are WebVTT even when served by an extensionless endpoint.
-                extension: subtitleExtensionForUrl(url) ?? 'vtt',
-            })
-        );
+        const label = nonEmptyString(element.getAttribute('label'));
+        const track = trackFromDef({
+            label: genericSubtitleDisplayLabel(label, language, `Subtitle ${index + 1}`),
+            language,
+            url,
+            // HTML track resources are WebVTT even when served by an extensionless endpoint.
+            extension: subtitleExtensionForUrl(url) ?? 'vtt',
+        });
+        tracks.push(track);
+        if (label === undefined) unlabeledTracks.add(track);
         elementTextTracks.add(element.track);
     }
 
@@ -364,7 +368,7 @@ export function nativeSubtitleTracks(
         // Some player implementations expose TextTrack objects whose cue lists are not readable.
     }
 
-    return tracks;
+    return { tracks, unlabeledTracks };
 }
 
 function subtitleLanguageFromUrl(url: string) {
@@ -389,19 +393,31 @@ export class BaseGenericPageDiscovery implements VideoDataProvider {
     constructor(private readonly cueProvider?: TextTrackCueProvider) {}
 
     async videoData(video: HTMLVideoElement): Promise<VideoData> {
-        const tracks = nativeSubtitleTracks(video, this.cueProvider);
-        tracks.push(...directSubtitleTracksFromPerformance());
+        const { tracks, unlabeledTracks } = collectNativeSubtitleTracks(video, this.cueProvider);
+        const performanceTracks = new Set(directSubtitleTracksFromPerformance());
+        tracks.push(...performanceTracks);
         const inlineJson = tracksFromInlineJson();
-        tracks.push(
-            ...inlineJson.tracks,
-            ...tracksFromInlineScriptLiterals(),
-            ...(await tracksFromInlineManifests(inlineJson.manifestUrls))
-        );
+        tracks.push(...inlineJson.tracks, ...(await tracksFromInlineManifests(inlineJson.manifestUrls)));
+        let subtitles = deduplicateTracks(tracks);
+        try {
+            // Keep the existing resource and position. Use the source to distinguish a generated label
+            // from an explicit native label: either can look like "English".
+            subtitles = deduplicateTracks(
+                [...subtitles, ...tracksFromInlineScriptLiterals()],
+                (preferred, metadata) => {
+                    if (performanceTracks.has(preferred)) return enrichTrack(preferred, metadata, 'performance');
+                    if (unlabeledTracks.has(preferred)) return enrichTrack(preferred, metadata, 'unlabeled-native');
+                    return enrichTrack(preferred, metadata);
+                }
+            );
+        } catch (error) {
+            asbWarn('subtitle/source', 'Unable to scan inline subtitle metadata', error);
+        }
 
         return {
             error: '',
             basename: basenameForVideo(video),
-            subtitles: deduplicateTracks(tracks),
+            subtitles,
         };
     }
 }
