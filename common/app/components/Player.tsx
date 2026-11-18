@@ -150,6 +150,7 @@ function pause(clock: Clock, mediaAdapter: MediaAdapter, forwardToMedia: boolean
 interface PlayerProps {
     subtitleProducer?: SubtitleSourceProducer;
     audioTranscodeHost?: AudioTranscodeHost;
+    onMediaReady?: () => void;
     sources?: MediaSources;
     subtitles: DisplaySubtitleModel[];
     mediaId?: string;
@@ -241,6 +242,7 @@ function PlayerComponent(
         sources,
         audioTranscodeHost,
         subtitleProducer,
+        onMediaReady,
         subtitles,
         mediaId,
         subtitleReader,
@@ -1027,6 +1029,7 @@ function PlayerComponent(
             }),
         [channel, subtitles, videoFile]
     );
+    useEffect(() => channel?.onReady(() => onMediaReady?.()), [channel, onMediaReady]);
     useEffect(
         () =>
             channel?.onReady(() => {

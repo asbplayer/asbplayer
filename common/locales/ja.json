@@ -233,7 +233,9 @@
         "unsupportedExtension": "対応していない拡張子です：{{extension}}",
         "audioConversionFailed": "Failed to convert {{codec}} audio",
         "videoPlayerDragAndDropNotAllowed": "動画プレイヤーはドロップしたファイルを受け取れません。動画のフレーム外にファイルをドロップしてください。",
-        "restoreSessionFailed": "前回のセッションの復元に失敗しました。"
+        "restoreSessionFailed": "前回のセッションの復元に失敗しました。",
+        "unsupportedFormat": "Unsupported format: {{format}}",
+        "embeddedSubtitlesLoadFailed": "Failed to load embedded subtitles"
     },
     "extension": {
         "settings": {

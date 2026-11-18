@@ -1,14 +1,24 @@
 import { diagnosticMessageLimit, diagnosticTextLimit } from '@project/ffmpeg/protocol';
-import type { FfmpegDiagnostic, FfmpegDiagnostics, FfmpegRuntimeInfo } from '@project/ffmpeg/protocol';
+import type {
+    ExtractedSubtitle,
+    FfmpegDiagnostic,
+    FfmpegDiagnostics,
+    FfmpegRuntimeInfo,
+} from '@project/ffmpeg/protocol';
 import type { InputReader } from '@project/ffmpeg/input-reader';
+
+const uint32Max = 0xffffffff; // Track indexes cross the WASM boundary as uint32_t
 
 export type NativeModule = {
     _asb_runtime_info_json(): number;
     _asb_transcode_audio(inputSize: number, trackIndex: number): number;
     _asb_last_error(): number;
+    _asb_extract_subtitles(inputSize: number, trackKeysPointer: number, count: number): number;
+    _malloc(size: number): number;
+    _free(pointer: number): void;
     HEAPU8: Uint8Array;
     UTF8ToString(pointer: number): string;
-    asbWriteOutput: ((pointer: number, length: number) => number) | undefined;
+    asbWriteOutput: ((trackIndex: number, pointer: number, length: number) => number) | undefined;
     asbReadInput: ((offset: number, pointer: number, length: number) => number) | undefined;
     asbDiagnostic:
         | ((source: FfmpegDiagnostic['source'], level: FfmpegDiagnostic['level'], message: string) => void)
@@ -23,6 +33,9 @@ export class NativeBridge {
             '_asb_runtime_info_json',
             '_asb_transcode_audio',
             '_asb_last_error',
+            '_asb_extract_subtitles',
+            '_malloc',
+            '_free',
             'UTF8ToString',
         ] as const) {
             if (typeof module[name] !== 'function') throw new Error(`Native export ${name} is missing`);
@@ -35,15 +48,7 @@ export class NativeBridge {
         return JSON.parse(this.module.UTF8ToString(this.module._asb_runtime_info_json())) as FfmpegRuntimeInfo;
     }
 
-    transcodeAudio(
-        input: InputReader,
-        trackIndex: number,
-        onChunk: (chunk: ArrayBuffer) => void,
-        onDiagnostics: (diagnostics: FfmpegDiagnostics) => void
-    ): number {
-        let readError: unknown;
-        let outputError: unknown;
-        let outputBytes = 0;
+    private collectDiagnostics(onDiagnostics: (diagnostics: FfmpegDiagnostics) => void) {
         const diagnostics: FfmpegDiagnostics = { messages: [], omittedMessages: 0 };
         this.module.asbDiagnostic = (source, level, text) => {
             const message = text.trim().slice(0, diagnosticTextLimit);
@@ -58,7 +63,83 @@ export class NativeBridge {
             }
             diagnostics.messages.push({ source, level, message, occurrences: 1 });
         };
-        this.module.asbWriteOutput = (pointer, length) => {
+        return () => {
+            this.module.asbDiagnostic = undefined;
+            try {
+                onDiagnostics(diagnostics);
+            } catch {
+                // Diagnostics must not replace an operation result or its original failure.
+            }
+        };
+    }
+
+    extractSubtitles(
+        input: InputReader,
+        trackKeys: number[],
+        onChunk: (trackKey: number, chunk: ArrayBuffer) => void,
+        onDiagnostics: (diagnostics: FfmpegDiagnostics) => void
+    ): ExtractedSubtitle[] {
+        if (trackKeys.length === 0) return [];
+        if (trackKeys.some((index) => !Number.isInteger(index) || index < 0 || index > uint32Max)) {
+            throw new Error('Invalid subtitle track index');
+        }
+        const module = this.module;
+        const size = trackKeys.length * Uint32Array.BYTES_PER_ELEMENT;
+        const pointer = module._malloc(size);
+        if (!pointer) throw new Error('Could not allocate subtitle arguments');
+        let callbackError: unknown;
+        const finishDiagnostics = this.collectDiagnostics(onDiagnostics);
+        this.module.asbReadInput = (offset, pointer, length) => {
+            try {
+                const bytes = input.readAt(offset, length);
+                this.module.HEAPU8.set(bytes, pointer);
+                return bytes.length;
+            } catch (error) {
+                callbackError = error;
+                return -1;
+            }
+        };
+        this.module.asbWriteOutput = (index, pointer, length) => {
+            try {
+                onChunk(index, this.module.HEAPU8.slice(pointer, pointer + length).buffer);
+                return length;
+            } catch (error) {
+                callbackError = error;
+                return -1;
+            }
+        };
+        try {
+            const heap = module.HEAPU8;
+            const indexes = new DataView(heap.buffer, heap.byteOffset + pointer, size);
+            trackKeys.forEach((index, position) => {
+                indexes.setUint32(position * Uint32Array.BYTES_PER_ELEMENT, index, true);
+            });
+            const result = module._asb_extract_subtitles(input.size, pointer, trackKeys.length);
+            if (callbackError !== undefined) throw callbackError;
+            if (!result) throw new Error(module.UTF8ToString(module._asb_last_error()));
+            return JSON.parse(module.UTF8ToString(result)) as ExtractedSubtitle[];
+        } finally {
+            this.module.asbReadInput = undefined;
+            this.module.asbWriteOutput = undefined;
+            finishDiagnostics();
+            module._free(pointer);
+        }
+    }
+
+    transcodeAudio(
+        input: InputReader,
+        trackIndex: number,
+        onChunk: (chunk: ArrayBuffer) => void,
+        onDiagnostics: (diagnostics: FfmpegDiagnostics) => void
+    ): number {
+        if (!Number.isInteger(trackIndex) || trackIndex < 0 || trackIndex > uint32Max) {
+            throw new Error('Invalid audio track index');
+        }
+        let readError: unknown;
+        let outputError: unknown;
+        let outputBytes = 0;
+        const finishDiagnostics = this.collectDiagnostics(onDiagnostics);
+        this.module.asbWriteOutput = (_trackIndex, pointer, length) => {
             if (outputError !== undefined) return -1;
             try {
                 const chunk = this.module.HEAPU8.slice(pointer, pointer + length).buffer;
@@ -92,12 +173,7 @@ export class NativeBridge {
         } finally {
             this.module.asbReadInput = undefined;
             this.module.asbWriteOutput = undefined;
-            this.module.asbDiagnostic = undefined;
-            try {
-                onDiagnostics(diagnostics);
-            } catch {
-                // Diagnostics must not replace a conversion result or its original failure.
-            }
+            finishDiagnostics();
         }
     }
 }

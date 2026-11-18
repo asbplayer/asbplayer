@@ -95,10 +95,10 @@ export const useTranscodedAudio = (
             }
             asbTrace('audio/transcode', 'Starting audio conversion', {
                 fileId: videoFile.id,
-                trackIndex: track.index,
+                trackIndex: track.trackIndex,
                 codec: track.codec,
             });
-            await convert(videoFile, track.index, host);
+            await convert(videoFile, track.trackIndex, host);
         };
         void detectAndConvert();
 

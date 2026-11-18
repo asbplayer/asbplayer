@@ -1,6 +1,7 @@
 import { asbError } from '@project/common/util/log';
 import { useCallback, useEffect, useState } from 'react';
 import type { FileWithId } from '@project/common/file-selector';
+import type { LoadableSubtitleTrack } from '@project/common';
 import type {
     FileSessionRecord,
     FileSessionSourceIds,
@@ -52,11 +53,6 @@ export const useFileSession = () => {
 
     const fetchSession = useCallback(() => fileSessionRepository?.fetch(), [fileSessionRepository]);
 
-    const clearSession = useCallback(async () => {
-        await fileSessionRepository?.clear();
-        setCanRestoreLastSession(false);
-    }, [fileSessionRepository]);
-
     const saveBufferedHandlesToSession = useCallback(
         async (bufferedSubtitleHandles: FileSystemFileHandleWithId[]) => {
             await fileSessionRepository?.merge({
@@ -77,12 +73,20 @@ export const useFileSession = () => {
         await fileSessionRepository?.clearBuffered();
     }, [fileSessionRepository]);
 
-    const saveCachedSubtitleFilesToSession = useCallback(
-        async (files: FileWithId[]) => {
-            const didSave = await fileSessionRepository?.setCachedSubtitleFiles(files);
-            if (files.length > 0 && didSave) {
-                setCanRestoreLastSession(true);
-            }
+    const saveSubtitleSelection = useCallback(
+        async (tracks: LoadableSubtitleTrack<FileWithId>[], pendingEmbeddedIds: ReadonlySet<string>) => {
+            if (!fileSessionRepository) return;
+            const completedTracks = tracks.map(({ fileParts }) => ({
+                fileParts: fileParts.filter((file) => !pendingEmbeddedIds.has(file.id)),
+            }));
+            const files = completedTracks.flatMap(({ fileParts }) => fileParts);
+            await fileSessionRepository.setCachedSubtitleFiles(files, {
+                subtitleTrackIds: completedTracks.map(({ fileParts }) => fileParts.map(({ id }) => id)),
+                embeddedSubtitles: Object.fromEntries(
+                    files.filter((file) => file.embedded).map((file) => [file.id, file.embedded!])
+                ),
+            });
+            setCanRestoreLastSession(canRestoreSession(await fileSessionRepository.fetch()));
         },
         [fileSessionRepository]
     );
@@ -99,14 +103,13 @@ export const useFileSession = () => {
     );
 
     return {
+        saveSubtitleSelection,
         canRestoreLastSession,
         saveSession,
         fetchSession,
-        clearSession,
         saveBufferedHandlesToSession,
         promoteBufferedHandlesInSession,
         clearBufferedHandlesInSession,
-        saveCachedSubtitleFilesToSession,
         retainSourcesInSession,
     };
 };

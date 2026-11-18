@@ -30,7 +30,17 @@ it.each([
     [0, -1],
     [2, 2],
     [4, 1],
-])('rejects an out-of-bounds read at %i with length %i', async (offset, length) => {
+    [NaN, 1],
+    [0, NaN],
+    [0.5, 1],
+    [0, 1.5],
+])('rejects an invalid read at %s with length %s', async (offset, length) => {
     const reader = new ByteReader(new Blob(['abc']));
     expect(await reader.bytes(offset, length)).toBeUndefined();
+});
+
+it('decodes UTF-8 metadata across windows and strips only trailing null padding', async () => {
+    const reader = new ByteReader(new Blob(['skip日本語\0name\0\0']), 4);
+    expect(await reader.utf8(4, reader.size - 4)).toBe('日本語\0name');
+    await expect(reader.utf8(reader.size - 1, 2)).rejects.toThrow('Truncated media metadata');
 });

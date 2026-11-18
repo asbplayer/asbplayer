@@ -233,7 +233,9 @@
         "unsupportedExtension": "Niewspierane rozszerzenie {{extension}}",
         "audioConversionFailed": "Failed to convert {{codec}} audio",
         "videoPlayerDragAndDropNotAllowed": "Odtwarzacz wideo nie może przyjąć upuszczonych plików. Zamiast tego upuść poza ramką wideo.",
-        "restoreSessionFailed": "Nie udało się przywrócić ostatniej sesji. Pliki mogły zostać przeniesione lub usunięte."
+        "restoreSessionFailed": "Nie udało się przywrócić ostatniej sesji. Pliki mogły zostać przeniesione lub usunięte.",
+        "unsupportedFormat": "Unsupported format: {{format}}",
+        "embeddedSubtitlesLoadFailed": "Failed to load embedded subtitles"
     },
     "extension": {
         "settings": {
