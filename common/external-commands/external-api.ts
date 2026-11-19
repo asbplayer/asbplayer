@@ -1,8 +1,11 @@
 import type { PostMineAction } from '@project/common/src/model';
 import type {
     BoundMedia,
+    Card,
     ExternalCommand,
     GetBoundMediaResponseBody,
+    GetMiningHistoryCommand,
+    GetMiningHistoryResponseBody,
     GetSubtitlesCommand,
     GetSubtitlesResponseBody,
     LoadSubtitlesCommand,
@@ -198,13 +201,22 @@ type PostMineActionValuesMatch =
 const _postMineActionValuesMatch: PostMineActionValuesMatch = true;
 void _postMineActionValuesMatch;
 
-export const postMineActionSchema = z.union(postMineActionLiterals);
+export const postMineActionSchema = z
+    .union(postMineActionLiterals)
+    .describe(
+        'What asbplayer should do after mining: 0 = none, 1 = show Anki dialog, 2 = update last card, ' +
+            '3 = export card, 4 = show update card dialog.'
+    );
 
 export const mineSubtitleParamsSchema = z.object({
-    fields: z.record(z.string(), z.string()),
+    fields: z.record(z.string(), z.string()).describe('Key-value pairs corresponding to an Anki note type.'),
     postMineAction: postMineActionSchema,
-    mediaId: z.string().optional(),
-    noteId: z.number().optional(),
+    mediaId: z.string().optional().describe('Optional media id from `get-bound-media`. Defaults to the active tab.'),
+    noteId: z.number().optional().describe('Optional Anki note id to update when `postMineAction` is 2'),
+    asbplayerCardId: z
+        .uuidv4()
+        .optional()
+        .describe("Optional UUID for card that is saved into asbplayer's mining history."),
 });
 
 export const mineSubtitleResultSchema = z.object({
@@ -212,15 +224,18 @@ export const mineSubtitleResultSchema = z.object({
 });
 
 export const loadSubtitlesParamsSchema = z.object({
-    files: z.array(subtitleFileSchema).optional(),
-    mediaId: z.string().optional(),
+    files: z
+        .array(subtitleFileSchema)
+        .optional()
+        .describe('Files to load. Each file has a name (including its extension) and base64-encoded contents.'),
+    mediaId: z.string().optional().describe('Optional media id from `get-bound-media`. Omit to target the active tab.'),
 });
 
 export const loadSubtitlesResultSchema = z.object({});
 
 export const seekTimestampParamsSchema = z.object({
-    timestamp: z.number(),
-    mediaId: z.string().optional(),
+    timestamp: z.number().describe('The timestamp to seek to, in seconds.'),
+    mediaId: z.string().optional().describe('Optional media id from `get-bound-media`. Omit to target the active tab.'),
 });
 
 export const seekTimestampResultSchema = z.object({});
@@ -232,28 +247,91 @@ export const getBoundMediaResultSchema = z.object({
 });
 
 export const getSubtitlesParamsSchema = z.object({
-    mediaId: z.string().optional(),
-    trackNumbers: z.array(z.number()).optional(),
+    mediaId: z
+        .string()
+        .optional()
+        .describe('Optional media id from `get-bound-media`. Defaults to the active tab when omitted.'),
+    trackNumbers: z
+        .array(z.number())
+        .optional()
+        .describe('Optional track numbers from `get-bound-media`. Returns all loaded tracks when omitted.'),
 });
 
 export const getSubtitlesResultSchema = z.object({
     subtitles: z.array(subtitleCueSchema).describe('Subtitles currently loaded for the media.'),
 });
 
-export const initializeParamsSchema = z.object({
-    // Self-reported, untrusted; shown next to the (trusted) extension ID in the approval UI.
-    name: z.string().optional(),
-    version: z.string().optional(),
+export const getMiningHistoryParamsSchema = z.object({
+    filter: z
+        .object({
+            cardIds: z.array(z.string()).optional().describe('Optional target card IDs to fetch.'),
+        })
+        .optional()
+        .describe('Filter to apply to mining history query.'),
+    limit: z.int().positive().describe('Required positive limit on card count to fetch.'),
 });
 
+export const cardSchema = z.object({
+    id: z.string().describe("ID of card in asbplayer's mining history."),
+    subtitle: subtitleCueSchema,
+    text: z.string().optional().describe('Card text'),
+    word: z.string().optional().describe('Card word'),
+    definition: z.string().optional().describe('Card definition'),
+    customFieldValues: z.record(z.string(), z.string()).optional().describe('Map of custom field names to values'),
+    url: z
+        .string()
+        .optional()
+        .describe('Card URL - generally autofilled with the URL of the site where the card was mined'),
+    audio: z
+        .object({
+            base64: z.string().describe('Base64-encoded audio'),
+            extension: z.enum(['webm', 'mp3']).describe('Audio file extension'),
+            paddingStart: z.number().describe('Audio padding start'),
+            paddingEnd: z.number().describe('Audio padding end'),
+            start: z.number().optional().describe('Start timestamp'),
+            end: z.number().optional().describe('End timestamp'),
+            playbackRate: z.number().optional().describe('Audio playback rate'),
+            error: z
+                .union([z.literal(1), z.literal(2), z.literal(3)])
+                .optional()
+                .describe('Capture error code, if present. 1 = drmProtected, 2 = fileLinkLost, 3 = captureFailed'),
+        })
+        .optional(),
+    image: z
+        .object({
+            base64: z.string().describe('Base64-encoded image'),
+            extension: z.enum(['jpeg', 'webm', 'webp']),
+            error: z
+                .union([z.literal(1), z.literal(2)])
+                .optional()
+                .describe('Capture error code, if present. 1 = captureFailed, 2 = fileLinkLost'),
+            animated: z.boolean().optional().describe('Whether the image is animated.'),
+        })
+        .optional(),
+});
+
+export const getMiningHistoryResultSchema = z.object({
+    cards: z.array(cardSchema).describe('Fetched cards'),
+});
+
+export const initializeParamsSchema = z.object({
+    // Self-reported, untrusted; shown next to the (trusted) extension ID in the approval UI.
+    name: z.string().optional().describe('Self-reported display name.'),
+    version: z.string().optional().describe('Self-reported version string.'),
+});
+
+export const approvalStateSchema = z
+    .enum(['approved', 'pending', 'denied'])
+    .describe("External extension's user approval state.");
+
 export const initializeResultSchema = z.object({
-    state: z.enum(['approved', 'pending', 'denied']),
+    state: approvalStateSchema,
 });
 
 export const approvalStateParamsSchema = z.object({});
 
 export const approvalStateResultSchema = z.object({
-    state: z.enum(['approved', 'pending', 'denied']),
+    state: approvalStateSchema,
 });
 
 export const clientInfoParamsSchema = z.object({});
@@ -276,7 +354,6 @@ export interface ExternalApiMethod {
     description: string;
     tags: string[];
     paramsSchema: z.ZodType;
-    paramDescriptions?: Record<string, string>;
     resultSchema: z.ZodType;
     resultDescription?: string;
 }
@@ -295,14 +372,6 @@ export const externalApiMethods = {
             '`mediaId` and `noteId` require extension v1.20.0 or later.',
         tags: [],
         paramsSchema: mineSubtitleParamsSchema,
-        paramDescriptions: {
-            fields: 'Key-value pairs corresponding to an Anki note type.',
-            postMineAction:
-                'What asbplayer should do after mining: 0 = none, 1 = show Anki dialog, 2 = update last card, ' +
-                '3 = export card, 4 = show update card dialog.',
-            mediaId: 'Optional media id from `get-bound-media`. Defaults to the active tab.',
-            noteId: 'Optional Anki note id to update when `postMineAction` is 2 (streaming media only).',
-        },
         resultSchema: mineSubtitleResultSchema,
         resultDescription: 'Whether the command was successfully published to an asbplayer client.',
     },
@@ -317,10 +386,6 @@ export const externalApiMethods = {
             'a bound video.',
         tags: [],
         paramsSchema: loadSubtitlesParamsSchema,
-        paramDescriptions: {
-            files: 'Files to load. Each file has a name (including its extension) and base64-encoded contents.',
-            mediaId: 'Optional media id from `get-bound-media`. Omit to target the active tab.',
-        },
         resultSchema: loadSubtitlesResultSchema,
         resultDescription: 'Empty object on success.',
     },
@@ -333,10 +398,6 @@ export const externalApiMethods = {
             '`mediaId` requires extension v1.20.0+. Seeking local media requires extension v1.23.0+.',
         tags: [],
         paramsSchema: seekTimestampParamsSchema,
-        paramDescriptions: {
-            timestamp: 'The timestamp to seek to, in seconds.',
-            mediaId: 'Optional media id from `get-bound-media`. Omit to target the active tab.',
-        },
         resultSchema: seekTimestampResultSchema,
         resultDescription: 'Empty object on success.',
     },
@@ -361,12 +422,19 @@ export const externalApiMethods = {
             'Requires extension v1.20.0+.',
         tags: [],
         paramsSchema: getSubtitlesParamsSchema,
-        paramDescriptions: {
-            mediaId: 'Optional media id from `get-bound-media`. Defaults to the active tab when omitted.',
-            trackNumbers: 'Optional track numbers from `get-bound-media`. Returns all loaded tracks when omitted.',
-        },
         resultSchema: getSubtitlesResultSchema,
         resultDescription: 'The loaded subtitle cues.',
+    },
+    'get-mining-history': {
+        name: 'get-mining-history',
+        summary: "List cards stored in asbplayer's mining history",
+        description:
+            "Returns cards stored in asbplayer's mining history, subject to optional filtering.\n\n" +
+            'Requires extension v1.23.0+',
+        tags: [],
+        paramsSchema: getMiningHistoryParamsSchema,
+        resultSchema: getMiningHistoryResultSchema,
+        resultDescription: 'The fetched cards',
     },
     initialize: {
         name: 'initialize',
@@ -379,10 +447,6 @@ export const externalApiMethods = {
             'after which the connection is closed. Idempotent.',
         tags: [externalExtensionOnlyTag],
         paramsSchema: initializeParamsSchema,
-        paramDescriptions: {
-            name: 'Self-reported display name.',
-            version: 'Self-reported version string.',
-        },
         resultSchema: initializeResultSchema,
         resultDescription: "The current approval state: `'approved'`, `'pending'`, or `'denied'`.",
     },
@@ -472,6 +536,12 @@ type MatchesSchema<S extends z.ZodType, Wire> =
 export interface ExternalApiSchemaChecks {
     mineSubtitleParams: ExpectTrue<MatchesSchema<typeof mineSubtitleParamsSchema, MineSubtitleCommand['body']>>;
     loadSubtitlesParams: ExpectTrue<MatchesSchema<typeof loadSubtitlesParamsSchema, LoadSubtitlesCommand['body']>>;
+    getMiningHistoryParams: ExpectTrue<
+        MatchesSchema<typeof getMiningHistoryParamsSchema, GetMiningHistoryCommand['body']>
+    >;
+    getMiningHistoryResult: ExpectTrue<
+        MatchesSchema<typeof getMiningHistoryResultSchema, GetMiningHistoryResponseBody>
+    >;
     seekTimestampParams: ExpectTrue<MatchesSchema<typeof seekTimestampParamsSchema, SeekTimestampCommand['body']>>;
     getSubtitlesParams: ExpectTrue<MatchesSchema<typeof getSubtitlesParamsSchema, GetSubtitlesCommand['body']>>;
     mineSubtitleResult: ExpectTrue<MatchesSchema<typeof mineSubtitleResultSchema, MineSubtitleResponseBody>>;
@@ -481,4 +551,5 @@ export interface ExternalApiSchemaChecks {
     subtitleFile: ExpectTrue<MatchesSchema<typeof subtitleFileSchema, SubtitleFile>>;
     subtitleTrack: ExpectTrue<MatchesSchema<typeof subtitleTrackSchema, SubtitleTrack>>;
     subtitleCue: ExpectTrue<MatchesSchema<typeof subtitleCueSchema, SubtitleCue>>;
+    card: ExpectTrue<MatchesSchema<typeof cardSchema, Card>>;
 }
