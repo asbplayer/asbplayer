@@ -44,8 +44,7 @@ export const useLocalSubtitlePicker = ({
         closePicker();
     }, [cancel, closePicker]);
 
-    // Only manual imports opt into automatic opening; restoring a session does not.
-    const onFilesImported = useCallback(
+    const onManualFilesImported = useCallback(
         (videoFile: FileWithId | undefined, files: FileWithId[]) => {
             setAutoDiscoverSource(undefined);
             if (files.length > 1) {
@@ -113,7 +112,7 @@ export const useLocalSubtitlePicker = ({
     return {
         ...picker,
         closeSubtitleTrackSelector,
-        onFilesImported,
+        onManualFilesImported,
         embedded: { ...embedded, cancel },
     };
 };

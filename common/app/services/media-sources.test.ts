@@ -206,7 +206,7 @@ describe('subtitle downloads', () => {
 
     it('exports completed remote text tracks in their slots with original text and timing', async () => {
         const sources = new MediaSources({
-            kind: 'video',
+            kind: 'remote',
             names: ['embedded.ass', '', 'companion.vtt', 'image.SUP'],
             status: 'complete',
         });
@@ -241,7 +241,7 @@ describe('subtitle downloads', () => {
     it.each([{ names: [] }, { names: ['image.sup'] }, { names: ['image.SUP'] }])(
         'hides downloads for an empty or image-only selection $names',
         ({ names }) => {
-            expect(new MediaSources({ kind: 'video', names, status: 'complete' }).canDownloadSubtitles).toBe(false);
+            expect(new MediaSources({ kind: 'remote', names, status: 'complete' }).canDownloadSubtitles).toBe(false);
             expect(
                 MediaSources.fromFiles(
                     names.map((name) => source(name)),
@@ -284,7 +284,7 @@ describe('subtitle downloads', () => {
 });
 
 describe('subtitle source messages', () => {
-    it('keeps video-owned track names available to history jumps and rewind without creating local files', () => {
+    it('keeps tab-owned track names available to history jumps and rewind without creating local files', () => {
         const sources = MediaSources.fromSync({
             command: 'syncv2',
             subtitles: [],
@@ -296,7 +296,7 @@ describe('subtitle source messages', () => {
             },
         });
 
-        expect(sources.subtitleSource.kind).toBe('video');
+        expect(sources.subtitleSource.kind).toBe('remote');
         expect(sources.subtitleFileNames).toEqual(['embedded.ass', '', 'companion.vtt']);
         expect(sources.hasSubtitleFile('embedded.ass')).toBe(true);
         expect(sources.hasSubtitleFile('companion.vtt')).toBe(true);
@@ -306,9 +306,9 @@ describe('subtitle source messages', () => {
         expect(sources.allSourceFiles).toEqual([]);
     });
 
-    it('preserves remote ownership for an empty video selection', () => {
+    it('preserves remote ownership for an empty subtitle selection', () => {
         const sources = MediaSources.fromSync({ command: 'syncv2', subtitles: [], subtitleSource: { tracks: [] } });
-        expect(sources.subtitleSource.kind).toBe('video');
+        expect(sources.subtitleSource.kind).toBe('remote');
         expect(sources.subtitleFileNames).toEqual([]);
         expect(sources.hasSubtitleFile('previous.ass')).toBe(false);
     });

@@ -177,16 +177,16 @@ beforeEach(() => {
         subtitleTrackSelectorOpen: true,
         closeSubtitleTrackSelector: jest.fn(),
         openSubtitleTrackSelectorWithFiles: jest.fn(),
-        onFilesImported: jest.fn(),
+        onManualFilesImported: jest.fn(),
         setSubtitleTrackSelectorTracks: jest.fn(),
         setSubtitleTrackSelectorSelectedTrackIds: jest.fn(),
     };
     session = {
         fetchSession: jest.fn(async () => record),
         saveSession: jest.fn(async () => {}),
-        saveBufferedHandlesToSession: jest.fn(async () => {}),
-        promoteBufferedHandlesInSession: jest.fn(async () => {}),
-        clearBufferedHandlesInSession: jest.fn(async () => {}),
+        saveDraftHandlesToSession: jest.fn(async () => {}),
+        promoteDraftHandlesInSession: jest.fn(async () => {}),
+        clearDraftHandlesInSession: jest.fn(async () => {}),
         saveSubtitleSelection: jest.fn(async () => {}),
     };
     protocol = new TestVideoProtocol();
@@ -229,7 +229,7 @@ it('reselects a completed embedded subtitle as a standalone file and saves it af
 it('starts extraction while session storage is busy and saves completed bytes last', async () => {
     await render();
     let promote!: () => void;
-    session.promoteBufferedHandlesInSession = () => new Promise((resolve) => (promote = resolve));
+    session.promoteDraftHandlesInSession = () => new Promise((resolve) => (promote = resolve));
 
     await confirm();
     expect(picker.closeSubtitleTrackSelector).toHaveBeenCalled();
@@ -250,7 +250,7 @@ it('starts extraction while session storage is busy and saves completed bytes la
 it('saves only the latest selection when a second confirmation overtakes a pending session write', async () => {
     await render();
     let promote!: () => void;
-    session.promoteBufferedHandlesInSession = jest
+    session.promoteDraftHandlesInSession = jest
         .fn<() => Promise<void>>()
         .mockImplementationOnce(() => new Promise((resolve) => (promote = resolve)))
         .mockResolvedValue(undefined);
@@ -350,7 +350,7 @@ it('aborts the real extraction on source replacement and rejects late chunks and
         value: async () => 'WEBVTT\n\n00:00:03.000 --> 00:00:04.000\nReplacement\n',
     });
     await act(async () => {
-        controller.loadFiles([replacement]);
+        controller.loadSourceFiles([replacement]);
     });
     expect(old.signal.aborted).toBe(true);
     expect(subtitles?.map(({ text }) => text)).toEqual(['Replacement']);
@@ -377,7 +377,7 @@ it('does not apply a restored session after another import supersedes it', async
     });
     const replacement = { id: 'other-video', file: new File([], 'other.mkv') };
     await act(async () => {
-        controller.loadFiles([replacement]);
+        controller.loadSourceFiles([replacement]);
     });
     await act(async () => {
         resolve({
@@ -393,23 +393,35 @@ it('does not apply a restored session after another import supersedes it', async
     expect(onError).not.toHaveBeenCalled();
 });
 
-it('discards a buffered picker result when its draft is closed', async () => {
+it('discards a draft file picker result after the subtitle picker closes', async () => {
     await render();
-    const signal = controller.beginFileRequest({ buffered: true });
+    const signal = controller.fileRequestSignal({ forDraft: true });
     await act(async () => controller.closePicker());
     const files = [{ id: 'discarded', file: new File([], 'discarded.srt') }];
-    expect(await controller.acceptFileRequest(files, [], { buffered: true, signal })).toBeUndefined();
-    expect(session.saveBufferedHandlesToSession).not.toHaveBeenCalled();
+    expect(await controller.acceptFileRequest(files, [], { forDraft: true, signal })).toBeUndefined();
+    expect(session.saveDraftHandlesToSession).not.toHaveBeenCalled();
     expect(currentSources.subtitleSourceFiles).toEqual([]);
+});
+
+it('accepts fallback input changes only for the draft that opened the input', async () => {
+    await render();
+    controller.fileRequestSignal({ forDraft: true });
+    expect(controller.draftFileInputIsCurrent()).toBe(false);
+
+    controller.beginDraftFileInputRequest();
+    expect(controller.draftFileInputIsCurrent()).toBe(true);
+
+    await act(async () => controller.closePicker());
+    expect(controller.draftFileInputIsCurrent()).toBe(false);
 });
 
 it('accepts a standalone file request after the subtitle picker changes', async () => {
     await render();
-    const signal = controller.beginFileRequest({ buffered: false });
+    const signal = controller.fileRequestSignal({ forDraft: false });
     const file = { id: 'external', file: new File([srt], 'external.srt') };
     await act(async () => {
-        controller.pickerChanged();
-        expect(await controller.acceptFileRequest([file], [], { buffered: false, signal })).toEqual([file]);
+        controller.resetPickerDraft();
+        expect(await controller.acceptFileRequest([file], [], { forDraft: false, signal })).toEqual([file]);
     });
     expect(currentSources.subtitleSourceFiles).toEqual([{ ...file, track: 0 }]);
     expect(onError).not.toHaveBeenCalled();
@@ -436,7 +448,7 @@ it.each([true, false])('restores cached=%s embedded subtitles and extracts only 
         subtitleTrackIds: [[choice.id]],
     };
     await act(async () => controller.restoreSession());
-    expect(picker.onFilesImported).not.toHaveBeenCalled();
+    expect(picker.onManualFilesImported).not.toHaveBeenCalled();
     expect(currentSources.videoFile).toEqual(video);
     if (cached) {
         expect(subtitles?.map(({ text }) => text)).toEqual(['First']);
