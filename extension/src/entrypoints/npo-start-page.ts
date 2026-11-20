@@ -1,101 +1,134 @@
 import { asbError } from '@project/common/util/log';
-import type { VideoDataSubtitleTrackDef } from '@project/common';
-import { inferTracks } from '@/pages/util';
+import type { VideoDataSubtitleTrack } from '@project/common';
+import { trackFromDef } from '@/pages/util';
 import {
-    cleanNpoVtt,
+    isNpoStreamLinkUrl,
     npoBasename,
-    npoCdnSubtitleUrl,
     npoEpisodeSlug,
-    npoPomsSubtitleUrl,
     npoProgramDetailUrl,
     npoStreamLinkSubtitles,
+    npoTracks,
+    npoVttDataUrl,
 } from '@/pages/npo';
+import type { NpoTrack } from '@/pages/npo';
+
+const maxCacheEntries = 20;
+const streamLinkWaitMs = 2000;
+
+const remember = <K, V>(map: Map<K, V>, key: K, value: V) => {
+    map.delete(key);
+    map.set(key, value);
+
+    while (map.size > maxCacheEntries) {
+        map.delete(map.keys().next().value as K);
+    }
+};
 
 export default defineUnlistedScript(() => {
-    // Subtitle lists seen in the player's stream-link responses, by productId.
-    const streamSubtitles = new Map<string, VideoDataSubtitleTrackDef[]>();
-    const observe = (value: unknown) => {
-        const found = npoStreamLinkSubtitles(value);
+    // Subtitle lists from the player's stream-link responses, by productId. The latest response wins, including
+    // an empty list.
+    const streamSubtitles = new Map<string, NpoTrack[]>();
+    // Cleaned subtitle data URLs by source URL, so repeated picker opens reuse the same content and track ids.
+    const cleanedSubtitles = new Map<string, Promise<string | undefined>>();
 
-        if (found !== undefined && found.tracks.length > 0) {
-            streamSubtitles.set(found.productId, found.tracks);
-        }
-    };
-
-    const originalParse = JSON.parse;
-    JSON.parse = function (...args: unknown[]) {
-        // @ts-expect-error: forwarding original parse arguments
-        const value = originalParse.apply(this, args);
-        observe(value);
-        return value;
-    };
-
+    // The player keeps its own reference to fetch from before this script runs, then reads the stream-link
+    // response with Response.json(). Observe that call for stream-link responses only, and hand the page back the
+    // very same promise so its behaviour can't change.
+    const originalFetch = window.fetch.bind(window);
     const originalResponseJson = Response.prototype.json;
-    Response.prototype.json = async function (this: Response) {
-        const value: unknown = await originalResponseJson.call(this);
-        observe(value);
+    Response.prototype.json = function (this: Response) {
+        const value = originalResponseJson.call(this);
+
+        try {
+            if (isNpoStreamLinkUrl(this.url)) {
+                value
+                    .then((json: unknown) => {
+                        const found = npoStreamLinkSubtitles(json);
+
+                        if (found !== undefined) {
+                            remember(streamSubtitles, found.productId, found.tracks);
+                        }
+                    })
+                    .catch(() => {});
+            }
+        } catch {
+            // Never interfere with the page's own request.
+        }
+
         return value;
     };
 
-    // Fetches and cleans a subtitle file. Returns undefined when the file doesn't exist.
-    const cleanedTrackUrl = async (url: string): Promise<string | undefined> => {
-        try {
-            const response = await fetch(url);
+    const loadSubtitle = (url: string): Promise<string | undefined> => {
+        const cached = cleanedSubtitles.get(url);
 
-            if (!response.ok) {
-                return undefined;
-            }
+        if (cached !== undefined) {
+            return cached;
+        }
 
-            return `data:text/vtt;charset=utf-8,${encodeURIComponent(cleanNpoVtt(await response.text()))}`;
-        } catch (e) {
-            asbError('npo-start', 'Failed to clean subtitles, falling back to raw url', url, e);
-            return url;
+        const promise = (async () => {
+            const response = await originalFetch(url);
+            return response.ok ? npoVttDataUrl(await response.text()) : undefined;
+        })();
+        remember(cleanedSubtitles, url, promise);
+        // Don't cache network failures.
+        promise.catch(() => cleanedSubtitles.delete(url));
+        return promise;
+    };
+
+    const waitForStreamLink = async (productId: string) => {
+        const t0 = Date.now();
+
+        while (!streamSubtitles.has(productId) && Date.now() - t0 < streamLinkWaitMs) {
+            await new Promise((resolve) => setTimeout(resolve, 100));
         }
     };
 
-    inferTracks({
-        onRequest: async (addTrack, setBasename) => {
-            const slug = npoEpisodeSlug(window.location.pathname);
+    const resolve = async (pathname: string): Promise<{ basename: string; subtitles: VideoDataSubtitleTrack[] }> => {
+        const slug = npoEpisodeSlug(pathname);
 
-            if (slug === undefined) {
-                return;
-            }
+        if (slug === undefined) {
+            return { basename: '', subtitles: [] };
+        }
 
-            try {
-                const detail = await (await fetch(npoProgramDetailUrl(slug))).json();
-                setBasename(npoBasename(detail) ?? slug);
-                const productId = detail?.productId;
+        const detail = await (await originalFetch(npoProgramDetailUrl(slug))).json();
+        const basename = npoBasename(detail) ?? slug;
+        const productId = detail?.productId;
 
-                if (typeof productId !== 'string') {
-                    return;
+        if (typeof productId !== 'string') {
+            return { basename, subtitles: [] };
+        }
+
+        await waitForStreamLink(productId);
+        const tracks = await npoTracks(productId, streamSubtitles.get(productId), loadSubtitle);
+        return {
+            basename,
+            subtitles: tracks.map((track) => trackFromDef({ ...track, extension: 'vtt' })),
+        };
+    };
+
+    const dispatch = (detail: { error: string; basename?: string; subtitles?: VideoDataSubtitleTrack[] }) =>
+        document.dispatchEvent(new CustomEvent('asbplayer-synced-data', { detail }));
+
+    document.addEventListener(
+        'asbplayer-get-synced-data',
+        () => {
+            void (async () => {
+                // Answer with one complete track list. If the page navigated to another episode while resolving,
+                // resolve again for the episode now showing.
+                let pathname = window.location.pathname;
+                let result = await resolve(pathname);
+
+                for (let attempt = 0; attempt < 2 && pathname !== window.location.pathname; ++attempt) {
+                    pathname = window.location.pathname;
+                    result = await resolve(pathname);
                 }
 
-                const candidates = streamSubtitles.get(productId) ?? [
-                    { label: 'Nederlands', language: 'nl', url: npoCdnSubtitleUrl(productId), extension: 'vtt' },
-                ];
-                let added = 0;
-
-                for (const candidate of candidates) {
-                    const url = typeof candidate.url === 'string' ? await cleanedTrackUrl(candidate.url) : undefined;
-
-                    if (url !== undefined) {
-                        addTrack({ ...candidate, url });
-                        ++added;
-                    }
-                }
-
-                if (added === 0) {
-                    const url = await cleanedTrackUrl(npoPomsSubtitleUrl(productId));
-
-                    if (url !== undefined) {
-                        addTrack({ label: 'Nederlands', language: 'nl', url, extension: 'vtt' });
-                    }
-                }
-            } catch (e) {
-                asbError('npo-start', 'Failed to infer tracks for', slug, e);
-            }
+                dispatch({ error: '', ...result });
+            })().catch((error) => {
+                asbError('npo-start', 'Failed to resolve subtitles', error);
+                dispatch({ error: error instanceof Error ? error.message : String(error) });
+            });
         },
-
-        waitForBasename: true,
-    });
+        false
+    );
 });
