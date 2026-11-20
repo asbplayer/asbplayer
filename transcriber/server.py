@@ -188,7 +188,9 @@ def define(word, sentence):
         try:
             result = subprocess.run(
                 [executable, *(arg.replace("{out}", out).replace("{model}", DEFINE_MODEL) for arg in command[1:])],
-                input=DEFINE_PROMPT.format(word=word, sentence=sentence),
+                input=(DEFINE_PROMPT.format(word=word, sentence=sentence) if word else
+                       f"Translate the following sentence into {DEFINE_LANGUAGE}. Reply only with the translation, "
+                       f"without quotes or explanation.\n\nSentence: {sentence}"),
                 capture_output=True,
                 text=True,
                 encoding="utf-8",
@@ -267,8 +269,8 @@ class Handler(BaseHTTPRequestHandler):
                 word = query.get("word", [""])[0].strip()
                 sentence = query.get("sentence", [""])[0].strip()
 
-                if not word or not sentence:
-                    raise ValueError("word and sentence are required")
+                if not sentence:
+                    raise ValueError("sentence is required")
 
                 self._send(200, json.dumps({"definition": define(word, sentence)}).encode())
             elif url.path == "/jobs":

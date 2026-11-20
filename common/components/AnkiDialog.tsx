@@ -407,6 +407,38 @@ ${text}`;
         };
     }, [word, text, definition, onRequestDefinition]);
 
+    // A custom Anki field keeps the sentence translation separate from the word definition.
+    const translationKey = 'Sentence Translation';
+    const translation = customFieldValues[translationKey] ?? '';
+    const autoTranslationRef = useRef<{ sentence: string; value: string }>(undefined);
+    useEffect(() => {
+        const last = autoTranslationRef.current;
+        if (
+            !open ||
+            !onRequestDefinition ||
+            !text.trim() ||
+            (last?.sentence === text && translation === last.value) ||
+            (translation !== '' && translation !== last?.value)
+        ) {
+            return;
+        }
+        let cancelled = false;
+        const timeout = setTimeout(() => {
+            onRequestDefinition('', text)
+                .then((result) => {
+                    if (!cancelled && result) {
+                        autoTranslationRef.current = { sentence: text, value: result };
+                        setCustomFieldValues((current) => ({ ...current, [translationKey]: result }));
+                    }
+                })
+                .catch(() => {});
+        }, 600);
+        return () => {
+            cancelled = true;
+            clearTimeout(timeout);
+        };
+    }, [open, text, translation, onRequestDefinition]);
+
     useEffect(() => {
         anki.version()
             .then(() => {
@@ -927,6 +959,21 @@ ${text}`;
                 </Toolbar>
                 <DialogContent ref={dialogRefCallback}>
                     <form className={classes.root}>
+                        {onRequestDefinition && (
+                            <TextField
+                                variant="filled"
+                                fullWidth
+                                multiline
+                                label={t('ankiDialog.sentenceTranslation')}
+                                value={translation}
+                                onChange={(e) =>
+                                    setCustomFieldValues((current) => ({
+                                        ...current,
+                                        [translationKey]: e.target.value,
+                                    }))
+                                }
+                            />
+                        )}
                         {ankiFieldModels.map((model) => {
                             const key = model.custom ? `custom_${model.key}` : `standard_${model.key}`;
 
@@ -1022,13 +1069,15 @@ ${text}`;
                                             selectedSubtitles={selectedSubtitles.filter((s) => s.track === 2)}
                                         />
                                     )}
-                                    {model.custom && model.field.display && (
-                                        <CustomField
-                                            name={model.key}
-                                            text={customFieldValues[model.key] || ''}
-                                            onTextChange={handleCustomFieldChange}
-                                        />
-                                    )}
+                                    {model.custom &&
+                                        model.field.display &&
+                                        !(onRequestDefinition && model.key === translationKey) && (
+                                            <CustomField
+                                                name={model.key}
+                                                text={customFieldValues[model.key] || ''}
+                                                onTextChange={handleCustomFieldChange}
+                                            />
+                                        )}
                                 </React.Fragment>
                             );
                         })}

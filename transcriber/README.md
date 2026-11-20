@@ -31,6 +31,8 @@ The Anki dialog fills its definition field with the target word's English meanin
 
 A lookup takes about 5 seconds. Lookups are cached while the server runs, and a definition you typed yourself is never overwritten.
 
+The dialog also translates the full sentence independently of the target word. To export it, create a custom Anki field in asbplayer named exactly `Sentence Translation` and map it to the desired field in your Anki note type. Edits to the translation are preserved. Both lookups use the configured provider and subscription quota.
+
 ## Tests
 
 ```bash

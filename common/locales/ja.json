@@ -97,6 +97,7 @@
         "rewind": "巻き戻し",
         "searchInAnki": "Anki で検索する",
         "sentence": "文",
+        "sentenceTranslation": "Sentence Translation",
         "source": "ソース",
         "track1": "字幕トラック1",
         "track2": "字幕トラック2",
@@ -865,7 +866,7 @@
         "empty": "No external extensions to display.",
         "help": "Learn about external extensions <docs>here</docs>.",
         "incomingRequest": "An external extension is requesting to connect to asbplayer.",
-        "warning": "Once approved, extension <0>{{id}}</0> will be able to control asbplayer. Only approve if you recognize it.",
-        "extensionDetailsHelper": "Extension details can be viewed at <0>{{address}}</0>."
+        "extensionDetailsHelper": "Extension details can be viewed at <0>{{address}}</0>.",
+        "warning": "Once approved, extension <0>{{id}}</0> will be able to control asbplayer. Only approve if you recognize it."
     }
 }

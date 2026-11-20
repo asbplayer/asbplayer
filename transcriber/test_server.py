@@ -77,6 +77,11 @@ class Define(unittest.TestCase):
         with self.assertRaises(DefineError):
             define("zet", "Hij zet.")
 
+    def test_sentence_translation_is_independent_of_word_definition(self):
+        self.use("import sys; prompt = sys.stdin.read(); print('translation' if 'Translate the following sentence' in prompt else 'definition')")
+        self.assertEqual(define('', 'Hij zet.'), 'translation')
+        self.assertEqual(define('zet', 'Hij zet.'), 'definition')
+
 
 if __name__ == "__main__":
     unittest.main()
