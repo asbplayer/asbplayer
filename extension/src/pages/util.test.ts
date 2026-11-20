@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals
 import {
     extractExtension,
     inferTracks,
+    localTranscriptTrack,
     mediaSourceIdentity,
     mediaSourceUrl,
     poll,
@@ -168,6 +169,21 @@ describe('track helpers', () => {
             url: 'https://example.com/ja.vtt',
             extension: 'vtt',
         });
+    });
+
+    it.each([
+        { remembered: 'nl-nl', language: 'nl-nl' },
+        { remembered: 'nl', language: 'nl' },
+        { remembered: undefined, language: 'nl' },
+        { remembered: 'en', language: 'nl' },
+    ])('labels a local transcript with the remembered Dutch code ($remembered)', ({ remembered, language }) => {
+        const srt = '1\n00:00:01,000 --> 00:00:02,000\nWat is dit, Mark? 50% #1\n\n';
+        const track = localTranscriptTrack(srt, remembered);
+        const prefix = 'data:text/plain;charset=utf-8,';
+
+        expect(track).toMatchObject({ label: 'Nederlands (Whisper)', language, extension: 'srt' });
+        expect(track.id).toBe(trackId(track));
+        expect(decodeURIComponent((track.url as string).slice(prefix.length))).toBe(srt);
     });
 });
 

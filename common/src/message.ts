@@ -116,6 +116,12 @@ export interface HttpPostMessage extends MessageWithId {
     readonly body: any;
 }
 
+/** Asks the background for a locally transcribed subtitle file (SRT text) for a video, by its name. */
+export interface GetLocalTranscriptMessage extends Message {
+    readonly command: 'get-local-transcript';
+    readonly key: string;
+}
+
 export interface EncodeMp3Message extends MessageWithId {
     readonly command: 'encode-mp3';
     readonly messageId: string;

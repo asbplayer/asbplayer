@@ -8,6 +8,7 @@ import { asbError, asbTrace } from '@project/common/util/log';
 import type {
     ActiveProfileMessage,
     ConfirmedVideoDataSubtitleTrack,
+    GetLocalTranscriptMessage,
     OpenAsbplayerSettingsMessage,
     LoadableSubtitleTrack,
     SerializedSubtitleFile,
@@ -32,7 +33,7 @@ import { fetchLocalization } from '@project/extension/src/services/localization-
 import i18n from 'i18next';
 import { ExtensionGlobalStateProvider } from '@/services/extension-global-state-provider';
 import { isOnTutorialPage } from '@/services/tutorial';
-import { subtitleFileExtensionForUrl } from '@/pages/util';
+import { localTranscriptTrack, subtitleFileExtensionForUrl } from '@/pages/util';
 import { frameColorSchemeStyleBlock } from '@/services/frame-color-scheme';
 import { setGenericSubtitleParserOptionsForHost } from '@/services/generic-subtitle-parser';
 
@@ -118,6 +119,7 @@ export default class VideoDataSyncController {
     private _refreshingOpenPicker: boolean = false;
     private _dataReceivedListener?: (event: Event) => void;
     private _dataReceivedEventTarget?: EventTarget;
+    private _syncedDataSequence = 0;
     private _isTutorial: boolean;
     private _subtitleLoad?: SubtitleLoad;
     private _subtitleParsingSettings?: SubtitleParsingSettings;
@@ -262,7 +264,17 @@ export default class VideoDataSyncController {
             }
             this._dataReceivedListener = (event: Event) => {
                 const data = (event as CustomEvent).detail as VideoData;
-                void this._setSyncedData(data);
+                const sequence = ++this._syncedDataSequence;
+
+                if (data.subtitles === undefined || !data.basename) {
+                    void this._setSyncedData(data);
+                    return;
+                }
+
+                void this._withLocalTranscript(data).then((withTranscript) => {
+                    // Drop it if newer data arrived while the transcriber was being asked.
+                    if (sequence === this._syncedDataSequence) void this._setSyncedData(withTranscript);
+                });
             };
             this._dataReceivedEventTarget = eventTarget;
             eventTarget.addEventListener('asbplayer-synced-data', this._dataReceivedListener, false);
@@ -428,6 +440,23 @@ export default class VideoDataSyncController {
         }
 
         return subtitleTrack.label;
+    }
+
+    // Lists a transcript from the local Whisper transcriber first, so auto-load picks it over the site's own track.
+    private async _withLocalTranscript(data: VideoData): Promise<VideoData> {
+        const command: VideoToExtensionCommand<GetLocalTranscriptMessage> = {
+            sender: 'asbplayer-video',
+            message: { command: 'get-local-transcript', key: data.basename },
+            src: this._context.registeredVideoSrc,
+        };
+        const srt: string | undefined = await browser.runtime.sendMessage(command).catch(() => undefined);
+
+        if (!srt) {
+            return data;
+        }
+
+        const track = localTranscriptTrack(srt, this.lastLanguagesSynced[0]);
+        return { ...data, subtitles: [track, ...(data.subtitles ?? [])] };
     }
 
     private async _setSyncedData(data: VideoData) {

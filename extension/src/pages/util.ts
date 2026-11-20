@@ -85,6 +85,21 @@ export const trackId = (def: VideoDataSubtitleTrackDef) => {
     return `${def.language}:${def.label}:${def.url}`;
 };
 
+/**
+ * A track for a transcript from the local Whisper transcriber (transcriber/server.py). It takes the Dutch language code
+ * remembered for this site, so auto-load, which picks the first track in the remembered language, picks it when it is
+ * listed first, and the remembered language is unchanged for videos without a transcript.
+ */
+export function localTranscriptTrack(srt: string, rememberedLanguage: string | undefined): VideoDataSubtitleTrack {
+    const def: VideoDataSubtitleTrackDef = {
+        label: 'Nederlands (Whisper)',
+        language: rememberedLanguage?.toLowerCase().startsWith('nl') ? rememberedLanguage : 'nl',
+        url: `data:text/plain;charset=utf-8,${encodeURIComponent(srt)}`,
+        extension: 'srt',
+    };
+    return { id: trackId(def), ...def };
+}
+
 export function inferTracks(
     { onJson, onRequest, observeResponseJson = false, getCacheKey, waitForBasename }: InferHooks,
     timeout?: number
