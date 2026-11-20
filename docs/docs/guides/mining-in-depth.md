@@ -50,6 +50,8 @@ The **Audio Field** displays the recorded audio clip and provides three action b
 
 Any of the text fields - sentence, definition, word, custom fields, source, URL, tags - can be edited. Typically, a separate dictionary app is used to fill out the definition field.
 
+The Chromium extension can also [look up contextual definitions and sentence translations](./local-whisper.md#set-up-automatic-anki-lookups). When a sentence spans several subtitle lines, mining from the extension can use the neighboring lines to include the whole sentence and its audio.
+
 ### Image field {#image-field}
 
 For local files, clicking the **Preview Button** <ImageIcon /> on the **Image Field** can be used to change the video timestamp from which the screenshot is extracted.

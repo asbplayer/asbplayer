@@ -13,6 +13,7 @@ name asbplayer reports (e.g. "Invincible.S3.E1 - ...").
 
 import argparse
 import glob
+import hmac
 import json
 import os
 import re
@@ -30,9 +31,12 @@ HOST = "127.0.0.1"
 PORT = 8767  # project.json services.transcriber
 MODEL = os.environ.get("ASB_WHISPER_MODEL", "large-v3")
 LANGUAGE = os.environ.get("ASB_WHISPER_LANGUAGE", "nl")
+# Shows Whisper that speakers mix in English slang, so "het is weird, man" isn't heard as Dutch ("het is weer het, man").
+PROMPT = os.environ.get("ASB_WHISPER_PROMPT", "Ja man, dat is echt weird. Oké, nice, chill, sorry, whatever.")
 TRANSCRIPTS_DIR = Path(os.environ.get("ASB_TRANSCRIPTS_DIR", Path.home() / "asbplayer-transcripts"))
 
 DEFINE_PROVIDER = os.environ.get("ASB_DEFINE_PROVIDER", "codex")
+LOOKUP_TOKEN = os.environ.get("ASB_LOOKUP_TOKEN", "")
 DEFINE_LANGUAGE = os.environ.get("ASB_DEFINE_LANGUAGE", "English")
 DEFINE_PROMPT = (
     "You write the definition field of a language-learning flashcard. You get a sentence and one word or phrase from "
@@ -55,6 +59,9 @@ MAX_CHARS = 90  # about two subtitle lines
 MAX_SECONDS = 7.0
 MAX_PAUSE = 1.0
 HOLD = 0.4  # keep a line on screen briefly after its last word
+# Whisper often times the first word after a pause late (a long compound gets squeezed into its last syllables), so
+# start each line up to this early, never before the previous line's speech ends; clicking a line then catches its start.
+LEAD = 1.0
 ORPHAN_WORDS = 3  # stretch a line rather than leave this many words of a sentence on their own
 
 
@@ -94,6 +101,10 @@ def cues_from_words(words):
             flush()
 
     flush()
+
+    speech_end = 0.0
+    for cue in cues:
+        cue["start"], speech_end = max(cue["start"] - LEAD, speech_end, 0.0), cue["end"]
 
     for cue, following in zip(cues, cues[1:] + [None]):
         cue["end"] = min(cue["end"] + HOLD, following["start"]) if following else cue["end"] + HOLD
@@ -144,7 +155,7 @@ def load_model():
 def transcribe(audio_path, key, offset=0.0, on_progress=None):
     """Transcribes audio_path and stores the SRT for key. offset is the video time (s) where the audio starts."""
     segments, info = load_model().transcribe(
-        str(audio_path), language=LANGUAGE, word_timestamps=True, vad_filter=True, beam_size=5
+        str(audio_path), language=LANGUAGE, initial_prompt=PROMPT or None, word_timestamps=True, vad_filter=True, beam_size=5
     )
     words = []
 
@@ -153,6 +164,9 @@ def transcribe(audio_path, key, offset=0.0, on_progress=None):
 
         if on_progress and info.duration:
             on_progress(min(1.0, segment.end / info.duration))
+
+    if not words:
+        raise ValueError('Whisper found no speech in the recording. Check that the episode audio is audible.')
 
     path = transcript_path(key)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -167,6 +181,8 @@ class DefineError(Exception):
 
 
 _definitions = {}  # (word, sentence) -> definition, so retyping or reopening a card costs nothing
+_lookup_requests = threading.BoundedSemaphore(4)
+_lookup_workers = threading.BoundedSemaphore(2)
 
 
 def define(word, sentence):
@@ -176,6 +192,19 @@ def define(word, sentence):
     if cache_key in _definitions:
         return _definitions[cache_key]
 
+    if not _lookup_requests.acquire(blocking=False):
+        raise DefineError(429, "Local lookup is busy")
+
+    try:
+        with _lookup_workers:
+            if cache_key in _definitions:
+                return _definitions[cache_key]
+            return _lookup_definition(word, sentence, cache_key)
+    finally:
+        _lookup_requests.release()
+
+
+def _lookup_definition(word, sentence, cache_key):
     command = DEFINE_COMMANDS[DEFINE_PROVIDER]
     executable = shutil.which(command[0])  # npm installs .cmd shims on Windows
 
@@ -266,6 +295,12 @@ class Handler(BaseHTTPRequestHandler):
                 else:
                     self._send(404)
             elif url.path == "/define":
+                expected = f"Bearer {LOOKUP_TOKEN}".encode("utf-8")
+                supplied = self.headers.get("Authorization", "").encode("utf-8")
+                if len(LOOKUP_TOKEN) < 32 or not hmac.compare_digest(supplied, expected):
+                    self._send(401, json.dumps({"error": "Local lookup requires a valid token"}).encode())
+                    return
+
                 word = query.get("word", [""])[0].strip()
                 sentence = query.get("sentence", [""])[0].strip()
 
@@ -318,14 +353,27 @@ class Handler(BaseHTTPRequestHandler):
                 f.write(chunk)
                 remaining -= len(chunk)
 
+        if remaining:
+            os.unlink(f.name)
+            self._send(400, json.dumps({"error": "incomplete audio upload"}).encode())
+            return
+
         with jobs_lock:
+            if jobs.get(key, {}).get("state") in ("queued", "running"):
+                os.unlink(f.name)
+                self._send(409, json.dumps({"error": "episode is already being transcribed"}).encode())
+                return
             jobs[key] = {"state": "queued", "progress": 0}
 
         threading.Thread(target=run_job, args=(key, f.name, offset), daemon=True).start()
         self._send(202, json.dumps(jobs[key]).encode())
 
+    def log_request(self, code="-", size="-"):
+        self.log_message('"%s %s %s" %s %s', self.command, urlparse(self.path).path, self.request_version, code, size)
+
     def log_message(self, format, *args):
-        sys.stderr.write(f"[transcriber] {self.address_string()} {format % args}\n")
+        if sys.stderr is not None:  # pythonw.exe has no console streams
+            sys.stderr.write(f"[transcriber] {self.address_string()} {format % args}\n")
 
 
 def main():

@@ -31,8 +31,16 @@ class CuesFromWords(unittest.TestCase):
 
     def test_lines_hold_briefly_without_overlapping_the_next(self):
         cues = cues_from_words(words("Een.", 0) + words("Twee.", 0.5) + words("Drie.", 10))
-        self.assertAlmostEqual(cues[0]["end"], 0.5)  # capped at the next line's start
+        self.assertAlmostEqual(cues[0]["end"], 0.25)  # capped at the next line's (lead-in) start
         self.assertAlmostEqual(cues[1]["end"], 0.75 + 0.4)
+
+    def test_lines_start_early_but_not_before_the_previous_speech_ends(self):
+        # Whisper put "Supermensenontwijktraining." at 26.551 although it is spoken right after 25.311.
+        cues = cues_from_words(words("Wat is er dan?", 24.4) + words("Supermensenontwijktraining.", 26.551))
+        self.assertAlmostEqual(cues[1]["start"], 25.551)
+        cues = cues_from_words(words("Wat is er dan?", 24.4) + words("Supermensenontwijktraining.", 25.6))
+        self.assertAlmostEqual(cues[1]["start"], 24.4 + 0.9 + 0.25)  # the previous line's last word end
+        self.assertAlmostEqual(cues_from_words(words("Een.", 0.3))[0]["start"], 0.0)
 
 
 class Formatting(unittest.TestCase):

@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals
 import {
     extractExtension,
     inferTracks,
+    isLocalTranscriptTrack,
     localTranscriptTrack,
     mediaSourceIdentity,
     mediaSourceUrl,
@@ -182,7 +183,8 @@ describe('track helpers', () => {
         const prefix = 'data:text/plain;charset=utf-8,';
 
         expect(track).toMatchObject({ label: 'Nederlands (Whisper)', language, extension: 'srt' });
-        expect(track.id).toBe(trackId(track));
+        expect(track.id).toBe(`whisper:${trackId(track)}`);
+        expect(isLocalTranscriptTrack(track)).toBe(true);
         expect(decodeURIComponent((track.url as string).slice(prefix.length))).toBe(srt);
     });
 });

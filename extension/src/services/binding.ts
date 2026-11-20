@@ -3,6 +3,7 @@ import {
     SubtitleStream,
     subtitleSourceNames,
     resolveSubtitleReference,
+    sameSubtitleText,
 } from '@project/common/subtitle-reader/subtitle-stream';
 import type { SubtitleSourceState, SubtitleSourceUpdate } from '@project/common/subtitle-reader/subtitle-stream';
 import PlaybackEngine, {
@@ -1196,20 +1197,29 @@ export default class Binding {
                                 copySubtitleMessage.subtitle !== undefined &&
                                 copySubtitleMessage.surroundingSubtitles !== undefined
                             ) {
-                                void this._copySubtitle(copySubtitleMessage);
+                                const { subtitle, surroundingSubtitles } = copySubtitleMessage;
+                                const subtitles = this.subtitleController.subtitles;
+                                const selected =
+                                    subtitle.index === undefined
+                                        ? undefined
+                                        : resolveSubtitleReference(subtitles, { ...subtitle, index: subtitle.index });
+
+                                if (
+                                    !copySubtitleMessage.isBulkExport &&
+                                    selected !== undefined &&
+                                    selected.track === subtitle.track &&
+                                    selected.originalStart === subtitle.originalStart &&
+                                    selected.originalEnd === subtitle.originalEnd &&
+                                    sameSubtitleText(selected, subtitle)
+                                ) {
+                                    void this._copySentence(copySubtitleMessage, selected, surroundingSubtitles);
+                                } else {
+                                    void this._copySubtitle(copySubtitleMessage);
+                                }
                             } else if (this.subtitleController.subtitles.length > 0) {
                                 const [current, currentSurrounding] = this.subtitleController.currentSubtitle();
                                 if (current !== null && currentSurrounding !== null) {
-                                    const [subtitle, surroundingSubtitles] = expandToSentence(
-                                        this.subtitleController.subtitles,
-                                        current.index,
-                                        currentSurrounding
-                                    );
-                                    void this._copySubtitle({
-                                        ...copySubtitleMessage,
-                                        subtitle,
-                                        surroundingSubtitles,
-                                    });
+                                    void this._copySentence(copySubtitleMessage, current, currentSurrounding);
                                 }
                             } else {
                                 void this._toggleRecordingMedia(copySubtitleMessage.postMineAction);
@@ -1499,12 +1509,11 @@ export default class Binding {
                     subtitle.index
                 );
                 if (resolvedSubtitle === null || resolvedSurroundingSubtitles === null) return;
-                void this._copySubtitle({
-                    command: 'copy-subtitle',
-                    postMineAction: this.clickToMineDefaultAction,
-                    subtitle: resolvedSubtitle,
-                    surroundingSubtitles: resolvedSurroundingSubtitles,
-                });
+                void this._copySentence(
+                    { command: 'copy-subtitle', postMineAction: this.clickToMineDefaultAction },
+                    resolvedSubtitle,
+                    resolvedSurroundingSubtitles
+                );
             }
         );
         this.subscribed = true;
@@ -1744,6 +1753,19 @@ export default class Binding {
 
         void browser.runtime.sendMessage(command);
         this.ankiUiSavedState = undefined;
+    }
+
+    private _copySentence(message: CopySubtitleMessage, selected: IndexedSubtitleModel, surrounding: SubtitleModel[]) {
+        const [subtitle, surroundingSubtitles] = expandToSentence(
+            this.subtitleController.subtitles,
+            selected.index,
+            surrounding
+        );
+        return this._copySubtitle({
+            ...message,
+            subtitle: subtitle === selected ? (message.subtitle ?? selected) : subtitle,
+            surroundingSubtitles,
+        });
     }
 
     async _copySubtitle({

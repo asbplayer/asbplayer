@@ -1,6 +1,5 @@
 import { asbError } from '@project/common/util/log';
 import type {
-    GetLocalDefinitionMessage,
     HttpPostMessage,
     Message,
     MessageWithId,
@@ -13,18 +12,33 @@ export interface FetchOptions {
     allowedFetchUrl?: string;
 }
 
+export interface AnkiFrameClientMessage {
+    sender: 'asbplayer-anki-frame-client';
+    frameId: string;
+    message: any;
+}
+
 export default class FrameBridgeClient {
     private readonly frame: HTMLIFrameElement;
     private readonly fetchOptions?: FetchOptions;
+    private readonly expectedOrigin?: string;
+    private readonly useRuntimeMessages: boolean;
 
     private frameId?: string;
     private windowMessageListener?: (event: MessageEvent) => void;
     private bindPromise?: Promise<void>;
     private serverMessageListener?: (message: any) => Promise<void>;
 
-    constructor(frame: HTMLIFrameElement, fetchOptions?: FetchOptions) {
+    constructor(
+        frame: HTMLIFrameElement,
+        fetchOptions?: FetchOptions,
+        expectedOrigin?: string,
+        useRuntimeMessages = false
+    ) {
         this.frame = frame;
         this.fetchOptions = fetchOptions;
+        this.expectedOrigin = expectedOrigin;
+        this.useRuntimeMessages = useRuntimeMessages;
         this.bindPromise = undefined;
     }
 
@@ -35,29 +49,23 @@ export default class FrameBridgeClient {
     }
 
     updateState(state: any) {
-        if (!this.frameId) {
-            throw new Error('Attempted to update state when frame is not ready');
-        }
-
-        this.frame.contentWindow?.postMessage(
-            {
-                sender: 'asbplayer-video',
-                message: {
-                    command: 'sendClientMessage',
-                    message: {
-                        command: 'updateState',
-                        state: state,
-                    },
-                    frameId: this.frameId,
-                },
-            },
-            '*'
-        );
+        const message = { command: 'updateState', state };
+        this.sendMessage(message);
     }
 
     sendMessage(message: any) {
         if (!this.frameId) {
             throw new Error('Attempted to send message when frame is not ready');
+        }
+
+        if (this.useRuntimeMessages) {
+            const request: AnkiFrameClientMessage = {
+                sender: 'asbplayer-anki-frame-client',
+                frameId: this.frameId,
+                message,
+            };
+            void browser.runtime.sendMessage(request).catch((error) => asbError('bridge', error));
+            return;
         }
 
         this.frame.contentWindow?.postMessage(
@@ -69,7 +77,7 @@ export default class FrameBridgeClient {
                     frameId: this.frameId,
                 },
             },
-            '*'
+            this.expectedOrigin ?? '*'
         );
     }
 
@@ -91,7 +99,12 @@ export default class FrameBridgeClient {
             let ready = false;
 
             this.windowMessageListener = (event) => {
-                if (event.source !== this.frame.contentWindow || event.data.sender !== 'asbplayer-frame') {
+                if (
+                    event.source !== this.frame.contentWindow ||
+                    (this.useRuntimeMessages && !event.isTrusted) ||
+                    (this.expectedOrigin !== undefined && event.origin !== this.expectedOrigin) ||
+                    event.data?.sender !== 'asbplayer-frame'
+                ) {
                     return;
                 }
 
@@ -106,8 +119,6 @@ export default class FrameBridgeClient {
                     case 'onServerMessage':
                         if (message.message.command === 'http-post') {
                             this._resolveHttpPost(message.message as HttpPostMessage);
-                        } else if (message.message.command === 'get-local-definition') {
-                            this._resolveLocalDefinition(message.message as GetLocalDefinitionMessage);
                         } else {
                             if (this.serverMessageListener) {
                                 void this.serverMessageListener(message.message).catch((error) =>
@@ -151,21 +162,6 @@ export default class FrameBridgeClient {
         this._relayToExtension(httpPostMessage);
     }
 
-    // Only frames that may fetch (the Anki dialog) may ask for definitions.
-    _resolveLocalDefinition(message: GetLocalDefinitionMessage) {
-        if (this.fetchOptions === undefined) {
-            return;
-        }
-
-        const definitionMessage: GetLocalDefinitionMessage = {
-            command: 'get-local-definition',
-            word: message.word,
-            sentence: message.sentence,
-            messageId: message.messageId,
-        };
-        this._relayToExtension(definitionMessage);
-    }
-
     private _relayToExtension(message: MessageWithId) {
         const command: VideoToExtensionCommand<MessageWithId> | TabToExtensionCommand<MessageWithId> =
             this.fetchOptions?.videoSrc === undefined
@@ -176,17 +172,7 @@ export default class FrameBridgeClient {
             const response = extensionResponse
                 ? { ...extensionResponse, messageId: message.messageId }
                 : { error: browser.runtime.lastError?.message, messageId: message.messageId };
-            this.frame.contentWindow?.postMessage(
-                {
-                    sender: 'asbplayer-video',
-                    message: {
-                        command: 'sendClientMessage',
-                        message: response,
-                        frameId: this.frameId,
-                    },
-                },
-                '*'
-            );
+            if (this.frameId) this.sendMessage(response);
         });
     }
 }

@@ -13,6 +13,7 @@ import type {
     AnkiUiBridgeRewindMessage,
     CopyToClipboardMessage,
     GetLocalDefinitionMessage,
+    TabToExtensionCommand,
     Message,
     UpdateStateMessage,
     FileModel,
@@ -45,6 +46,7 @@ import LogoIcon from '@project/common/components/LogoIcon';
 
 interface Props {
     bridge: Bridge;
+    localLookupEnabled: boolean;
 }
 
 const blobToDataUrl = async (blob: Blob): Promise<string> => {
@@ -57,7 +59,7 @@ const blobToDataUrl = async (blob: Blob): Promise<string> => {
     });
 };
 
-export default function AnkiUi({ bridge }: Props) {
+export default function AnkiUi({ bridge, localLookupEnabled }: Props) {
     const [open, setOpen] = useState<boolean>(false);
     const [disabled, setDisabled] = useState<boolean>(false);
     const [canRerecord, setCanRerecord] = useState<boolean>(false);
@@ -283,20 +285,14 @@ export default function AnkiUi({ bridge }: Props) {
         [bridge]
     );
 
-    const handleRequestDefinition = useCallback(
-        async (word: string, sentence: string) => {
-            const message: GetLocalDefinitionMessage = {
-                command: 'get-local-definition',
-                word,
-                sentence,
-                messageId: uuidv4(),
-            };
-            // Claude can take a few seconds, longer than the bridge's 5 s default.
-            const response = await bridge.sendMessageFromServerAndExpectResponse(message, 30000);
-            return response?.definition as string | undefined;
-        },
-        [bridge]
-    );
+    const handleRequestDefinition = useCallback(async (word: string, sentence: string) => {
+        const request: TabToExtensionCommand<GetLocalDefinitionMessage> = {
+            sender: 'asbplayer-video-tab',
+            message: { command: 'get-local-definition', word, sentence },
+        };
+        const response = await browser.runtime.sendMessage(request);
+        return response?.definition as string | undefined;
+    }, []);
 
     useEffect(() => {
         return bridge.addClientMessageListener((message) => {
@@ -418,7 +414,7 @@ export default function AnkiUi({ bridge }: Props) {
                         mp3Encoder={mp3Encoder}
                         lastSelectedExportMode={settings.lastSelectedAnkiExportMode}
                         inTutorial={inTutorial}
-                        onRequestDefinition={handleRequestDefinition}
+                        onRequestDefinition={localLookupEnabled ? handleRequestDefinition : undefined}
                     />
                 )}
             </ThemeProvider>

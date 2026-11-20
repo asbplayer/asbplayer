@@ -1,6 +1,9 @@
 import CssBaseline from '@mui/material/CssBaseline';
+import Alert from '@mui/material/Alert';
+import Button from '@mui/material/Button';
+import Stack from '@mui/material/Stack';
 import ThemeProvider from '@mui/material/styles/ThemeProvider';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 
 import VideoDataSyncDialog, {
@@ -10,6 +13,7 @@ import VideoDataSyncDialog, {
 import type Bridge from '@project/extension/src/ui/bridge';
 import type {
     ConfirmedVideoDataSubtitleTrack,
+    EpisodeTranscriptionState,
     Message,
     SerializedSubtitleFile,
     UpdateStateMessage,
@@ -39,6 +43,7 @@ export default function VideoDataSyncUi({ bridge }: Props) {
     const { t } = useTranslation();
     const [isLoading, setIsLoading] = useState<boolean>(true);
     const [suggestedName, setSuggestedName] = useState<string>('');
+    const [episodeTranscription, setEpisodeTranscription] = useState<EpisodeTranscriptionState | null>(null);
     const [defaultCheckboxState, setDefaultCheckboxState] = useState<boolean>(false);
     const [openReason, setOpenReason] = useState<VideoDataUiOpenReason>(VideoDataUiOpenReason.userRequested);
     const [openedFromAsbplayerId, setOpenedFromAsbplayerId] = useState<string>('');
@@ -55,7 +60,6 @@ export default function VideoDataSyncUi({ bridge }: Props) {
         jimakuApiKey: '',
         jimakuSearchCategory: 'anime',
     });
-    const trackedLocalObjectUrlsRef = useRef(new Set<string>());
     const fileInputRef = useRef<HTMLInputElement>(null);
     const fileSelector = useMemo<DefaultFileSelector>(
         () => new DefaultFileSelector(() => fileInputRef.current?.click()),
@@ -95,16 +99,6 @@ export default function VideoDataSyncUi({ bridge }: Props) {
         (data: ConfirmedVideoDataSubtitleTrack[], shouldRememberTrackChoices: boolean) => {
             closeSubtitleTrackSelector();
 
-            // Create blob URLs for content script to consume and track them so we can revoke later.
-            for (const t of data) {
-                if (t.file !== undefined) {
-                    if (t.url === undefined) {
-                        t.url = URL.createObjectURL(t.file);
-                        trackedLocalObjectUrlsRef.current.add(t.url);
-                    }
-                }
-            }
-
             const message: VideoDataUiBridgeConfirmMessage = {
                 command: 'confirm',
                 data,
@@ -134,6 +128,10 @@ export default function VideoDataSyncUi({ bridge }: Props) {
 
             if (model.isLoading !== undefined) {
                 setIsLoading(model.isLoading);
+            }
+
+            if (model.episodeTranscription !== undefined) {
+                setEpisodeTranscription(model.episodeTranscription);
             }
 
             if (model.suggestedName !== undefined) {
@@ -217,36 +215,6 @@ export default function VideoDataSyncUi({ bridge }: Props) {
 
     useEffect(() => bridge.serverIsReady(), [bridge]);
 
-    useEffect(() => {
-        // Revoke tracked blob URLs once they are no longer referenced by subtitle tracks.
-        const currentObjectUrlsByTrackId = new Map<string, string>();
-        for (const t of subtitleTrackSelectorTracks) {
-            if (t.file !== undefined && typeof t.url === 'string') {
-                currentObjectUrlsByTrackId.set(t.id, t.url);
-            }
-        }
-
-        for (const [trackId, trackedUrl] of trackedLocalObjectUrlsRef.current.entries()) {
-            const trackIsNoLongerReferenced = !currentObjectUrlsByTrackId.has(trackId);
-            if (trackIsNoLongerReferenced && trackedLocalObjectUrlsRef.current.has(trackedUrl)) {
-                URL.revokeObjectURL(trackedUrl);
-                trackedLocalObjectUrlsRef.current.delete(trackedUrl);
-            }
-        }
-    }, [subtitleTrackSelectorTracks]);
-
-    useEffect(
-        () => () => {
-            // Safety net for cancel/close/navigation paths where sync never consumes these URLs.
-            for (const url of trackedLocalObjectUrlsRef.current) {
-                URL.revokeObjectURL(url);
-            }
-
-            trackedLocalObjectUrlsRef.current.clear();
-        },
-        []
-    );
-
     const handleOpenFiles = useCallback(
         async (files: FileWithId[]) => {
             setSubtitleTrackSelectorDisabled(true);
@@ -309,6 +277,47 @@ export default function VideoDataSyncUi({ bridge }: Props) {
         [bridge]
     );
 
+    const phase = episodeTranscription?.phase;
+    const transcriptionKey = 'extension.videoDataSync.transcription';
+    const transcriptionControls = episodeTranscription && (
+        <Stack spacing={1}>
+            {phase === 'error' && <Alert severity="error">{episodeTranscription.error}</Alert>}
+            {phase === 'done' && <Alert severity="success">{t(`${transcriptionKey}.done`)}</Alert>}
+            {(phase === 'ready' || phase === 'error' || phase === 'done') && (
+                <Stack alignItems="flex-start">
+                    <Button onClick={() => bridge.sendMessageFromServer({ command: 'startEpisodeTranscription' })}>
+                        {t(`${transcriptionKey}.start`)}
+                    </Button>
+                    {phase !== 'done' && <small>{t(`${transcriptionKey}.hint`)}</small>}
+                </Stack>
+            )}
+            {(phase === 'starting' || phase === 'uploading' || phase === 'transcribing') && (
+                <Alert severity="info" role="status">
+                    {t(`${transcriptionKey}.${phase}`, {
+                        progress: phase === 'transcribing' ? Math.round(episodeTranscription.progress * 100) : 0,
+                    })}
+                </Alert>
+            )}
+            {phase === 'recording' && (
+                <Alert severity="info" role="status">
+                    {t(`${transcriptionKey}.recording`)}
+                </Alert>
+            )}
+            {(phase === 'starting' || phase === 'recording') && (
+                <Stack direction="row" spacing={1}>
+                    {phase === 'recording' && (
+                        <Button onClick={() => bridge.sendMessageFromServer({ command: 'finishEpisodeTranscription' })}>
+                            {t(`${transcriptionKey}.finish`)}
+                        </Button>
+                    )}
+                    <Button onClick={() => bridge.sendMessageFromServer({ command: 'cancelEpisodeTranscription' })}>
+                        {t(`${transcriptionKey}.cancel`)}
+                    </Button>
+                </Stack>
+            )}
+        </Stack>
+    );
+
     return (
         <StyledEngineProvider injectFirst>
             <ThemeProvider theme={theme}>
@@ -334,6 +343,7 @@ export default function VideoDataSyncUi({ bridge }: Props) {
                     isGenericPage={isGenericPage}
                     showGenericPageOption={showGenericPageOption}
                     genericSubtitleParser={genericSubtitleParser}
+                    episodeTranscriptionControls={transcriptionControls}
                     fileSelector={fileSelector}
                     onCancel={handleCancel}
                     onOpenFiles={handleOpenFiles}

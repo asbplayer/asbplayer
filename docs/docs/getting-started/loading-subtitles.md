@@ -16,6 +16,14 @@ The first step to using asbplayer is to load subtitles onto a video source.
 2. Click 🧩 icon in browser toolbar → asbplayer → **Open Side Panel**
 3. Click **Load Subtitles** to load subtitles onto any video on the current page.
 
+To load Dutch subtitles generated from the dub audio, see [Local Whisper subtitles and Anki lookups](../guides/local-whisper.md).
+
+#### Generate Dutch subtitles with Whisper
+
+With the local Whisper server running, select the Dutch audio in the streaming player and position playback where you want the subtitles to start. Open **Load Subtitles** and choose **Transcribe this episode**.
+
+Keep playback at 1×. Pauses are fine, but seeking or changing speed discards the recording. At the end, asbplayer sends the tab audio to local Whisper and loads **Nederlands (Whisper)** when it is ready. For a short test, reopen **Load Subtitles** after a minute and choose **Finish and transcribe**.
+
 ### Firefox {#firefox}
 
 :::warning

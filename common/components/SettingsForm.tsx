@@ -175,6 +175,7 @@ export type PageConfigMap = { [K in keyof PageSettings]: SettingsFormPageConfig 
 
 interface Props {
     anki: Anki;
+    ankiSettingsExtra?: React.ReactNode;
     extensionInstalled: boolean;
     extensionVersion?: string;
     extensionSupportsAppIntegration: boolean;
@@ -245,6 +246,7 @@ export default function SettingsForm({
     extensionSupportsSubtitleTrackSelectorInWebApp,
     extensionSupportsSubtitleListCustomization,
     extensionSupportsOrderableAnkiFields,
+    ankiSettingsExtra,
     extensionSupportsTrackSpecificSettings,
     extensionSupportsSubtitlesWidthSetting,
     extensionSupportsSubtitlesWidthInPixels,
@@ -538,6 +540,7 @@ export default function SettingsForm({
                         anki={anki}
                         testCard={testCard}
                     />
+                    {ankiSettingsExtra}
                 </TabPanel>
                 <TabPanel value={tabIndex} index={tabIndicesById['mining-settings']} tabsOrientation={tabsOrientation}>
                     <MiningSettingsTab

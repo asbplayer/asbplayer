@@ -22,7 +22,7 @@ import Binding from '@project/extension/src/services/binding';
 import type { BindingOptions } from '@project/extension/src/services/binding';
 import type ActualVideoDataSyncController from '@project/extension/src/controllers/video-data-sync-controller';
 import { MockStorageArea } from '@project/extension/src/services/mock-storage-area';
-import { uiFrameForHtml } from '@project/extension/src/services/ui-frame';
+import UiFrame, { uiFrameForHtml } from '@project/extension/src/services/ui-frame';
 import { subtitleReference } from '@project/common/subtitle-reader/subtitle-stream';
 import type { InternalToken } from '@project/common/annotations/render-annotations';
 import { MediaSources } from '@project/common/app/services/media-sources';
@@ -128,7 +128,11 @@ jest.mock('@project/extension/src/controllers/video-data-sync-controller', () =>
         unbind() {}
     },
 }));
-jest.mock('@project/extension/src/services/ui-frame', () => ({ uiFrameForHtml: jest.fn() }));
+jest.mock('@project/extension/src/services/ui-frame', () => ({
+    __esModule: true,
+    default: jest.fn(),
+    uiFrameForHtml: jest.fn(),
+}));
 jest.mock('@project/extension/src/services/pages', () => ({
     currentPageDelegate: async () => ({ config: {}, isVideoPage: () => true, canAutoSync: () => false }),
 }));
@@ -346,6 +350,7 @@ describe('Binding playback mode integration', () => {
             unbind() {},
         };
         jest.mocked(uiFrameForHtml).mockReturnValue(frame as unknown as ReturnType<typeof uiFrameForHtml>);
+        (UiFrame as unknown as jest.Mock).mockImplementation(() => frame);
         if (!AbortSignal.prototype.throwIfAborted) {
             AbortSignal.prototype.throwIfAborted = function () {
                 if (this.aborted) throw this.reason;

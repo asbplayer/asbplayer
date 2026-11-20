@@ -18,6 +18,7 @@ import LabelWithHoverEffect from '@project/common/components/LabelWithHoverEffec
 import type { ConfirmedVideoDataSubtitleTrack, VideoDataSubtitleTrack } from '@project/common';
 import { VideoDataUiOpenReason } from '@project/common';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import MiniProfileSelector from '@project/common/components/MiniProfileSelector';
 import type { Profile } from '@project/common/settings';
@@ -194,6 +195,7 @@ interface Props {
     isGenericPage?: boolean;
     showGenericPageOption?: boolean;
     genericSubtitleParser?: GenericParseType;
+    episodeTranscriptionControls?: ReactNode;
     fileSelector: FileSelector;
     onCancel: () => void;
     onOpenSettings: () => void;
@@ -227,6 +229,7 @@ export default function VideoDataSyncDialog({
     isGenericPage,
     showGenericPageOption,
     genericSubtitleParser,
+    episodeTranscriptionControls,
     fileSelector,
     onCancel,
     onOpenSettings,
@@ -554,6 +557,7 @@ export default function VideoDataSyncDialog({
                                 </Grid>
                             )}
                             {threeSubtitleTrackSelectors}
+                            {episodeTranscriptionControls && <Grid item>{episodeTranscriptionControls}</Grid>}
                             {!hideRememberTrackPreferenceToggle && (
                                 <Grid item>
                                     <LabelWithHoverEffect

@@ -31,6 +31,8 @@ type FrameInitializer = (frame: HTMLIFrameElement, lang: string) => Promise<void
 
 export default class UiFrame {
     private readonly _frameInitializer: FrameInitializer;
+    private readonly _expectedOrigin?: string;
+    private readonly _useRuntimeMessages: boolean;
     private _fetchOptions: FetchOptions | undefined;
     private _client: FrameBridgeClient | undefined;
     private _frame: HTMLIFrameElement | undefined;
@@ -38,8 +40,10 @@ export default class UiFrame {
     private _dirty = true;
     private _bound = false;
 
-    constructor(frameInitializer: FrameInitializer) {
+    constructor(frameInitializer: FrameInitializer, expectedOrigin?: string, useRuntimeMessages = false) {
         this._frameInitializer = frameInitializer;
+        this._expectedOrigin = expectedOrigin;
+        this._useRuntimeMessages = useRuntimeMessages;
     }
 
     set fetchOptions(fetchOptions: FetchOptions) {
@@ -95,11 +99,15 @@ export default class UiFrame {
         this._frame.classList.add(frameColorSchemeClass());
         this._frame.setAttribute('allowtransparency', 'true');
 
-        this._client = new FrameBridgeClient(this._frame, this._fetchOptions);
+        this._client = new FrameBridgeClient(
+            this._frame,
+            this._fetchOptions,
+            this._expectedOrigin,
+            this._useRuntimeMessages
+        );
         document.body.appendChild(this._frame);
 
-        await this._frameInitializer(this._frame, this._language);
-        await this._client.bind();
+        await Promise.all([this._client.bind(), this._frameInitializer(this._frame, this._language)]);
         return true;
     }
 

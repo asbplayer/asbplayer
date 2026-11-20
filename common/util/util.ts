@@ -672,8 +672,17 @@ export function expandToSentence<T extends SubtitleModel>(
         originalEnd: parts[parts.length - 1].originalEnd,
     };
     // Swap the merged lines for the sentence, so the exported text is the clean sentence rather than its lines.
-    const merged = new Set<SubtitleModel>(parts);
-    const surrounding = [...surroundingSubtitles.filter((s) => !merged.has(s)), sentence].sort(
+    const isMerged = (cue: SubtitleModel) =>
+        parts.some(
+            (part) =>
+                part.track === cue.track &&
+                (part.source && cue.source
+                    ? part.source.loadId === cue.source.loadId && part.source.cueId === cue.source.cueId
+                    : part.originalStart === cue.originalStart &&
+                      part.originalEnd === cue.originalEnd &&
+                      (part.originalText ?? part.text) === (cue.originalText ?? cue.text))
+        );
+    const surrounding = [...surroundingSubtitles.filter((cue) => !isMerged(cue)), sentence].sort(
         (a, b) => a.start - b.start
     );
     return [sentence, surrounding];

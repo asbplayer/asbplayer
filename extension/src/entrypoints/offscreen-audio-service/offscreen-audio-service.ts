@@ -12,6 +12,7 @@ import type {
     AnimatedWebpCaptureRequest,
     ArmAnimatedWebpCaptureMessage,
     ArmAnimatedWebpCaptureResponse,
+    CaptureEpisodeAudioMessage,
 } from '@project/common';
 import { AudioErrorCode, StartRecordingErrorCode, StopRecordingErrorCode } from '@project/common';
 import AudioRecorder, { TimedRecordingInProgressError, NoRecordingInProgressError } from '@/services/audio-recorder';
@@ -26,6 +27,7 @@ import {
 import { Mp3Encoder } from '@project/common/audio-clip';
 import { base64ToBlob, bufferToBase64 } from '@project/common/base64';
 import { mp3WorkerFactory } from '@/services/mp3-worker-factory';
+import { episodeAudioCaptureActive, handleEpisodeAudioCapture } from '@/services/episode-audio-capture';
 
 configureExtensionLogProvider();
 
@@ -85,7 +87,10 @@ const armedCaptureMissingResponse: StartRecordingResponse = {
 // Audio-only recordings replace each other, but a recording that captures an image can't replace another one or be
 // replaced, since it holds the tab capture until it's done.
 const _canStart = (image: boolean) =>
-    !animatedWebpBusy && activeAnimatedWebpCapture() === undefined && !(image && audioRecorder.isRecording);
+    !episodeAudioCaptureActive() &&
+    !animatedWebpBusy &&
+    activeAnimatedWebpCapture() === undefined &&
+    !(image && audioRecorder.isRecording);
 
 // Uses the capture armed ahead of the mining seek, or arms one from streamId. Resolves to undefined when there's
 // neither, so the sender can ask again with a stream id.
@@ -165,6 +170,14 @@ window.onload = async () => {
     const listener = (request: any, sender: Browser.runtime.MessageSender, sendResponse: (response?: any) => void) => {
         if (request.sender === 'asbplayer-extension-to-offscreen-document') {
             switch (request.message.command) {
+                case 'capture-episode-audio': {
+                    const message = request.message as CaptureEpisodeAudioMessage;
+                    void handleEpisodeAudioCapture(message, () => _stream(message.streamId!), _canStart(true)).then(
+                        () => sendResponse({}),
+                        (error) => sendResponse({ error: error instanceof Error ? error.message : String(error) })
+                    );
+                    return true;
+                }
                 case 'arm-animated-webp-capture': {
                     const armMessage = request.message as ArmAnimatedWebpCaptureMessage;
 

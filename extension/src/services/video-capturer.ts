@@ -3,9 +3,16 @@ import type { CaptureArea, ExtensionToVideoCommand, RectModel, ResolveCaptureAre
 // Obtains a tabCapture stream id (no picker) for the offscreen document to consume via getUserMedia. Chrome only —
 // Firefox has no tabCapture API.
 export const tabCaptureStreamId = (tabId: number): Promise<string> =>
-    new Promise((resolve) =>
-        browser.tabCapture.getMediaStreamId({ targetTabId: tabId }, (streamId) => resolve(streamId))
-    );
+    new Promise((resolve, reject) => {
+        browser.tabCapture.getMediaStreamId({ targetTabId: tabId }, (streamId) => {
+            const error = browser.runtime.lastError;
+            if (error || !streamId) {
+                reject(new Error(error?.message ?? 'Failed to obtain a tab capture stream ID'));
+            } else {
+                resolve(streamId);
+            }
+        });
+    });
 
 // Asks the tab's root frame for the area to capture for a video, in the page's coordinates
 export const resolveCaptureArea = (

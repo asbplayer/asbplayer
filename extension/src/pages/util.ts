@@ -97,8 +97,10 @@ export function localTranscriptTrack(srt: string, rememberedLanguage: string | u
         url: `data:text/plain;charset=utf-8,${encodeURIComponent(srt)}`,
         extension: 'srt',
     };
-    return { id: trackId(def), ...def };
+    return { id: `whisper:${trackId(def)}`, ...def };
 }
+
+export const isLocalTranscriptTrack = (track: VideoDataSubtitleTrack) => track.id.startsWith('whisper:');
 
 export function inferTracks(
     { onJson, onRequest, observeResponseJson = false, getCacheKey, waitForBasename }: InferHooks,

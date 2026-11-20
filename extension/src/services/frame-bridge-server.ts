@@ -1,11 +1,13 @@
 import { v4 as uuidv4 } from 'uuid';
 import type Bridge from '@project/extension/src/ui/bridge';
 import type { Message } from '@project/common';
+import type { AnkiFrameClientMessage } from '@/services/frame-bridge-client';
 
 export default class FrameBridgeServer {
     private readonly _bridge: Bridge;
     private _frameId?: string;
     private _windowMessageListener?: (event: MessageEvent) => void;
+    private _runtimeMessageListener?: (request: AnkiFrameClientMessage, sender: Browser.runtime.MessageSender) => void;
     private _unbindServerMessageListener?: () => void;
     private _unbindServerReadyListener?: () => void;
 
@@ -13,7 +15,7 @@ export default class FrameBridgeServer {
         this._bridge = bridge;
     }
 
-    bind() {
+    bind({ useRuntimeMessages = false } = {}) {
         this.unbind();
         this._frameId = uuidv4();
         this._windowMessageListener = (event) => {
@@ -43,7 +45,21 @@ export default class FrameBridgeServer {
                 frameId: this._frameId,
             });
         });
-        window.addEventListener('message', this._windowMessageListener);
+        if (useRuntimeMessages) {
+            // The streaming page can post window messages. Only extension code can send runtime messages.
+            this._runtimeMessageListener = (request, sender) => {
+                if (
+                    sender.id === browser.runtime.id &&
+                    request.sender === 'asbplayer-anki-frame-client' &&
+                    request.frameId === this._frameId
+                ) {
+                    this._bridge.sendMessageFromClient(request.message);
+                }
+            };
+            browser.runtime.onMessage.addListener(this._runtimeMessageListener);
+        } else {
+            window.addEventListener('message', this._windowMessageListener);
+        }
     }
 
     _postMessage(message: any) {
@@ -59,6 +75,9 @@ export default class FrameBridgeServer {
     unbind() {
         if (this._windowMessageListener) {
             window.removeEventListener('message', this._windowMessageListener);
+        }
+        if (this._runtimeMessageListener) {
+            browser.runtime.onMessage.removeListener(this._runtimeMessageListener);
         }
 
         this._unbindServerMessageListener?.();

@@ -122,8 +122,28 @@ export interface GetLocalTranscriptMessage extends Message {
     readonly key: string;
 }
 
+export type EpisodeTranscriptionAction =
+    | { action: 'start'; key: string }
+    | { action: 'resume'; offset: number }
+    | { action: 'pause' | 'finish' | 'cancel' }
+    | { action: 'status'; key: string };
+
+export interface EpisodeTranscriptionMessage extends Message {
+    command: 'episode-transcription';
+    id: string;
+    operation: EpisodeTranscriptionAction;
+}
+
+export interface CaptureEpisodeAudioMessage extends Message {
+    command: 'capture-episode-audio';
+    id: string;
+    tabId: number;
+    operation: Exclude<EpisodeTranscriptionAction, { action: 'status' }>;
+    streamId?: string;
+}
+
 /** Asks the local transcriber for a word's meaning as used in a sentence, for the Anki definition field. */
-export interface GetLocalDefinitionMessage extends MessageWithId {
+export interface GetLocalDefinitionMessage extends Message {
     readonly command: 'get-local-definition';
     readonly word: string;
     readonly sentence: string;

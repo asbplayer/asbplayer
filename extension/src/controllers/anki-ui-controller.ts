@@ -27,11 +27,12 @@ import { PostMinePlayback } from '@project/common';
 import type { SettingsProvider } from '@project/common/settings';
 import type Binding from '@project/extension/src/services/binding';
 import { fetchLocalization } from '@project/extension/src/services/localization-fetcher';
-import type UiFrame from '@project/extension/src/services/ui-frame';
-import { uiFrameForHtml } from '@project/extension/src/services/ui-frame';
+import UiFrame, { uiFrameForHtml } from '@project/extension/src/services/ui-frame';
 import { ExtensionGlobalStateProvider } from '@project/extension/src/services/extension-global-state-provider';
 import { isOnTutorialPage } from '@/services/tutorial';
-import { frameColorSchemeStyleBlock } from '@/services/frame-color-scheme';
+import { frameColorScheme, frameColorSchemeStyleBlock } from '@/services/frame-color-scheme';
+import { isFirefoxBuild } from '@/services/build-flags';
+import { getLocalLookupToken } from '@/services/local-lookup-token';
 
 // We need to write the HTML into the iframe manually so that the iframe keeps it's about:blank URL.
 // Otherwise, Chrome won't insert content scripts into the iframe (e.g. Yomichan won't work).
@@ -60,7 +61,8 @@ async function html(language: string) {
 const globalStateProvider = new ExtensionGlobalStateProvider();
 
 export default class AnkiUiController {
-    private readonly frame: UiFrame;
+    private frame: UiFrame;
+    private useLocalLookup = false;
 
     private fullscreenElement?: Element;
     private activeElement?: Element;
@@ -240,6 +242,21 @@ export default class AnkiUiController {
     }
 
     private async _client(context: Binding) {
+        const useLocalLookup = !this._inTutorial && !isFirefoxBuild && (await getLocalLookupToken()).length >= 32;
+        if (useLocalLookup !== this.useLocalLookup) {
+            this.unbind();
+            this.useLocalLookup = useLocalLookup;
+            this.frame = useLocalLookup
+                ? new UiFrame(
+                      async (frame, lang) => {
+                          const params = new URLSearchParams({ lang, colorScheme: frameColorScheme() });
+                          frame.src = `${browser.runtime.getURL('/anki-lookup.html')}?${params}`;
+                      },
+                      browser.runtime.getURL('/').slice(0, -1),
+                      true
+                  )
+                : uiFrameForHtml(html);
+        }
         this.frame.fetchOptions = {
             videoSrc: context.registeredVideoSrc,
             allowedFetchUrl: this._settings!.ankiConnectUrl,
@@ -249,6 +266,7 @@ export default class AnkiUiController {
         const client = await this.frame.client();
 
         if (isNewClient) {
+            if (this.focusInListener) window.removeEventListener('focusin', this.focusInListener);
             this.focusInListener = () => {
                 if (this.frame === undefined || this.frame.hidden) {
                     return;
