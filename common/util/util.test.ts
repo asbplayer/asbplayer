@@ -13,6 +13,7 @@ import {
     computeStyleString,
     download,
     ensureStoragePersisted,
+    expandToSentence,
     extractText,
     filterAsync,
     formatAsSigned,
@@ -461,6 +462,78 @@ describe('surroundingSubtitles', () => {
     it('uses time radius to include overlapping neighbors when count radius is 0', () => {
         const subtitles = [subtitle('1', 0, 5), subtitle('2', 4, 9), subtitle('3', 30, 35)];
         expect(surroundingSubtitles(subtitles, 1, 0, 5)).toEqual([subtitle('1', 0, 5), subtitle('2', 4, 9)]);
+    });
+});
+
+describe('expandToSentence', () => {
+    // Lines from NOS Journaal in Makkelijke Taal's own YouTube captions (bgnqJa0hHYg).
+    const nos = () =>
+        [
+            subtitle('Goedemiddag.', 9120, 9680),
+            subtitle('Dit is het NOS Journaal\nin Makkelijke Taal...', 9680, 11880),
+            subtitle('van vrijdag 20 november\nen ik ben Evita Mac-nack.', 11880, 15840),
+            subtitle('In dit Journaal vertellen we\nover een rechtszaak...', 15840, 18360),
+        ].map((s, index) => ({ ...s, index }));
+
+    it.each([1, 2])('widens a split sentence to both lines when mining line %i', (index) => {
+        const subtitles = nos();
+        const [sentence, surrounding] = expandToSentence(subtitles, index, subtitles);
+
+        expect(sentence).toMatchObject({
+            start: 9680,
+            end: 15840,
+            text: 'Dit is het NOS Journaal in Makkelijke Taal van vrijdag 20 november en ik ben Evita Mac-nack.',
+        });
+        expect(surrounding.map((s) => s.text)).toEqual(['Goedemiddag.', sentence.text, subtitles[3].text]);
+    });
+
+    it('leaves a complete sentence untouched', () => {
+        const subtitles = nos();
+        const surrounding = subtitles.slice(0, 2);
+
+        expect(expandToSentence(subtitles, 0, surrounding)).toEqual([subtitles[0], surrounding]);
+    });
+
+    it('stops at the last line when the sentence never ends', () => {
+        const subtitles = nos();
+        const [sentence] = expandToSentence(subtitles, 3, subtitles);
+
+        expect(sentence).toBe(subtitles[3]);
+    });
+
+    it('does not cross a long pause or another track', () => {
+        const subtitles = [
+            subtitle('Before the pause...', 0, 1000),
+            subtitle('Other track', 1500, 4000, 1),
+            subtitle('after it', 5000, 6000),
+            subtitle('and done.', 6000, 7000),
+        ].map((s, index) => ({ ...s, index }));
+        const [sentence] = expandToSentence(subtitles, 2, subtitles);
+
+        expect(sentence).toMatchObject({ start: 5000, end: 7000, text: 'after it and done.' });
+    });
+
+    it('caps the span so a sentence that never ends does not grow without bound', () => {
+        const subtitles = Array.from({ length: 20 }, (_, i) => ({
+            ...subtitle('still going...', i * 2000, (i + 1) * 2000),
+            index: i,
+        }));
+        const [sentence] = expandToSentence(subtitles, 10, subtitles);
+
+        expect(sentence.end - sentence.start).toBeGreaterThan(2000);
+        expect(sentence.end - sentence.start).toBeLessThanOrEqual(15000);
+    });
+
+    it('leaves auto-generated captions alone, since their lines are not sentence-shaped', () => {
+        // The same video's auto-generated captions.
+        const subtitles = [
+            subtitle('Goedemiddag. Dit is het NOS Journaal', 9120, 10990),
+            subtitle('Inkelijke taal van vrijdag 20 november', 11000, 13749),
+            subtitle('en ik ben Evita Maknak. In dit journaal', 13759, 16590),
+            subtitle('vertellen we over een rechtszaak tegen', 16600, 18670),
+        ].map((s, index) => ({ ...s, index }));
+
+        expect(expandToSentence(subtitles, 1, subtitles)[0]).toBe(subtitles[1]);
     });
 });
 

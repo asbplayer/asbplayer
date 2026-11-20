@@ -579,6 +579,106 @@ export function extractText(subtitle: SubtitleModel, surroundingSubtitles: Subti
     );
 }
 
+const sentenceEnd = /[.?!]["'”’)\]]*$/;
+const continuationEnd = /(\.\.\.|…)["'”’)\]]*$/;
+const maxSentenceGapMs = 1500;
+const maxSentenceSpanMs = 15000;
+
+const endsSentence = (text: string) => {
+    const trimmed = text.trim();
+    return sentenceEnd.test(trimmed) && !continuationEnd.test(trimmed);
+};
+
+/**
+ * Widens a subtitle that is only part of a sentence (e.g. YouTube's "... in Makkelijke Taal..." line splits) to the
+ * same-track neighbours that complete the sentence, so mining records and exports the whole sentence. Returns the
+ * inputs unchanged when the subtitle is already a complete sentence.
+ */
+export function expandToSentence<T extends SubtitleModel>(
+    subtitles: T[],
+    index: number,
+    surroundingSubtitles: SubtitleModel[]
+): [T, SubtitleModel[]] {
+    const subtitle = subtitles[index];
+    const neighbour = (from: number, step: number) => {
+        for (let i = from + step; i >= 0 && i < subtitles.length; i += step) {
+            if (subtitles[i].track === subtitle.track) return i;
+        }
+        return undefined;
+    };
+    const trackLines = subtitles.filter((s) => s.track === subtitle.track).map((s) => s.text.trim());
+    const punctuatedLines = trackLines.filter((t) => endsSentence(t) || continuationEnd.test(t)).length;
+
+    // Auto-generated captions break lines mid-phrase and end sentences mid-line, so whole lines never form a sentence.
+    if (punctuatedLines < trackLines.length / 2) {
+        return [subtitle, surroundingSubtitles];
+    }
+
+    let first = index;
+    let last = index;
+
+    while (true) {
+        const previous = neighbour(first, -1);
+
+        if (
+            previous === undefined ||
+            endsSentence(subtitles[previous].text) ||
+            subtitles[first].start - subtitles[previous].end > maxSentenceGapMs ||
+            subtitles[last].end - subtitles[previous].start > maxSentenceSpanMs
+        ) {
+            break;
+        }
+
+        first = previous;
+    }
+
+    while (!endsSentence(subtitles[last].text)) {
+        const next = neighbour(last, 1);
+
+        if (
+            next === undefined ||
+            subtitles[next].start - subtitles[last].end > maxSentenceGapMs ||
+            subtitles[next].end - subtitles[first].start > maxSentenceSpanMs
+        ) {
+            break;
+        }
+
+        last = next;
+    }
+
+    if (first === last) {
+        return [subtitle, surroundingSubtitles];
+    }
+
+    const parts = subtitles.slice(first, last + 1).filter((s) => s.track === subtitle.track);
+    const text = parts
+        .map((s) =>
+            s.text
+                .trim()
+                .replace(/^(\.\.\.|…)\s*/, '')
+                .replace(continuationEnd, '')
+        )
+        .join(' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    const sentence: T = {
+        ...subtitle,
+        text,
+        originalText: undefined,
+        tokenization: undefined,
+        start: parts[0].start,
+        end: parts[parts.length - 1].end,
+        originalStart: parts[0].originalStart,
+        originalEnd: parts[parts.length - 1].originalEnd,
+    };
+    // Swap the merged lines for the sentence, so the exported text is the clean sentence rather than its lines.
+    const merged = new Set<SubtitleModel>(parts);
+    const surrounding = [...surroundingSubtitles.filter((s) => !merged.has(s)), sentence].sort(
+        (a, b) => a.start - b.start
+    );
+    return [sentence, surrounding];
+}
+
 export function download(blob: Blob, name: string) {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');

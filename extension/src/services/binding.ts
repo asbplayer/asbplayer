@@ -14,6 +14,7 @@ import {
     buildSubtitleTracks,
     clampMediaTimestamp,
     errorMessageFromVideo,
+    expandToSentence,
     extractText,
     seekWithNudge,
     sourceString,
@@ -1197,8 +1198,13 @@ export default class Binding {
                             ) {
                                 void this._copySubtitle(copySubtitleMessage);
                             } else if (this.subtitleController.subtitles.length > 0) {
-                                const [subtitle, surroundingSubtitles] = this.subtitleController.currentSubtitle();
-                                if (subtitle !== null && surroundingSubtitles !== null) {
+                                const [current, currentSurrounding] = this.subtitleController.currentSubtitle();
+                                if (current !== null && currentSurrounding !== null) {
+                                    const [subtitle, surroundingSubtitles] = expandToSentence(
+                                        this.subtitleController.subtitles,
+                                        current.index,
+                                        currentSurrounding
+                                    );
                                     void this._copySubtitle({
                                         ...copySubtitleMessage,
                                         subtitle,
