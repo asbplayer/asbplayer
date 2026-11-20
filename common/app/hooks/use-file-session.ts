@@ -53,23 +53,23 @@ export const useFileSession = () => {
 
     const fetchSession = useCallback(() => fileSessionRepository?.fetch(), [fileSessionRepository]);
 
-    const saveBufferedHandlesToSession = useCallback(
-        async (bufferedSubtitleHandles: FileSystemFileHandleWithId[]) => {
+    const saveDraftHandlesToSession = useCallback(
+        async (draftHandles: FileSystemFileHandleWithId[]) => {
             await fileSessionRepository?.merge({
                 subtitleHandles: [],
-                bufferedSubtitleHandles: bufferedSubtitleHandles,
+                bufferedSubtitleHandles: draftHandles,
             });
         },
         [fileSessionRepository]
     );
-    const promoteBufferedHandlesInSession = useCallback(
+    const promoteDraftHandlesInSession = useCallback(
         async (ids: string[]) => {
             await fileSessionRepository?.promoteBuffered(ids);
         },
         [fileSessionRepository]
     );
 
-    const clearBufferedHandlesInSession = useCallback(async () => {
+    const clearDraftHandlesInSession = useCallback(async () => {
         await fileSessionRepository?.clearBuffered();
     }, [fileSessionRepository]);
 
@@ -107,9 +107,9 @@ export const useFileSession = () => {
         canRestoreLastSession,
         saveSession,
         fetchSession,
-        saveBufferedHandlesToSession,
-        promoteBufferedHandlesInSession,
-        clearBufferedHandlesInSession,
+        saveDraftHandlesToSession,
+        promoteDraftHandlesInSession,
+        clearDraftHandlesInSession,
         retainSourcesInSession,
     };
 };

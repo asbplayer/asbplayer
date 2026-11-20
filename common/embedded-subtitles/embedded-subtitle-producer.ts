@@ -29,36 +29,43 @@ export const embeddedSubtitleProducer =
         onFinished: (tracks: LoadableSubtitleTrack<FileWithId>[], signal: AbortSignal) => Promise<void>;
     }): SubtitleSourceProducer =>
     async (publishUpdate, signal) => {
-        const trackIndexes = new Set(pendingDescriptors.map(({ trackIndex }) => trackIndex));
-        const selected = tracks.map(({ fileParts }, track) => ({
-            track,
+        const pendingEmbeddedTrackIndexes = new Set(pendingDescriptors.map(({ trackIndex }) => trackIndex));
+        const selectedSlots = tracks.map(({ fileParts }, slotIndex) => ({
+            slotIndex,
             loadId: uuid(),
             name: fileParts[0]?.file.name ?? '',
-            trackIndex: fileParts[0]?.embedded?.trackIndex,
+            embeddedTrackIndex: fileParts[0]?.embedded?.trackIndex,
         }));
-        const pending = selected.filter(
-            (track) => track.trackIndex !== undefined && trackIndexes.has(track.trackIndex)
+        const pendingSlots = selectedSlots.filter(
+            ({ embeddedTrackIndex }) =>
+                embeddedTrackIndex !== undefined && pendingEmbeddedTrackIndexes.has(embeddedTrackIndex)
         );
         signal.throwIfAborted();
         publishUpdate({
             type: 'snapshot',
-            tracks: selected.map(({ track, loadId, name }) => ({ track, loadId, name, status: 'loading', cues: [] })),
+            tracks: selectedSlots.map(({ slotIndex, loadId, name }) => ({
+                track: slotIndex,
+                loadId,
+                name,
+                status: 'loading',
+                cues: [],
+            })),
         });
         const extraction = new AbortController();
         let publicationError: Error | undefined;
         const readers = new Map(
-            [...trackIndexes].map((trackIndex) => {
-                const targets = pending.filter((track) => track.trackIndex === trackIndex);
+            [...pendingEmbeddedTrackIndexes].map((embeddedTrackIndex) => {
+                const targets = pendingSlots.filter((slot) => slot.embeddedTrackIndex === embeddedTrackIndex);
                 return [
-                    trackIndex,
+                    embeddedTrackIndex,
                     {
                         decoder: new TextDecoder(),
                         parser: reader.createProgressiveReader('srt'),
                         publisher: new SubtitleCuePublisher(
                             (cues) => {
                                 signal.throwIfAborted();
-                                for (const track of targets) {
-                                    publishUpdate({ type: 'cues', track: track.track, loadId: track.loadId, cues });
+                                for (const { slotIndex, loadId } of targets) {
+                                    publishUpdate({ type: 'cues', track: slotIndex, loadId, cues });
                                 }
                             },
                             (error) => {
@@ -74,15 +81,15 @@ export const embeddedSubtitleProducer =
             for (const stream of readers.values()) stream.publisher.dispose();
             extraction.abort(signal.reason);
         };
-        const failedFileTracks = new Set<number>();
+        const failedFileSlots = new Set<number>();
         const loadFiles = () =>
             Promise.all(
-                selected
-                    .filter((slot) => !pending.includes(slot))
-                    .map(async ({ track, loadId, name }) => {
+                selectedSlots
+                    .filter((slot) => !pendingSlots.includes(slot))
+                    .map(async ({ slotIndex, loadId, name }) => {
                         try {
                             const nodes = await reader.subtitles([
-                                { fileParts: tracks[track].fileParts.map(({ file }) => file) },
+                                { fileParts: tracks[slotIndex].fileParts.map(({ file }) => file) },
                             ]);
                             if (signal.aborted) return;
                             const cues = nodes.map(({ start, end, text, textImage, tokenization }, cueId) => ({
@@ -93,24 +100,24 @@ export const embeddedSubtitleProducer =
                                 textImage,
                                 tokenization,
                             }));
-                            if (cues.length) publishUpdate({ type: 'cues', track, loadId, cues });
+                            if (cues.length) publishUpdate({ type: 'cues', track: slotIndex, loadId, cues });
                         } catch (error) {
                             if (signal.aborted) return;
-                            failedFileTracks.add(track);
+                            failedFileSlots.add(slotIndex);
                             asbError('app/subtitles', 'Failed to load selected subtitle files:', {
-                                track,
+                                track: slotIndex,
                                 name,
                                 error,
                             });
                             publishUpdate({
                                 type: 'failed',
-                                track,
+                                track: slotIndex,
                                 loadId,
                                 error: error instanceof Error ? error.message : String(error),
                             });
                             return;
                         }
-                        publishUpdate({ type: 'complete', track, loadId });
+                        publishUpdate({ type: 'complete', track: slotIndex, loadId });
                     })
             );
         const extract = async () => {
@@ -119,9 +126,9 @@ export const embeddedSubtitleProducer =
                     source,
                     pendingDescriptors,
                     extraction.signal,
-                    (trackIndex, bytes) => {
+                    (embeddedTrackIndex, bytes) => {
                         extraction.signal.throwIfAborted();
-                        const stream = readers.get(trackIndex);
+                        const stream = readers.get(embeddedTrackIndex);
                         if (!stream) throw new Error('Unexpected embedded subtitle track');
                         stream.publisher.add(stream.parser.read(stream.decoder.decode(bytes, { stream: true }), false));
                     }
@@ -131,14 +138,16 @@ export const embeddedSubtitleProducer =
                     stream.publisher.add(stream.parser.read(stream.decoder.decode(), true));
                     stream.publisher.flush();
                 }
-                for (const { track, loadId } of pending) publishUpdate({ type: 'complete', track, loadId });
+                for (const { slotIndex, loadId } of pendingSlots) {
+                    publishUpdate({ type: 'complete', track: slotIndex, loadId });
+                }
                 return completed;
             } catch (error) {
                 if (signal.aborted) throw error;
                 for (const stream of readers.values()) stream.publisher.flush();
                 asbError('app/subtitles', 'Failed to produce embedded subtitles', publicationError ?? error);
-                for (const { track, loadId } of pending) {
-                    publishUpdate({ type: 'failed', track, loadId, error: errorMessage });
+                for (const { slotIndex, loadId } of pendingSlots) {
+                    publishUpdate({ type: 'failed', track: slotIndex, loadId, error: errorMessage });
                 }
             }
         };
@@ -154,11 +163,11 @@ export const embeddedSubtitleProducer =
             signal.removeEventListener('abort', cancel);
             for (const stream of readers.values()) stream.publisher.dispose();
         }
-        const files = tracks.map(({ fileParts }, track) => ({
-            fileParts: failedFileTracks.has(track)
+        const files = tracks.map(({ fileParts }, slotIndex) => ({
+            fileParts: failedFileSlots.has(slotIndex)
                 ? []
                 : fileParts.flatMap((file) => {
-                      if (!file.embedded || !trackIndexes.has(file.embedded.trackIndex)) return [file];
+                      if (!file.embedded || !pendingEmbeddedTrackIndexes.has(file.embedded.trackIndex)) return [file];
                       const output = completed?.get(embeddedSubtitleId(source.id, file.embedded.trackIndex));
                       return output ? [output] : [];
                   }),

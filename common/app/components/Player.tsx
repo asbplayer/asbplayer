@@ -732,7 +732,7 @@ function PlayerComponent(
         sourceStates,
     } = useSubtitleTracks({
         source:
-            tab && (sources === undefined || sources.subtitleSource.kind === 'video')
+            tab && (sources === undefined || sources.subtitleSource.kind === 'remote')
                 ? {
                       kind: 'remote',
                       supportsProgressiveSubtitles: extension.supportsProgressiveSubtitles,
@@ -760,7 +760,7 @@ function PlayerComponent(
         onError,
     });
     const subtitleFileNames =
-        sources?.subtitleSource.kind === 'video' ? sources.subtitleFileNames : loadedSubtitleFileNames;
+        sources?.subtitleSource.kind === 'remote' ? sources.subtitleFileNames : loadedSubtitleFileNames;
 
     sourceStatesRef.current = sourceStates;
     useEffect(() => {

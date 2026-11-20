@@ -38,7 +38,7 @@ export interface SubtitleImportOptions {
         | 'subtitleTrackSelectorOpen'
         | 'closeSubtitleTrackSelector'
         | 'openSubtitleTrackSelectorWithFiles'
-        | 'onFilesImported'
+        | 'onManualFilesImported'
         | 'setSubtitleTrackSelectorTracks'
         | 'setSubtitleTrackSelectorSelectedTrackIds'
     > & { embedded: Pick<ReturnType<typeof useLocalSubtitlePicker>['embedded'], 'service' | 'cancel'> };
@@ -47,9 +47,9 @@ export interface SubtitleImportOptions {
         ReturnType<typeof useFileSession>,
         | 'saveSession'
         | 'fetchSession'
-        | 'saveBufferedHandlesToSession'
-        | 'promoteBufferedHandlesInSession'
-        | 'clearBufferedHandlesInSession'
+        | 'saveDraftHandlesToSession'
+        | 'promoteDraftHandlesInSession'
+        | 'clearDraftHandlesInSession'
         | 'saveSubtitleSelection'
     >;
     restoreError: string;
@@ -58,13 +58,13 @@ export interface SubtitleImportOptions {
     onError: (error: unknown) => void;
 }
 
-/** Owns import and draft lifetimes; extraction belongs to the player after confirmation or restore. */
+/** Owns active-source and picker-draft lifetimes; the player runs extraction after confirmation or restore. */
 export class SubtitleImportController {
     private state: SubtitleImportState = { embeddedSelection: undefined, discoveryKey: undefined };
-    private importing = new AbortController();
-    private draft = new AbortController();
-    private restoring: AbortController | undefined;
-    private bufferedInput: AbortSignal | undefined;
+    private sourceLifetime = new AbortController();
+    private pickerDraft = new AbortController();
+    private sessionRestoreController: AbortController | undefined;
+    private draftFileInputSignal: AbortSignal | undefined;
     private currentVideo: File | undefined;
     private selectionWrite = Promise.resolve();
 
@@ -76,37 +76,39 @@ export class SubtitleImportController {
     }
 
     dispose(): void {
-        this.importing.abort();
-        this.draft.abort();
-        this.restoring?.abort();
+        this.sourceLifetime.abort();
+        this.pickerDraft.abort();
+        this.sessionRestoreController?.abort();
     }
 
-    pickerChanged(): void {
-        this.draft.abort();
-        this.draft = new AbortController();
+    resetPickerDraft(): void {
+        this.pickerDraft.abort();
+        this.pickerDraft = new AbortController();
     }
 
-    beginFileRequest({ buffered }: { buffered: boolean }): AbortSignal {
-        if (!buffered) return this.importing.signal;
-        this.bufferedInput = this.draft.signal;
-        return this.bufferedInput;
+    fileRequestSignal({ forDraft }: { forDraft: boolean }): AbortSignal {
+        return forDraft ? this.pickerDraft.signal : this.sourceLifetime.signal;
     }
 
-    bufferedInputIsCurrent(): boolean {
-        return this.bufferedInput === this.draft.signal && !this.draft.signal.aborted;
+    /** The fallback input reports its files through a separate change event. */
+    beginDraftFileInputRequest(): void {
+        this.draftFileInputSignal = this.pickerDraft.signal;
     }
 
-    /** Staging a new video keeps the associated subtitle handles until the picker closes. */
+    draftFileInputIsCurrent(): boolean {
+        return this.draftFileInputSignal === this.pickerDraft.signal && !this.pickerDraft.signal.aborted;
+    }
+
     loadSources(sources: MediaSources, { keepDraftHandles }: { keepDraftHandles: boolean }): void {
-        this.importing.abort();
-        this.importing = new AbortController();
-        this.pickerChanged();
-        this.cancelSelection();
+        this.sourceLifetime.abort();
+        this.sourceLifetime = new AbortController();
+        this.resetPickerDraft();
+        this.cancelSelectionAndRestore();
         this.options.picker.closeSubtitleTrackSelector();
         if (!keepDraftHandles) this.clearDraftHandles();
         if (sources.videoFile) this.currentVideo = sources.videoFile.file;
-        else if (sources.subtitleSource.kind === 'video') this.currentVideo = undefined;
-        this.state = { embeddedSelection: undefined, discoveryKey: this.importing.signal };
+        else if (sources.subtitleSource.kind === 'remote') this.currentVideo = undefined;
+        this.state = { embeddedSelection: undefined, discoveryKey: this.sourceLifetime.signal };
         this.stateChanged(this.state);
         this.options.onSources(sources);
     }
@@ -116,55 +118,49 @@ export class SubtitleImportController {
             this.state.embeddedSelection?.pendingDescriptors.map(({ trackIndex }) => trackIndex)
         );
         this.currentVideo = undefined;
-        this.importing.abort();
-        this.importing = new AbortController();
-        this.cancelSelection();
+        this.sourceLifetime.abort();
+        this.sourceLifetime = new AbortController();
+        this.cancelSelectionAndRestore();
         this.state = { ...this.state, embeddedSelection: undefined };
         this.stateChanged(this.state);
         return pendingTrackIndexes;
     }
 
-    loadFiles(files: MediaSourceFile[]): boolean {
+    loadSourceFiles(files: MediaSourceFile[]): MediaSources | undefined {
+        const sources = this.parseSourceFiles(files);
+        if (!sources) return;
         try {
-            this.loadSources(MediaSources.fromFiles(files, { pendingEmbedded: false }), { keepDraftHandles: false });
-            return true;
+            this.loadSources(sources, { keepDraftHandles: false });
+            return sources;
         } catch (error) {
             this.options.onError(error);
-            return false;
         }
     }
 
-    importFiles(files: FileWithId[]): boolean {
+    /** Load manually opened files and let the picker decide whether to prompt for track selection. */
+    importManualFiles(files: FileWithId[]): boolean {
         if (!files.length) return true;
-        if (!this.loadFiles(files)) return false;
-        const imported = MediaSources.fromFiles(files, { pendingEmbedded: false });
-        this.options.picker.onFilesImported(imported.videoFile, imported.subtitleSourceFiles);
+        const imported = this.loadSourceFiles(files);
+        if (!imported) return false;
+        this.options.picker.onManualFilesImported(imported.videoFile, imported.subtitleSourceFiles);
         return true;
     }
 
     validateFiles(files: FileWithId[]): boolean {
-        try {
-            MediaSources.fromFiles(files, { pendingEmbedded: false });
-            return true;
-        } catch (error) {
-            this.options.onError(error);
-            return false;
-        }
+        return this.parseSourceFiles(files) !== undefined;
     }
 
     async acceptFileRequest(
         files: FileWithId[],
         handles: FileSystemFileHandleWithId[],
-        { buffered, signal }: { buffered: boolean; signal: AbortSignal }
+        { forDraft, signal }: { forDraft: boolean; signal: AbortSignal }
     ): Promise<FileWithId[] | undefined> {
         if (!files.length || signal.aborted) return;
-        if (buffered) {
+        if (forDraft) {
             if (!this.validateFiles(files)) return;
-            await this.options.session
-                .saveBufferedHandlesToSession(handles)
-                .catch((error) => this.options.onError(error));
+            await this.options.session.saveDraftHandlesToSession(handles).catch((error) => this.options.onError(error));
             if (!signal.aborted) return files;
-        } else if (this.importFiles(files)) {
+        } else if (this.importManualFiles(files)) {
             void this.saveHandles(handles).catch((error) => this.options.onError(error));
             return files;
         }
@@ -174,7 +170,7 @@ export class SubtitleImportController {
         files: FileWithId[],
         handles: Promise<FileSystemFileHandle[] | undefined>
     ): Promise<void> {
-        const { signal } = this.importing;
+        const { signal } = this.sourceLifetime;
         try {
             const resolved = await handles;
             if (!resolved || signal.aborted) return;
@@ -189,15 +185,15 @@ export class SubtitleImportController {
         }
     }
 
-    stageFiles(files: FileWithId[]): void {
-        if (!this.validateFiles(files)) return;
-        const incoming = MediaSources.fromFiles(files, { pendingEmbedded: false });
+    /** Add subtitle choices without applying them. A newly picked video becomes active immediately. */
+    stagePickerFiles(files: FileWithId[]): void {
+        const incoming = this.parseSourceFiles(files);
+        if (!incoming) return;
         if (incoming.videoFile) {
             const video = incoming.videoFile;
-            this.loadSources(new MediaSources(undefined, video), { keepDraftHandles: true });
+            this.loadSources(new MediaSources(undefined, video), { keepDraftHandles: true }); // Keep the draft's handles across the picker reset so confirmation can promote them
             this.options.picker.openSubtitleTrackSelectorWithFiles(incoming.subtitleSourceFiles);
-            // The video is already active, so retain its handle if the draft is cancelled.
-            const { signal } = this.importing;
+            const { signal } = this.sourceLifetime; // The video is already active, so retain its handle if the draft is cancelled
             void (async () => {
                 const session = await this.options.session.fetchSession();
                 if (signal.aborted || this.currentVideo !== video.file) return;
@@ -217,8 +213,8 @@ export class SubtitleImportController {
     }
 
     closePicker(): void {
-        this.pickerChanged();
-        this.cancelSelection();
+        this.resetPickerDraft();
+        this.cancelSelectionAndRestore();
         this.options.picker.closeSubtitleTrackSelector();
         this.clearDraftHandles();
     }
@@ -259,16 +255,16 @@ export class SubtitleImportController {
             this.state = { ...this.state, embeddedSelection: undefined };
             this.stateChanged(this.state);
             this.options.onSources(MediaSources.fromFiles(files, { pendingEmbedded: pending.length > 0 }));
-            const importing = this.importing.signal;
+            const sourceSignal = this.sourceLifetime.signal;
             void this.saveHandles(handles).catch((error) => this.options.onError(error));
             const promoted = this.options.session
-                .promoteBufferedHandlesInSession(files.map((file) => file.id))
+                .promoteDraftHandlesInSession(files.map((file) => file.id))
                 .catch((error) => this.options.onError(error));
             // A fast extraction waits for this write before saving its finished files.
             // An older selection must not discard handles saved by its replacement.
             const write: Promise<void> = Promise.all([this.selectionWrite, promoted])
                 .then(async () => {
-                    if (!importing.aborted && this.selectionWrite === write) {
+                    if (!sourceSignal.aborted && this.selectionWrite === write) {
                         await this.options.session.saveSubtitleSelection(selectedTracks, pendingIds);
                     }
                 })
@@ -280,10 +276,10 @@ export class SubtitleImportController {
     }
 
     async restoreSession(): Promise<void> {
-        this.cancelSelection();
+        this.cancelSelectionAndRestore();
         this.options.picker.embedded.cancel();
         const controller = new AbortController();
-        this.restoring = controller;
+        this.sessionRestoreController = controller;
         const { signal } = controller;
         try {
             const record = await this.options.session.fetchSession();
@@ -314,8 +310,7 @@ export class SubtitleImportController {
                     restored.subtitleSourceFiles.filter((file) => !pendingIds.has(file.id))
                 );
             }
-            // Restoration has finished preparing files; the new import owns any extraction.
-            this.restoring = undefined;
+            this.sessionRestoreController = undefined; // Restoration has finished preparing files; the restored sources now own any extraction
             this.loadSources(restored, { keepDraftHandles: false });
             if (restored.videoFile && missingEmbeddedSubtitles.length) {
                 this.startEmbedded(restored.videoFile, restored.subtitleTracks, missingEmbeddedSubtitles);
@@ -326,7 +321,7 @@ export class SubtitleImportController {
                 this.options.onError(error);
             }
         } finally {
-            if (this.restoring === controller) this.restoring = undefined;
+            if (this.sessionRestoreController === controller) this.sessionRestoreController = undefined;
         }
     }
 
@@ -336,7 +331,7 @@ export class SubtitleImportController {
     ): SubtitleSourceProducer | undefined {
         if (!selection) return;
         const { video, tracks, pendingDescriptors } = selection;
-        const { signal: importing } = this.importing;
+        const { signal: sourceSignal } = this.sourceLifetime;
         return embeddedSubtitleProducer({
             source: video,
             tracks,
@@ -344,11 +339,11 @@ export class SubtitleImportController {
             ...options,
             onFinished: async (completed, signal) => {
                 signal.throwIfAborted();
-                if (importing.aborted || this.state.embeddedSelection !== selection) return;
+                if (sourceSignal.aborted || this.state.embeddedSelection !== selection) return;
                 // Persisted output must not replace the active selection or restart its producer.
                 this.options.onCompleted(video, completed, signal);
                 await this.selectionWrite;
-                if (signal.aborted || importing.aborted || this.state.embeddedSelection !== selection) return;
+                if (signal.aborted || sourceSignal.aborted || this.state.embeddedSelection !== selection) return;
                 await this.options.session.saveSubtitleSelection(completed, new Set());
                 signal.throwIfAborted();
             },
@@ -387,13 +382,21 @@ export class SubtitleImportController {
         );
     }
 
-    private clearDraftHandles(): void {
-        void this.options.session.clearBufferedHandlesInSession().catch((error) => this.options.onError(error));
+    private parseSourceFiles(files: MediaSourceFile[]): MediaSources | undefined {
+        try {
+            return MediaSources.fromFiles(files, { pendingEmbedded: false });
+        } catch (error) {
+            this.options.onError(error);
+        }
     }
 
-    private cancelSelection(): void {
-        this.restoring?.abort();
-        this.restoring = undefined;
+    private clearDraftHandles(): void {
+        void this.options.session.clearDraftHandlesInSession().catch((error) => this.options.onError(error));
+    }
+
+    private cancelSelectionAndRestore(): void {
+        this.sessionRestoreController?.abort();
+        this.sessionRestoreController = undefined;
         this.options.selection.cancel();
     }
 

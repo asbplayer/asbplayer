@@ -26,7 +26,7 @@ type MediaSubtitleSource =
           /** The selected files include embedded placeholders. Export waits for their extracted contents. */
           readonly pendingEmbedded: boolean;
       }
-    | { readonly kind: 'video'; readonly names: string[]; readonly status: SubtitleSourceStatus };
+    | { readonly kind: 'remote'; readonly names: string[]; readonly status: SubtitleSourceStatus };
 
 export const videoExtensions = ['.mkv', '.mp4', '.m4v', '.avi', '.webm'] as const;
 export const audioExtensions = ['.mp3', '.m4a', '.aac', '.flac', '.ogg', '.wav', '.opus', '.m4b'] as const;
@@ -70,7 +70,7 @@ export class MediaSources {
         this.subtitleSourceFiles = this.subtitleTracks.flatMap(({ fileParts }) => fileParts);
         this.firstSubtitleSourceFiles = this.subtitleTracks.map(({ fileParts }) => fileParts[0]);
         this.subtitleFileNames =
-            subtitleSource.kind === 'video'
+            subtitleSource.kind === 'remote'
                 ? subtitleSource.names
                 : this.subtitleTracks.map(({ fileParts }) => fileParts[0]?.file.name ?? '');
         this.allSourceFiles = videoFile ? [...this.subtitleSourceFiles, videoFile] : this.subtitleSourceFiles;
@@ -142,7 +142,7 @@ export class MediaSources {
         }
         if (message.subtitleSource) {
             return new MediaSources({
-                kind: 'video',
+                kind: 'remote',
                 names: subtitleSourceNames(message.subtitleSource.tracks),
                 status: subtitleSourceStatus(message.subtitleSource.tracks),
             });
@@ -161,13 +161,13 @@ export class MediaSources {
         );
     }
 
-    /** Exports completed video-owned text tracks with cues, or reparses files using the current parsing settings. */
+    /** Exports completed remote text tracks with cues, or reparses files using the current parsing settings. */
     async subtitleTracksForExport(
         reader: Pick<SubtitleReader, 'subtitles'>,
         subtitles: readonly IndexedSubtitleModel[]
     ) {
         if (!this.canDownloadSubtitles) return [];
-        if (this.subtitleSource.kind === 'video') {
+        if (this.subtitleSource.kind === 'remote') {
             return this.subtitleFileNames.flatMap((name, track) => {
                 if (name.length === 0 || getExtension(name) === '.sup') return [];
                 const cues = subtitles

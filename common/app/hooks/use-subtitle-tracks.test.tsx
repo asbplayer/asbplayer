@@ -265,7 +265,7 @@ describe('useSubtitleTracks React integration', () => {
     it('fills remote media-source names from the channel without restarting or echoing the source', async () => {
         function App() {
             const [sources, setSources] = useState(
-                () => new MediaSources({ kind: 'video', names: [], status: 'loading' })
+                () => new MediaSources({ kind: 'remote', names: [], status: 'loading' })
             );
             return (
                 <>
@@ -278,12 +278,12 @@ describe('useSubtitleTracks React integration', () => {
                             const names = subtitleSourceNames(states);
                             const status = subtitleSourceStatus(states);
                             setSources((previous) =>
-                                previous.subtitleSource.kind === 'video' &&
+                                previous.subtitleSource.kind === 'remote' &&
                                 previous.subtitleSource.status === status &&
                                 names.length === previous.subtitleFileNames.length &&
                                 names.every((name, track) => name === previous.subtitleFileNames[track])
                                     ? previous
-                                    : new MediaSources({ kind: 'video', names, status })
+                                    : new MediaSources({ kind: 'remote', names, status })
                             );
                         }}
                     />

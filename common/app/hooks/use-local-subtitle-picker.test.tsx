@@ -75,7 +75,7 @@ function Harness({ incoming, restored }: { incoming: Import; restored?: Import }
                     setDiscoveryKey({});
                     if (incoming.video) setSource(incoming.video);
                     if (incoming.files.length) setFiles(incoming.files);
-                    picker.onFilesImported(incoming.video, incoming.files);
+                    picker.onManualFilesImported(incoming.video, incoming.files);
                 }}
             >
                 Import

@@ -496,7 +496,7 @@ function App({
     const [subtitleImport] = useState(() => new SubtitleImportController(importOptions, setImportState));
     subtitleImport.options = importOptions;
     useEffect(() => () => subtitleImport.dispose(), [subtitleImport]);
-    useEffect(() => subtitleImport.pickerChanged(), [subtitleImport, subtitleTrackSelectorOpen]);
+    useEffect(() => subtitleImport.resetPickerDraft(), [subtitleImport, subtitleTrackSelectorOpen]);
     const subtitleProducer = useMemo(
         () =>
             subtitleImport.createProducer(importState.embeddedSelection, {
@@ -510,7 +510,7 @@ function App({
     const [lastError, setLastError] = useState<any>();
     const playerRef = useRef<PlayerRef>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const bufferedFileInputRef = useRef<HTMLInputElement>(null);
+    const draftFileInputRef = useRef<HTMLInputElement>(null);
 
     const handleError = useCallback(
         (message: any) => {
@@ -1073,7 +1073,7 @@ function App({
 
     const applySources = useCallback(
         (mediaSources: MediaSources) => {
-            const remoteSubtitles = mediaSources.subtitleSource.kind === 'video';
+            const remoteSubtitles = mediaSources.subtitleSource.kind === 'remote';
             if (remoteSubtitles || mediaSources.videoFile || mediaSources.subtitleFileNames.length > 0) {
                 setJumpToSubtitle(undefined);
             }
@@ -1135,8 +1135,14 @@ function App({
         (incoming: MediaSources) => subtitleImport.loadSources(incoming, { keepDraftHandles: false }),
         [subtitleImport]
     );
-    const handleFiles = useCallback((files: MediaSourceFile[]) => subtitleImport.loadFiles(files), [subtitleImport]);
-    const handleManualFiles = useCallback((files: FileWithId[]) => subtitleImport.importFiles(files), [subtitleImport]);
+    const handleFiles = useCallback(
+        (files: MediaSourceFile[]) => subtitleImport.loadSourceFiles(files),
+        [subtitleImport]
+    );
+    const handleManualFiles = useCallback(
+        (files: FileWithId[]) => subtitleImport.importManualFiles(files),
+        [subtitleImport]
+    );
     const handleRestoreLastSession = useCallback(() => subtitleImport.restoreSession(), [subtitleImport]);
 
     const handleDirectory = useCallback(
@@ -1390,18 +1396,18 @@ function App({
     );
 
     const handleFileSelector = useCallback(
-        async (params?: { buffered?: boolean }) => {
-            const buffered = params?.buffered ?? false;
-            const signal = subtitleImport.beginFileRequest({ buffered });
+        async ({ forDraft }: { forDraft: boolean }) => {
             if (!supportsFileSystemAccess()) {
-                if (params?.buffered) {
-                    bufferedFileInputRef.current?.click();
+                if (forDraft) {
+                    subtitleImport.beginDraftFileInputRequest();
+                    draftFileInputRef.current?.click();
                 } else {
                     fileInputRef.current?.click();
                 }
                 return;
             }
 
+            const signal = subtitleImport.fileRequestSignal({ forDraft });
             try {
                 const handles = await showFilePicker({
                     videoExtensions: [...videoExtensions],
@@ -1412,7 +1418,7 @@ function App({
 
                 const { files } = await resolveFiles(handles);
 
-                return await subtitleImport.acceptFileRequest(files, handles, { buffered, signal });
+                return await subtitleImport.acceptFileRequest(files, handles, { forDraft, signal });
             } catch (e) {
                 asbError('app/files', 'Failed to pick files via File System Access API:', e);
                 handleError(e);
@@ -1421,8 +1427,10 @@ function App({
         [subtitleImport, handleError]
     );
 
+    const handleOpenFiles = useCallback(() => handleFileSelector({ forDraft: false }), [handleFileSelector]);
+
     const fileSelector = useMemo(
-        () => new DefaultFileSelector(() => handleFileSelector({ buffered: true })),
+        () => new DefaultFileSelector(() => handleFileSelector({ forDraft: true })),
         [handleFileSelector]
     );
 
@@ -1435,19 +1443,19 @@ function App({
         }
     }, [handleManualFiles]);
 
-    const handleBufferedFileInputChange = useCallback(() => {
-        if (!subtitleImport.bufferedInputIsCurrent()) {
-            if (bufferedFileInputRef.current) bufferedFileInputRef.current.value = '';
+    const handleDraftFileInputChange = useCallback(() => {
+        if (!subtitleImport.draftFileInputIsCurrent()) {
+            if (draftFileInputRef.current) draftFileInputRef.current.value = '';
             return;
         }
-        const files = bufferedFileInputRef.current?.files;
+        const files = draftFileInputRef.current?.files;
 
         if (files && files.length > 0) {
             const filesWithId = [...files].map((file) => ({ file, id: uuidv4() }));
             if (subtitleImport.validateFiles(filesWithId)) {
                 fileSelector.publishFiles(filesWithId);
             }
-            bufferedFileInputRef.current!.value = '';
+            draftFileInputRef.current!.value = '';
         }
     }, [subtitleImport, fileSelector]);
 
@@ -1480,7 +1488,7 @@ function App({
             if (sources.videoFileUrl) handleUnloadVideo(sources.videoFileUrl);
             handleSources(
                 new MediaSources({
-                    kind: 'video',
+                    kind: 'remote',
                     names: subtitleFileNames,
                     status: extension.supportsProgressiveSubtitles ? 'loading' : 'complete',
                 })
@@ -1494,7 +1502,7 @@ function App({
 
     const handleSubtitleSourcesChanged = useCallback(
         (sourceStates: readonly SubtitleSourceState[]) => {
-            if (sources.subtitleSource.kind !== 'video') return;
+            if (sources.subtitleSource.kind !== 'remote') return;
             const names = subtitleSourceNames(sourceStates);
             const status = subtitleSourceStatus(sourceStates);
             if (
@@ -1504,7 +1512,7 @@ function App({
             ) {
                 return;
             }
-            setSources(new MediaSources({ kind: 'video', names, status }));
+            setSources(new MediaSources({ kind: 'remote', names, status }));
         },
         [sources]
     );
@@ -1683,7 +1691,7 @@ function App({
         [subtitleImport]
     );
     const handleOpenSubtitleTrackSelection = useCallback(
-        (files: FileWithId[]) => subtitleImport.stageFiles(files),
+        (files: FileWithId[]) => subtitleImport.stagePickerFiles(files),
         [subtitleImport]
     );
 
@@ -1890,8 +1898,8 @@ function App({
                                 hidden
                             />
                             <input
-                                ref={bufferedFileInputRef}
-                                onChange={handleBufferedFileInputChange}
+                                ref={draftFileInputRef}
+                                onChange={handleDraftFileInputChange}
                                 type="file"
                                 accept={inputAcceptFileExtensions}
                                 multiple
@@ -1909,7 +1917,7 @@ function App({
                                             appBarHidden={appBarHidden}
                                             videoElements={availableTabs ?? []}
                                             canRestoreLastSession={canRestoreLastFileSession}
-                                            onFileSelector={handleFileSelector}
+                                            onFileSelector={handleOpenFiles}
                                             onVideoElementSelected={handleVideoElementSelected}
                                             onRestoreLastSession={handleRestoreLastSession}
                                             onOpenSubtitleTrackSelector={openSubtitleTrackSelector}
@@ -1966,7 +1974,7 @@ function App({
                                             onClose={handleCloseStatisticsOverlay}
                                         />
                                     }
-                                    onLoadFiles={handleFileSelector}
+                                    onLoadFiles={handleOpenFiles}
                                     onLoadSubtitles={openSubtitleTrackSelector}
                                     tab={tab}
                                     availableTabs={availableTabs ?? []}
