@@ -7,11 +7,16 @@ import {
     tokenAnnotationStyleValues,
 } from '@project/common/settings';
 import type { DictionaryTrack } from '@project/common/settings';
+import {
+    ASB_TOKEN_BASE_CLASS,
+    ASB_TOKEN_HOVER_CLASS,
+    ASB_TOKEN_ON_CUE_HOVER_CLASS,
+    ASB_TOKEN_ON_WORD_HOVER_CLASS,
+} from '@project/common/annotations/dom-annotations';
 import type { InternalToken } from '@project/common/annotations/render-annotations';
 import {
     computeRichText,
     emptyRichTextWindow,
-    getAnnotationsHtml,
     getAnnotationsForRender,
     renderRichTextForSubtitle,
     renderRichTextOntoSubtitles,
@@ -46,15 +51,28 @@ const renderToken = (
         { tokens: [token] },
         {
             dt,
-            enabledAnnotations: annotations.richTextEnabledAnnotations,
+            enabledAnnotations: annotations.enabledAnnotations,
             allowAsciiReading,
             glossSize: annotations.glossSize,
         }
     );
-    if (!annotations.richTextEnabledAnnotations.color) {
+    if (!annotations.enabledAnnotations.color) {
         return rendered?.replace(/^<span data-asb-token-start="\d+">([\s\S]*)<\/span>$/, '$1');
     }
     return rendered;
+};
+
+const tokenVariantClasses = {
+    base: ASB_TOKEN_BASE_CLASS,
+    cue: ASB_TOKEN_ON_CUE_HOVER_CLASS,
+    word: ASB_TOKEN_ON_WORD_HOVER_CLASS,
+} as const;
+
+// Read one token's rendered variant without depending on CSS layout in jsdom.
+const tokenVariant = (html: string | undefined, variant: keyof typeof tokenVariantClasses) => {
+    const root = document.createElement('div');
+    root.innerHTML = html ?? '';
+    return root.querySelector(`.${tokenVariantClasses[variant]}`)?.innerHTML ?? html;
 };
 
 const makeInternalToken = (overrides: Partial<InternalToken> = {}): InternalToken => ({
@@ -149,14 +167,6 @@ for (const color of [false, true]) {
 }
 
 describe('rich text rendering', () => {
-    it('selects plain, rich, and hover-rich subtitle HTML without dropping fallback text', () => {
-        expect(getAnnotationsHtml('plain', undefined, undefined)).toBe('plain');
-        expect(getAnnotationsHtml('plain', '<b>rich</b>', undefined)).toBe('<b>rich</b>');
-        expect(getAnnotationsHtml('plain', undefined, '<i>hover</i>')).toBe(
-            '<span class="asbplayer-subtitle-text">plain</span><span class="asbplayer-subtitle-rich"><i>hover</i></span>'
-        );
-    });
-
     it('skips subtitles that cannot be rendered and rejects incomplete track configuration', () => {
         const tracks = makeDictionaryTracks(makeDictionaryTrack({ dictionaryColorizeSubtitles: true }));
         const withoutTokenization = makeSubtitle({ tokenization: undefined });
@@ -286,7 +296,7 @@ describe('rich text rendering', () => {
         expect(rendered.get(0)?.richText).toBe('<span data-asb-token-start="0">語</span>。');
     });
 
-    it('separates hover-only annotations into richTextOnHover', () => {
+    it('keeps hover-only annotations in each token’s cue variant', () => {
         const rendered = renderRichTextOntoSubtitles(
             [
                 makeSubtitle({
@@ -301,8 +311,8 @@ describe('rich text rendering', () => {
             { adaptiveWordVisibilityEnabled: true }
         );
 
-        expect(rendered.get(0)?.richText).toBe('<span data-asb-token-start="0">語学</span>');
-        expect(rendered.get(0)?.richTextOnHover).toContain('asb-token');
+        expect(tokenVariant(rendered.get(0)?.richText, 'base')).toBe('<span data-asb-token-start="0">語学</span>');
+        expect(tokenVariant(rendered.get(0)?.richText, 'cue')).toContain('asb-token');
     });
 
     it('renders reading and frequency annotations through computeRichText', () => {
@@ -573,12 +583,7 @@ describe('rich text rendering', () => {
                         makeInternalToken({ pos: [12, 16], gloss: 'abcdefghijklmnop (second)' }),
                     ],
                 },
-                {
-                    dt,
-                    enabledAnnotations: getAnnotationsForRender(dt, 'video').richTextEnabledAnnotations,
-                    allowAsciiReading: false,
-                    glossSize: getAnnotationsForRender(dt, 'video').glossSize,
-                }
+                { ...getAnnotationsForRender(dt, 'video'), allowAsciiReading: false }
             ) ?? '';
 
         const tokens = Array.from(root.children);
@@ -593,6 +598,52 @@ describe('rich text rendering', () => {
         ]);
     });
 
+    it('keeps shared gloss text independent of line placement and hover-only readings and frequencies', () => {
+        const dt = makeAnnotationTrack({ gloss: true, reading: true, frequency: true });
+        const config = dt.dictionaryTokenAnnotationConfig.video;
+        config.frequency.onHoverEnabled = true;
+        config.reading.onHoverEnabled = true;
+        config.reading.hoverPerToken = true;
+        const root = document.createElement('div');
+        root.innerHTML =
+            computeRichText(
+                '語学\n語学',
+                {
+                    tokens: [
+                        makeInternalToken({
+                            pos: [0, 2],
+                            gloss: 'abcdefghijkl',
+                            readings: [{ pos: [0, 2], reading: 'ごがく' }],
+                            frequency: 7,
+                        }),
+                        makeInternalToken({
+                            pos: [3, 5],
+                            gloss: 'abcdefghijkl',
+                            readings: [{ pos: [0, 2], reading: 'がくしゅう' }],
+                            frequency: 9,
+                        }),
+                    ],
+                },
+                { ...getAnnotationsForRender(dt, 'video'), allowAsciiReading: false }
+            ) ?? '';
+
+        for (const [index, token] of Array.from(root.children).entries()) {
+            for (const [variant, className] of Object.entries(tokenVariantClasses)) {
+                const branch = token.querySelector(`.${className}`)!;
+                expect(Array.from(branch.querySelectorAll('.asb-gloss-text'), (line) => line.textContent)).toEqual(
+                    index === 0 ? ['hijkl', 'abcdefg-'] : ['abcdefg-', 'hijkl']
+                );
+                expect(branch.querySelector('.asb-gloss-under') !== null).toBe(index === 1);
+                expect(branch.querySelector('.asb-frequency > rt')?.textContent).toBe(
+                    variant === 'base' ? undefined : ['7', '9'][index]
+                );
+                expect(branch.querySelector('.asb-reading > rt')?.textContent).toBe(
+                    variant === 'word' ? ['ごがく', 'がくしゅう'][index] : undefined
+                );
+            }
+        }
+    });
+
     it('renders glosses below the bottom subtitle line', () => {
         const dt = makeAnnotationTrack({ gloss: true });
         const rendered = computeRichText(
@@ -605,7 +656,7 @@ describe('rich text rendering', () => {
             },
             {
                 dt,
-                enabledAnnotations: getAnnotationsForRender(dt, 'video').richTextEnabledAnnotations,
+                enabledAnnotations: getAnnotationsForRender(dt, 'video').enabledAnnotations,
                 allowAsciiReading: false,
                 glossSize: getAnnotationsForRender(dt, 'video').glossSize,
             }
@@ -630,7 +681,7 @@ describe('rich text rendering', () => {
             },
             {
                 dt,
-                enabledAnnotations: getAnnotationsForRender(dt, 'video').richTextEnabledAnnotations,
+                enabledAnnotations: getAnnotationsForRender(dt, 'video').enabledAnnotations,
                 allowAsciiReading: false,
                 glossSize: getAnnotationsForRender(dt, 'video').glossSize,
             }
@@ -655,7 +706,7 @@ describe('rich text rendering', () => {
             },
             {
                 dt,
-                enabledAnnotations: getAnnotationsForRender(dt, 'video').richTextEnabledAnnotations,
+                enabledAnnotations: getAnnotationsForRender(dt, 'video').enabledAnnotations,
                 allowAsciiReading: false,
                 glossSize: getAnnotationsForRender(dt, 'video').glossSize,
             }
@@ -743,8 +794,8 @@ describe('rich text rendering', () => {
             { adaptiveWordVisibilityEnabled: true }
         ).get(0);
 
-        expect(rendered?.richText).toBe('<span data-asb-token-start="0">語学</span>');
-        expect(rendered?.richTextOnHover).toBe(
+        expect(tokenVariant(rendered?.richText, 'base')).toBe('<span data-asb-token-start="0">語学</span>');
+        expect(tokenVariant(rendered?.richText, 'cue')).toBe(
             '<span class="asb-token asb-token-highlight" data-asb-token-start="0" style="text-decoration: UNDERLINE #33445566 3px;">語学</span>'
         );
     });
@@ -803,7 +854,7 @@ describe('rich text rendering', () => {
             { adaptiveWordVisibilityEnabled: true }
         ).get(0);
 
-        expect(rendered?.richTextOnHover).toBe(
+        expect(tokenVariant(rendered?.richText, 'cue')).toBe(
             '<span class="asb-token asb-token-highlight" data-asb-token-start="0" style="text-decoration: UNDERLINE #33445566 3px;">RAIN</span>'
         );
     });
@@ -853,7 +904,7 @@ describe('rich text rendering', () => {
                 },
                 {
                     dt,
-                    enabledAnnotations: getAnnotationsForRender(dt, 'video').richTextEnabledAnnotations,
+                    enabledAnnotations: getAnnotationsForRender(dt, 'video').enabledAnnotations,
                     allowAsciiReading: false,
                     glossSize: getAnnotationsForRender(dt, 'video').glossSize,
                 }
@@ -880,68 +931,156 @@ describe('rich text rendering', () => {
         );
     });
 
-    it.each<HoverCase>([
-        [
-            'color',
-            '語学',
-            { color: true },
-            makeInternalToken({ pos: [0, 2], status: TokenStatus.UNKNOWN }),
-            '<span class="asb-token asb-token-highlight" data-asb-token-start="0" style="text-decoration: UNDERLINE #FFA500FF 3px;">語学</span>',
-        ],
-        [
-            'reading',
-            '語学',
-            { reading: true },
-            makeInternalToken({
-                pos: [0, 2],
-                status: TokenStatus.UNKNOWN,
-                readings: [{ pos: [0, 2], reading: 'ごがく' }],
-            }),
-            '<ruby class="asb-reading">語学<rt>ごがく</rt></ruby>',
-        ],
-        [
-            'frequency',
-            '語学',
-            { frequency: true },
-            makeInternalToken({ pos: [0, 2], status: TokenStatus.UNKNOWN, frequency: 7 }),
-            '<ruby class="asb-frequency">語学<rt>7</rt></ruby>',
-        ],
-        [
-            'gloss',
-            '語学',
-            { gloss: true },
-            makeInternalToken({
-                pos: [0, 2],
-                status: TokenStatus.UNKNOWN,
-                gloss: 'definition',
-            }),
-            '<ruby class="asb-gloss"><ruby class="asb-gloss">語学<rt><span class="asb-gloss-text">ion</span></rt></ruby><rt><span class="asb-gloss-text">definit-</span></rt></ruby>',
-        ],
-        [
-            'pitchAccent',
-            'かな',
-            { pitchAccent: true },
-            makeInternalToken({ pos: [0, 2], status: TokenStatus.UNKNOWN, pitchAccent: 1 }),
-            pitchAccentHtml(['か', 'な'], 'currentColor'),
-        ],
-    ])(
-        'renders %s only in richTextOnHover when its hover setting is enabled',
-        (annotation, text, toggles, token, html) => {
-            const dt = makeAnnotationTrack(toggles);
-            dt.dictionaryTokenAnnotationConfig.video[annotation].onHoverEnabled = true;
-            const rendered = renderRichTextOntoSubtitles(
-                [makeSubtitle({ text, tokenization: { tokens: [token] } })],
-                'video',
-                makeDictionaryTracks(dt),
-                { adaptiveWordVisibilityEnabled: true }
-            ).get(0);
+    describe.each([false, true])('hover per word: %s', (hoverPerToken) => {
+        it.each<HoverCase>([
+            [
+                'color',
+                '語学',
+                { color: true },
+                makeInternalToken({ pos: [0, 2], status: TokenStatus.UNKNOWN }),
+                '<span class="asb-token asb-token-highlight" data-asb-token-start="0" style="text-decoration: UNDERLINE #FFA500FF 3px;">語学</span>',
+            ],
+            [
+                'reading',
+                '語学',
+                { reading: true },
+                makeInternalToken({
+                    pos: [0, 2],
+                    status: TokenStatus.UNKNOWN,
+                    readings: [{ pos: [0, 2], reading: 'ごがく' }],
+                }),
+                '<ruby class="asb-reading">語学<rt>ごがく</rt></ruby>',
+            ],
+            [
+                'frequency',
+                '語学',
+                { frequency: true },
+                makeInternalToken({ pos: [0, 2], status: TokenStatus.UNKNOWN, frequency: 7 }),
+                '<ruby class="asb-frequency">語学<rt>7</rt></ruby>',
+            ],
+            [
+                'gloss',
+                '語学',
+                { gloss: true },
+                makeInternalToken({
+                    pos: [0, 2],
+                    status: TokenStatus.UNKNOWN,
+                    gloss: 'definition',
+                }),
+                '<ruby class="asb-gloss"><ruby class="asb-gloss">語学<rt><span class="asb-gloss-text">ion</span></rt></ruby><rt><span class="asb-gloss-text">definit-</span></rt></ruby>',
+            ],
+            [
+                'pitchAccent',
+                'かな',
+                { pitchAccent: true },
+                makeInternalToken({ pos: [0, 2], status: TokenStatus.UNKNOWN, pitchAccent: 1 }),
+                pitchAccentHtml(['か', 'な'], 'currentColor'),
+            ],
+        ])(
+            'renders %s in the requested hover variant for each display target',
+            (annotation, text, toggles, token, html) => {
+                const dt = makeAnnotationTrack(toggles);
+                for (const target of ['video', 'subtitlePlayer'] as const) {
+                    dt.dictionaryTokenAnnotationConfig[target][annotation].onHoverEnabled = true;
+                    dt.dictionaryTokenAnnotationConfig[target][annotation].hoverPerToken = hoverPerToken;
+                    const rendered = renderRichTextOntoSubtitles(
+                        [makeSubtitle({ text, tokenization: { tokens: [token] } })],
+                        target,
+                        makeDictionaryTracks(dt),
+                        { adaptiveWordVisibilityEnabled: true }
+                    ).get(0);
 
-            expect(rendered?.richText).toBe('<span data-asb-token-start="0">' + text + '</span>');
-            expect(rendered?.richTextOnHover).toBe(
-                toggles.color ? html : `<span data-asb-token-start="0">${html}</span>`
-            );
+                    expect(tokenVariant(rendered?.richText, 'base')).toBe(
+                        '<span data-asb-token-start="0">' + text + '</span>'
+                    );
+                    expect(tokenVariant(rendered?.richText, hoverPerToken ? 'word' : 'cue')).toBe(
+                        toggles.color ? html : `<span data-asb-token-start="0">${html}</span>`
+                    );
+                    if (hoverPerToken) expect(rendered?.richText).not.toContain(ASB_TOKEN_ON_CUE_HOVER_CLASS);
+                }
+            }
+        );
+    });
+
+    it.each(['video', 'subtitlePlayer'] as const)('combines cue-wide readings and per-word glosses in %s', (target) => {
+        const dt = makeAnnotationTrack({ reading: true, gloss: true, frequency: true });
+        const config = dt.dictionaryTokenAnnotationConfig[target];
+        config.reading.onHoverEnabled = true;
+        config.gloss.onHoverEnabled = true;
+        config.gloss.hoverPerToken = true;
+        const subtitle = makeSubtitle({
+            text: '語学学習',
+            tokenization: {
+                tokens: [
+                    makeInternalToken({
+                        pos: [0, 2],
+                        readings: [{ pos: [0, 2], reading: 'ごがく' }],
+                        gloss: 'language',
+                        frequency: 7,
+                    }),
+                    makeInternalToken({
+                        pos: [2, 4],
+                        readings: [{ pos: [0, 2], reading: 'がくしゅう' }],
+                        gloss: 'study',
+                        frequency: 9,
+                    }),
+                ],
+            },
+        });
+        const root = document.createElement('div');
+        root.innerHTML =
+            renderRichTextOntoSubtitles([subtitle], target, makeDictionaryTracks(dt), {
+                adaptiveWordVisibilityEnabled: true,
+            }).get(0)?.richText ?? '';
+        const tokens = root.querySelectorAll(`.${ASB_TOKEN_HOVER_CLASS}`);
+        expect(tokens).toHaveLength(2);
+        for (const token of tokens) {
+            const base = token.querySelector(`.${ASB_TOKEN_BASE_CLASS}`);
+            const cue = token.querySelector(`.${ASB_TOKEN_ON_CUE_HOVER_CLASS}`);
+            const word = token.querySelector(`.${ASB_TOKEN_ON_WORD_HOVER_CLASS}`);
+            expect(base?.querySelector('.asb-frequency')).not.toBeNull();
+            expect(base?.querySelector('.asb-reading')).toBeNull();
+            expect(base?.querySelector('.asb-gloss')).toBeNull();
+            expect(cue?.querySelector('.asb-reading')).not.toBeNull();
+            expect(cue?.querySelector('.asb-gloss')).toBeNull();
+            expect(word?.querySelector('.asb-reading')).not.toBeNull();
+            expect(word?.querySelector('.asb-frequency')).not.toBeNull();
+            expect(word?.querySelector('.asb-gloss')).not.toBeNull();
         }
-    );
+        expect(root.querySelector('.asb-token')).toBeNull();
+    });
+
+    it('preserves attached-particle pitch across per-word variants and invalidates cached hover modes', () => {
+        const dt = makeAnnotationTrack({ pitchAccent: true });
+        const config = dt.dictionaryTokenAnnotationConfig.video;
+        config.pitchAccent.onHoverEnabled = true;
+        const subtitle = makeSubtitle({
+            text: '学校は',
+            tokenization: {
+                tokens: [
+                    makeInternalToken({
+                        pos: [0, 2],
+                        readings: [{ pos: [0, 2], reading: 'がっこう' }],
+                        pitchAccent: 1,
+                    }),
+                    makeInternalToken({ pos: [2, 3], pitchAccent: null }),
+                ],
+            },
+        });
+        const tracks = makeDictionaryTracks(dt);
+        const window = renderRichTextWindow(emptyRichTextWindow(), [subtitle], 'video', tracks);
+        const previousHtml = window.buffer.get(0)?.richText;
+        const updated = makeAnnotationTrack({ pitchAccent: true });
+        updated.dictionaryTokenAnnotationConfig.video.pitchAccent.onHoverEnabled = true;
+        updated.dictionaryTokenAnnotationConfig.video.pitchAccent.hoverPerToken = true;
+        const rendered = renderRichTextForSubtitle(window, subtitle, 'video', makeDictionaryTracks(updated));
+        expect(rendered?.richText).not.toBe(previousHtml);
+        const root = document.createElement('div');
+        root.innerHTML = rendered?.richText ?? '';
+        const particle = root.querySelector(`.${ASB_TOKEN_ON_WORD_HOVER_CLASS} [data-asb-token-start="2"]`);
+        expect(particle?.querySelector('.asb-pitch-accent-mora-low')?.textContent).toBe('は');
+        expect(root.querySelector(`.${ASB_TOKEN_ON_CUE_HOVER_CLASS}`)).toBeNull();
+    });
 
     it('uses the selected annotation target when splitting hover and non-hover rich text', () => {
         const dt = makeAnnotationTrack({ reading: true });
@@ -970,14 +1109,14 @@ describe('rich text rendering', () => {
             { adaptiveWordVisibilityEnabled: true }
         ).get(0);
 
-        expect(videoRendered?.richText).toBe('<span data-asb-token-start="0">語学</span>');
-        expect(videoRendered?.richTextOnHover).toBe(
+        expect(tokenVariant(videoRendered?.richText, 'base')).toBe('<span data-asb-token-start="0">語学</span>');
+        expect(tokenVariant(videoRendered?.richText, 'cue')).toBe(
             '<span data-asb-token-start="0"><ruby class="asb-reading">語学<rt>ごがく</rt></ruby></span>'
         );
         expect(subtitlePlayerRendered?.richText).toBe(
             '<span data-asb-token-start="0"><ruby class="asb-reading">語学<rt>ごがく</rt></ruby></span>'
         );
-        expect(subtitlePlayerRendered?.richTextOnHover).toBeUndefined();
+        expect(subtitlePlayerRendered?.richText).not.toContain(ASB_TOKEN_HOVER_CLASS);
     });
 
     it('exposes target-specific annotation sizes as CSS custom properties', () => {

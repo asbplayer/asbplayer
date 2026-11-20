@@ -74,7 +74,6 @@ import {
     HoveredToken,
     mergeSubtitleAnnotations,
     renderRichTextOntoSubtitles,
-    getAnnotationsHtml,
     ASB_SUBTITLE_INDEX_ATTRIBUTE,
     ASB_PLAYBACK_PAUSED_CLASS,
     ASB_TOKEN_CONTAINER_CLASS,
@@ -232,11 +231,7 @@ const showingSubtitleHtml = (
     const rendered = renderRichTextOntoSubtitles([subtitle], 'video', dictionaryTracks, {
         adaptiveWordVisibilityEnabled,
     })?.get(subtitle.index);
-    return `<span class="${allSubtitleClasses}" style="${subtitleStyles}" data-track="${subtitle.track}" ${ASB_SUBTITLE_INDEX_ATTRIBUTE}="${subtitle.index}">${getAnnotationsHtml(
-        subtitle.text,
-        rendered?.richText,
-        rendered?.richTextOnHover
-    )}</span>`;
+    return `<span class="${allSubtitleClasses}" style="${subtitleStyles}" data-track="${subtitle.track}" ${ASB_SUBTITLE_INDEX_ATTRIBUTE}="${subtitle.index}">${rendered?.richText ?? subtitle.text}</span>`;
 };
 
 interface CachedShowingSubtitleProps {
