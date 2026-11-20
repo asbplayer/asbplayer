@@ -821,6 +821,54 @@ describe('SubtitleReader dfxp timestamp handling', () => {
 
         expect(subtitles).toHaveLength(0);
     });
+
+    const ttml2 = (attributes: string, begin: string, end: string) =>
+        ({
+            name: 'test.ttml2',
+            text: async () =>
+                `<tt xmlns="http://www.w3.org/ns/ttml" xmlns:ttp="http://www.w3.org/ns/ttml#parameter" ${attributes}>` +
+                `<body><div><p begin="${begin}" end="${end}">Hallo</p></div></body></tt>`,
+        }) as unknown as File;
+
+    it.each([
+        {
+            name: 'SMPTE frame timecodes at 25 fps',
+            attributes: 'ttp:frameRate="25"',
+            begin: '00:01:02:12',
+            end: '00:01:04:00',
+            start: 62480,
+            stop: 64000,
+        },
+        {
+            name: 'frame timecodes at the 30 fps default',
+            attributes: '',
+            begin: '01:00:00:15',
+            end: '01:00:01:00',
+            start: 3600500,
+            stop: 3601000,
+        },
+        {
+            name: 'a frame rate multiplier',
+            attributes: 'ttp:frameRate="24" ttp:frameRateMultiplier="1000 1001"',
+            begin: '00:00:01:12',
+            end: '00:00:02:00',
+            start: 1500,
+            stop: 2000,
+        },
+        { name: 'frame offsets', attributes: 'ttp:frameRate="25"', begin: '50f', end: '75f', start: 2000, stop: 3000 },
+        {
+            name: 'tick offsets',
+            attributes: 'ttp:tickRate="10000000"',
+            begin: '10000000t',
+            end: '25000000t',
+            start: 1000,
+            stop: 2500,
+        },
+    ])('reads $name', async ({ attributes, begin, end, start, stop }) => {
+        await expect(createReader().subtitles([{ fileParts: [ttml2(attributes, begin, end)] }])).resolves.toEqual([
+            { start, end: stop, text: 'Hallo', track: 0 },
+        ]);
+    });
 });
 
 describe('SubtitleReader WebVTT timestamp stripping', () => {

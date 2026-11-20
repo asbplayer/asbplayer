@@ -85,6 +85,11 @@ const netflixRubyTokenStartOffset = (base: string) => {
     return tokenStartOffset;
 };
 
+interface TtmlTiming {
+    tickRate?: number;
+    frameRate?: number;
+}
+
 interface SubtitleNode {
     start: number;
     end: number;
@@ -533,6 +538,7 @@ export default class SubtitleReader {
             const parser = new DOMParser();
             const doc = parser.parseFromString(text, 'application/xml');
             const nodes = this._xmlNodePath(doc.documentElement, ['body', 'div']);
+            const timing = this._ttmlTiming(doc.documentElement);
             const subtitles: SubtitleNode[] = [];
 
             for (let index = 0, length = nodes.length; index < length; index++) {
@@ -544,8 +550,8 @@ export default class SubtitleReader {
                     continue;
                 }
 
-                const start = this._parseTtmlTimestamp(beginAttribute);
-                const end = this._parseTtmlTimestamp(endAttribute);
+                const start = this._parseTtmlTimestamp(beginAttribute, timing);
+                const end = this._parseTtmlTimestamp(endAttribute, timing);
 
                 // Skip cues whose timestamps did not parse to a finite number.
                 if (!Number.isFinite(start) || !Number.isFinite(end)) {
@@ -636,7 +642,18 @@ export default class SubtitleReader {
             };
         });
     }
-    private _parseTtmlTimestamp(timestamp: string, tickRate?: number) {
+    // ttp:tickRate and the effective ttp:frameRate (times ttp:frameRateMultiplier; TTML's default is 30 fps).
+    private _ttmlTiming(root: Element): TtmlTiming {
+        const parameter = (name: string) =>
+            root.getAttributeNS('http://www.w3.org/ns/ttml#parameter', name) ?? root.getAttribute(`ttp:${name}`);
+        const [numerator, denominator] = (parameter('frameRateMultiplier') ?? '').trim().split(/\s+/).map(Number);
+        return {
+            tickRate: Number(parameter('tickRate') ?? '') || undefined,
+            frameRate: (Number(parameter('frameRate') ?? '') || 30) * ((numerator || 1) / (denominator || 1)),
+        };
+    }
+
+    private _parseTtmlTimestamp(timestamp: string, { tickRate, frameRate = 30 }: TtmlTiming = {}) {
         // Tick-based time (e.g. IMSC 1.1): "<ticks>t" resolved against ttp:tickRate.
         const tickMatch = /^([0-9]+(?:\.[0-9]+)?)t$/.exec(timestamp);
 
@@ -646,8 +663,8 @@ export default class SubtitleReader {
             return tickRate && tickRate > 0 ? Math.floor((ticks / tickRate) * 1000) : NaN;
         }
 
-        // Offset time with a metric unit, e.g. "1234ms", "12.5s", "90m", "1h".
-        const offsetMatch = /^([0-9]+(?:\.[0-9]+)?)(h|m|s|ms)$/.exec(timestamp);
+        // Offset time with a unit, e.g. "1234ms", "12.5s", "90m", "1h", "250f".
+        const offsetMatch = /^([0-9]+(?:\.[0-9]+)?)(h|m|s|ms|f)$/.exec(timestamp);
 
         if (offsetMatch) {
             const value = parseFloat(offsetMatch[1]);
@@ -661,11 +678,22 @@ export default class SubtitleReader {
                     return Math.floor(value * 1000);
                 case 'ms':
                     return Math.floor(value);
+                case 'f':
+                    return Math.floor((value / frameRate) * 1000);
             }
         }
 
-        // Clock time: [[HH:]MM:]SS[.mmm]
         const parts = timestamp.split(':');
+
+        // Frame-based clock time: HH:MM:SS:FF[.sub], common in broadcast-sourced subtitles.
+        // shortcut: uses TTML's default "media" time base; ttp:timeBase="smpte" with a 1000/1001 multiplier would
+        // drift by 0.1%. Handle it if a real file shows that drift.
+        if (parts.length === 4) {
+            const [hours, minutes, seconds, frames] = parts.map(Number);
+            return Math.floor(((hours * 60 + minutes) * 60 + seconds) * 1000 + (frames / frameRate) * 1000);
+        }
+
+        // Clock time: [[HH:]MM:]SS[.mmm]
         const milliseconds = Math.floor(parseFloat(parts[parts.length - 1]) * 1000);
         const minutes = parts.length < 2 ? 0 : Number(parts[parts.length - 2]);
         const hours = parts.length < 3 ? 0 : Number(parts[parts.length - 3]);
@@ -677,15 +705,11 @@ export default class SubtitleReader {
     // timestamps resolved against ttp:tickRate, and furigana as tts:ruby styles
     // (a container span wrapping a base span and a text span).
     private _parseNetflixImsc(text: string, track: number): SubtitleNode[] {
-        const parameterNamespace = 'http://www.w3.org/ns/ttml#parameter';
         const stylingNamespace = 'http://www.w3.org/ns/ttml#styling';
         const doc = new DOMParser().parseFromString(text, 'application/xml');
         const root = doc.documentElement;
 
-        // Resolve namespaced attributes by URI, falling back to the conventional prefix.
-        const tickRateAttribute =
-            root.getAttributeNS(parameterNamespace, 'tickRate') ?? root.getAttribute('ttp:tickRate');
-        const tickRate = Number(tickRateAttribute ?? '') || undefined;
+        const timing = this._ttmlTiming(root);
 
         // Map each style id to its ruby role (container/base/text), where defined.
         const rubyRoleByStyleId: { [id: string]: string } = {};
@@ -744,11 +768,9 @@ export default class SubtitleReader {
                 continue;
             }
 
-            const start = this._parseTtmlTimestamp(begin, tickRate);
+            const start = this._parseTtmlTimestamp(begin, timing);
             const stop =
-                end !== null
-                    ? this._parseTtmlTimestamp(end, tickRate)
-                    : start + this._parseTtmlTimestamp(dur!, tickRate);
+                end !== null ? this._parseTtmlTimestamp(end, timing) : start + this._parseTtmlTimestamp(dur!, timing);
 
             // Skip cues whose timestamps did not parse to a finite number.
             if (!Number.isFinite(start) || !Number.isFinite(stop)) {
