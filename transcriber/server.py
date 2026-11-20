@@ -2,6 +2,7 @@
 
     python transcriber/server.py                                  # serve on 127.0.0.1:8767
     python transcriber/server.py transcribe <audio> --key "<name>"  # transcribe a file you already have
+    python transcriber/server.py translate --key "<name>"           # translate a stored transcript
 
 It also serves GET /define?word=&sentence= (the word's English meaning in context), which the Anki dialog uses to fill
 the definition field. It runs your logged-in Codex CLI (ChatGPT plan) or, with ASB_DEFINE_PROVIDER=claude, Claude
@@ -189,6 +190,9 @@ def define(word, sentence):
     """The word's meaning as used in the sentence, in DEFINE_LANGUAGE, from the subscription CLI in DEFINE_PROVIDER."""
     cache_key = (word.strip().lower(), sentence.strip())
 
+    if not word.strip() and (stored := stored_translation(sentence)):
+        return stored
+
     if cache_key in _definitions:
         return _definitions[cache_key]
 
@@ -205,6 +209,19 @@ def define(word, sentence):
 
 
 def _lookup_definition(word, sentence, cache_key):
+    definition = run_cli(
+        DEFINE_PROMPT.format(word=word, sentence=sentence) if word else
+        f"Translate the following sentence into {DEFINE_LANGUAGE}. Reply only with the translation, "
+        f"without quotes or explanation.
+
+Sentence: {sentence}",
+        DEFINE_TIMEOUT,
+    )
+    _definitions[cache_key] = definition
+    return definition
+
+
+def run_cli(prompt, timeout):
     command = DEFINE_COMMANDS[DEFINE_PROVIDER]
     executable = shutil.which(command[0])  # npm installs .cmd shims on Windows
 
@@ -217,33 +234,125 @@ def _lookup_definition(word, sentence, cache_key):
         try:
             result = subprocess.run(
                 [executable, *(arg.replace("{out}", out).replace("{model}", DEFINE_MODEL) for arg in command[1:])],
-                input=(DEFINE_PROMPT.format(word=word, sentence=sentence) if word else
-                       f"Translate the following sentence into {DEFINE_LANGUAGE}. Reply only with the translation, "
-                       f"without quotes or explanation.\n\nSentence: {sentence}"),
+                input=prompt,
                 capture_output=True,
                 text=True,
                 encoding="utf-8",
                 cwd=workdir,
-                timeout=DEFINE_TIMEOUT,
+                timeout=timeout,
             )
         except subprocess.TimeoutExpired as e:
-            raise DefineError(504, f"{command[0]} took longer than {DEFINE_TIMEOUT} s") from e
+            raise DefineError(504, f"{command[0]} took longer than {timeout} s") from e
 
         if result.returncode != 0:
             raise DefineError(502, f"{command[0]} failed: {(result.stderr or result.stdout).strip()[-300:]}")
 
-        definition = (Path(out).read_text(encoding="utf-8") if os.path.exists(out) else result.stdout).strip()
+        answer = (Path(out).read_text(encoding="utf-8") if os.path.exists(out) else result.stdout).strip()
 
-    if not definition:
+    if not answer:
         raise DefineError(502, f"{command[0]} returned nothing")
 
-    _definitions[cache_key] = definition
-    return definition
+    return answer
 
 
-jobs = {}  # key ->{"state": queued|running|done|error, "progress": 0..1, "error"?: str}
-jobs_lock = threading.Lock()
-job_semaphore = threading.Semaphore(1)  # one GPU job at a time
+TRANSLATE_CHUNK = 60  # lines per CLI call: enough context, short enough to come back intact
+TRANSLATE_TIMEOUT = 300
+TRANSLATE_PROMPT = (
+    f"Translate these numbered Dutch subtitle lines into natural {DEFINE_LANGUAGE}, using the surrounding lines for "
+    "context. Reply with every line as 'number. translation', one per line, same numbers, nothing else.
+
+"
+)
+
+
+def translation_paths(key):
+    """(an English SRT you supply, the AI translation made when there is none); the first that exists is used."""
+    path = transcript_path(key)
+    lang = DEFINE_LANGUAGE.lower()[:2]
+    return path.with_name(f"{path.stem}.{lang}.srt"), path.with_name(f"{path.stem}.{lang}.ai.srt")
+
+
+def parse_srt(text):
+    """[{start, end, text}] with times in seconds, in file order."""
+    def seconds(stamp):
+        h, m, rest = stamp.strip().replace(",", ".").split(":")
+        return int(h) * 3600 + int(m) * 60 + float(rest)
+
+    cues = []
+    for block in re.split(r"
+\s*
+", text.replace("
+", "").strip()):
+        lines = block.strip().splitlines()
+        timing = next((i for i, line in enumerate(lines[:2]) if " --> " in line), None)
+        if timing is not None and lines[timing + 1 :]:
+            start, end = lines[timing].split(" --> ")
+            cues.append({"start": seconds(start), "end": seconds(end.split()[0]), "text": "
+".join(lines[timing + 1 :])})
+    return cues
+
+
+def translate_transcript(key):
+    """Writes <key>.<lang>.ai.srt, a line-by-line translation of the transcript, unless you supplied <key>.<lang>.srt."""
+    supplied, target = translation_paths(key)
+    if supplied.exists():
+        return supplied
+
+    source = parse_srt(transcript_path(key).read_text(encoding="utf-8"))
+    target.unlink(missing_ok=True)  # an old translation is of the old wording
+    translated = {}
+
+    for first in range(0, len(source), TRANSLATE_CHUNK):
+        chunk = list(enumerate(source[first : first + TRANSLATE_CHUNK], first + 1))
+        answer = run_cli(TRANSLATE_PROMPT + "
+".join(f"{i}. {c['text']}" for i, c in chunk), TRANSLATE_TIMEOUT)
+        numbers = {i for i, _ in chunk}
+        for match in re.finditer(r"^\s*(\d+)[.):]\s*(.+?)\s*$", answer, re.M):
+            if int(match[1]) in numbers:
+                translated[int(match[1])] = match[2]
+
+    target.write_text(
+        to_srt([{**c, "text": translated[i]} for i, c in enumerate(source, 1) if i in translated]), encoding="utf-8"
+    )
+    return target
+
+
+def _normalize(line):
+    return " ".join(line.split()).lower()
+
+
+def matching_lines(cue, english):
+    """The English lines spoken during the Dutch cue: those mostly inside it, or covering its midpoint."""
+    middle = (cue["start"] + cue["end"]) / 2
+    return [
+        e["text"]
+        for e in english
+        if e["start"] <= middle < e["end"]
+        or min(cue["end"], e["end"]) - max(cue["start"], e["start"]) > (e["end"] - e["start"]) / 2
+    ]
+
+
+def stored_translation(sentence):
+    """The sentence's English from a stored English SRT, if every line of it is a transcript line."""
+    lines = [_normalize(line) for line in sentence.splitlines() if line.strip()]
+    found = {}
+
+    # shortcut: rereads the transcripts per lookup; fine for dozens of episodes, index them if it gets slow.
+    for source in TRANSCRIPTS_DIR.glob("*.srt"):
+        if source.stem.rsplit(".", 1)[-1] in ("ai", DEFINE_LANGUAGE.lower()[:2]):
+            continue  # a translation, not a transcript
+        english_path = next((p for p in translation_paths(source.stem) if p.exists()), None)
+        if english_path is None:
+            continue
+        english = parse_srt(english_path.read_text(encoding="utf-8"))
+        for cue in parse_srt(source.read_text(encoding="utf-8")):
+            if _normalize(cue["text"]) in lines and (match := matching_lines(cue, english)):
+                found[_normalize(cue["text"])] = " ".join(" ".join(m.split()) for m in match)
+
+    if lines and all(line in found for line in lines):
+        return "
+".join(dict.fromkeys(found[line] for line in lines))  # one English line can span two Dutch ones
+    return None
 
 
 def run_job(key, audio_path, offset):
@@ -260,6 +369,11 @@ def run_job(key, audio_path, offset):
 
         with jobs_lock:
             jobs[key] = {"state": "done", "progress": 1.0}
+
+        try:
+            translate_transcript(key)
+        except Exception:
+            traceback.print_exc()  # sentence lookups fall back to one CLI call each
     except Exception as e:
         traceback.print_exc()
 
@@ -383,10 +497,16 @@ def main():
     file_parser.add_argument("audio")
     file_parser.add_argument("--key", required=True, help="the video name asbplayer shows for this episode")
     file_parser.add_argument("--offset", type=float, default=0.0, help="video time in seconds where the audio starts")
+    translate_parser = sub.add_parser("translate", help="translate a stored transcript for sentence lookups")
+    translate_parser.add_argument("--key", required=True)
     args = parser.parse_args()
 
     if args.command == "transcribe":
         print(transcribe(args.audio, args.key, args.offset))
+        return
+
+    if args.command == "translate":
+        print(translate_transcript(args.key))
         return
 
     print(f"[transcriber] serving on http://{HOST}:{PORT}, transcripts in {TRANSCRIPTS_DIR}")

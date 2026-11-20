@@ -1,9 +1,11 @@
 import unittest
 
 import sys
+import tempfile
+from pathlib import Path
 
 import server
-from server import DefineError, cues_from_words, define, srt_time, transcript_path
+from server import DefineError, cues_from_words, define, srt_time, to_srt, transcript_path
 
 
 def words(text, start=0.0, step=0.3):
@@ -89,6 +91,54 @@ class Define(unittest.TestCase):
         self.use("import sys; prompt = sys.stdin.read(); print('translation' if 'Translate the following sentence' in prompt else 'definition')")
         self.assertEqual(define('', 'Hij zet.'), 'translation')
         self.assertEqual(define('zet', 'Hij zet.'), 'definition')
+
+
+class StoredTranslations(Define):
+    def setUp(self):
+        super().setUp()
+        self.saved_dir = server.TRANSCRIPTS_DIR
+        self.dir = tempfile.TemporaryDirectory()
+        server.TRANSCRIPTS_DIR = Path(self.dir.name)
+        transcript_path("Ep.S1").write_text(
+            to_srt([{"start": 1, "end": 2, "text": "Wat is er dan?"}, {"start": 2, "end": 4, "text": "Het is weird, man."}]),
+            encoding="utf-8",
+        )
+
+    def tearDown(self):
+        server.TRANSCRIPTS_DIR = self.saved_dir
+        self.dir.cleanup()
+        super().tearDown()
+
+    def test_the_whole_transcript_is_translated_once_and_lookups_use_it(self):
+        self.use("import sys, re; print('\n'.join(f'{n}. EN {t}' for n, t in re.findall(r'^(\d+)\. (.+)$', sys.stdin.read(), re.M)))")
+        self.assertEqual(server.translate_transcript("Ep.S1").name, "Ep.S1.en.ai.srt")
+
+        self.use("raise SystemExit('should not be called')")
+        self.assertEqual(define("", "Het is  weird, man."), "EN Het is weird, man.")
+        self.assertEqual(define("", "Wat is er dan?
+Het is weird, man."), "EN Wat is er dan?
+EN Het is weird, man.")
+
+    def test_a_supplied_english_srt_wins_and_is_matched_by_time(self):
+        server.translation_paths("Ep.S1")[0].write_text(
+            "1
+00:00:00,900 --> 00:00:02,100
+What's happening?
+
+2
+00:00:02,200 --> 00:00:04,300
+It's weird, man.
+",
+            encoding="utf-8",
+        )
+        self.use("raise SystemExit('should not be called')")
+        self.assertEqual(server.translate_transcript("Ep.S1").name, "Ep.S1.en.srt")
+        self.assertEqual(define("", "Wat is er dan?"), "What's happening?")
+        self.assertEqual(define("", "Het is weird, man."), "It's weird, man.")
+
+    def test_unknown_sentences_still_ask_the_cli(self):
+        self.use("print('live')")
+        self.assertEqual(define("", "Iets anders."), "live")
 
 
 if __name__ == "__main__":
