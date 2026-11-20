@@ -1,5 +1,12 @@
 import { asbError } from '@project/common/util/log';
-import type { HttpPostMessage, Message, TabToExtensionCommand, VideoToExtensionCommand } from '@project/common';
+import type {
+    GetLocalDefinitionMessage,
+    HttpPostMessage,
+    Message,
+    MessageWithId,
+    TabToExtensionCommand,
+    VideoToExtensionCommand,
+} from '@project/common';
 
 export interface FetchOptions {
     videoSrc?: string;
@@ -99,6 +106,8 @@ export default class FrameBridgeClient {
                     case 'onServerMessage':
                         if (message.message.command === 'http-post') {
                             this._resolveHttpPost(message.message as HttpPostMessage);
+                        } else if (message.message.command === 'get-local-definition') {
+                            this._resolveLocalDefinition(message.message as GetLocalDefinitionMessage);
                         } else {
                             if (this.serverMessageListener) {
                                 void this.serverMessageListener(message.message).catch((error) =>
@@ -133,30 +142,39 @@ export default class FrameBridgeClient {
             return;
         }
 
-        let httpPostCommand: VideoToExtensionCommand<HttpPostMessage> | TabToExtensionCommand<HttpPostMessage>;
         const httpPostMessage: HttpPostMessage = {
             command: 'http-post',
             url: message.url,
             body: message.body,
             messageId: message.messageId,
         };
+        this._relayToExtension(httpPostMessage);
+    }
 
-        if (this.fetchOptions.videoSrc === undefined) {
-            httpPostCommand = {
-                sender: 'asbplayer-video-tab',
-                message: httpPostMessage,
-            };
-        } else {
-            httpPostCommand = {
-                sender: 'asbplayer-video',
-                message: httpPostMessage,
-                src: this.fetchOptions.videoSrc,
-            };
+    // Only frames that may fetch (the Anki dialog) may ask for definitions.
+    _resolveLocalDefinition(message: GetLocalDefinitionMessage) {
+        if (this.fetchOptions === undefined) {
+            return;
         }
 
-        browser.runtime.sendMessage(httpPostCommand, (postResponse) => {
-            const response = postResponse
-                ? { ...postResponse, messageId: message.messageId }
+        const definitionMessage: GetLocalDefinitionMessage = {
+            command: 'get-local-definition',
+            word: message.word,
+            sentence: message.sentence,
+            messageId: message.messageId,
+        };
+        this._relayToExtension(definitionMessage);
+    }
+
+    private _relayToExtension(message: MessageWithId) {
+        const command: VideoToExtensionCommand<MessageWithId> | TabToExtensionCommand<MessageWithId> =
+            this.fetchOptions?.videoSrc === undefined
+                ? { sender: 'asbplayer-video-tab', message }
+                : { sender: 'asbplayer-video', message, src: this.fetchOptions.videoSrc };
+
+        browser.runtime.sendMessage(command, (extensionResponse) => {
+            const response = extensionResponse
+                ? { ...extensionResponse, messageId: message.messageId }
                 : { error: browser.runtime.lastError?.message, messageId: message.messageId };
             this.frame.contentWindow?.postMessage(
                 {

@@ -221,6 +221,8 @@ interface AnkiDialogProps {
     showQuickSelectFtue?: boolean;
     onDismissShowQuickSelectFtue?: () => void;
     inTutorial?: boolean;
+    /** Looks up the word's meaning as used in the sentence, to pre-fill the definition field. */
+    onRequestDefinition?: (word: string, sentence: string) => Promise<string | undefined>;
 }
 
 const AnkiDialog = ({
@@ -251,6 +253,7 @@ const AnkiDialog = ({
     showQuickSelectFtue,
     onDismissShowQuickSelectFtue,
     inTutorial,
+    onRequestDefinition,
 }: AnkiDialogProps) => {
     const classes = useStyles();
     const [definition, setDefinition] = useState<string>('');
@@ -366,6 +369,43 @@ const AnkiDialog = ({
         initialWord,
         initialCustomFieldValues,
     ]);
+
+    // Pre-fill the definition with the word's meaning in this sentence, but never overwrite one you typed yourself.
+    const autoDefinitionRef = useRef<{ request: string; definition: string }>(undefined);
+    useEffect(() => {
+        const trimmedWord = word.trim();
+        const request = `${trimmedWord}
+${text}`;
+        const lastAuto = autoDefinitionRef.current;
+
+        if (
+            !onRequestDefinition ||
+            !trimmedWord ||
+            !text.trim() ||
+            lastAuto?.request === request ||
+            (definition !== '' && definition !== lastAuto?.definition)
+        ) {
+            return;
+        }
+
+        let cancelled = false;
+        // Wait until you stop typing the word.
+        const timeout = setTimeout(() => {
+            onRequestDefinition(trimmedWord, text)
+                .then((result) => {
+                    if (!cancelled && result) {
+                        autoDefinitionRef.current = { request, definition: result };
+                        setDefinition(result);
+                    }
+                })
+                .catch(() => {}); // Optional: no transcriber or no API key just means no pre-fill.
+        }, 600);
+
+        return () => {
+            cancelled = true;
+            clearTimeout(timeout);
+        };
+    }, [word, text, definition, onRequestDefinition]);
 
     useEffect(() => {
         anki.version()

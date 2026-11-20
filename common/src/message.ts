@@ -122,6 +122,13 @@ export interface GetLocalTranscriptMessage extends Message {
     readonly key: string;
 }
 
+/** Asks the local transcriber for a word's meaning as used in a sentence, for the Anki definition field. */
+export interface GetLocalDefinitionMessage extends MessageWithId {
+    readonly command: 'get-local-definition';
+    readonly word: string;
+    readonly sentence: string;
+}
+
 export interface EncodeMp3Message extends MessageWithId {
     readonly command: 'encode-mp3';
     readonly messageId: string;

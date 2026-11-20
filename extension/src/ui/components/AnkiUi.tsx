@@ -12,6 +12,7 @@ import type {
     AnkiUiBridgeResumeMessage,
     AnkiUiBridgeRewindMessage,
     CopyToClipboardMessage,
+    GetLocalDefinitionMessage,
     Message,
     UpdateStateMessage,
     FileModel,
@@ -282,6 +283,21 @@ export default function AnkiUi({ bridge }: Props) {
         [bridge]
     );
 
+    const handleRequestDefinition = useCallback(
+        async (word: string, sentence: string) => {
+            const message: GetLocalDefinitionMessage = {
+                command: 'get-local-definition',
+                word,
+                sentence,
+                messageId: uuidv4(),
+            };
+            // Claude can take a few seconds, longer than the bridge's 5 s default.
+            const response = await bridge.sendMessageFromServerAndExpectResponse(message, 30000);
+            return response?.definition as string | undefined;
+        },
+        [bridge]
+    );
+
     useEffect(() => {
         return bridge.addClientMessageListener((message) => {
             if (message.command === 'focus') {
@@ -402,6 +418,7 @@ export default function AnkiUi({ bridge }: Props) {
                         mp3Encoder={mp3Encoder}
                         lastSelectedExportMode={settings.lastSelectedAnkiExportMode}
                         inTutorial={inTutorial}
+                        onRequestDefinition={handleRequestDefinition}
                     />
                 )}
             </ThemeProvider>

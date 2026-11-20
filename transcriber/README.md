@@ -21,6 +21,16 @@ transcriber/.venv/Scripts/python transcriber/server.py transcribe episode.m4a --
 - **The key** is the video name asbplayer reports for the video, which the subtitle picker suggests as the file name. Examples: `Invincible.S3.E1 - <title>` on Prime, or the video title on YouTube.
 - **Storage:** transcripts go to `~/asbplayer-transcripts/<key>.srt`. Set `ASB_TRANSCRIPTS_DIR` to change the folder, `ASB_WHISPER_MODEL` to change the model, and `ASB_WHISPER_LANGUAGE` to change the language.
 
+## Definitions
+
+The Anki dialog fills its definition field with the target word's English meaning as used in the sentence, e.g. *zet* in "Hij zet de koffie op tafel." becomes "puts (zetten)". It does this by asking this server, which runs a logged-in subscription CLI, so there is no API key and no per-token billing:
+
+- **Default:** Codex (`codex login` with your ChatGPT plan), using `gpt-6.1-terra` on the Fast tier.
+- **Alternative:** set `ASB_DEFINE_PROVIDER=claude` to use Claude Code on your Claude plan, with `claude-opus-5-5`.
+- **Other settings:** `ASB_DEFINE_MODEL` picks another model, and `ASB_DEFINE_LANGUAGE` translates into a language other than English.
+
+A lookup takes about 5 seconds. Lookups are cached while the server runs, and a definition you typed yourself is never overwritten.
+
 ## Tests
 
 ```bash

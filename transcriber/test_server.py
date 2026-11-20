@@ -1,6 +1,9 @@
 import unittest
 
-from server import cues_from_words, srt_time, transcript_path
+import sys
+
+import server
+from server import DefineError, cues_from_words, define, srt_time, transcript_path
 
 
 def words(text, start=0.0, step=0.3):
@@ -40,6 +43,39 @@ class Formatting(unittest.TestCase):
         self.assertEqual(transcript_path('Invincible.S3.E1 - "Hi": you?').name, "Invincible.S3.E1 - _Hi__ you_.srt")
         with self.assertRaises(ValueError):
             transcript_path("  ")
+
+
+class Define(unittest.TestCase):
+    def setUp(self):
+        self.saved = dict(server.DEFINE_COMMANDS), server.DEFINE_PROVIDER
+        server._definitions.clear()
+
+    def tearDown(self):
+        server.DEFINE_COMMANDS.clear()
+        server.DEFINE_COMMANDS.update(self.saved[0])
+        server.DEFINE_PROVIDER = self.saved[1]
+
+    def use(self, script):
+        server.DEFINE_COMMANDS["stub"] = [sys.executable, "-c", script]
+        server.DEFINE_PROVIDER = "stub"
+
+    def test_returns_the_cli_answer_and_caches_it(self):
+        self.use("import sys; print('meaning of ' + sys.stdin.read().rsplit('Word: ', 1)[1].strip())")
+        self.assertEqual(define("zet", "Hij zet de koffie op tafel."), "meaning of zet")
+
+        self.use("raise SystemExit('should not run again')")
+        self.assertEqual(define("Zet ", "Hij zet de koffie op tafel."), "meaning of zet")
+
+    def test_a_failing_or_silent_cli_is_a_clear_error(self):
+        self.use("raise SystemExit('not logged in')")
+        with self.assertRaises(DefineError) as failed:
+            define("zet", "Hij zet.")
+        self.assertEqual(failed.exception.status, 502)
+        self.assertIn("not logged in", str(failed.exception))
+
+        self.use("pass")
+        with self.assertRaises(DefineError):
+            define("zet", "Hij zet.")
 
 
 if __name__ == "__main__":

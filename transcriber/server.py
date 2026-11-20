@@ -3,6 +3,10 @@
     python transcriber/server.py                                  # serve on 127.0.0.1:8767
     python transcriber/server.py transcribe <audio> --key "<name>"  # transcribe a file you already have
 
+It also serves GET /define?word=&sentence= (the word's English meaning in context), which the Anki dialog uses to fill
+the definition field. It runs your logged-in Codex CLI (ChatGPT plan) or, with ASB_DEFINE_PROVIDER=claude, Claude
+Code (Claude plan), so it uses your subscription rather than per-token API billing.
+
 Transcripts are stored as <ASB_TRANSCRIPTS_DIR or ~/asbplayer-transcripts>/<key>.srt, where the key is the video
 name asbplayer reports (e.g. "Invincible.S3.E1 - ...").
 """
@@ -12,6 +16,8 @@ import glob
 import json
 import os
 import re
+import shutil
+import subprocess
 import sys
 import tempfile
 import threading
@@ -25,6 +31,25 @@ PORT = 8767  # project.json services.transcriber
 MODEL = os.environ.get("ASB_WHISPER_MODEL", "large-v3")
 LANGUAGE = os.environ.get("ASB_WHISPER_LANGUAGE", "nl")
 TRANSCRIPTS_DIR = Path(os.environ.get("ASB_TRANSCRIPTS_DIR", Path.home() / "asbplayer-transcripts"))
+
+DEFINE_PROVIDER = os.environ.get("ASB_DEFINE_PROVIDER", "codex")
+DEFINE_LANGUAGE = os.environ.get("ASB_DEFINE_LANGUAGE", "English")
+DEFINE_PROMPT = (
+    "You write the definition field of a language-learning flashcard. You get a sentence and one word or phrase from "
+    f"it. Reply with only its {DEFINE_LANGUAGE} meaning as used in that sentence, in at most 12 words. If it is an "
+    "inflected or separable form, add the dictionary form in parentheses, e.g. 'shared (delen, past tense)'. "
+    "No quotes, no preamble, no explanation.\n\nSentence: {sentence}\nWord: {word}"
+)
+DEFINE_TIMEOUT = 60
+# The prompt goes in on stdin ("-" for codex). Run with no tools and no saved session: this is a lookup, not an agent.
+# Defaults are the most accurate of each plan's models on context-dependent Dutch words, measured 2026-11-20.
+DEFINE_COMMANDS = {
+    # "priority" is Codex's Fast tier (1.5x on gpt-6.1-terra, no extra usage listed).
+    "codex": ["codex", "exec", "--ephemeral", "--skip-git-repo-check", "-s", "read-only", "-m", "{model}",
+              "-c", "model_reasoning_effort=low", "-c", 'service_tier="priority"', "-o", "{out}", "-"],
+    "claude": ["claude", "-p", "--model", "{model}", "--effort", "low", "--tools", "", "--no-session-persistence"],
+}
+DEFINE_MODEL = os.environ.get("ASB_DEFINE_MODEL", {"codex": "gpt-6.1-terra", "claude": "claude-opus-5-5"}.get(DEFINE_PROVIDER))
 
 MAX_CHARS = 90  # about two subtitle lines
 MAX_SECONDS = 7.0
@@ -135,7 +160,57 @@ def transcribe(audio_path, key, offset=0.0, on_progress=None):
     return path
 
 
-jobs = {}  # key -> {"state": queued|running|done|error, "progress": 0..1, "error"?: str}
+class DefineError(Exception):
+    def __init__(self, status, message):
+        super().__init__(message)
+        self.status = status
+
+
+_definitions = {}  # (word, sentence) -> definition, so retyping or reopening a card costs nothing
+
+
+def define(word, sentence):
+    """The word's meaning as used in the sentence, in DEFINE_LANGUAGE, from the subscription CLI in DEFINE_PROVIDER."""
+    cache_key = (word.strip().lower(), sentence.strip())
+
+    if cache_key in _definitions:
+        return _definitions[cache_key]
+
+    command = DEFINE_COMMANDS[DEFINE_PROVIDER]
+    executable = shutil.which(command[0])  # npm installs .cmd shims on Windows
+
+    if executable is None:
+        raise DefineError(503, f"{command[0]} CLI not found; install it and log in")
+
+    with tempfile.TemporaryDirectory() as workdir:  # nothing for the CLI to look at
+        out = os.path.join(workdir, "out.txt")
+
+        try:
+            result = subprocess.run(
+                [executable, *(arg.replace("{out}", out).replace("{model}", DEFINE_MODEL) for arg in command[1:])],
+                input=DEFINE_PROMPT.format(word=word, sentence=sentence),
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                cwd=workdir,
+                timeout=DEFINE_TIMEOUT,
+            )
+        except subprocess.TimeoutExpired as e:
+            raise DefineError(504, f"{command[0]} took longer than {DEFINE_TIMEOUT} s") from e
+
+        if result.returncode != 0:
+            raise DefineError(502, f"{command[0]} failed: {(result.stderr or result.stdout).strip()[-300:]}")
+
+        definition = (Path(out).read_text(encoding="utf-8") if os.path.exists(out) else result.stdout).strip()
+
+    if not definition:
+        raise DefineError(502, f"{command[0]} returned nothing")
+
+    _definitions[cache_key] = definition
+    return definition
+
+
+jobs = {}  # key ->{"state": queued|running|done|error, "progress": 0..1, "error"?: str}
 jobs_lock = threading.Lock()
 job_semaphore = threading.Semaphore(1)  # one GPU job at a time
 
@@ -188,6 +263,14 @@ class Handler(BaseHTTPRequestHandler):
                     self._send(200, path.read_bytes(), "text/plain; charset=utf-8")
                 else:
                     self._send(404)
+            elif url.path == "/define":
+                word = query.get("word", [""])[0].strip()
+                sentence = query.get("sentence", [""])[0].strip()
+
+                if not word or not sentence:
+                    raise ValueError("word and sentence are required")
+
+                self._send(200, json.dumps({"definition": define(word, sentence)}).encode())
             elif url.path == "/jobs":
                 key = self._key(query)
 
@@ -197,6 +280,8 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(200 if job else 404, json.dumps(job or {}).encode())
             else:
                 self._send(404)
+        except DefineError as e:
+            self._send(e.status, json.dumps({"error": str(e)}).encode())
         except ValueError as e:
             self._send(400, json.dumps({"error": str(e)}).encode())
 
