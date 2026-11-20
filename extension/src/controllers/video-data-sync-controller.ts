@@ -271,10 +271,13 @@ export default class VideoDataSyncController {
                     return;
                 }
 
-                void this._withLocalTranscript(data).then((withTranscript) => {
-                    // Drop it if newer data arrived while the transcriber was being asked.
-                    if (sequence === this._syncedDataSequence) void this._setSyncedData(withTranscript);
-                });
+                void this._withLocalTranscript(data)
+                    // The transcript is optional: any failure must still deliver the site's own tracks.
+                    .catch(() => data)
+                    .then((withTranscript) => {
+                        // Drop it if newer data arrived while the transcriber was being asked.
+                        if (sequence === this._syncedDataSequence) void this._setSyncedData(withTranscript);
+                    });
             };
             this._dataReceivedEventTarget = eventTarget;
             eventTarget.addEventListener('asbplayer-synced-data', this._dataReceivedListener, false);
@@ -449,7 +452,11 @@ export default class VideoDataSyncController {
             message: { command: 'get-local-transcript', key: data.basename },
             src: this._context.registeredVideoSrc,
         };
-        const srt: string | undefined = await browser.runtime.sendMessage(command).catch(() => undefined);
+        // Don't hold up the subtitle picker if the background never answers.
+        const srt: string | undefined = await Promise.race([
+            browser.runtime.sendMessage(command),
+            new Promise<undefined>((resolve) => setTimeout(resolve, 3000)),
+        ]);
 
         if (!srt) {
             return data;
