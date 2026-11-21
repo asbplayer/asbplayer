@@ -43,6 +43,7 @@ import type {
     TokenStatusConfig,
     TextSubtitleSettings,
     DictionaryTrack,
+    TokenAnnotationConfigOptions,
     TokenAnnotationTriggerOptions,
     EnabledAnnotations,
     TokenAnnotationConfigTarget,
@@ -93,7 +94,12 @@ import {
 import type { DictionaryProvider } from '@project/common/dictionary-db';
 import DictionaryImport from '@project/common/components/DictionaryImport';
 import type { InternalToken } from '@project/common/annotations';
-import { ASB_TOKEN_HIGHLIGHT_CLASS, computeRichText, getAnnotationsForRender } from '@project/common/annotations';
+import {
+    ASB_TOKEN_HIGHLIGHT_CLASS,
+    bindNativeTokenSelection,
+    computeRichText,
+    getAnnotationsForRender,
+} from '@project/common/annotations';
 import WordBrowserDialog from '@project/common/components/WordBrowserDialog';
 import '@project/common/app/components/subtitles.css';
 import SettingsGroups from '@project/common/components/SettingsGroups';
@@ -198,11 +204,18 @@ const tokenAnnotationSelection = (
     states: tokenAnnotationStates.filter((state) => config.onStates[state][annotation]),
 });
 
+type TokenAnnotationHoverMode = 'disabled' | 'enabled' | 'word';
+
+const tokenAnnotationHoverMode = (config: TokenAnnotationConfigOptions): TokenAnnotationHoverMode => {
+    if (!config.onHoverEnabled) return 'disabled';
+    return config.hoverPerToken ? 'word' : 'enabled';
+};
+
 const withTokenAnnotationHoverMode = (
     config: DictionaryTokenAnnotationConfig,
     target: TokenAnnotationConfigTarget,
     annotation: TokenAnnotationHoverKey,
-    mode: 'disabled' | 'enabled' | 'word'
+    mode: TokenAnnotationHoverMode
 ): DictionaryTokenAnnotationConfig => ({
     ...config,
     [target]: {
@@ -534,6 +547,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
     anki,
 }) => {
     const { t } = useTranslation();
+    useEffect(() => bindNativeTokenSelection(document), []);
     const { ankiConnectUrl, ankiConnectApiKey, dictionaryTracks } = settings;
     const initialDictionaryTracksRef = useRef(dictionaryTracks);
     const [tokenAnnotationTarget, setTokenAnnotationTarget] = useState<TokenAnnotationConfigTarget>('video');
@@ -669,11 +683,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
         [dictionaryTracks, onSettingChanged, selectedDictionaryTrack]
     );
     const updateDictionaryTokenHoverAnnotation = useCallback(
-        (
-            target: TokenAnnotationConfigTarget,
-            annotation: TokenAnnotationHoverKey,
-            mode: 'disabled' | 'enabled' | 'word'
-        ) => {
+        (target: TokenAnnotationConfigTarget, annotation: TokenAnnotationHoverKey, mode: TokenAnnotationHoverMode) => {
             updateDictionaryTokenAnnotationConfig((config) =>
                 withTokenAnnotationHoverMode(config, target, annotation, mode)
             );
@@ -2090,7 +2100,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                 key={annotation}
                                 select
                                 label={t(labelKey)}
-                                value={!config.onHoverEnabled ? 'disabled' : config.hoverPerToken ? 'word' : 'enabled'}
+                                value={tokenAnnotationHoverMode(config)}
                                 size="small"
                                 onChange={(e) => {
                                     const mode = e.target.value;

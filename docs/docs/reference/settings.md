@@ -600,8 +600,8 @@ This setting only applies if [**Display word frequency**](#display-word-frequenc
 Choose separately for video and subtitle list:
 
 - **Disabled** displays word frequency normally.
-- **Enabled** reveals them throughout the cue on hover.
-- **Per word** reveals them only for the hovered or keyboard-selected word.
+- **Enabled** reveals it throughout the cue on hover.
+- **Per word** reveals it only for the hovered or keyboard-selected word.
 
 Existing annotation eligibility rules still apply.
 
@@ -628,8 +628,8 @@ This setting only applies if [**Display pitch accent (Japanese)**](#display-pitc
 Choose separately for video and subtitle list:
 
 - **Disabled** displays pitch accent normally.
-- **Enabled** reveals them throughout the cue on hover.
-- **Per word** reveals them only for the hovered or keyboard-selected word.
+- **Enabled** reveals it throughout the cue on hover.
+- **Per word** reveals it only for the hovered or keyboard-selected word.
 
 Existing annotation eligibility rules still apply.
 

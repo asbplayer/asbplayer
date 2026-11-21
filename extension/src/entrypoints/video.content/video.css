@@ -91,6 +91,18 @@ div.asbplayer-fullscreen-subtitles > span {
     display: inline;
 }
 
+:is(.asb-subtitles, .asbplayer-subtitles, .asbplayer-fullscreen-subtitles)
+    .asb-token-hover:where(:not(.asb-token-selected)):has(> .asb-token-native-selection)
+    > :not(.asb-token-native-selection) {
+    display: none;
+}
+
+:is(.asb-subtitles, .asbplayer-subtitles, .asbplayer-fullscreen-subtitles)
+    .asb-token-hover:where(:not(.asb-token-selected)):has(> .asb-token-native-selection)
+    > .asb-token-native-selection {
+    display: inline;
+}
+
 /* Document focus is tracked on our overlays without making the host body focusable. */
 .asb-overlay-document-focused
     :is(.asbplayer-subtitles, .asbplayer-fullscreen-subtitles)

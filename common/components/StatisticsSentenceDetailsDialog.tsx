@@ -26,6 +26,7 @@ import {
 import type { RichTextWindow, RenderedRichText } from '@project/common/annotations';
 import {
     ASB_TOKEN_HIGHLIGHT_CLASS,
+    bindNativeTokenSelection,
     renderRichTextWindow,
     emptyRichTextWindow,
     renderRichTextForSubtitle,
@@ -291,6 +292,7 @@ export default function StatisticsSentenceDetailsDialog({
     onMineSentence,
 }: Props) {
     const { t } = useTranslation();
+    useEffect(() => (open ? bindNativeTokenSelection(document) : undefined), [open]);
     const [sortState, setSortState] = useState<DictionaryStatisticsSentenceSortState>(
         defaultDictionaryStatisticsSentenceSortState()
     );

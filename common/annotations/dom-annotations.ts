@@ -15,6 +15,7 @@ export const ASB_TOKEN_ON_CUE_HOVER_CLASS = 'asb-token-on-cue-hover';
 export const ASB_TOKEN_ON_WORD_HOVER_CLASS = 'asb-token-on-word-hover';
 export const ASB_TOKEN_SELECTED_CLASS = 'asb-token-selected';
 export const ASB_TOKEN_AUTO_PAUSE_SELECTED_CLASS = 'asb-token-auto-pause-selected';
+const ASB_TOKEN_NATIVE_SELECTION_CLASS = 'asb-token-native-selection';
 export const ASB_SUBTITLE_TOKEN_SELECTED_CLASS = 'asb-subtitle-token-selected';
 export const ASB_SUBTITLE_INDEX_ATTRIBUTE = 'data-asb-subtitle-index';
 export const ASB_TOKEN_START_ATTRIBUTE = 'data-asb-token-start';
@@ -44,6 +45,121 @@ const tokenSelectionScopeFor = (element: Element): ParentNode =>
     element.closest(tokenSelectionScopeSelector) ?? element.ownerDocument;
 
 const hoverWordSelector = `.${ASB_TOKEN_HOVER_CLASS}`;
+const hoverBranchSelector = `${hoverWordSelector} > :is(.${ASB_TOKEN_BASE_CLASS}, .${ASB_TOKEN_ON_CUE_HOVER_CLASS}, .${ASB_TOKEN_ON_WORD_HOVER_CLASS})`;
+
+const hoverBranchFor = (node: Node | null) => {
+    const element = node instanceof Element ? node : node?.parentElement;
+    const branch = element?.closest(hoverBranchSelector);
+    return branch?.parentElement?.classList.contains(ASB_TOKEN_SELECTED_CLASS) ? null : (branch ?? null);
+};
+
+const nativeSelectionBindingsByDocument = new WeakMap<
+    Document,
+    { shadowRootSources: Set<() => readonly ShadowRoot[]>; dispose: () => void }
+>();
+
+/**
+ * Pins active hover branches during native text selection so mouse movement cannot hide selection endpoints.
+ * @returns an unsubscribe callback.
+ */
+export const bindNativeTokenSelection = (
+    document: Document,
+    getShadowRoots: () => readonly ShadowRoot[] = () => []
+) => {
+    let binding = nativeSelectionBindingsByDocument.get(document);
+    if (!binding) {
+        const shadowRootSources = new Set<() => readonly ShadowRoot[]>();
+        binding = {
+            shadowRootSources,
+            dispose: trackNativeTokenSelection(document, () =>
+                Array.from(shadowRootSources).flatMap((roots) => roots())
+            ),
+        };
+        nativeSelectionBindingsByDocument.set(document, binding);
+    }
+    const source = () => getShadowRoots();
+    binding.shadowRootSources.add(source);
+    return () => {
+        if (!binding.shadowRootSources.delete(source) || binding.shadowRootSources.size) return;
+        binding.dispose();
+        nativeSelectionBindingsByDocument.delete(document);
+    };
+};
+
+const appendSelectionEndpoints = (selection: Selection | null | undefined, endpoints: (Node | null)[]) => {
+    if (selection && !selection.isCollapsed) endpoints.push(selection.anchorNode, selection.focusNode);
+};
+
+const nativeSelectionEndpoints = (document: Document, shadowRoots: readonly ShadowRoot[]) => {
+    const selection:
+        | (Selection & { getComposedRanges?: (options: { shadowRoots: readonly ShadowRoot[] }) => StaticRange[] })
+        | null = document.getSelection();
+    if (!selection?.rangeCount) return [];
+
+    // Document-level endpoints can be retargeted to a shadow host rather than the selected text.
+    if (shadowRoots.length && selection.getComposedRanges) {
+        return selection
+            .getComposedRanges({ shadowRoots })
+            .flatMap((range) => (range.collapsed ? [] : [range.startContainer, range.endContainer]));
+    }
+
+    const endpoints: (Node | null)[] = [];
+    appendSelectionEndpoints(selection, endpoints);
+    for (const root of shadowRoots) {
+        const shadowRoot: ShadowRoot & { getSelection?: () => Selection | null } = root;
+        appendSelectionEndpoints(shadowRoot.getSelection?.(), endpoints);
+    }
+    return endpoints;
+};
+
+const trackNativeTokenSelection = (document: Document, getShadowRoots: () => readonly ShadowRoot[]) => {
+    let pressedBranch: Element | null = null;
+    let pinned = new Set<Element>();
+
+    const sync = () => {
+        const branchByWord = new Map<Element, Element>();
+        const pin = (branch: Element | null) => {
+            const word = branch?.parentElement;
+            if (branch?.isConnected && word && !branchByWord.has(word)) branchByWord.set(word, branch);
+        };
+        pin(pressedBranch); // Pin before the browser starts dragging, so the first mouse move cannot hide the anchor
+        for (const node of nativeSelectionEndpoints(document, getShadowRoots())) {
+            pin(hoverBranchFor(node));
+        }
+        const branches = new Set(branchByWord.values());
+        for (const branch of pinned) {
+            if (!branches.has(branch)) branch.classList.remove(ASB_TOKEN_NATIVE_SELECTION_CLASS);
+        }
+        for (const branch of branches) {
+            if (!pinned.has(branch)) branch.classList.add(ASB_TOKEN_NATIVE_SELECTION_CLASS);
+        }
+        pinned = branches;
+    };
+
+    const press = (event: MouseEvent) => {
+        if (event.button !== 0) return;
+        const target = event.composedPath()[0];
+        pressedBranch = target instanceof Node ? hoverBranchFor(target) : null;
+        if (pressedBranch || pinned.size) sync();
+    };
+    const release = () => {
+        if (!pressedBranch) return;
+        pressedBranch = null;
+        sync();
+    };
+
+    document.addEventListener('mousedown', press, true);
+    document.addEventListener('mouseup', release, true);
+    document.addEventListener('selectionchange', sync);
+    document.defaultView?.addEventListener('blur', release);
+    return () => {
+        document.removeEventListener('mousedown', press, true);
+        document.removeEventListener('mouseup', release, true);
+        document.removeEventListener('selectionchange', sync);
+        document.defaultView?.removeEventListener('blur', release);
+        for (const branch of pinned) branch.classList.remove(ASB_TOKEN_NATIVE_SELECTION_CLASS);
+    };
+};
 
 export class HoveredToken {
     private _hover: { readonly element: HTMLElement; readonly x: number; readonly y: number } | null = null;

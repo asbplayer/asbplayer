@@ -22,6 +22,7 @@ import { incrementallyFindShadowRoots, shadowRootHosts } from '@/services/shadow
 import { isFirefoxBuild } from '@/services/build-flags';
 import { mediaSourceIdentity } from '@/pages/util';
 import { configureExtensionLogProvider } from '@/services/extension-log-provider';
+import { bindNativeTokenSelection } from '@project/common/annotations';
 
 import './video.css';
 
@@ -38,8 +39,17 @@ export default defineContentScript({
     allFrames: true,
     runAt: 'document_idle',
 
-    main() {
+    main(ctx) {
         configureExtensionLogProvider();
+        const rootsWithVideoStyles = new WeakSet<ShadowRoot>();
+        ctx.onInvalidated(
+            bindNativeTokenSelection(document, () =>
+                shadowRootHosts.flatMap((host) => {
+                    const root = host.shadowRoot;
+                    return root && document.contains(host) && rootsWithVideoStyles.has(root) ? [root] : [];
+                })
+            )
+        );
 
         const extensionSettingsStorage = new ExtensionSettingsStorage();
         const settingsProvider = new SettingsProvider(extensionSettingsStorage);
@@ -73,7 +83,6 @@ export default defineContentScript({
                 .catch((error) => asbError('video', 'Failed to load key bindings:', error));
         };
 
-        const shadowRootsWithBindings: ShadowRoot[] = [];
         const candidateIds = new WeakMap<HTMLMediaElement, number>();
         let nextCandidateId = 0;
         const candidateIdFor = (video: HTMLMediaElement) => {
@@ -86,16 +95,16 @@ export default defineContentScript({
         };
 
         const injectStylesIntoShadowRoot = async (shadowRoot: ShadowRoot, cssPath: string) => {
-            for (const s of shadowRootsWithBindings) {
-                if (s.isSameNode(shadowRoot)) {
-                    return;
-                }
+            if (rootsWithVideoStyles.has(shadowRoot)) return;
+            rootsWithVideoStyles.add(shadowRoot);
+            try {
+                const sheet = new CSSStyleSheet();
+                await sheet.replace(await (await fetch(cssPath)).text());
+                shadowRoot.adoptedStyleSheets = [...shadowRoot.adoptedStyleSheets, sheet];
+            } catch (error) {
+                rootsWithVideoStyles.delete(shadowRoot);
+                asbError('video', 'Failed to inject video styles into shadow root:', error);
             }
-
-            shadowRootsWithBindings.push(shadowRoot);
-            const sheet = new CSSStyleSheet();
-            await sheet.replace(await (await fetch(cssPath)).text());
-            shadowRoot.adoptedStyleSheets = [...shadowRoot.adoptedStyleSheets, sheet];
         };
 
         const bind = async () => {
