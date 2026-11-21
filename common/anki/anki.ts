@@ -3,12 +3,17 @@ import { extractText, fromBatches, sourceString } from '@project/common/util';
 import { AudioClip } from '@project/common/audio-clip';
 import type { AnkiExportMode, CardModel, Progress, Fetcher } from '@project/common';
 import { MediaFragment, HttpFetcher } from '@project/common';
+import { ankiSettingsFieldKeys, ankiSubtitleFieldKeys } from '@project/common/settings';
 import type { AnkiSettings, AnkiSettingsFieldKey } from '@project/common/settings';
 import sanitize from 'sanitize-filename';
 
 const ANKI_CARDS_INFO_BATCH_SIZE = 10;
 const ANKI_NOTES_INFO_BATCH_SIZE = 100;
 const ANKI_MOD_BATCH_SIZE = 10000;
+
+const nonSubtitleFieldKeys = ankiSettingsFieldKeys.filter(
+    (fieldKey) => !ankiSubtitleFieldKeys.some((subtitleKey) => fieldKey === subtitleKey)
+);
 
 const ankiQuerySpecialCharacters = ['"', '*', '_', '\\', ':'];
 const ankiQueryDeckSpecialCharacters = ['"', '*', '_', '\\'];
@@ -514,12 +519,18 @@ export class Anki {
         ankiConnectUrl,
         noteId,
     }: ExportParams) {
-        const fields: { [key: string]: string } = {};
+        const subtitleTextByFieldKey: Record<(typeof ankiSubtitleFieldKeys)[number], string | undefined> = {
+            sentenceField: text,
+            track1Field: track1,
+            track2Field: track2,
+            track3Field: track3,
+        };
+        const subtitleFields: Record<string, string> = {};
+        for (const fieldKey of ankiSubtitleFieldKeys) {
+            this._appendField(subtitleFields, this.settingsProvider[fieldKey], subtitleTextByFieldKey[fieldKey], true);
+        }
 
-        this._appendField(fields, this.settingsProvider.sentenceField, text, true);
-        this._appendField(fields, this.settingsProvider.track1Field, track1, true);
-        this._appendField(fields, this.settingsProvider.track2Field, track2, true);
-        this._appendField(fields, this.settingsProvider.track3Field, track3, true);
+        const fields = { ...subtitleFields };
         this._appendField(fields, this.settingsProvider.definitionField, definition, true);
         this._appendField(fields, this.settingsProvider.wordField, word, false);
         this._appendField(fields, this.settingsProvider.sourceField, source, false);
@@ -555,10 +566,12 @@ export class Anki {
         const gui = mode === 'gui';
         const updateLast = mode === 'updateLast';
         const isUpdate = updateLast || mode === 'updateSpecific';
-        const updateLastForSameLine = updateLast && this.settingsProvider.updateLastCardForSameSubtitle;
+        const updateMatchingMedia = updateLast && this.settingsProvider.updateLastCardForSameSubtitle;
+        const updateMatchingSentences = updateLast && this.settingsProvider.updateLastCardSentenceForSameSubtitle;
+        const updateMatchingNotes = updateMatchingMedia || updateMatchingSentences;
 
         const recentNotes = updateLast
-            ? await this.findNotes(updateLastForSameLine ? 'added:2' : 'added:1', ankiConnectUrl)
+            ? await this.findNotes(updateMatchingNotes ? 'added:2' : 'added:1', ankiConnectUrl)
             : [];
         if (updateLast && recentNotes.length === 0) {
             throw new Error('Could not find note to update');
@@ -596,8 +609,23 @@ export class Anki {
 
                 const result = await this._updateNoteFields(lastNoteId, params, tags, ankiConnectUrl);
 
-                if (updateLastForSameLine && text && this.settingsProvider.sentenceField) {
-                    await this._updateSameSubtitleNotes(recentNotes, lastNoteId, text, fields, tags, ankiConnectUrl);
+                if (updateMatchingNotes && text && this.settingsProvider.sentenceField) {
+                    const mediaFields: Record<string, string> = {};
+                    if (updateMatchingMedia) {
+                        for (const fieldName of [this.settingsProvider.audioField, this.settingsProvider.imageField]) {
+                            if (fieldName && fields[fieldName]) mediaFields[fieldName] = fields[fieldName];
+                        }
+                    }
+
+                    await this._updateSameSubtitleNotes(
+                        recentNotes,
+                        lastNoteId,
+                        text,
+                        updateMatchingSentences ? subtitleFields : {},
+                        mediaFields,
+                        tags,
+                        ankiConnectUrl
+                    );
                 }
 
                 return result;
@@ -747,20 +775,32 @@ export class Anki {
     }
 
     private async _updateSameSubtitleNotes(
-        recentNotes: number[],
+        recentNotes: readonly number[],
         lastNoteId: number,
         text: string,
-        fields: { [key: string]: string },
-        tags: string[],
+        subtitleFields: Readonly<Record<string, string>>,
+        mediaFields: Readonly<Record<string, string>>,
+        tags: readonly string[],
         ankiConnectUrl?: string
     ) {
         // Include the previous day to handle cards mined across Anki's day boundary.
         // Stop at the first different subtitle so earlier mining sessions are not updated.
         const precedingNoteIds = recentNotes.filter((id) => id < lastNoteId).sort((a, b) => b - a);
-        if (precedingNoteIds.length === 0) return;
+        if (!precedingNoteIds.length) return;
 
         const normalizedSubtitle = normalizeSubtitleForComparison(text);
+        if (!normalizedSubtitle) return;
+
         const sentenceFieldName = this.settingsProvider.sentenceField;
+        const nonSubtitleFieldNames = new Set([
+            ...nonSubtitleFieldKeys.map((key) => this.settingsProvider[key]),
+            ...Object.values(this.settingsProvider.customAnkiFields),
+        ]);
+        const subtitleUpdates = Object.entries(subtitleFields).filter(
+            ([fieldName]) => !nonSubtitleFieldNames.has(fieldName)
+        );
+        if (!subtitleUpdates.length && !Object.keys(mediaFields).length) return;
+
         const precedingInfo = await this.notesInfo(precedingNoteIds, ankiConnectUrl);
 
         for (const otherInfo of precedingInfo) {
@@ -776,13 +816,10 @@ export class Anki {
                 break;
             }
 
-            // Only update image/audio fields for preceding cards.
-            const otherFields: { [key: string]: string } = {};
-            for (const fieldName of [this.settingsProvider.audioField, this.settingsProvider.imageField]) {
-                if (fieldName && fields[fieldName]) otherFields[fieldName] = fields[fieldName];
+            const otherFields = { ...mediaFields };
+            for (const [fieldName, value] of subtitleUpdates) {
+                otherFields[fieldName] = inheritHtmlMarkup(value, otherInfo.fields?.[fieldName]?.value ?? '');
             }
-
-            if (Object.keys(otherFields).length === 0) continue;
 
             await this._executeAction(
                 'updateNoteFields',
@@ -810,10 +847,7 @@ export class Anki {
 
         const info = infoResponse.result[0];
 
-        this._inheritHtmlMarkupFromField('sentenceField', info, params);
-        this._inheritHtmlMarkupFromField('track1Field', info, params);
-        this._inheritHtmlMarkupFromField('track2Field', info, params);
-        this._inheritHtmlMarkupFromField('track3Field', info, params);
+        for (const fieldKey of ankiSubtitleFieldKeys) this._inheritHtmlMarkupFromField(fieldKey, info, params);
 
         await this._executeAction('updateNoteFields', params, ankiConnectUrl);
 

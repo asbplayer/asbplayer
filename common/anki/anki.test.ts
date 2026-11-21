@@ -32,6 +32,7 @@ const testAnkiSettings: AnkiSettings = {
     recordWithAudioPlayback: false,
     preferMp3: false,
     alwaysUseSubtitleForSentence: false,
+    updateLastCardSentenceForSameSubtitle: false,
     updateLastCardForSameSubtitle: false,
     audioPaddingStart: 0,
     audioPaddingEnd: 0,
@@ -1390,6 +1391,347 @@ describe('Anki', () => {
         }
     );
 
+    it.each([
+        { updateMedia: false, updateSentence: false },
+        { updateMedia: true, updateSentence: false },
+        { updateMedia: false, updateSentence: true },
+        { updateMedia: true, updateSentence: true },
+    ])(
+        'updates matching notes with independent media ($updateMedia) and sentence ($updateSentence) preferences',
+        async ({ updateMedia, updateSentence }) => {
+            const fetcher = new MockFetcher();
+            const sentencesByNoteId: Record<number, string> = {
+                11: '<b>baz</b>',
+                4: '<i>foo</i> bar',
+                3: 'foo <u>bar</u>',
+                2: 'different subtitle',
+                1: 'foo',
+            };
+            const track1ByNoteId: Record<number, string> = {
+                11: '<b>eins</b> zwei',
+                4: 'eins <i>zwei</i>',
+            };
+            const track3ByNoteId: Record<number, string> = {
+                11: 'alpha <b>beta</b>',
+                4: 'alpha <em>beta</em>',
+            };
+            fetcher.fetch.mockImplementation(async (_url, body) => {
+                switch (body.action) {
+                    case 'findNotes':
+                        return ankiConnectResponse([4, 1, 11, 2, 3]);
+                    case 'storeMediaFile':
+                        return ankiConnectResponse(
+                            body.params.filename.endsWith('.mp3') ? 'shared-audio.mp3' : 'shared-image.jpeg'
+                        );
+                    case 'notesInfo':
+                        return ankiConnectResponse(
+                            body.params.notes.map((noteId: number) =>
+                                makeNoteInfo({
+                                    noteId,
+                                    fields: {
+                                        Example: { value: sentencesByNoteId[noteId], order: 0 },
+                                        Word: { value: `word-${noteId}`, order: 1 },
+                                        Definition: { value: `definition-${noteId}`, order: 2 },
+                                        Track1: { value: track1ByNoteId[noteId] ?? '<u>eins</u> zwei', order: 3 },
+                                        Track2: { value: noteId === 11 ? 'un <b>deux</b>' : '', order: 4 },
+                                        Track3: { value: track3ByNoteId[noteId] ?? 'alpha beta', order: 5 },
+                                    },
+                                })
+                            )
+                        );
+                    default:
+                        return ankiConnectResponse(null);
+                }
+            });
+            const anki = new Anki(
+                {
+                    ...testAnkiSettings,
+                    sentenceField: 'Example',
+                    updateLastCardForSameSubtitle: updateMedia,
+                    updateLastCardSentenceForSameSubtitle: updateSentence,
+                },
+                fetcher
+            );
+
+            await anki.export(
+                makeExportArguments({
+                    mode: 'updateLast',
+                    text: 'foo\nbar\nbaz',
+                    track1: 'eins\nzwei',
+                    track2: 'un\ndeux',
+                    track3: 'alpha\nbeta',
+                    audioClip: makeAudioClip(),
+                    image: makeImage(),
+                    ankiConnectUrl: 'http://override.example.com:5678',
+                })
+            );
+
+            const requests = fetcher.fetch.mock.calls.map((call) => call[1]);
+            const queries = requests
+                .filter((request) => request.action === 'findNotes')
+                .map((request) => request.params.query);
+            expect(queries).toEqual(updateMedia || updateSentence ? ['added:2'] : ['added:1']);
+            expect(requests.filter((request) => request.action === 'storeMediaFile')).toHaveLength(2);
+            const updates = requests.filter((request) => request.action === 'updateNoteFields');
+            expect(updates.map((request) => request.params.note.id)).toEqual(
+                updateMedia || updateSentence ? [11, 4, 3] : [11]
+            );
+            expect(updates[0].params.note.fields.Example).toBe('foo<br>bar<br><b>baz</b>');
+            expect(updates[0].params.note.fields.Track1).toBe('<b>eins</b><br>zwei');
+            expect(updates[0].params.note.fields.Track2).toBe('un<br><b>deux</b>');
+            expect(updates[0].params.note.fields.Track3).toBe('alpha<br><b>beta</b>');
+            const mediaFields = updateMedia
+                ? { Audio: '[sound:shared-audio.mp3]', Image: '<img src="shared-image.jpeg">' }
+                : {};
+            expect(updates.slice(1).map((request) => request.params.note.fields)).toEqual(
+                updateMedia || updateSentence
+                    ? [
+                          {
+                              ...mediaFields,
+                              ...(updateSentence
+                                  ? {
+                                        Example: '<i>foo</i><br>bar<br>baz',
+                                        Track1: 'eins<br><i>zwei</i>',
+                                        Track2: 'un<br>deux',
+                                        Track3: 'alpha<br><em>beta</em>',
+                                    }
+                                  : {}),
+                          },
+                          {
+                              ...mediaFields,
+                              ...(updateSentence
+                                  ? {
+                                        Example: 'foo<br><u>bar</u><br>baz',
+                                        Track1: '<u>eins</u><br>zwei',
+                                        Track2: 'un<br>deux',
+                                        Track3: 'alpha<br>beta',
+                                    }
+                                  : {}),
+                          },
+                      ]
+                    : []
+            );
+            expect(requests.filter((request) => request.action === 'addTags').map((request) => request.params)).toEqual(
+                (updateMedia || updateSentence ? [11, 4, 3] : [11]).map((noteId) => ({
+                    notes: [noteId],
+                    tags: 'tag-a tag-b',
+                }))
+            );
+            expect(fetcher.fetch.mock.calls.every((call) => call[0] === 'http://override.example.com:5678')).toBe(true);
+        }
+    );
+
+    it.each([false, true])(
+        'preserves media updates when audio shares a subtitle field (sentence updates: %p)',
+        async (updateSentence) => {
+            const fetcher = new MockFetcher();
+            fetcher.fetch.mockImplementation(async (_url, body) => {
+                switch (body.action) {
+                    case 'findNotes':
+                        return ankiConnectResponse([4, 11]);
+                    case 'storeMediaFile':
+                        return ankiConnectResponse('shared.mp3');
+                    case 'notesInfo':
+                        return ankiConnectResponse(
+                            body.params.notes.map((noteId: number) =>
+                                makeNoteInfo({
+                                    noteId,
+                                    fields: {
+                                        Sentence: { value: 'foo', order: 0 },
+                                        Audio: { value: noteId === 11 ? '<b>word</b>' : '<i>word</i>', order: 1 },
+                                    },
+                                })
+                            )
+                        );
+                    default:
+                        return ankiConnectResponse(null);
+                }
+            });
+            const anki = new Anki(
+                {
+                    ...testAnkiSettings,
+                    track1Field: 'Audio',
+                    updateLastCardForSameSubtitle: true,
+                    updateLastCardSentenceForSameSubtitle: updateSentence,
+                },
+                fetcher
+            );
+
+            await anki.export(
+                makeExportArguments({
+                    mode: 'updateLast',
+                    text: 'foo',
+                    track1: 'word',
+                    track2: undefined,
+                    audioClip: makeAudioClip(),
+                    tags: [],
+                })
+            );
+
+            const updates = fetcher.fetch.mock.calls
+                .map(([, request]) => request)
+                .filter((request) => request.action === 'updateNoteFields');
+            expect(updates.map((request) => request.params.note.id)).toEqual([11, 4]);
+            expect(updates[1].params.note.fields).toEqual({
+                Audio: '<b>word</b><br>[sound:shared.mp3]',
+                ...(updateSentence ? { Sentence: 'foo' } : {}),
+            });
+        }
+    );
+
+    it.each([undefined, ''])('skips absent track text (%p) and unmapped tracks on matching notes', async (track2) => {
+        const fetcher = new MockFetcher();
+        fetcher.fetch.mockImplementation(async (_url, body) => {
+            switch (body.action) {
+                case 'findNotes':
+                    return ankiConnectResponse([4, 11]);
+                case 'notesInfo':
+                    return ankiConnectResponse(
+                        body.params.notes.map((noteId: number) =>
+                            makeNoteInfo({
+                                noteId,
+                                fields: {
+                                    Sentence: { value: 'foo', order: 0 },
+                                    Original: { value: '<i>eins</i>', order: 1 },
+                                    Translation: { value: '<u>deux</u>', order: 2 },
+                                },
+                            })
+                        )
+                    );
+                default:
+                    return ankiConnectResponse(null);
+            }
+        });
+        const anki = new Anki(
+            {
+                ...testAnkiSettings,
+                track1Field: 'Original',
+                track2Field: 'Translation',
+                track3Field: '',
+                updateLastCardSentenceForSameSubtitle: true,
+            },
+            fetcher
+        );
+
+        await anki.export(
+            makeExportArguments({ mode: 'updateLast', text: 'foo\nbar', track1: 'eins\nzwei', track2, track3: 'alpha' })
+        );
+
+        const updates = fetcher.fetch.mock.calls
+            .map((call) => call[1])
+            .filter((body) => body.action === 'updateNoteFields');
+        expect(updates.map((body) => body.params.note.id)).toEqual([11, 4]);
+        expect(updates[1].params.note.fields).toEqual({
+            Sentence: 'foo<br>bar',
+            Original: '<i>eins</i><br>zwei',
+        });
+    });
+
+    it.each([undefined, 'un\ndeux'])('preserves a definition sharing a track destination (%p)', async (track2) => {
+        const fetcher = new MockFetcher();
+        const fieldsByNoteId: Record<number, Record<string, string>> = {
+            11: { Sentence: 'foo', Definition: 'second word' },
+            4: { Sentence: 'foo', Definition: 'first word' },
+        };
+        fetcher.fetch.mockImplementation(async (_url, body) => {
+            switch (body.action) {
+                case 'findNotes':
+                    return ankiConnectResponse([4, 11]);
+                case 'notesInfo':
+                    return ankiConnectResponse(
+                        body.params.notes.map((noteId: number) =>
+                            makeNoteInfo({
+                                noteId,
+                                fields: Object.fromEntries(
+                                    Object.entries(fieldsByNoteId[noteId]).map(([name, value], order) => [
+                                        name,
+                                        { value, order },
+                                    ])
+                                ),
+                            })
+                        )
+                    );
+                case 'updateNoteFields':
+                    Object.assign(fieldsByNoteId[body.params.note.id], body.params.note.fields);
+                    return ankiConnectResponse(null);
+                default:
+                    return ankiConnectResponse(null);
+            }
+        });
+        const anki = new Anki(
+            { ...testAnkiSettings, track2Field: 'Definition', updateLastCardSentenceForSameSubtitle: true },
+            fetcher
+        );
+
+        await anki.export(
+            makeExportArguments({
+                mode: 'updateLast',
+                text: 'foo\nbar',
+                track2,
+                definition: 'second word',
+                tags: [],
+            })
+        );
+
+        expect(fieldsByNoteId[11].Definition).toBe(track2 ? 'un<br>deux<br>second word' : 'second word');
+        expect(fieldsByNoteId[4]).toMatchObject({ Sentence: 'foo<br>bar', Definition: 'first word' });
+    });
+
+    it('updates matching sentences without media and replaces them again on repeated exports', async () => {
+        const fetcher = new MockFetcher();
+        const sentencesByNoteId: Record<number, string> = { 11: '<b>foo</b>', 4: 'foo <i>bar</i>' };
+        fetcher.fetch.mockImplementation(async (_url, body) => {
+            switch (body.action) {
+                case 'findNotes':
+                    return ankiConnectResponse([4, 11]);
+                case 'notesInfo':
+                    return ankiConnectResponse(
+                        body.params.notes.map((noteId: number) =>
+                            makeNoteInfo({
+                                noteId,
+                                fields: { Sentence: { value: sentencesByNoteId[noteId], order: 0 } },
+                            })
+                        )
+                    );
+                case 'updateNoteFields':
+                    sentencesByNoteId[body.params.note.id] = body.params.note.fields.Sentence;
+                    return ankiConnectResponse(null);
+                default:
+                    return ankiConnectResponse(null);
+            }
+        });
+        const anki = new Anki({ ...testAnkiSettings, updateLastCardSentenceForSameSubtitle: true }, fetcher);
+        const params = makeExportArguments({ mode: 'updateLast', text: 'foo\nbar', tags: [] });
+
+        await anki.export(params);
+        await anki.export(params);
+
+        expect(sentencesByNoteId).toEqual({ 11: '<b>foo</b><br>bar', 4: 'foo<br><i>bar</i>' });
+    });
+
+    it.each([
+        { sentenceField: '', text: 'foo' },
+        { sentenceField: 'Sentence', text: undefined },
+        { sentenceField: 'Sentence', text: ' \n ' },
+        { sentenceField: 'Sentence', text: '<span> </span>' },
+    ])('keeps earlier sentences when the field or export text is missing (%p)', async ({ sentenceField, text }) => {
+        const fetcher = new MockFetcher();
+        fetcher.fetch.mockResolvedValueOnce(ankiConnectResponse([11, 4]));
+        fetcher.fetch.mockResolvedValueOnce(ankiConnectResponse([makeNoteInfo({ noteId: 11 })]));
+        fetcher.fetch.mockResolvedValueOnce(ankiConnectResponse(null));
+        const anki = new Anki(
+            { ...testAnkiSettings, sentenceField, updateLastCardSentenceForSameSubtitle: true },
+            fetcher
+        );
+
+        await anki.export(makeExportArguments({ mode: 'updateLast', text, tags: [] }));
+
+        const updates = fetcher.fetch.mock.calls
+            .map((call) => call[1])
+            .filter((body) => body.action === 'updateNoteFields');
+        expect(updates.map((body) => body.params.note.id)).toEqual([11]);
+    });
+
     it('only updates the latest note when no sentence field is configured', async () => {
         const fetcher = new MockFetcher();
         fetcher.fetch.mockResolvedValueOnce(ankiConnectResponse([11, 4]));
@@ -1570,7 +1912,14 @@ describe('Anki', () => {
         fetcher.fetch.mockResolvedValueOnce(ankiConnectResponse([makeNoteInfo({ noteId: 42 })]));
         fetcher.fetch.mockResolvedValueOnce(ankiConnectResponse(null));
 
-        const anki = new Anki(testAnkiSettings, fetcher);
+        const anki = new Anki(
+            {
+                ...testAnkiSettings,
+                updateLastCardForSameSubtitle: true,
+                updateLastCardSentenceForSameSubtitle: true,
+            },
+            fetcher
+        );
 
         await expect(
             anki.export(makeExportArguments({ mode: 'updateSpecific', noteId: 42, tags: [] }))
@@ -1626,6 +1975,32 @@ describe('Anki', () => {
         await expect(anki.export(makeExportArguments({ mode: 'updateLast' }))).rejects.toThrow(
             'Could not find note to update'
         );
+    });
+
+    it.each([
+        { updateLastCardForSameSubtitle: true, updateLastCardSentenceForSameSubtitle: false },
+        { updateLastCardForSameSubtitle: false, updateLastCardSentenceForSameSubtitle: true },
+    ])('can update a previous-day note when either matching option is enabled (%p)', async (settings) => {
+        const fetcher = new MockFetcher();
+        fetcher.fetch.mockImplementation(async (_url, body) => {
+            switch (body.action) {
+                case 'findNotes':
+                    return ankiConnectResponse(body.params.query === 'added:1' ? [] : [7]);
+                case 'notesInfo':
+                    return ankiConnectResponse([makeNoteInfo({ noteId: 7 })]);
+                default:
+                    return ankiConnectResponse(null);
+            }
+        });
+        const anki = new Anki({ ...testAnkiSettings, ...settings }, fetcher);
+
+        await anki.export(makeExportArguments({ mode: 'updateLast', text: 'Updated sentence', tags: [] }));
+
+        const updates = fetcher.fetch.mock.calls
+            .map(([, request]) => request)
+            .filter((request) => request.action === 'updateNoteFields');
+        expect(updates.map((request) => request.params.note.id)).toEqual([7]);
+        expect(updates[0].params.note.fields.Sentence).toBe('Updated sentence');
     });
 
     it('throws if updateLast cannot fetch info for the selected recent note', async () => {

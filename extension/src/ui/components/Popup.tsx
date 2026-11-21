@@ -314,6 +314,7 @@ const Popup = ({
                             extensionSupportsSubtitleTrackSelectorInWebApp
                             extensionSupportsSubtitleListCustomization
                             extensionSupportsUpdateLastWithSameSubtitleText
+                            extensionSupportsUpdateLastSentenceWithSameSubtitleText
                             extensionSupportsAnimatedImageCapture={!isFirefoxBuild}
                             forceVerticalTabs={false}
                             anki={anki}
