@@ -76,6 +76,9 @@ class SettingsAccessor {
     get updateLastCardForSameSubtitle() {
         return this.settings.updateLastCardForSameSubtitle;
     }
+    get updateLastCardSentenceForSameSubtitle() {
+        return this.settings.updateLastCardSentenceForSameSubtitle;
+    }
     get audioPaddingStart() {
         return this.settings.audioPaddingStart;
     }

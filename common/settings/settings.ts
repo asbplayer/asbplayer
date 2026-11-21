@@ -201,17 +201,19 @@ export const updateAutoCopyableTracksValue = (
     add: boolean
 ) => updateBitset(autoCopyableTracks, trackIndex, add);
 
-export type AnkiSettingsFieldKey =
-    | 'sentenceField'
-    | 'definitionField'
-    | 'audioField'
-    | 'imageField'
-    | 'wordField'
-    | 'sourceField'
-    | 'urlField'
-    | 'track1Field'
-    | 'track2Field'
-    | 'track3Field';
+export const ankiSubtitleFieldKeys = ['sentenceField', 'track1Field', 'track2Field', 'track3Field'] as const;
+
+export const ankiSettingsFieldKeys = [
+    ...ankiSubtitleFieldKeys,
+    'definitionField',
+    'audioField',
+    'imageField',
+    'wordField',
+    'sourceField',
+    'urlField',
+] as const;
+
+export type AnkiSettingsFieldKey = (typeof ankiSettingsFieldKeys)[number];
 
 export const mediaFragmentFormats = ['jpeg', 'webm'] as const;
 export type MediaFragmentFormatSetting = (typeof mediaFragmentFormats)[number];
@@ -238,6 +240,7 @@ export interface AnkiSettings {
     readonly recordWithAudioPlayback: boolean;
     readonly preferMp3: boolean;
     readonly alwaysUseSubtitleForSentence: boolean;
+    readonly updateLastCardSentenceForSameSubtitle: boolean;
     readonly updateLastCardForSameSubtitle: boolean;
     readonly audioPaddingStart: number;
     readonly audioPaddingEnd: number;
@@ -295,6 +298,7 @@ const ankiSettingsKeysObject: { [key in keyof AnkiSettings]: boolean } = {
     recordWithAudioPlayback: true,
     preferMp3: true,
     alwaysUseSubtitleForSentence: true,
+    updateLastCardSentenceForSameSubtitle: true,
     updateLastCardForSameSubtitle: true,
     audioPaddingStart: true,
     audioPaddingEnd: true,
