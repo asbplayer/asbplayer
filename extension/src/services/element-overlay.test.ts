@@ -653,6 +653,10 @@ describe('CachingElementOverlay fullscreen transitions', () => {
 
     it('resizes responsive cached content when the video width changes', () => {
         const targetElement = document.createElement('video');
+        Object.defineProperties(targetElement, {
+            videoWidth: { value: 1920 },
+            videoHeight: { value: 1080 },
+        });
         let videoWidth = 640;
         targetElement.getBoundingClientRect = () => ({ left: 0, top: 0, width: videoWidth, height: 360 }) as DOMRect;
         const overlay = new CachingElementOverlay({
@@ -669,16 +673,16 @@ describe('CachingElementOverlay fullscreen transitions', () => {
         overlay.setHtml([
             {
                 key: 'image',
-                html: () => '<div data-asb-video-width-ratio="0.5"></div>',
+                html: () => '<div class="image" style="width:calc(var(--asb-video-width) * 0.5)"></div>',
             },
         ]);
-        const responsiveContent = document.querySelector<HTMLElement>('[data-asb-video-width-ratio]');
-        expect(responsiveContent?.style.width).toBe('320px');
-
+        const content = document.querySelector<HTMLElement>('.image')!;
+        const container = overlay.containerElement!;
+        expect(container.style.getPropertyValue('--asb-video-width')).toBe('640px');
         videoWidth = 1280;
         overlay.refresh();
-
-        expect(responsiveContent?.style.width).toBe('640px');
+        expect(container.style.getPropertyValue('--asb-video-width')).toBe('1280px');
+        expect(document.querySelector('.image')).toBe(content);
         overlay.dispose();
     });
 });

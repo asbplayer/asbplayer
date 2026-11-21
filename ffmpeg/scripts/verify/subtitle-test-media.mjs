@@ -1,4 +1,4 @@
-// Requires a system ffmpeg. Generated media contains only authored text and a solid-color video.
+// Requires a system ffmpeg. Generated media contains authored text/bitmaps and a solid-color video.
 import { execFileSync } from 'node:child_process';
 import { readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -109,6 +109,132 @@ export const generateSubtitleMedia = async (root) => {
     if (firstSampleEntry < 0) throw new Error('Expected a timed text sample entry');
     withWebVtt.write('wvtt', firstSampleEntry);
     await writeFile(resolve(root, 'webvtt-first.mp4'), withWebVtt);
+
+    // Authored PGS display sets: two placed rectangles, transparent and translucent pixels,
+    // followed by clears. System FFmpeg converts these to DVD/DVB for decoder regressions.
+    const pgsClockRateHz = 90000;
+    const pgsPaletteDefinitionSegment = 0x14;
+    const pgsObjectDefinitionSegment = 0x15;
+    const pgsPresentationCompositionSegment = 0x16;
+    const pgsEndDisplaySetSegment = 0x80;
+    const word = (value) => {
+        const buffer = Buffer.alloc(2);
+        buffer.writeUInt16BE(value);
+        return buffer;
+    };
+    const segment = (seconds, type, payload) => {
+        const bytes = Buffer.from(payload);
+        const header = Buffer.alloc(13);
+        header.write('PG');
+        header.writeUInt32BE(seconds * pgsClockRateHz, 2);
+        header[10] = type;
+        header.writeUInt16BE(bytes.length, 11);
+        return Buffer.concat([header, bytes]);
+    };
+    const display = (seconds, { clear = false } = {}) => {
+        const composition = Buffer.concat([
+            word(320),
+            word(240),
+            Buffer.from([0x10]),
+            word(seconds),
+            Buffer.from([clear ? 0 : 0x80, 0, 0, clear ? 0 : 2]),
+            ...(clear
+                ? []
+                : [
+                      Buffer.concat([word(0), Buffer.from([0, 0]), word(20), word(180)]),
+                      Buffer.concat([word(1), Buffer.from([0, 0]), word(30), word(182)]),
+                  ]),
+        ]);
+        const parts = [segment(seconds, pgsPresentationCompositionSegment, composition)];
+        if (!clear) {
+            parts.push(
+                segment(
+                    seconds,
+                    pgsPaletteDefinitionSegment,
+                    [0, 0, 0, 0, 128, 128, 0, 1, 235, 128, 128, 255, 2, 81, 240, 90, 128]
+                )
+            );
+            for (const id of [0, 1]) {
+                const rle = Buffer.from([1, 2, 0, 2, 0, 0, 1, 1, 1, 1, 0, 0]);
+                parts.push(
+                    segment(
+                        seconds,
+                        pgsObjectDefinitionSegment,
+                        Buffer.concat([word(id), Buffer.from([0, 0xc0, 0, 0, rle.length + 4]), word(4), word(2), rle])
+                    )
+                );
+            }
+        }
+        parts.push(segment(seconds, pgsEndDisplaySetSegment, []));
+        return Buffer.concat(parts);
+    };
+    await writeFile(
+        resolve(root, 'bitmap.sup'),
+        Buffer.concat([display(2), display(4, { clear: true }), display(6), display(8, { clear: true })])
+    );
+    for (const [name, codec] of [
+        ['pgs', 'copy'],
+        ['dvd', 'dvdsub'],
+        ['dvb', 'dvbsub'],
+    ]) {
+        run([
+            '-copyts',
+            '-f',
+            'lavfi',
+            '-i',
+            'color=size=320x240:rate=1:duration=10',
+            '-fix_sub_duration',
+            '-i',
+            'bitmap.sup',
+            '-map',
+            '0:v',
+            '-map',
+            '1:s',
+            '-c:v',
+            'libx264',
+            '-c:s',
+            codec,
+            `${name}.mkv`,
+        ]);
+    }
+    // Matroska exposes an attached JPEG as a video stream without a playback timeline.
+    run(['-f', 'lavfi', '-i', 'color=size=16x16:duration=1', '-frames:v', '1', 'cover.jpg']);
+    run([
+        '-i',
+        'dvd.mkv',
+        '-map',
+        '0',
+        '-c',
+        'copy',
+        '-attach',
+        'cover.jpg',
+        '-metadata:s:t',
+        'mimetype=image/jpeg',
+        'dvd-cover.mkv',
+    ]);
+    await writeFile(
+        resolve(root, 'uncleared.sup'),
+        Buffer.concat([display(2), display(4, { clear: true }), display(6)])
+    );
+    run([
+        '-copyts',
+        '-f',
+        'lavfi',
+        '-i',
+        'color=size=320x240:rate=1:duration=10',
+        '-i',
+        'uncleared.sup',
+        '-map',
+        '0:v',
+        '-map',
+        '1:s',
+        '-c:v',
+        'libx264',
+        '-c:s',
+        'copy',
+        'uncleared.mkv',
+    ]);
+    run(['-i', 'dvd.mkv', '-map', '0', '-c', 'copy', 'dvd.mp4']);
     // Minimal Matroska elements exercise compressed subtitle packets.
     const vint = (value) => {
         for (let length = 1; length <= 8; length++) {

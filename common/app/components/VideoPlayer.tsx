@@ -3,7 +3,6 @@ import { AudioClip } from '@project/common/audio-clip';
 import { canMineWithAudio } from '@project/common/audio-transcode/mining-audio';
 import { usesConvertedAudio } from '@project/common/audio-transcode';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { MutableRefObject } from 'react';
 
 import { isMobile } from 'react-device-detect';
 import { makeStyles } from '@mui/styles';
@@ -53,6 +52,7 @@ import {
     subtitleTimestampWithDelay,
     errorMessageFromVideo,
     formatAsSignedMs,
+    imageSubtitleHtml,
     mapSubtitlesForDisplay,
     timeDurationDisplay,
 } from '@project/common/util';
@@ -205,7 +205,6 @@ function notifyReady(
 
 const showingSubtitleHtml = (
     subtitle: IndexedSubtitleModel,
-    videoRef: MutableRefObject<ExperimentalHTMLVideoElement | undefined>,
     subtitleStyles: string,
     subtitleClasses: string,
     imageBasedSubtitleScaleFactor: number,
@@ -213,20 +212,11 @@ const showingSubtitleHtml = (
     adaptiveWordVisibilityEnabled: boolean
 ) => {
     if (subtitle.textImage) {
-        const imageScale =
-            (imageBasedSubtitleScaleFactor * (videoRef.current?.width ?? window.screen.availWidth)) /
-            subtitle.textImage.screen.width;
-        const width = imageScale * subtitle.textImage.image.width;
-        return `
-<div style="max-width:${width}px;margin:auto;">
-<img
-    style="width:100%;"
-    alt="subtitle"
-    src="${subtitle.textImage.dataUrl}"
-    class="${subtitleClasses}"
-/>
-</div>
-`;
+        return imageSubtitleHtml(subtitle.textImage, {
+            scale: imageBasedSubtitleScaleFactor,
+            track: subtitle.track,
+            className: subtitleClasses,
+        });
     }
     const allSubtitleClasses = subtitleClasses ? `${subtitleClasses} asbplayer-subtitles` : 'asbplayer-subtitles';
     const rendered = renderRichTextOntoSubtitles([subtitle], 'video', dictionaryTracks, {
@@ -2186,7 +2176,6 @@ export default function VideoPlayer({
         (subtitle: IndexedSubtitleModel) =>
             showingSubtitleHtml(
                 subtitle,
-                videoRef,
                 trackStyles[subtitle.track]?.styleString ?? trackStyles[0]?.styleString ?? '',
                 trackStyles[subtitle.track]?.classes ?? trackStyles[0]?.classes ?? '',
                 subtitleSettings.imageBasedSubtitleScaleFactor,
@@ -2406,6 +2395,11 @@ export default function VideoPlayer({
     return (
         <div
             ref={containerRef}
+            style={
+                {
+                    '--asb-video-width': `${windowWidth}px`,
+                } as React.CSSProperties
+            }
             onMouseMove={handleMouseMove}
             onMouseLeave={handleMouseLeave}
             className={`${classes.root} ${ASB_TOKEN_CONTAINER_CLASS}`}

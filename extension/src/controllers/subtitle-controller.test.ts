@@ -207,14 +207,45 @@ describe('SubtitleController appearance rendering', () => {
         controller.cacheHtml();
 
         let imageContainer = document.querySelector<HTMLImageElement>('img[alt="subtitle"]')?.parentElement;
-        expect(imageContainer?.dataset.asbVideoWidthRatio).toBe('0.5');
+        expect(imageContainer?.getAttribute('style')).toContain('width:calc(var(--asb-video-width) * 0.5)');
         expect(imageContainer?.style.maxWidth).toBe('100%');
         expect(imageContainer?.getAttributeNames()).not.toContain('}');
 
         controller.setSubtitleSettings({ ...defaultSettings, imageBasedSubtitleScaleFactor: 4 });
 
         imageContainer = document.querySelector<HTMLImageElement>('img[alt="subtitle"]')?.parentElement;
-        expect(imageContainer?.dataset.asbVideoWidthRatio).toBe('1');
+        expect(imageContainer?.getAttribute('style')).toContain('width:calc(var(--asb-video-width) * 1)');
+    });
+
+    it('places image subtitles at the user-selected top or bottom anchor', () => {
+        const controller = controllerForVideo();
+        controller.setSubtitleSettings(defaultSettings);
+        controller.subtitles = [
+            {
+                text: '',
+                textImage: {
+                    dataUrl: 'data:image/png;base64,image',
+                    screen: { width: 1920, height: 1080 },
+                    image: { width: 600, height: 100 },
+                },
+                start: 0,
+                end: 1000,
+                originalStart: 0,
+                originalEnd: 1000,
+                track: 0,
+                index: 0,
+            },
+        ];
+        controller.cacheHtml();
+        controller.playbackStateChanged({ timestampMs: 0, showingSubtitleIndexes: [0], paused: false });
+
+        expect(document.querySelector('.asb-subtitles-container-bottom img[alt="subtitle"]')).not.toBeNull();
+        expect(document.querySelector('.asb-subtitles-container-top img[alt="subtitle"]')).toBeNull();
+
+        controller.setSubtitleSettings({ ...defaultSettings, subtitleAlignment: 'top' });
+
+        expect(document.querySelector('.asb-subtitles-container-bottom img[alt="subtitle"]')).toBeNull();
+        expect(document.querySelector('.asb-subtitles-container-top img[alt="subtitle"]')).not.toBeNull();
     });
 
     it('falls back to track zero subtitle classes for tracks without appearance settings', () => {
