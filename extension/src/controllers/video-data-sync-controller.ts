@@ -101,6 +101,9 @@ const fetchDataForLanguageOnDemand = (language: string): Promise<VideoData> => {
 
 const globalStateProvider = new ExtensionGlobalStateProvider();
 
+// Keyed by path: streaming sites put the title id there (e.g. disneyplus.com/play/<id>), and query strings vary.
+const rememberedFileKey = () => `rememberedSubtitleFile:${window.location.host}${window.location.pathname}`;
+
 export default class VideoDataSyncController {
     private readonly _context: Binding;
     private readonly _domain: string;
@@ -553,9 +556,53 @@ export default class VideoDataSyncController {
         if (this._updateOpenPickerFromRefresh(previousData, data)) return;
 
         const wasLoading = previousData?.subtitles === undefined;
+        if (await this._loadRememberedFile()) return;
         if (await this._handleAutoSync(wasLoading)) return;
 
         await this._updatePickerAfterDataReceived(wasLoading);
+    }
+
+    /** Reloads the local file last opened for this video, independent of the streaming auto-sync setting. */
+    private async _loadRememberedFile(): Promise<boolean> {
+        if (this._syncedData?.subtitles === undefined || this._autoSyncAttempted || this.pickerVisible) return false;
+        const key = rememberedFileKey();
+        const files = (await browser.storage.local.get(key))[key] as SerializedSubtitleFile[] | undefined;
+        if (!files?.length) return false;
+        this._autoSyncAttempted = true;
+        asbTrace('subtitle/sync', 'Loading remembered local subtitle file', { fileCount: files.length });
+        return this._syncLocalFiles(files, (e) => asbError('subtitle/error', 'Failed to load remembered file', e));
+    }
+
+    // Local files picked in the track dropdown are remembered; a streaming-only choice forgets any remembered file.
+    private async _rememberConfirmedFiles(data: ConfirmedVideoDataSubtitleTrack[]) {
+        const key = rememberedFileKey();
+        try {
+            const files = await Promise.all(
+                data.flatMap(({ file }) =>
+                    file ? [file.arrayBuffer().then((b) => ({ name: file.name, base64: bufferToBase64(b) }))] : []
+                )
+            );
+            await (files.length ? browser.storage.local.set({ [key]: files }) : browser.storage.local.remove(key));
+        } catch (error) {
+            asbError('video/sync', 'Failed to remember subtitle file:', error);
+        }
+    }
+
+    private async _syncLocalFiles(files: SerializedSubtitleFile[], onError: (e: Error) => unknown) {
+        const load = this._beginSubtitleLoad({ clearSubtitles: true });
+        try {
+            await this._syncSubtitles(
+                files.map((file) => ({ fileParts: [file] })),
+                load.controller.signal,
+                undefined
+            );
+            return true;
+        } catch (e) {
+            if (!load.controller.signal.aborted && e instanceof Error) await onError(e);
+            return false;
+        } finally {
+            if (this._subtitleLoad === load) this._subtitleLoad = undefined;
+        }
     }
 
     private _updateOpenPickerFromRefresh(previousData: VideoData | undefined, data: VideoData): boolean {
@@ -730,25 +777,14 @@ export default class VideoDataSyncController {
                             isNewSource: true,
                             syncWithAsbplayerId: confirmMessage.syncWithAsbplayerId,
                         });
+                        if (dataWasSynced) await this._rememberConfirmedFiles(data);
                     } else if ('openFile' === message.command) {
-                        dataWasSynced = false;
-                        const load = this._beginSubtitleLoad({ clearSubtitles: true });
-                        const openFileMessage = message as VideoDataUiBridgeOpenFileMessage;
-                        const subtitleFiles = openFileMessage.subtitles;
-
-                        try {
-                            await this._syncSubtitles(
-                                subtitleFiles.map((subtitleFile) => ({ fileParts: [subtitleFile] })),
-                                load.controller.signal,
-                                undefined
-                            );
-                            dataWasSynced = true;
-                        } catch (e) {
-                            if (!load.controller.signal.aborted && e instanceof Error) {
-                                await this._reportError(e.message);
-                            }
-                        } finally {
-                            if (this._subtitleLoad === load) this._subtitleLoad = undefined;
+                        const subtitleFiles = (message as VideoDataUiBridgeOpenFileMessage).subtitles;
+                        dataWasSynced = await this._syncLocalFiles(subtitleFiles, (e) => this._reportError(e.message));
+                        if (dataWasSynced) {
+                            await browser.storage.local
+                                .set({ [rememberedFileKey()]: subtitleFiles })
+                                .catch((error) => asbError('video/sync', 'Failed to remember subtitle file:', error));
                         }
                     }
 
