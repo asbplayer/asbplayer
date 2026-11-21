@@ -83,7 +83,7 @@ export const useFileSession = () => {
             await fileSessionRepository.setCachedSubtitleFiles(files, {
                 subtitleTrackIds: completedTracks.map(({ fileParts }) => fileParts.map(({ id }) => id)),
                 embeddedSubtitles: Object.fromEntries(
-                    files.filter((file) => file.embedded).map((file) => [file.id, file.embedded!])
+                    files.flatMap((file) => (file.embedded ? [[file.id, file.embedded] as const] : []))
                 ),
             });
             setCanRestoreLastSession(canRestoreSession(await fileSessionRepository.fetch()));

@@ -3,6 +3,7 @@ import type ByteReader from '@project/common/media-probe/byte-reader';
 const boxSizeBytes = 4;
 export const isoBmffBoxTypeOffset = boxSizeBytes;
 export const isoBmffBoxTypeBytes = 4;
+export const isoBmffTopLevelBoxTypes: readonly string[] = ['ftyp', 'styp', 'moov', 'free', 'skip', 'wide', 'mdat'];
 const boxHeaderBytes = boxSizeBytes + isoBmffBoxTypeBytes;
 const extendedSizeBytes = 8;
 const extendedSizeMarker = 1;
@@ -103,7 +104,7 @@ const forEachBox = async <T>(
 ): Promise<T | undefined> => {
     while (offset < limit) {
         const box = await readBox(reader, offset, limit);
-        if (box === undefined) throw new Error('Invalid MP4 metadata');
+        if (!box) throw new Error('Invalid MP4 metadata');
         const result = await visit(box);
         if (result !== undefined) return result;
         offset = box.end;
@@ -182,7 +183,10 @@ interface IsoBmffSubtitleTrack {
     title?: string;
 }
 
-/** Walk track headers by box size, including a moov after a large media payload. */
+/**
+ * Walk track headers by box size, including a moov after a large media payload.
+ * @returns whether a moov box was found.
+ */
 const forEachTrack = async (reader: ByteReader, visit: (track: Box) => Promise<void>): Promise<boolean> => {
     const moov = await findBox(reader, 'moov', 0, reader.size);
     if (!moov) return false;
@@ -200,29 +204,27 @@ const readTrackMedia = async (reader: ByteReader, track: Box) => {
         hdlr.dataOffset + fullBoxVersionAndFlagsBytes + handlerPredefinedBytes,
         isoBmffBoxTypeBytes
     );
-    if (handler !== undefined) return { mdia, hdlr, handler };
+    if (handler) return { mdia, hdlr, handler };
 };
 
 export const isoBmffSubtitleTracks = async (reader: ByteReader): Promise<IsoBmffSubtitleTrack[] | undefined> => {
     const candidates: { id: number | undefined; mdia: Box; hdlr: Box }[] = [];
     const chapterIds = new Set<number>();
-    const found = await forEachTrack(reader, async (trak) => {
-        const tref = await findBox(reader, 'tref', trak.dataOffset, trak.end);
+    const found = await forEachTrack(reader, async (track) => {
+        const tref = await findBox(reader, 'tref', track.dataOffset, track.end);
         const chap = tref && (await findBox(reader, 'chap', tref.dataOffset, tref.end));
         if (chap) {
-            if ((chap.end - chap.dataOffset) % trackIdBytes) {
-                throw new Error('Invalid MP4 chapter references');
-            }
+            if ((chap.end - chap.dataOffset) % trackIdBytes) throw new Error('Invalid MP4 chapter references');
             for (let offset = chap.dataOffset; offset < chap.end; offset += trackIdBytes) {
                 const chapterId = await reader.unsignedInt(offset, trackIdBytes);
                 if (chapterId === undefined) throw new Error('Truncated MP4 chapter reference');
                 chapterIds.add(chapterId);
             }
         }
-        const media = await readTrackMedia(reader, trak);
+        const media = await readTrackMedia(reader, track);
         if (!media) throw new Error('Incomplete MP4 track metadata');
         if (!subtitleHandlers.has(media.handler)) return;
-        const tkhd = await findBox(reader, 'tkhd', trak.dataOffset, trak.end);
+        const tkhd = await findBox(reader, 'tkhd', track.dataOffset, track.end);
         let id: number | undefined;
         if (tkhd) {
             const version = await reader.unsignedInt(tkhd.dataOffset, versionBytes);
@@ -248,7 +250,7 @@ export const isoBmffSubtitleTracks = async (reader: ByteReader): Promise<IsoBmff
                 mdhd.dataOffset + (version === 1 ? mediaLanguageOffsetVersion1 : mediaLanguageOffsetVersion0);
             if (languageOffset + mediaLanguageBytes > mdhd.end) throw new Error('Truncated MP4 language');
             const packed = await reader.unsignedInt(languageOffset, mediaLanguageBytes);
-            if (packed !== undefined && packed >= minimumPackedLanguage && packed < packedLanguageLimit) {
+            if (packed && packed >= minimumPackedLanguage && packed < packedLanguageLimit) {
                 language = String.fromCharCode(
                     ((packed >> (languageBitsPerCharacter * 2)) & languageCharacterMask) + languageCharacterCodeOffset,
                     ((packed >> languageBitsPerCharacter) & languageCharacterMask) + languageCharacterCodeOffset,
@@ -270,7 +272,7 @@ export const isoBmffAudioSampleFormats = async (reader: ByteReader): Promise<str
         const media = await readTrackMedia(reader, track);
         if (media?.handler !== 'soun') return;
         const format = await sampleEntryFormat(reader, media.mdia);
-        if (format !== undefined) formats.push(format);
+        if (format) formats.push(format);
     });
     if (found) return formats;
 };

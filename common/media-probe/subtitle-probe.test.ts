@@ -138,8 +138,7 @@ it('rejects oversized track titles instead of reading unbounded metadata', async
 
 it('rejects a nested box extending beyond its parent even when its bytes exist in the file', async () => {
     const bytes = concat(box('ftyp'), box('moov', box('trak')), box('free', Buffer.alloc(16)));
-    // Claim bytes from the following top-level box as part of the nested trak.
-    bytes.writeUInt32BE(16, 16);
+    bytes.writeUInt32BE(16, 16); // Claim bytes from the following top-level box as part of the nested trak.
     await expect(probeSubtitleTracks(new Blob([bytes]), new AbortController().signal)).rejects.toThrow(
         'Invalid MP4 metadata'
     );

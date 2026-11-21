@@ -64,7 +64,7 @@ try {
             return {};
         },
     });
-    const transcode = async (file, onDiagnostic, trackIndex = 0) => {
+    const transcode = async (file, { onDiagnostic, trackIndex = 0 } = {}) => {
         const input = await readFile(file);
         const chunks = [];
         const diagnostics = [];
@@ -111,7 +111,7 @@ try {
     );
     const multiTrack = join(root, 'multi-track.mp4');
     ffmpeg('-i', source, '-map', '0:v', '-map', '0:a', '-map', '0:a', '-c', 'copy', multiTrack);
-    checkTone((await transcode(multiTrack, undefined, 1)).audio, 0.2, 0.7, 'second audio track');
+    checkTone((await transcode(multiTrack, { trackIndex: 1 })).audio, 0.2, 0.7, 'second audio track');
 
     const cut = join(root, 'cut.mp4');
     ffmpeg('-ss', '1', '-i', source, '-c', 'copy', cut);
@@ -442,8 +442,10 @@ try {
     assert.notEqual(tailSamples % 960, 0, 'fixture must end in a partial 20 ms Opus frame');
     checkSampleCount(await transcode(tail), tailSamples, 'resampler tail and partial final Opus frame');
     checkSampleCount(
-        await transcode(tail, () => {
-            throw new Error('Diagnostic sink failed');
+        await transcode(tail, {
+            onDiagnostic: () => {
+                throw new Error('Diagnostic sink failed');
+            },
         }),
         tailSamples,
         'throwing diagnostic sink preserves native conversion and cleanup'

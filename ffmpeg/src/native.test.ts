@@ -3,7 +3,7 @@ import { NativeBridge } from '@project/ffmpeg/native';
 import type { NativeModule } from '@project/ffmpeg/native';
 import type { FfmpegDiagnostics } from '@project/ffmpeg/protocol';
 
-// The WASM module is the boundary here; runtime-audio.mjs and runtime-subtitles.mjs cover real decoding.
+// The WASM module is the boundary here. runtime-audio.mjs and runtime-subtitles.mjs cover real decoding.
 const nativeModule = (run: (module: NativeModule) => number): NativeModule => {
     const module: NativeModule = {
         HEAPU8: new Uint8Array(64),
@@ -29,8 +29,7 @@ it('passes a uint32 track array and count using the current heap and copies outp
     const freed: number[] = [];
     module._malloc = (size) => {
         expect(size).toBe(8);
-        // Allocation can grow WASM memory and replace the exported heap view.
-        module.HEAPU8 = new Uint8Array(64).fill(255);
+        module.HEAPU8 = new Uint8Array(64).fill(255); // Allocation can grow WASM memory and replace HEAPU8.
         return 8;
     };
     module._free = (pointer) => freed.push(pointer);
@@ -51,16 +50,16 @@ it('passes a uint32 track array and count using the current heap and copies outp
         module.HEAPU8.fill(0, 32, 34);
         return 1;
     };
-    const chunks: { index: number; bytes: ArrayBuffer }[] = [];
+    const chunks: { trackKey: number; bytes: ArrayBuffer }[] = [];
     const output = NativeBridge.create(module).extractSubtitles(
         input,
         [2, 258],
-        (index, bytes) => chunks.push({ index, bytes }),
+        (trackKey, bytes) => chunks.push({ trackKey, bytes }),
         () => {}
     );
     expect(output).toEqual(results);
-    expect(chunks.map(({ index, bytes }) => ({ index, bytes: [...new Uint8Array(bytes)] }))).toEqual([
-        { index: 2, bytes: [4, 5] },
+    expect(chunks.map(({ trackKey, bytes }) => ({ trackKey, bytes: [...new Uint8Array(bytes)] }))).toEqual([
+        { trackKey: 2, bytes: [4, 5] },
     ]);
     expect(freed).toEqual([8]);
     expect(module.asbReadInput).toBeUndefined();
@@ -85,12 +84,12 @@ it('skips native allocation and extraction for an empty track selection', () => 
     ).toEqual([]);
 });
 
-it.each([-1, 1.5, NaN, 0x100000002])('rejects stream index %s before it can narrow to uint32', (index) => {
+it.each([-1, 1.5, NaN, 0x100000002])('rejects stream index %s before it can narrow to uint32', (trackKey) => {
     const module = nativeModule(() => 1);
     expect(() =>
         NativeBridge.create(module).extractSubtitles(
             input,
-            [index],
+            [trackKey],
             () => {},
             () => {}
         )
@@ -165,11 +164,10 @@ it('preserves subtitle results and diagnostics when the sink throws', () => {
     const module = nativeModule(() => 1);
     module.HEAPU8 = new Uint8Array(64);
     module.UTF8ToString = () => '[]';
-    const run = () => {
+    module._asb_extract_subtitles = () => {
         module.asbDiagnostic!('ffmpeg', 'warning', 'Subtitle warning');
         return 1;
     };
-    module._asb_extract_subtitles = run;
     module._malloc = () => 8;
     module._free = () => {};
     const bridge = NativeBridge.create(module);

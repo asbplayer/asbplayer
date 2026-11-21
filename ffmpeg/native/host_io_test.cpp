@@ -26,7 +26,7 @@ double last_read_offset = 0;
 int last_read_length = 0;
 std::optional<int> forced_write_result;
 std::vector<uint8_t> output;
-uint32_t last_write_track_index = 0;
+uint32_t last_write_track_key = 0;
 
 uint8_t file_byte(int64_t position) {
     return static_cast<uint8_t>(position ^ (position >> 32));
@@ -124,13 +124,13 @@ void test_reads() {
 
 void test_writes() {
     const std::array<uint8_t, 2> buffer{7, 9};
-    uint32_t track_index = 3;
-    check(asb::detail::write_output(&track_index, buffer.data(), buffer.size()) == 2, "A complete host write must succeed");
+    uint32_t track_key = 3;
+    check(asb::detail::write_output(&track_key, buffer.data(), buffer.size()) == 2, "A complete host write must succeed");
     check(output == std::vector<uint8_t>({7, 9}), "The host must receive the output bytes");
-    check(last_write_track_index == track_index, "The host must receive the output track index");
+    check(last_write_track_key == track_key, "The host must receive the output track key");
     for (const int result : {-1, 0, 1}) {
         forced_write_result = result;
-        check(asb::detail::write_output(&track_index, buffer.data(), buffer.size()) == AVERROR(EIO),
+        check(asb::detail::write_output(&track_key, buffer.data(), buffer.size()) == AVERROR(EIO),
               "Failed or short output writes must report EIO");
     }
 }
@@ -148,8 +148,8 @@ extern "C" int asb_read_input(double offset, uint8_t* buffer, int length) {
     return count;
 }
 
-extern "C" int asb_write_output(uint32_t track_index, const uint8_t* buffer, int length) {
-    last_write_track_index = track_index;
+extern "C" int asb_write_output(uint32_t track_key, const uint8_t* buffer, int length) {
+    last_write_track_key = track_key;
     const int count = forced_write_result.value_or(length);
     if (count > 0 && count <= length) output.insert(output.end(), buffer, buffer + count);
     return count;

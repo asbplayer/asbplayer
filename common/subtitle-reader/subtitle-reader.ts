@@ -205,8 +205,8 @@ export default class SubtitleReader {
     /**
      * Parses one ASS or SRT track incrementally, returning only new cues with stable, increasing cue IDs.
      * Feed chunks in file order with chronological cues so each batch extends the track's timeline prefix.
-     * ASS requires a fixed header before dialogue. Incomplete lines or cue blocks are buffered;
-     * call read(text, true) at EOF to flush the remaining input.
+     * ASS requires a fixed header before dialogue. Incomplete lines or cue blocks are buffered.
+     * Call read(text, true) at EOF to flush the remaining input.
      */
     createProgressiveReader(extension: string) {
         if (extension !== 'ass' && extension !== 'srt') {
@@ -230,17 +230,17 @@ export default class SubtitleReader {
                 } else {
                     const lines = pending.split(assLineBreakRegex);
                     pending = final ? '' : lines.pop()!;
-                    if (lines.length === 0) return [];
+                    if (!lines.length) return [];
                     const prefix = format ? `[Events]\nFormat: ${format.join(', ')}\n` : header;
                     const batch = lines.join('\n');
                     const tree = parseAss(prefix + batch);
-                    if (tree.events.format.length > 0) {
+                    if (tree.events.format.length) {
                         format = tree.events.format;
                         header = '';
                     } else if (!format) {
                         header += `${batch}\n`;
                     }
-                    if (!format && tree.events.dialogue.length > 0) {
+                    if (!format && tree.events.dialogue.length) {
                         throw new Error('ASS dialogue arrived before the events format');
                     }
                     if (final && !format) {

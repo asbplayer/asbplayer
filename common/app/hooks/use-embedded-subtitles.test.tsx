@@ -48,7 +48,15 @@ let root: Root;
 
 const output = () => container.querySelector('output')!;
 
-const render = async (draft?: object, open = true, discoverOnLoad = false) => {
+const render = async ({
+    draft,
+    open = true,
+    discoverOnLoad = false,
+}: {
+    draft?: object;
+    open?: boolean;
+    discoverOnLoad?: boolean;
+} = {}) => {
     await act(async () => root.render(<Harness draft={draft} open={open} discoverOnLoad={discoverOnLoad} />));
 };
 
@@ -81,10 +89,10 @@ afterEach(() => {
 });
 
 it('restarts cancelled discovery for a replacement draft and ignores late results', async () => {
-    await render({});
+    await render({ draft: {} });
     expect(output().dataset.loading).toBe('true');
     await act(async () => container.querySelector('button')!.click());
-    await render({});
+    await render({ draft: {} });
     await finishRead(0);
     expect(output().textContent).toBe('');
     await finishRead(1);
@@ -94,19 +102,19 @@ it('restarts cancelled discovery for a replacement draft and ignores late result
 });
 
 it('reuses completed discovery when another draft selects the same video', async () => {
-    await render({});
+    await render({ draft: {} });
     await finishRead(0);
     await act(async () => container.querySelector('button')!.click());
-    await render({});
+    await render({ draft: {} });
     expect(output().textContent).toBe('0');
     expect(reads).toHaveLength(1);
 });
 
 it('reports failed discovery and retries without falling back to FFmpeg', async () => {
-    await render({});
+    await render({ draft: {} });
     await act(async () => reads[0].reject(new Error('Failed file read')));
     expect(output().dataset.error).toBe('true');
-    await render({});
+    await render({ draft: {} });
     expect(output().dataset.error).toBe('false');
     await finishRead(1);
     expect(output().textContent).toBe('0');
@@ -114,12 +122,12 @@ it('reports failed discovery and retries without falling back to FFmpeg', async 
 });
 
 it('defers discovery while the picker is closed, then discovers video-only imports without FFmpeg', async () => {
-    await render({}, false);
+    await render({ draft: {}, open: false });
     expect(reads).toHaveLength(0);
-    await render(undefined, false, true);
+    await render({ open: false, discoverOnLoad: true });
     await finishRead(0);
     expect(output().textContent).toBe('0');
-    await render(undefined, true, false);
+    await render({ open: true, discoverOnLoad: false });
     expect(reads).toHaveLength(1);
     expect(host.extractSubtitles).not.toHaveBeenCalled();
 });

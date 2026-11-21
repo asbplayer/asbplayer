@@ -22,8 +22,6 @@ extern "C" {
 
 namespace asb::detail {
 
-inline constexpr double javascript_max_safe_integer = 9007199254740991.0;
-
 inline int prepare_frame(AVFrame* frame, AVCodecContext* encoder, int samples) {
     av_frame_unref(frame);
     frame->format = encoder->sample_fmt;

@@ -7,7 +7,7 @@ import type {
 } from '@project/ffmpeg/protocol';
 import type { InputReader } from '@project/ffmpeg/input-reader';
 
-const uint32Max = 0xffffffff; // Track indexes cross the WASM boundary as uint32_t
+const uint32Max = 0xffffffff; // Track keys and indexes cross the WASM boundary as uint32_t
 
 export type NativeModule = {
     _asb_runtime_info_json(): number;
@@ -18,7 +18,7 @@ export type NativeModule = {
     _free(pointer: number): void;
     HEAPU8: Uint8Array;
     UTF8ToString(pointer: number): string;
-    asbWriteOutput: ((trackIndex: number, pointer: number, length: number) => number) | undefined;
+    asbWriteOutput: ((trackKey: number, pointer: number, length: number) => number) | undefined;
     asbReadInput: ((offset: number, pointer: number, length: number) => number) | undefined;
     asbDiagnostic:
         | ((source: FfmpegDiagnostic['source'], level: FfmpegDiagnostic['level'], message: string) => void)
@@ -75,18 +75,17 @@ export class NativeBridge {
 
     extractSubtitles(
         input: InputReader,
-        trackKeys: number[],
+        trackKeys: readonly number[],
         onChunk: (trackKey: number, chunk: ArrayBuffer) => void,
         onDiagnostics: (diagnostics: FfmpegDiagnostics) => void
     ): ExtractedSubtitle[] {
-        if (trackKeys.length === 0) return [];
-        if (trackKeys.some((index) => !Number.isInteger(index) || index < 0 || index > uint32Max)) {
+        if (!trackKeys.length) return [];
+        if (trackKeys.some((trackKey) => !Number.isInteger(trackKey) || trackKey < 0 || trackKey > uint32Max)) {
             throw new Error('Invalid subtitle track index');
         }
-        const module = this.module;
         const size = trackKeys.length * Uint32Array.BYTES_PER_ELEMENT;
-        const pointer = module._malloc(size);
-        if (!pointer) throw new Error('Could not allocate subtitle arguments');
+        const trackKeysPointer = this.module._malloc(size);
+        if (!trackKeysPointer) throw new Error('Could not allocate subtitle arguments');
         let callbackError: unknown;
         const finishDiagnostics = this.collectDiagnostics(onDiagnostics);
         this.module.asbReadInput = (offset, pointer, length) => {
@@ -99,9 +98,9 @@ export class NativeBridge {
                 return -1;
             }
         };
-        this.module.asbWriteOutput = (index, pointer, length) => {
+        this.module.asbWriteOutput = (trackKey, pointer, length) => {
             try {
-                onChunk(index, this.module.HEAPU8.slice(pointer, pointer + length).buffer);
+                onChunk(trackKey, this.module.HEAPU8.slice(pointer, pointer + length).buffer);
                 return length;
             } catch (error) {
                 callbackError = error;
@@ -109,20 +108,20 @@ export class NativeBridge {
             }
         };
         try {
-            const heap = module.HEAPU8;
-            const indexes = new DataView(heap.buffer, heap.byteOffset + pointer, size);
-            trackKeys.forEach((index, position) => {
-                indexes.setUint32(position * Uint32Array.BYTES_PER_ELEMENT, index, true);
+            const heap = this.module.HEAPU8;
+            const trackKeysView = new DataView(heap.buffer, heap.byteOffset + trackKeysPointer, size);
+            trackKeys.forEach((trackKey, position) => {
+                trackKeysView.setUint32(position * Uint32Array.BYTES_PER_ELEMENT, trackKey, true);
             });
-            const result = module._asb_extract_subtitles(input.size, pointer, trackKeys.length);
+            const result = this.module._asb_extract_subtitles(input.size, trackKeysPointer, trackKeys.length);
             if (callbackError !== undefined) throw callbackError;
-            if (!result) throw new Error(module.UTF8ToString(module._asb_last_error()));
-            return JSON.parse(module.UTF8ToString(result)) as ExtractedSubtitle[];
+            if (!result) throw new Error(this.module.UTF8ToString(this.module._asb_last_error()));
+            return JSON.parse(this.module.UTF8ToString(result)) as ExtractedSubtitle[];
         } finally {
             this.module.asbReadInput = undefined;
             this.module.asbWriteOutput = undefined;
             finishDiagnostics();
-            module._free(pointer);
+            this.module._free(trackKeysPointer);
         }
     }
 

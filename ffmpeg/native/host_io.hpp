@@ -16,8 +16,9 @@ int asb_write_output(uint32_t track_key, const uint8_t* buffer, int length);
 namespace asb::detail {
 
 inline constexpr int io_buffer_bytes = 32 * 1024;
+inline constexpr double javascript_max_safe_integer = 9007199254740991.0;
 
-// The AVIO context points to an operation-owned output key.
+/** The AVIO context points to an operation-owned output key. */
 inline int write_output(void* opaque, const uint8_t* buffer, int length) {
     const auto track_key = *static_cast<const uint32_t*>(opaque);
     return asb_write_output(track_key, buffer, length) == length ? length : AVERROR(EIO);

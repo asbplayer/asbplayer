@@ -9,7 +9,7 @@ import type { EmbeddedSubtitles } from '@project/common/embedded-subtitles/embed
 import { embeddedSubtitleId } from '@project/common/embedded-subtitles/subtitle-source';
 import { asbError } from '@project/common/util/log';
 
-/** Hands extraction to the player; only completed Files are returned to persistence. */
+/** Hands extraction to the player. Only completed Files are returned to persistence. */
 export const embeddedSubtitleProducer =
     ({
         source,
@@ -53,7 +53,7 @@ export const embeddedSubtitleProducer =
         });
         const extraction = new AbortController();
         let publicationError: Error | undefined;
-        const readers = new Map(
+        const streamsByTrackIndex = new Map(
             [...pendingEmbeddedTrackIndexes].map((embeddedTrackIndex) => {
                 const targets = pendingSlots.filter((slot) => slot.embeddedTrackIndex === embeddedTrackIndex);
                 return [
@@ -78,7 +78,7 @@ export const embeddedSubtitleProducer =
             })
         );
         const cancel = () => {
-            for (const stream of readers.values()) stream.publisher.dispose();
+            for (const stream of streamsByTrackIndex.values()) stream.publisher.dispose();
             extraction.abort(signal.reason);
         };
         const failedFileSlots = new Set<number>();
@@ -128,13 +128,13 @@ export const embeddedSubtitleProducer =
                     extraction.signal,
                     (embeddedTrackIndex, bytes) => {
                         extraction.signal.throwIfAborted();
-                        const stream = readers.get(embeddedTrackIndex);
+                        const stream = streamsByTrackIndex.get(embeddedTrackIndex);
                         if (!stream) throw new Error('Unexpected embedded subtitle track');
                         stream.publisher.add(stream.parser.read(stream.decoder.decode(bytes, { stream: true }), false));
                     }
                 );
                 extraction.signal.throwIfAborted();
-                for (const stream of readers.values()) {
+                for (const stream of streamsByTrackIndex.values()) {
                     stream.publisher.add(stream.parser.read(stream.decoder.decode(), true));
                     stream.publisher.flush();
                 }
@@ -144,7 +144,7 @@ export const embeddedSubtitleProducer =
                 return completed;
             } catch (error) {
                 if (signal.aborted) throw error;
-                for (const stream of readers.values()) stream.publisher.flush();
+                for (const stream of streamsByTrackIndex.values()) stream.publisher.flush();
                 asbError('app/subtitles', 'Failed to produce embedded subtitles', publicationError ?? error);
                 for (const { slotIndex, loadId } of pendingSlots) {
                     publishUpdate({ type: 'failed', track: slotIndex, loadId, error: errorMessage });
@@ -161,9 +161,9 @@ export const embeddedSubtitleProducer =
             throw error;
         } finally {
             signal.removeEventListener('abort', cancel);
-            for (const stream of readers.values()) stream.publisher.dispose();
+            for (const stream of streamsByTrackIndex.values()) stream.publisher.dispose();
         }
-        const files = tracks.map(({ fileParts }, slotIndex) => ({
+        const completedTracks = tracks.map(({ fileParts }, slotIndex) => ({
             fileParts: failedFileSlots.has(slotIndex)
                 ? []
                 : fileParts.flatMap((file) => {
@@ -172,5 +172,5 @@ export const embeddedSubtitleProducer =
                       return output ? [output] : [];
                   }),
         }));
-        await onFinished(files, signal);
+        await onFinished(completedTracks, signal);
     };

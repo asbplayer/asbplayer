@@ -847,7 +847,7 @@ describe('FFmpeg session', () => {
 });
 
 describe('embedded subtitle operations', () => {
-    const result = (worker: FakeWorker, value: unknown) => {
+    const replyWithResult = (worker: FakeWorker, value: unknown) => {
         const request = worker.messages.at(-1)!;
         worker.target.dispatchEvent(
             new MessageEvent('message', {
@@ -874,11 +874,11 @@ describe('embedded subtitle operations', () => {
     };
     it('deduplicates subtitle track indexes and requires completion for empty outputs', async () => {
         const { worker, runtime } = await ready();
-        const chunks: Array<[number, number]> = [];
+        const chunks: { trackKey: number; byteLength: number }[] = [];
         const extraction = runtime.extractSubtitles({
             input: new Blob(['video']),
             trackKeys: [5, 2, 5],
-            onChunk: (index, bytes) => chunks.push([index, bytes.byteLength]),
+            onChunk: (trackKey, bytes) => chunks.push({ trackKey, byteLength: bytes.byteLength }),
         });
         const request = worker.messages.at(-1)!;
         expect(request).toMatchObject({ operation: 'extractSubtitles', trackKeys: [5, 2] });
@@ -898,15 +898,15 @@ describe('embedded subtitle operations', () => {
             extension: 'srt',
             mimeType: 'application/x-subrip',
         }));
-        result(worker, outputs);
+        replyWithResult(worker, outputs);
         await expect(extraction).resolves.toEqual(outputs);
-        expect(chunks).toEqual([[5, 3]]);
+        expect(chunks).toEqual([{ trackKey: 5, byteLength: 3 }]);
         const incomplete = runtime.extractSubtitles({
             input: new Blob(['video']),
             trackKeys: [5, 2],
             onChunk: () => {},
         });
-        result(worker, outputs.slice(0, 1));
+        replyWithResult(worker, outputs.slice(0, 1));
         await expect(incomplete).rejects.toMatchObject({ code: 'protocol' });
     });
     it('rejects output routed to an unrequested track', async () => {
@@ -937,7 +937,7 @@ describe('embedded subtitle operations', () => {
             trackKeys: [3],
             onChunk: () => {},
         });
-        result(worker, [{ trackKey: 3, extension: 'sup', mimeType: 'application/x-pgs' }]);
+        replyWithResult(worker, [{ trackKey: 3, extension: 'sup', mimeType: 'application/x-pgs' }]);
         await expect(extraction).rejects.toMatchObject({ code: 'protocol' });
     });
 });

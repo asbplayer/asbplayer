@@ -58,7 +58,7 @@ export interface SubtitleImportOptions {
     onError: (error: unknown) => void;
 }
 
-/** Owns active-source and picker-draft lifetimes; the player runs extraction after confirmation or restore. */
+/** Owns active-source and picker-draft lifetimes. The player runs extraction after confirmation or restore. */
 export class SubtitleImportController {
     private state: SubtitleImportState = { embeddedSelection: undefined, discoveryKey: undefined };
     private sourceLifetime = new AbortController();
@@ -193,7 +193,8 @@ export class SubtitleImportController {
             const video = incoming.videoFile;
             this.loadSources(new MediaSources(undefined, video), { keepDraftHandles: true }); // Keep the draft's handles across the picker reset so confirmation can promote them
             this.options.picker.openSubtitleTrackSelectorWithFiles(incoming.subtitleSourceFiles);
-            const { signal } = this.sourceLifetime; // The video is already active, so retain its handle if the draft is cancelled
+            // The video is already active, so retain its handle if the draft is cancelled.
+            const { signal } = this.sourceLifetime;
             void (async () => {
                 const session = await this.options.session.fetchSession();
                 if (signal.aborted || this.currentVideo !== video.file) return;
@@ -203,11 +204,17 @@ export class SubtitleImportController {
             return;
         }
         this.options.picker.setSubtitleTrackSelectorTracks((previous) => {
-            const merged = new Map(previous.map((track) => [track.id, track]));
+            const tracksById = new Map(previous.map((track) => [track.id, track]));
             for (const { id, file, embedded } of files) {
-                merged.set(id, { id, file, embedded, label: file.name, extension: getExtension(file.name).slice(1) });
+                tracksById.set(id, {
+                    id,
+                    file,
+                    embedded,
+                    label: file.name,
+                    extension: getExtension(file.name).slice(1),
+                });
             }
-            return [...merged.values()];
+            return [...tracksById.values()];
         });
         this.options.picker.setSubtitleTrackSelectorSelectedTrackIds([0, 1, 2].map((index) => files[index]?.id ?? '-'));
     }
@@ -310,7 +317,7 @@ export class SubtitleImportController {
                     restored.subtitleSourceFiles.filter((file) => !pendingIds.has(file.id))
                 );
             }
-            this.sessionRestoreController = undefined; // Restoration has finished preparing files; the restored sources now own any extraction
+            this.sessionRestoreController = undefined; // Restoration has finished preparing files, so the restored sources now own any extraction.
             this.loadSources(restored, { keepDraftHandles: false });
             if (restored.videoFile && missingEmbeddedSubtitles.length) {
                 this.startEmbedded(restored.videoFile, restored.subtitleTracks, missingEmbeddedSubtitles);

@@ -49,6 +49,28 @@ const handleTranscodeAudio = (
     );
 };
 
+const handleExtractSubtitles = (
+    request: Extract<WorkerRequest, { operation: 'extractSubtitles' }>,
+    bridge: NativeBridge,
+    onDiagnostics: (diagnostics: FfmpegDiagnostics) => void
+) => {
+    if (
+        !(request.input instanceof Blob) ||
+        !Array.isArray(request.trackKeys) ||
+        !request.trackKeys.length ||
+        request.trackKeys.some((trackKey) => !Number.isSafeInteger(trackKey) || trackKey < 0) ||
+        new Set(request.trackKeys).size !== request.trackKeys.length
+    ) {
+        throw new Error('Invalid subtitle extraction request');
+    }
+    return bridge.extractSubtitles(
+        createInputReader(request.input, (slice) => new FileReaderSync().readAsArrayBuffer(slice)),
+        request.trackKeys,
+        (trackKey, chunk) => reply(request, { type: 'chunk', trackKey, chunk }, [chunk]),
+        onDiagnostics
+    );
+};
+
 const handleRequest = async (request: WorkerRequest) => {
     if (
         typeof request !== 'object' ||
@@ -80,23 +102,9 @@ const handleRequest = async (request: WorkerRequest) => {
                 break;
             }
             case 'extractSubtitles': {
-                if (
-                    !(request.input instanceof Blob) ||
-                    !Array.isArray(request.trackKeys) ||
-                    request.trackKeys.length === 0 ||
-                    request.trackKeys.some((index) => !Number.isSafeInteger(index) || index < 0) ||
-                    new Set(request.trackKeys).size !== request.trackKeys.length
-                ) {
-                    throw new Error('Invalid subtitle extraction request');
-                }
-                const result = bridge.extractSubtitles(
-                    createInputReader(request.input, (slice) => new FileReaderSync().readAsArrayBuffer(slice)),
-                    request.trackKeys,
-                    (trackKey, chunk) => reply(request, { type: 'chunk', trackKey, chunk }, [chunk]),
-                    (value) => {
-                        diagnostics = value;
-                    }
-                );
+                const result = handleExtractSubtitles(request, bridge, (value) => {
+                    diagnostics = value;
+                });
                 reply(request, { ok: true, result, diagnostics });
                 break;
             }

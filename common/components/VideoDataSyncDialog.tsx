@@ -330,11 +330,10 @@ export default function VideoDataSyncDialog({
                 const subtitle = subtitleTracks.find((subtitle) => subtitle.id === selected);
                 if (subtitle) {
                     const { file, label } = subtitle;
-                    if (subtitle.disabledReason) return undefined;
+                    if (subtitle.disabledReason) return;
                     const fileName = file?.name ?? label;
                     const trackName = isFileSubtitle(subtitle)
-                        ? // Confirmed names omit the extension; download consumers add it back.
-                          fileName.substring(0, fileName.lastIndexOf('.'))
+                        ? fileName.substring(0, fileName.lastIndexOf('.')) // Confirmed names omit the extension because download consumers add it back.
                         : calculateVideoName(trimmedName, label, false);
 
                     return {

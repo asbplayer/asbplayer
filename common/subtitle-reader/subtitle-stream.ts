@@ -91,21 +91,21 @@ const subtitlePublicationIntervalMs = 100;
 export class SubtitleCuePublisher {
     private pending: SubtitleSourceCue[] = [];
     private timer: ReturnType<typeof setTimeout> | undefined;
-    private lastPublicationAt: number | undefined;
+    private lastPublicationAtMs: number | undefined;
 
     constructor(
-        private readonly publish: (cues: SubtitleSourceCue[]) => void,
+        private readonly publish: (cues: readonly SubtitleSourceCue[]) => void,
         private readonly onError: (error: unknown) => void
     ) {}
 
     add(cues: readonly SubtitleSourceCue[]): void {
         for (const cue of cues) this.pending.push(cue);
         if (!this.pending.length) return;
-        const remaining =
-            this.lastPublicationAt === undefined
+        const remainingMs =
+            this.lastPublicationAtMs === undefined
                 ? 0
-                : subtitlePublicationIntervalMs - (performance.now() - this.lastPublicationAt);
-        if (remaining <= 0) {
+                : subtitlePublicationIntervalMs - (performance.now() - this.lastPublicationAtMs);
+        if (remainingMs <= 0) {
             this.flush();
         } else if (this.timer === undefined) {
             this.timer = setTimeout(() => {
@@ -115,7 +115,7 @@ export class SubtitleCuePublisher {
                     this.dispose();
                     this.onError(error);
                 }
-            }, remaining);
+            }, remainingMs);
         }
     }
 
@@ -125,7 +125,7 @@ export class SubtitleCuePublisher {
         if (!this.pending.length) return;
         const cues = this.pending;
         this.pending = [];
-        this.lastPublicationAt = performance.now();
+        this.lastPublicationAtMs = performance.now();
         this.publish(cues);
     }
 

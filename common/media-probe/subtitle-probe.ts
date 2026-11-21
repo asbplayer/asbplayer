@@ -1,20 +1,25 @@
 import ByteReader from '@project/common/media-probe/byte-reader';
 import { ebmlHeaderId, ebmlHeaderIdBytes } from '@project/common/media-probe/ebml';
 import { isMatroskaWebVttCodec, matroskaSubtitleTracks } from '@project/common/media-probe/matroska';
-import { isoBmffSubtitleTracks, isoBmffBoxTypeOffset, isoBmffBoxTypeBytes } from '@project/common/media-probe/iso-bmff';
+import {
+    isoBmffSubtitleTracks,
+    isoBmffBoxTypeOffset,
+    isoBmffBoxTypeBytes,
+    isoBmffTopLevelBoxTypes,
+} from '@project/common/media-probe/iso-bmff';
 
 export interface EmbeddedSubtitleTrack {
     /** Zero-based position among subtitle tracks, including unsupported codecs. */
-    trackIndex: number;
+    readonly trackIndex: number;
     /** Native extraction identity: MP4 track ID or Matroska subtitle ordinal. */
-    trackKey: number | undefined;
-    codec: string;
-    language?: string;
-    title?: string;
-    outputFormat?: 'srt';
+    readonly trackKey: number | undefined;
+    readonly codec: string;
+    readonly language?: string;
+    readonly title?: string;
+    readonly outputFormat?: 'srt';
 }
 
-const matroskaCodecs: Record<string, string> = {
+const codecsByMatroskaId: Record<string, string> = {
     'S_TEXT/UTF8': 'subrip',
     'S_TEXT/ASCII': 'text',
     'S_TEXT/ASS': 'ass',
@@ -25,7 +30,7 @@ const matroskaCodecs: Record<string, string> = {
     S_VOBSUB: 'dvd_subtitle',
     S_DVBSUB: 'dvb_subtitle',
 };
-const mp4Codecs: Record<string, string> = { tx3g: 'mov_text', text: 'mov_text', wvtt: 'webvtt', stpp: 'ttml' };
+const codecsByMp4Format: Record<string, string> = { tx3g: 'mov_text', text: 'mov_text', wvtt: 'webvtt', stpp: 'ttml' };
 const textCodecs = new Set(['subrip', 'text', 'ass', 'ssa', 'webvtt', 'mov_text']);
 
 const displayNamesByCodec: Record<string, string> = {
@@ -44,14 +49,21 @@ const displayNamesByCodec: Record<string, string> = {
 /** Familiar source format names, independent of the format used for extraction. */
 export const subtitleCodecDisplayName = (codec: string) => displayNamesByCodec[codec] ?? codec.toUpperCase();
 
-const subtitle = (
-    trackIndex: number,
-    trackKey: number | undefined,
-    codec: string,
-    language: string | undefined,
-    title: string | undefined,
-    supported: boolean
-): EmbeddedSubtitleTrack => ({
+const subtitle = ({
+    trackIndex,
+    trackKey,
+    codec,
+    language,
+    title,
+    supported,
+}: {
+    trackIndex: number;
+    trackKey: number | undefined;
+    codec: string;
+    language: string | undefined;
+    title: string | undefined;
+    supported: boolean;
+}): EmbeddedSubtitleTrack => ({
     trackIndex,
     trackKey,
     codec,
@@ -62,32 +74,39 @@ const subtitle = (
 
 /** Discover dedicated subtitle tracks from container metadata, without loading FFmpeg. */
 export const probeSubtitleTracks = async (blob: Blob, signal: AbortSignal): Promise<EmbeddedSubtitleTrack[]> => {
-    const reader = new ByteReader(blob, undefined, signal);
+    const reader = new ByteReader(blob, { signal });
     if ((await reader.unsignedInt(0, ebmlHeaderIdBytes)) === ebmlHeaderId) {
         const tracks = await matroskaSubtitleTracks(reader);
         if (!tracks) throw new Error('Could not read Matroska tracks');
         return tracks.map((track, index) => {
             const codec = isMatroskaWebVttCodec(track.codecId)
                 ? 'webvtt'
-                : (matroskaCodecs[track.codecId] ?? track.codecId);
-            return subtitle(index, index, codec, track.language, track.title, true);
+                : (codecsByMatroskaId[track.codecId] ?? track.codecId);
+            return subtitle({
+                trackIndex: index,
+                trackKey: index,
+                codec,
+                language: track.language,
+                title: track.title,
+                supported: true,
+            });
         });
     }
     const boxType = await reader.ascii(isoBmffBoxTypeOffset, isoBmffBoxTypeBytes);
-    if (boxType && ['ftyp', 'styp', 'moov', 'free', 'skip', 'wide', 'mdat'].includes(boxType)) {
+    if (boxType && isoBmffTopLevelBoxTypes.includes(boxType)) {
         const tracks = await isoBmffSubtitleTracks(reader);
         if (!tracks) throw new Error('Could not read MP4 tracks');
         return tracks.map((track, index) => {
             if (!track.format) throw new Error('Missing MP4 subtitle sample entry');
-            const trackKey = track.id !== undefined && track.id > 0 ? track.id : undefined;
-            return subtitle(
-                index,
+            const trackKey = track.id && track.id > 0 ? track.id : undefined;
+            return subtitle({
+                trackIndex: index,
                 trackKey,
-                mp4Codecs[track.format] ?? track.format,
-                track.language,
-                track.title,
-                trackKey !== undefined && (track.format === 'tx3g' || track.format === 'text')
-            );
+                codec: codecsByMp4Format[track.format] ?? track.format,
+                language: track.language,
+                title: track.title,
+                supported: trackKey !== undefined && (track.format === 'tx3g' || track.format === 'text'),
+            });
         });
     }
     return [];

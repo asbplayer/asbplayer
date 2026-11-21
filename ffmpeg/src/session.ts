@@ -33,7 +33,7 @@ export type FfmpegRuntime = {
     /** Selects MP4 track IDs or zero-based Matroska subtitle positions. */
     extractSubtitles(options: {
         input: Blob;
-        trackKeys: number[];
+        trackKeys: readonly number[];
         signal?: AbortSignal;
         onChunk: (trackKey: number, chunk: ArrayBuffer) => void;
     }): Promise<ExtractedSubtitle[]>;
@@ -138,7 +138,7 @@ export const createFfmpegSession = ({
 
     /** Delivers output chunks for a running conversion; a throwing callback rejects only that request. */
     function onChunkReply(reply: ChunkReply, pendingRequest: Pending) {
-        if (pendingRequest.onChunk === undefined) {
+        if (!pendingRequest.onChunk) {
             terminate(
                 'failed',
                 new FfmpegError('protocol', `Unexpected FFmpeg ${reply.type} reply for a non-transcode request`)
@@ -257,37 +257,37 @@ export const createFfmpegSession = ({
 
     const runtime: FfmpegRuntime = {
         extractSubtitles: async ({ input, trackKeys, signal, onChunk }) => {
-            const indexes = [...new Set(trackKeys)];
-            if (indexes.some((index) => !Number.isSafeInteger(index) || index < 0)) {
+            const uniqueTrackKeys = [...new Set(trackKeys)];
+            if (uniqueTrackKeys.some((trackKey) => !Number.isSafeInteger(trackKey) || trackKey < 0)) {
                 throw new FfmpegError('protocol', 'Invalid subtitle track index');
             }
-            if (indexes.length === 0) return [];
+            if (!uniqueTrackKeys.length) return [];
             const result = await request<ExtractedSubtitle[]>(
                 {
                     operation: 'extractSubtitles',
                     input,
-                    trackKeys: indexes,
-                    onChunk: (chunk, index) => {
-                        if (index === undefined || !indexes.includes(index)) {
+                    trackKeys: uniqueTrackKeys,
+                    onChunk: (chunk, trackKey) => {
+                        if (trackKey === undefined || !uniqueTrackKeys.includes(trackKey)) {
                             throw new FfmpegError('protocol', 'Unexpected subtitle output track');
                         }
-                        onChunk(index, chunk);
+                        onChunk(trackKey, chunk);
                     },
                 },
                 signal
             );
             if (
                 !Array.isArray(result) ||
-                result.length !== indexes.length ||
+                result.length !== uniqueTrackKeys.length ||
                 result.some(
                     (track) =>
+                        !track ||
                         typeof track !== 'object' ||
-                        track === null ||
-                        !indexes.includes(track.trackKey) ||
+                        !uniqueTrackKeys.includes(track.trackKey) ||
                         track.extension !== 'srt' ||
                         track.mimeType !== 'application/x-subrip'
                 ) ||
-                new Set(result.map((track) => track.trackKey)).size !== indexes.length
+                new Set(result.map((track) => track.trackKey)).size !== uniqueTrackKeys.length
             ) {
                 throw new FfmpegError('protocol', 'Incomplete subtitle extraction');
             }
