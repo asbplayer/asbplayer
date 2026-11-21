@@ -33,6 +33,7 @@ export interface FileSessionStore {
     ) => Promise<void>;
     retain: (sources: FileSessionSourceIds) => Promise<void>;
     promoteBuffered: (ids: string[]) => Promise<void>;
+    promoteBufferedVideo: (videoId: string) => Promise<boolean>;
     clearBuffered: () => Promise<void>;
     setCachedSubtitleFiles: (
         files: FileWithId[],
@@ -41,6 +42,7 @@ export interface FileSessionStore {
             embeddedSubtitles: Record<string, EmbeddedSubtitleDescriptor>;
         }
     ) => Promise<boolean>;
+    clear: () => Promise<void>;
 }
 
 let defaultStore: IndexedDBFileSessionRepository | undefined;
@@ -141,12 +143,13 @@ export class FileSession {
 
     /** Promote the active video's handle out of the draft buffer so cancelling the picker keeps it restorable. */
     retainDraftVideoHandle(videoId: string, isStillActive: () => boolean, signal: AbortSignal): void {
-        void (async () => {
-            const record = await this.store?.fetch();
-            if (signal.aborted || !isStillActive()) return;
-            const videoHandle = record?.bufferedSubtitleHandles?.find((handle) => handle.id === videoId);
-            if (videoHandle) await this.saveSession({ videoHandle, subtitleHandles: [] });
-        })().catch((error) => this.callbacks.onError(error));
+        if (!this.store || signal.aborted || !isStillActive()) return;
+        void this.store
+            .promoteBufferedVideo(videoId)
+            .then((promoted) => {
+                if (promoted && !signal.aborted && isStillActive()) this.setCanRestore(true);
+            })
+            .catch((error) => this.callbacks.onError(error));
     }
 
     /** Save accepted handles, promote drafts, and serialize selection persistence against later extractions. */
@@ -215,14 +218,26 @@ export class FileSession {
         const { files: resolved, errors } = await resolveFiles(granted);
         if (signal.aborted) return;
 
-        if (errors.length) throw new LocalizedError('error.restoreSessionFailed');
+        if (errors.length) {
+            await this.clearSession();
+            throw new LocalizedError('error.restoreSessionFailed');
+        }
         const { files, missingEmbeddedSubtitles } = await restoreSessionFiles(record, resolved, prepareEmbedded);
         if (signal.aborted) return;
 
-        return {
-            sources: MediaSources.fromFiles(files, { pendingEmbedded: missingEmbeddedSubtitles.length > 0 }),
-            missingEmbeddedSubtitles,
-        };
+        let sources: MediaSources;
+        try {
+            sources = MediaSources.fromFiles(files, { pendingEmbedded: missingEmbeddedSubtitles.length > 0 });
+        } catch (error) {
+            await this.clearSession();
+            throw error;
+        }
+        return { sources, missingEmbeddedSubtitles };
+    }
+
+    private async clearSession(): Promise<void> {
+        await this.store?.clear();
+        this.setCanRestore(false);
     }
 
     private async saveSession({

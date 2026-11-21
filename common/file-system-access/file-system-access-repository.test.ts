@@ -831,4 +831,33 @@ describe('embedded subtitle sessions', () => {
         expect(saved?.subtitleTrackIds).toEqual([[id], ['local'], ['-']]);
         expect(saved?.embeddedSubtitles).toEqual({ [id]: descriptor });
     });
+
+    it('promotes a buffered video handle ahead of a queued clearBuffered while keeping subtitle drafts when not cleared', async () => {
+        const repository = new IndexedDBFileSessionRepository();
+        const videoHandle = { id: 'video-2', handle: { name: 'episode2.mkv' } as FileSystemFileHandle };
+        const subHandle = { id: 'draft-sub', handle: { name: 'episode2.srt' } as FileSystemFileHandle };
+        await repository.merge({
+            subtitleHandles: [],
+            bufferedSubtitleHandles: [videoHandle, subHandle],
+        });
+
+        expect(await repository.promoteBufferedVideo(videoHandle.id)).toBe(true);
+        const beforeClear = await repository.fetch();
+        expect(beforeClear?.videoHandle).toEqual(videoHandle);
+        expect(beforeClear?.bufferedSubtitleHandles).toEqual([videoHandle, subHandle]);
+
+        const replacementVideo = { id: 'video-3', handle: { name: 'episode3.mkv' } as FileSystemFileHandle };
+        await repository.merge({
+            subtitleHandles: [],
+            bufferedSubtitleHandles: [replacementVideo],
+        });
+        const [promoted] = await Promise.all([
+            repository.promoteBufferedVideo(replacementVideo.id),
+            repository.clearBuffered(),
+        ]);
+        expect(promoted).toBe(true);
+        const afterClear = await repository.fetch();
+        expect(afterClear?.videoHandle).toEqual(replacementVideo);
+        expect(afterClear?.bufferedSubtitleHandles).toBeUndefined();
+    });
 });

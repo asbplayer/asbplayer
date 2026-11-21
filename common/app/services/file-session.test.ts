@@ -44,8 +44,10 @@ beforeEach(() => {
         merge: jest.fn(async () => {}),
         retain: jest.fn(async () => {}),
         promoteBuffered: jest.fn(async () => {}),
+        promoteBufferedVideo: jest.fn(async () => false),
         clearBuffered: jest.fn(async () => {}),
         setCachedSubtitleFiles: jest.fn(async () => true),
+        clear: jest.fn(async () => {}),
     };
 });
 
@@ -84,23 +86,32 @@ it('clears draft handles on initialize, reports an existing restorable session, 
     expect(onCanRestoreChanged).toHaveBeenCalledWith(true);
 });
 
-it('throws LocalizedError on denied permissions or unreadable handles during restore, and stops cleanly on abort', async () => {
+it('preserves session on denied permissions, clears it on unreadable or invalid handles, and stops cleanly on abort', async () => {
     const prepare = jest.fn(async () => new Map<string, FileWithId>());
     const deniedHandle = {
         name: 'episode.mkv',
         queryPermission: async () => 'prompt',
         requestPermission: async () => 'denied',
     } as unknown as FileSystemFileHandle;
-    store.fetch.mockResolvedValueOnce({
+    store.fetch.mockResolvedValue({
         id: 1,
         timestamp: 1,
         videoHandle: { id: 'video', handle: deniedHandle },
         subtitleHandles: [],
     });
     const session = createSession();
+    session.initialize();
+    await flush();
+    expect(canRestore).toBe(true);
+
+    // Permission denial is transient and must not clear the saved session.
     await expect(session.restore(prepare, new AbortController().signal)).rejects.toMatchObject({
         locKey: 'error.restoreSessionFailed',
     });
+    expect(store.clear).not.toHaveBeenCalled();
+    expect(canRestore).toBe(true);
+
+    // Unreadable handles clear the broken session and hide the restore button.
     try {
         store.fetch.mockResolvedValueOnce({
             id: 1,
@@ -123,7 +134,32 @@ it('throws LocalizedError on denied permissions or unreadable handles during res
         expect(error).toBeInstanceOf(LocalizedError);
         expect((error as LocalizedError).locKey).toBe('error.restoreSessionFailed');
     }
+    expect(store.clear).toHaveBeenCalledTimes(1);
+    expect(canRestore).toBe(false);
 
+    // Invalid restored file metadata also clears the broken session.
+    store.clear.mockClear();
+    store.fetch.mockResolvedValueOnce({
+        id: 1,
+        timestamp: 1,
+        videoHandle: {
+            id: 'video',
+            handle: {
+                name: 'corrupt',
+                queryPermission: async () => 'granted',
+                getFile: async () => new File([], 'corrupt'),
+            } as unknown as FileSystemFileHandle,
+        },
+        subtitleHandles: [],
+    });
+    await expect(session.restore(prepare, new AbortController().signal)).rejects.toMatchObject({
+        locKey: 'error.unknownExtension',
+    });
+    expect(store.clear).toHaveBeenCalledTimes(1);
+    expect(canRestore).toBe(false);
+
+    // Aborting mid-restore does not clear the session.
+    store.clear.mockClear();
     let resolvePermission!: (state: string) => void;
     store.fetch.mockResolvedValueOnce({
         id: 1,
@@ -146,6 +182,7 @@ it('throws LocalizedError on denied permissions or unreadable handles during res
     controller.abort();
     resolvePermission('denied');
     expect(await pending).toBeUndefined();
+    expect(store.clear).not.toHaveBeenCalled();
     expect(prepare).not.toHaveBeenCalled();
 });
 
@@ -195,31 +232,40 @@ it('maps dropped handles to file IDs by name, filters supported extensions, and 
     expect(onError).not.toHaveBeenCalled();
 });
 
-it('retains a draft video handle only while active and unaborted', async () => {
+it('retains a draft video handle only while active and unaborted, even if clearDraftHandles runs immediately after', async () => {
     const session = createSession();
-    const videoHandle = { id: 'video', handle: { name: 'episode.mkv' } as FileSystemFileHandle };
-    store.fetch.mockResolvedValue({
-        id: 1,
-        timestamp: 1,
-        subtitleHandles: [],
-        bufferedSubtitleHandles: [videoHandle],
-    });
+    store.promoteBufferedVideo.mockResolvedValue(true);
 
     const controller = new AbortController();
     session.retainDraftVideoHandle('video', () => false, controller.signal);
     await flush();
-    expect(store.merge).not.toHaveBeenCalled();
+    expect(store.promoteBufferedVideo).not.toHaveBeenCalled();
 
     const aborted = new AbortController();
     aborted.abort();
     session.retainDraftVideoHandle('video', () => true, aborted.signal);
     await flush();
-    expect(store.merge).not.toHaveBeenCalled();
+    expect(store.promoteBufferedVideo).not.toHaveBeenCalled();
 
-    session.retainDraftVideoHandle('video', () => true, controller.signal);
-    await flush();
-    expect(store.merge).toHaveBeenCalledWith({ videoHandle, subtitleHandles: [] });
-    expect(canRestore).toBe(true);
+    Dexie.dependencies.indexedDB = new IDBFactory();
+    const repository = new IndexedDBFileSessionRepository();
+    const videoHandle = { id: 'video', handle: { name: 'episode.mkv' } as FileSystemFileHandle };
+    const subHandle = { id: 'sub', handle: { name: 'episode.srt' } as FileSystemFileHandle };
+    try {
+        const realSession = createSession(repository);
+        await realSession.saveDraftHandles([videoHandle, subHandle]);
+        realSession.retainDraftVideoHandle('video', () => true, controller.signal);
+        realSession.clearDraftHandles();
+        // Await a trailing semaphore-guarded call to ensure both queued operations have completed.
+        await repository.clearBuffered();
+        await flush();
+        const saved = await repository.fetch();
+        expect(saved?.videoHandle).toEqual(videoHandle);
+        expect(saved?.bufferedSubtitleHandles).toBeUndefined();
+        expect(canRestore).toBe(true);
+    } finally {
+        await repository.clear();
+    }
 });
 
 it('persists completed downloads and valid empty embedded tracks in IndexedDB before pending extraction completes', async () => {

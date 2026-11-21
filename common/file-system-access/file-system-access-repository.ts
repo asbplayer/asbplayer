@@ -244,6 +244,28 @@ export class IndexedDBFileSessionRepository implements FileSessionRepository {
         }
     }
 
+    async promoteBufferedVideo(videoId: string): Promise<boolean> {
+        const permit = await this._semaphore.acquire();
+
+        try {
+            const existing = await this.fetch();
+            const videoHandle = existing?.bufferedSubtitleHandles?.find((handle) => handle.id === videoId);
+            if (!existing || !videoHandle) return false;
+
+            await this._replace(
+                this._clearDiscardedSubtitleSlots(existing, {
+                    ...existing,
+                    videoHandle,
+                    id: 1,
+                    timestamp: Date.now(),
+                })
+            );
+            return true;
+        } finally {
+            void this._semaphore.release(permit);
+        }
+    }
+
     async clearBuffered() {
         const permit = await this._semaphore.acquire();
 

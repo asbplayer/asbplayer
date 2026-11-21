@@ -201,8 +201,10 @@ beforeEach(() => {
         merge: jest.fn(async () => {}),
         retain: jest.fn(async () => {}),
         promoteBuffered: jest.fn(async () => {}),
+        promoteBufferedVideo: jest.fn(async () => false),
         clearBuffered: jest.fn(async () => {}),
         setCachedSubtitleFiles: jest.fn(async () => true),
+        clear: jest.fn(async () => {}),
     };
     tracksController = undefined;
     disconnectChannel = undefined;
