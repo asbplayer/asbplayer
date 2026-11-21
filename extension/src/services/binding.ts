@@ -140,7 +140,7 @@ import { bufferToBase64 } from '@project/common/base64';
 import { pgsParserWorkerFactory } from '@project/extension/src/services/pgs-parser-worker-factory';
 import { DictionaryProvider } from '@project/common/dictionary-db/dictionary-provider';
 import { ExtensionDictionaryStorage } from '@project/extension/src/services/extension-dictionary-storage';
-import { HoveredToken } from '@project/common/annotations';
+import { HoveredToken } from '@project/common/annotations/dom-hovered-token';
 import { v4 as uuidv4 } from 'uuid';
 import { debounced } from '@project/extension/src/services/debounced';
 

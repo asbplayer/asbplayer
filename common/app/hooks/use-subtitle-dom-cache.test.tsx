@@ -3,11 +3,8 @@ import { createRoot } from 'react-dom/client';
 import type { Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it } from '@jest/globals';
 import type { IndexedSubtitleModel, OffscreenDomCache } from '@project/common';
-import {
-    ASB_SUBTITLE_INDEX_ATTRIBUTE,
-    selectTokenInRoot,
-    restorableTokenSelectionInRoot,
-} from '@project/common/annotations';
+import { ASB_SUBTITLE_INDEX_ATTRIBUTE } from '@project/common/annotations';
+import { restorableTokenSelectionInRoot, selectTokenInRoot } from '@project/common/annotations/dom-token-selection';
 import { useSubtitleDomCache } from '@project/common/app/hooks/use-subtitle-dom-cache';
 import { makeSubtitle } from '@project/common/playback/playback-test-utils';
 import { subtitleKey } from '@project/common/subtitle-reader/subtitle-stream';

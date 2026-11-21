@@ -46,7 +46,7 @@ import {
     ASB_TOKEN_ON_CUE_HOVER_CLASS,
     ASB_TOKEN_ON_WORD_HOVER_CLASS,
     ASB_TOKEN_START_ATTRIBUTE,
-} from '@project/common/annotations';
+} from '@project/common/annotations/dom-annotations';
 
 // Subtitles with rich text are ~5KB per subtitle and so is not worth using a render window.
 // Having one also negatively affects other extensions such as JPDB Reader which relies on a stable DOM.
