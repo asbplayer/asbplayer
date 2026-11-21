@@ -200,7 +200,7 @@ interface Props {
     // Not to be confused with the auto-calculated video name when user selects a subtitle track
     suggestedName: string;
     subtitleTracks: VideoDataSubtitleTrack[];
-    selectedSubtitleTrackIds: string[];
+    selectedSubtitleTrackIds: readonly string[];
     defaultCheckboxState: boolean;
     error: string;
     openReason: VideoDataUiOpenReason;
