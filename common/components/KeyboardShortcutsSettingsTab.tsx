@@ -56,6 +56,7 @@ const keyBindSectionByName: { [key in KeyBindName]: KeyboardShortcutSection } = 
     moveBottomSubtitlesDown: 'subtitles',
     moveTopSubtitlesUp: 'subtitles',
     moveTopSubtitlesDown: 'subtitles',
+    copyCurrentSubtitle: 'subtitles',
     copySubtitle: 'mining',
     ankiExport: 'mining',
     updateLastCard: 'mining',
@@ -558,6 +559,10 @@ const KeyboardShortcutsSettingsTab: React.FC<Props> = ({
             },
             moveTopSubtitlesDown: {
                 label: t('binds.moveTopSubtitlesDown'),
+                boundViaBrowser: false,
+            },
+            copyCurrentSubtitle: {
+                label: t('binds.copyCurrentSubtitle'),
                 boundViaBrowser: false,
             },
             openStatistics: {

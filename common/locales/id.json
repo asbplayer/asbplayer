@@ -131,6 +131,7 @@
         "adjustOffsetToSubtitle": "Sesuaikan offset takarir agar takarir sebelumnya/berikutnya berada di waktu saat ini",
         "adjustPlaybackRate": "Sesuaikan kecepatan pemutaran sebesar ±0.1",
         "ankiExport": "Tambang takarir saat ini dan buka dialog Anki",
+        "copyCurrentSubtitle": "Copy current subtitle",
         "copySubtitle": "Tambang takarir saat ini",
         "decreaseOffset": "Kurangi offset takarir sebesar 100 ms",
         "decreasePlaybackRate": "Kurangi kecepatan pemutaran",

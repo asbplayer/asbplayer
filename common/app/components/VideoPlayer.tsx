@@ -44,7 +44,8 @@ import type {
 import {
     adjacentSubtitle,
     arrayEquals,
-    compareSubtitlesForDisplay,
+    copySubtitleText,
+    enabledSubtitlesInDisplayOrder,
     seekWithNudge,
     surroundingSubtitles,
     mockSurroundingSubtitles,
@@ -1322,14 +1323,10 @@ export default function VideoPlayer({
     const updateShowingSubtitles = useCallback(
         (showingSubtitleIndexes: readonly number[], invisibleSubtitleIndexes: readonly number[]) => {
             const subtitlesForIndexes = (indexes: readonly number[]) =>
-                indexes
-                    .map((index) => subtitlesRef.current[index])
-                    .filter(
-                        (subtitle): subtitle is IndexedSubtitleModel =>
-                            subtitle !== undefined && !disabledSubtitleTracksRef.current[subtitle.track]
-                    )
-                    .slice()
-                    .sort(compareSubtitlesForDisplay);
+                enabledSubtitlesInDisplayOrder(
+                    indexes.map((index) => subtitlesRef.current[index]).filter((subtitle) => subtitle !== undefined),
+                    disabledSubtitleTracksRef.current
+                );
             const showingSubtitles = subtitlesForIndexes(showingSubtitleIndexes);
             const nextInvisibleSubtitles = subtitlesForIndexes(invisibleSubtitleIndexes);
             const showingChanged = !arrayEquals(showingSubtitles, showSubtitlesRef.current);
@@ -1967,6 +1964,13 @@ export default function VideoPlayer({
             () => false
         );
     }, [keyBinder, toggleSelectMiningInterval]);
+
+    useEffect(() => {
+        return keyBinder.bindCopyCurrentSubtitle(
+            () => copySubtitleText(showSubtitlesRef.current),
+            () => ankiDialogOpen
+        );
+    }, [keyBinder, ankiDialogOpen]);
 
     useEffect(() => {
         return keyBinder.bindCopy(

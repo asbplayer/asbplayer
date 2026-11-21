@@ -131,6 +131,7 @@
         "adjustOffsetToSubtitle": "Задать задержку субтитров, чтобы предыдущий/следующий субтитр был на текущей метке времени",
         "adjustPlaybackRate": "Корректировать скорость воспроизведения на ±0.1",
         "ankiExport": "Майнить текущий субтитр и открыть диалоговое окно Anki",
+        "copyCurrentSubtitle": "Copy current subtitle",
         "copySubtitle": "Майнить текущий субтитр",
         "decreaseOffset": "Уменьшить задержку субтитра на 100 мс",
         "decreasePlaybackRate": "Уменьшить скорость воспроизведения",

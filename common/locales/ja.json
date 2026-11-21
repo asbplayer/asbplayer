@@ -131,6 +131,7 @@
         "adjustOffsetToSubtitle": "前/次の字幕を現在のタイムスタンプに合わせる",
         "adjustPlaybackRate": "再生速度 ±0.1",
         "ankiExport": "現在の字幕をマイニングし、Anki のエクスポートウィンドウを開く",
+        "copyCurrentSubtitle": "Copy current subtitle",
         "copySubtitle": "現在の字幕をマイニング",
         "decreaseOffset": "字幕の表示タイミング -100ms",
         "decreasePlaybackRate": "再生速度を下げる",

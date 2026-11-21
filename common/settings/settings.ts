@@ -512,6 +512,7 @@ export interface KeyBindSet {
     readonly moveBottomSubtitlesDown: KeyBind;
     readonly moveTopSubtitlesUp: KeyBind;
     readonly moveTopSubtitlesDown: KeyBind;
+    readonly copyCurrentSubtitle: KeyBind;
     readonly openStatistics: KeyBind;
     readonly jumpToNextToken: KeyBind;
     readonly jumpToPreviousToken: KeyBind;

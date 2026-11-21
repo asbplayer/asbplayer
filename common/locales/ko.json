@@ -131,6 +131,7 @@
         "adjustOffsetToSubtitle": "현재 재생 위치에 자막을 맞추기 위해 오프셋 조정 (이전/다음 자막 기준)",
         "adjustPlaybackRate": "재생 속도를 ±0.1로 조정",
         "ankiExport": "현재 자막을 추출하고 Anki 대화창 열기",
+        "copyCurrentSubtitle": "Copy current subtitle",
         "copySubtitle": "현재 자막 추출",
         "decreaseOffset": "자막 타이밍을 100ms 앞으로 이동",
         "decreasePlaybackRate": "재생 속도 줄이기",
