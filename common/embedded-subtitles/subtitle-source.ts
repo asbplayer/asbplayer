@@ -7,7 +7,7 @@ export interface EmbeddedSubtitleDescriptor {
     /** Zero-based position among subtitle tracks, including unsupported codecs. */
     trackIndex: number;
     codec: string;
-    /** Requested output representation; probe outputFormat separately indicates support. */
+    /** Requested output representation. Probe outputFormat separately indicates support. */
     format: 'srt';
 }
 
@@ -17,7 +17,7 @@ export interface SubtitleExtractionOptions {
     /** MP4 track IDs or zero-based Matroska subtitle ordinals. */
     trackKeys: number[];
     signal: AbortSignal;
-    /** Arbitrary UTF-8 byte chunks; consumers must buffer incomplete characters and cues. */
+    /** Arbitrary UTF-8 byte chunks. Consumers must buffer incomplete characters and cues. */
     onChunk: (trackKey: number, chunk: ArrayBuffer) => void;
 }
 
@@ -27,7 +27,7 @@ export interface ExtractedSubtitleFile {
     format: 'srt';
 }
 
-/** Shared code requests subtitle data; the website supplies the FFmpeg implementation. */
+/** Shared code requests subtitle data, and the website supplies the FFmpeg implementation. */
 export interface SubtitleHost {
     extractSubtitles(options: SubtitleExtractionOptions): Promise<ExtractedSubtitleFile[]>;
 }

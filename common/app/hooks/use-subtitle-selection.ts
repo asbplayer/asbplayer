@@ -7,9 +7,9 @@ import { asbError } from '@project/common/util/log';
 
 class EmbeddedSelectionError extends Error {}
 
-/** Prepare the selection without extracting embedded tracks; their completed files arrive from the producer. */
+/** Prepare the selection without extracting embedded tracks. Their completed files arrive from the producer. */
 const resolveSubtitleSelection = async (
-    tracks: ConfirmedVideoDataSubtitleTrack[],
+    tracks: readonly ConfirmedVideoDataSubtitleTrack[],
     source: FileWithId | undefined,
     service: EmbeddedSubtitles,
     signal: AbortSignal
@@ -17,21 +17,21 @@ const resolveSubtitleSelection = async (
     signal.throwIfAborted();
     if (tracks.some((track) => track.disabledReason)) throw new Error('Unsupported subtitle selection');
     const descriptors = tracks.flatMap((track) => (track.embedded ? [track.embedded] : []));
-    let prepared: Map<string, FileWithId> | undefined;
-    if (descriptors.length > 0) {
+    let preparedById: Map<string, FileWithId> | undefined;
+    if (descriptors.length) {
         if (!source) throw new EmbeddedSelectionError('Missing embedded subtitle source');
         try {
-            prepared = await service.prepare(source, descriptors, signal);
+            preparedById = await service.prepare(source, descriptors, signal);
         } catch (cause) {
             throw new EmbeddedSelectionError('Could not prepare embedded subtitle selection', { cause });
         }
     }
-    const downloaded = new Map<string, FileWithId>();
+    const downloadedById = new Map<string, FileWithId>();
     const files: FileWithId[] = [];
     for (const track of tracks) {
         signal.throwIfAborted();
         if (track.embedded) {
-            const file = prepared?.get(track.id);
+            const file = preparedById?.get(track.id);
             if (!file) throw new EmbeddedSelectionError('Unresolved embedded subtitle');
             files.push(file);
         } else if (track.id === '-') {
@@ -40,12 +40,12 @@ const resolveSubtitleSelection = async (
             files.push({ id: track.id, file: track.file });
         } else {
             if (typeof track.url !== 'string') throw new Error('Invalid subtitle URL');
-            let file = downloaded.get(track.id);
+            let file = downloadedById.get(track.id);
             if (!file) {
                 const response = await fetch(track.url, { signal });
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 file = { id: track.id, file: new File([await response.blob()], `${track.name}.${track.extension}`) };
-                downloaded.set(track.id, file);
+                downloadedById.set(track.id, file);
             }
             files.push(file);
         }
@@ -54,7 +54,7 @@ const resolveSubtitleSelection = async (
     return files;
 };
 
-/** Prepares one confirmation; the player owns any subsequent embedded extraction. */
+/** Prepares one confirmation. The player owns any subsequent embedded extraction. */
 export const useSubtitleSelection = ({
     source,
     service,
@@ -63,7 +63,7 @@ export const useSubtitleSelection = ({
 }: {
     source: FileWithId | undefined;
     service: EmbeddedSubtitles;
-    selectedTrackIds: string[];
+    selectedTrackIds: readonly string[];
     sources: MediaSources;
 }) => {
     const request = useRef<AbortController>(undefined);
@@ -80,7 +80,7 @@ export const useSubtitleSelection = ({
 
     const confirm = useCallback(
         (
-            tracks: ConfirmedVideoDataSubtitleTrack[],
+            tracks: readonly ConfirmedVideoDataSubtitleTrack[],
             commit: (tracks: LoadableSubtitleTrack<FileWithId>[], signal: AbortSignal) => Promise<void>
         ) => {
             if (request.current) return;

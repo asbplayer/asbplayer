@@ -18,7 +18,7 @@ VITE_FFMPEG_CANDIDATE=1 pnpm --filter @project/client run start
 
 `build:candidate` compiles the native runtime and worker, packages the release materials into `ffmpeg/release/`, and verifies the candidate. It downloads the hash-verified upstream source tarballs listed in [`build-config.json`](../build-config.json) and uses the pinned Emscripten container; no host C++ or Emscripten toolchain is required.
 
-Source archives are cached in `ffmpeg/.cache/archives` and checked against their configured SHA-256 before reuse. Native-test and release-build CI jobs share this cache. Downloads retry transient failures; checksum failures fail immediately, and incomplete downloads never replace an existing archive.
+Source archives are cached in `ffmpeg/.cache/archives` and checked against their configured SHA-256 before reuse. Native-test and release-build CI jobs share this cache. Downloads retry transient failures. Checksum failures fail immediately, and incomplete downloads never replace an existing archive.
 
 Candidate builds use the runtime version in [`artifact-lock.json`](../artifact-lock.json) and the current `build-config.json`, leaving the lock untouched. Rebuilt candidates can keep the same version: the browser cache matches the archive's SHA-256, so changed bytes replace the cached archive. After changing native code, the worker, or build inputs, rebuild and restart the client so it receives the rebuilt archive and its matching hash. Ordinary client changes use Vite's hot reload.
 

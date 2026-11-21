@@ -112,15 +112,14 @@ export const generateSubtitleMedia = async (root) => {
     // Minimal Matroska elements exercise compressed subtitle packets.
     const vint = (value) => {
         for (let length = 1; length <= 8; length++) {
-            if (value < 2 ** (7 * length) - 1) {
-                let bits = BigInt(value) | (1n << BigInt(7 * length));
-                const bytes = Buffer.alloc(length);
-                for (let i = length - 1; i >= 0; i--) {
-                    bytes[i] = Number(bits & 255n);
-                    bits >>= 8n;
-                }
-                return bytes;
+            if (value >= 2 ** (7 * length) - 1) continue;
+            let bits = BigInt(value) | (1n << BigInt(7 * length));
+            const bytes = Buffer.alloc(length);
+            for (let i = length - 1; i >= 0; i--) {
+                bytes[i] = Number(bits & 255n);
+                bits >>= 8n;
             }
+            return bytes;
         }
         throw new Error('EBML element too large');
     };
@@ -195,10 +194,10 @@ export const generateSubtitleMedia = async (root) => {
         ])
     );
 
-    const subtitleBlock = (ms, text) => {
+    const subtitleBlock = (ms, cueText) => {
         const header = Buffer.from([0x81, 0, 0, 0]);
         header.writeInt16BE(ms, 1);
-        return master('a0', element('a1', Buffer.concat([header, Buffer.from(text)])), uint('9b', 1000));
+        return master('a0', element('a1', Buffer.concat([header, Buffer.from(cueText)])), uint('9b', 1000));
     };
     const subtitleMedia = (...blocks) =>
         Buffer.concat([

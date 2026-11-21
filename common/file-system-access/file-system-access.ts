@@ -78,43 +78,45 @@ export function canRestoreSession(record: FileSessionRecord | undefined): boolea
     );
 }
 
-/** Prepare missing embedded sources before reconstructing slots; the player extracts them later. */
+/** Prepare missing embedded sources before reconstructing slots. The player extracts them later. */
 export async function restoreSessionFiles(
     record: FileSessionRecord,
     resolvedFiles: FileWithId[],
     prepare: (source: FileWithId, descriptors: EmbeddedSubtitleDescriptor[]) => Promise<Map<string, FileWithId>>
 ): Promise<{ files: MediaSourceFile[]; missingEmbeddedSubtitles: EmbeddedSubtitleDescriptor[] }> {
     const video = resolvedFiles.find((file) => file.id === record.videoHandle?.id);
-    const files = new Map(resolvedFiles.map((file) => [file.id, file]));
+    const filesById = new Map(resolvedFiles.map((file) => [file.id, file]));
     // Files read from disk may have changed since the session was cached.
-    for (const file of record.cachedSubtitleFiles ?? []) if (!files.has(file.id)) files.set(file.id, file);
-    const pending = new Map<string, EmbeddedSubtitleDescriptor>();
+    for (const file of record.cachedSubtitleFiles ?? []) {
+        if (!filesById.has(file.id)) filesById.set(file.id, file);
+    }
+    const pendingById = new Map<string, EmbeddedSubtitleDescriptor>();
     for (const [id, descriptor] of Object.entries(record.embeddedSubtitles ?? {})) {
         if (!video || !subtitleSourceMatches(video, descriptor)) {
-            files.delete(id);
+            filesById.delete(id);
             continue;
         }
-        const cached = files.get(id);
+        const cached = filesById.get(id);
         if (descriptor.format === 'srt' && cached) {
-            files.set(id, { ...cached, embedded: descriptor });
+            filesById.set(id, { ...cached, embedded: descriptor });
         } else {
-            files.delete(id);
-            pending.set(id, descriptor);
+            filesById.delete(id);
+            pendingById.set(id, descriptor);
         }
     }
-    const missing = [...pending.values()];
-    if (video && missing.length > 0) {
+    const missing = [...pendingById.values()];
+    if (video && missing.length) {
         try {
-            for (const [id, file] of await prepare(video, missing)) files.set(id, file);
+            for (const [id, file] of await prepare(video, missing)) filesById.set(id, file);
         } catch (error) {
             asbError('app/session', 'Failed to prepare embedded subtitles; preserving available session files:', error);
         }
     }
-    if (record.subtitleTrackIds === undefined) {
+    if (!record.subtitleTrackIds) {
         // Sessions without a saved arrangement treat each subtitle file as its own track.
         let track = 0;
         return {
-            files: [...files.values()].map((source) =>
+            files: [...filesById.values()].map((source) =>
                 source.id === record.videoHandle?.id ? source : { ...source, track: track++ }
             ),
             missingEmbeddedSubtitles: missing,
@@ -124,10 +126,10 @@ export async function restoreSessionFiles(
         files: [
             ...(video ? [video] : []),
             ...record.subtitleTrackIds.flatMap((ids, track) =>
-                (ids.length > 0 ? ids : ['-']).map((id) => ({
-                    ...((id === '-' ? undefined : files.get(id)) ?? {
-                        id: pending.has(id) ? id : '-',
-                        embedded: pending.get(id),
+                (ids.length ? ids : ['-']).map((id) => ({
+                    ...((id === '-' ? undefined : filesById.get(id)) ?? {
+                        id: pendingById.has(id) ? id : '-',
+                        embedded: pendingById.get(id),
                         file: new File([''], '.srt'),
                     }),
                     track,

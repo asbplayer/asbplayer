@@ -6,7 +6,7 @@ import type { WorkerRequest, WorkerReply } from '@project/ffmpeg/protocol';
 import { ffmpegMetadata } from '@project/ffmpeg/metadata';
 import { extractSubtitleTracks } from '@project/common/embedded-subtitles/ffmpeg-subtitle-extractor';
 
-// Fake only the native worker boundary; exercise real sessions, cancellation and Blob assembly.
+/** Fakes only the native worker boundary so tests exercise real sessions, cancellation, and Blob assembly. */
 class SubtitleWorker extends EventTarget implements FfmpegWorker {
     active = true;
     input?: Blob;
@@ -112,8 +112,8 @@ it('forwards subtitle bytes while extraction is still running', async () => {
     const host = new Host();
     host.autoComplete = false;
     const chunks: number[][] = [];
-    const pending = run(host, new AbortController().signal, [2, 9, 5], (index, chunk) =>
-        chunks.push([index, ...new Uint8Array(chunk)])
+    const pending = run(host, new AbortController().signal, [2, 9, 5], (trackKey, chunk) =>
+        chunks.push([trackKey, ...new Uint8Array(chunk)])
     );
     await new Promise(setImmediate);
     host.workers[0].chunk(2, [9, 8]);
@@ -128,7 +128,7 @@ const run = (
     host: Host,
     signal = new AbortController().signal,
     trackKeys = [2, 9, 5],
-    onChunk: (index: number, chunk: ArrayBuffer) => void = () => {}
+    onChunk: (trackKey: number, chunk: ArrayBuffer) => void = () => {}
 ) => extractSubtitleTracks({ file, fileId: 'video', trackKeys, signal, onChunk, createSession: host.createSession });
 
 it('assembles interleaved text outputs, including empty tracks, then releases the worker', async () => {

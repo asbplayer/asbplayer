@@ -40,7 +40,7 @@ A session obtains a verified compressed archive through the [download and cache 
 
 This works before service-worker control and when persistent storage is unavailable. A Content Security Policy must allow Blob workers, module imports, and WASM fetches.
 
-The owner's signal or `dispose()` stops shared downloads and terminates the worker, including synchronous native work. Disposal/failure releases executable URLs. Create a fresh session to retry. A signal passed to `load({ signal })`, `inspect({ signal })` or a media operation cancels only that caller's wait; abort the owner to terminate native execution. Initialization has no timeout.
+The owner's signal or `dispose()` stops shared downloads and terminates the worker, including synchronous native work. Disposal/failure releases executable URLs. Create a fresh session to retry. A signal passed to `load({ signal })`, `inspect({ signal })`, or a media operation cancels only that caller's wait. Abort the owner to terminate native execution. Initialization has no timeout.
 
 ## Reading input files
 

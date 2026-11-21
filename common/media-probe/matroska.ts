@@ -80,9 +80,7 @@ const trackEntries = async (reader: ByteReader): Promise<EbmlElement[] | undefin
     while (offset < limit) {
         const element = await readEbmlElement(reader, offset, limit);
         if (!element) return;
-        if (element.id === idTracks) {
-            return (await children(reader, element)).filter(({ id }) => id === idTrackEntry);
-        }
+        if (element.id === idTracks) return (await children(reader, element)).filter(({ id }) => id === idTrackEntry);
         if (element.id === idSegment) {
             offset = element.dataOffset;
             limit = element.end;
@@ -110,11 +108,13 @@ export const matroskaAudioCodecIds = async (reader: ByteReader): Promise<string[
     const codecs: string[] = [];
     for (const entry of entries) {
         const fields = await children(reader, entry);
-        const type = fields.find(({ id }) => id === idTrackType);
-        if (!type || (await reader.unsignedInt(type.dataOffset, type.dataSize)) !== trackTypeAudio) continue;
-        const codec = fields.find(({ id }) => id === idCodecId);
-        if (!codec) continue;
-        const codecId = await reader.utf8(codec.dataOffset, codec.dataSize);
+        const typeField = fields.find(({ id }) => id === idTrackType);
+        if (!typeField || (await reader.unsignedInt(typeField.dataOffset, typeField.dataSize)) !== trackTypeAudio) {
+            continue;
+        }
+        const codecField = fields.find(({ id }) => id === idCodecId);
+        if (!codecField) continue;
+        const codecId = await reader.utf8(codecField.dataOffset, codecField.dataSize);
         if (codecId.startsWith(audioCodecPrefix)) codecs.push(codecId);
     }
     return codecs;

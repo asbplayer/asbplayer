@@ -3,6 +3,7 @@ import {
     isoBmffAudioSampleFormats,
     isoBmffBoxTypeOffset,
     isoBmffBoxTypeBytes,
+    isoBmffTopLevelBoxTypes,
 } from '@project/common/media-probe/iso-bmff';
 import { matroskaAudioCodecIds } from '@project/common/media-probe/matroska';
 import { ebmlHeaderId, ebmlHeaderIdBytes } from '@project/common/media-probe/ebml';
@@ -17,7 +18,6 @@ export interface ProbedAudioTrack {
 }
 
 const containerProbeBytes = 12;
-const isoBmffTopLevelBoxTypes = ['ftyp', 'styp', 'moov', 'free', 'skip', 'wide', 'mdat'];
 
 /**
  * Codecs that no browser is guaranteed to decode, mapped to the MIME type used to ask the browser

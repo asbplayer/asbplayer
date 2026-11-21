@@ -875,7 +875,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
                 preservePendingResume: resumeStatus === 'loading',
             }); // A reparse can temporarily stop subtitle timing while an accepted resume waits for coverage.
         }
-        if (resumeStatus === 'failed' || (subtitles.length === 0 && resumeStatus === 'complete')) {
+        if (resumeStatus === 'failed' || (!subtitles.length && resumeStatus === 'complete')) {
             this.playbackPositionController.dismissPlaybackPosition();
         } else {
             this.playbackPositionController.subtitlesChanged();

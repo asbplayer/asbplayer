@@ -33,7 +33,7 @@ export function languageDisplayName(language: string, locale: Intl.Locale | unde
                 languageDisplay,
                 fallback: 'none',
             }).of(canonical);
-            if (displayName !== undefined) return capitalizeFirstLetter(displayName, displayLocale);
+            if (displayName) return capitalizeFirstLetter(displayName, displayLocale);
         }
         return language;
     } catch {

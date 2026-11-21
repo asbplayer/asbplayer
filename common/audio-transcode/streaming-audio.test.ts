@@ -104,8 +104,7 @@ it('ignores a queued sourceopen after detachment and opens the buffer when reatt
     });
     try {
         stream.append(new Blob([new Uint8Array([1, 2])]));
-        // The element detached before the browser delivered the queued event.
-        Source.latest.dispatchEvent(new Event('sourceopen'));
+        Source.latest.dispatchEvent(new Event('sourceopen')); // The element detached before the queued event arrived.
         expect(errors).toEqual([]);
         expect(URL.revokeObjectURL).not.toHaveBeenCalled();
 

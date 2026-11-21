@@ -21,7 +21,7 @@ extern "C" {
 
 namespace asb::detail {
 
-// Seekable container input for confirmed extraction.
+/** Seekable container input for confirmed extraction. */
 struct SubtitleInput {
     InputBuffer buffer;
     AVFormatContext* format = nullptr;
@@ -43,9 +43,7 @@ struct SubtitleInput {
 
     int open() {
         auto* bytes = static_cast<uint8_t*>(av_malloc(io_buffer_bytes));
-        if (!bytes) {
-            return AVERROR(ENOMEM);
-        }
+        if (!bytes) return AVERROR(ENOMEM);
 
         this->io = avio_alloc_context(bytes, io_buffer_bytes, 0, &this->buffer, read_input, nullptr, seek_input);
         if (!this->io) {
@@ -54,9 +52,7 @@ struct SubtitleInput {
         }
 
         this->format = avformat_alloc_context();
-        if (!this->format) {
-            return AVERROR(ENOMEM);
-        }
+        if (!this->format) return AVERROR(ENOMEM);
 
         this->format->pb = this->io;
         this->format->flags |= AVFMT_FLAG_CUSTOM_IO;
@@ -65,7 +61,7 @@ struct SubtitleInput {
 };
 
 inline bool valid_subtitle_input(double size) {
-    return std::isfinite(size) && size > 0 && size <= 9007199254740991.0 && std::floor(size) == size;
+    return std::isfinite(size) && size > 0 && size <= javascript_max_safe_integer && std::floor(size) == size;
 }
 
 inline bool supported_text_codec(AVCodecID id) {
@@ -78,18 +74,18 @@ inline const char* subtitle_failure(const char* message, int code) {
     return nullptr;
 }
 
-// The text encoder removes styling, but retains drawing payloads and literal \\h.
-// Strip drawing runs before encoding while keeping karaoke syllables and line breaks.
+/**
+ * The text encoder removes styling, but retains drawing payloads and literal \\h.
+ * Strip drawing runs before encoding while keeping karaoke syllables and line breaks.
+ */
 inline std::string normalize_ass_text(const char* ass) {
+    constexpr int ass_text_field_index = 8;
     std::string source(ass), output;
     size_t position = 0;
 
-    for (int field = 0; field < 8; ++field) {
+    for (int field = 0; field < ass_text_field_index; ++field) {
         auto comma = source.find(',', position);
-        if (comma == std::string::npos) {
-            return source;
-        }
-
+        if (comma == std::string::npos) return source;
         position = comma + 1;
     }
 
@@ -103,9 +99,7 @@ inline std::string normalize_ass_text(const char* ass) {
                 const auto block = source.substr(position, end - position + 1);
                 for (size_t p = 0; (p = block.find("\\p", p)) != std::string::npos; p += 2) {
                     size_t number = p + 2;
-                    while (number < block.size() && block[number] == ' ') {
-                        ++number;
-                    }
+                    while (number < block.size() && block[number] == ' ') ++number;
 
                     if (number < block.size() && block[number] >= '0' && block[number] <= '9') {
                         drawing = block[number] != '0';
@@ -139,15 +133,16 @@ struct SubtitleOutput {
     // cues. A cue before the published prefix fails extraction to preserve ordering.
     static constexpr int64_t reorder_window_ms = 2000;
     static constexpr size_t max_pending_bytes = 8 * 1024 * 1024;
-    // Allow for the map node and allocator overhead in addition to the stored text.
-    static constexpr size_t pending_cue_overhead_bytes = 128;
+    static constexpr size_t encode_buffer_bytes = 1024 * 1024;
+    static constexpr size_t pending_cue_overhead_bytes = 128; // Map node and allocator overhead beyond stored text.
+    static constexpr AVRational milliseconds{1, 1000};
 
     struct Cue {
         int64_t end;
         std::string text;
 
         size_t pending_size() const {
-            return pending_cue_overhead_bytes + text.capacity();
+            return pending_cue_overhead_bytes + this->text.capacity();
         }
     };
 
@@ -157,7 +152,7 @@ struct SubtitleOutput {
     AVFormatContext* format = nullptr;
     AVStream* source;
     AVPacket* encoded = nullptr;
-    std::vector<uint8_t> bytes = std::vector<uint8_t>(1024 * 1024);
+    std::vector<uint8_t> bytes = std::vector<uint8_t>(encode_buffer_bytes);
 
     std::multimap<int64_t, Cue> pending;
     size_t pending_bytes = 0;
@@ -185,52 +180,32 @@ struct SubtitleOutput {
         const auto* text = avcodec_find_encoder(AV_CODEC_ID_TEXT);
         this->encoder = avcodec_alloc_context3(text);
         this->encoded = av_packet_alloc();
-        if (!codec || !text || !this->decoder || !this->encoder || !this->encoded) {
-            return AVERROR(ENOMEM);
-        }
+        if (!codec || !text || !this->decoder || !this->encoder || !this->encoded) return AVERROR(ENOMEM);
 
         int error = avcodec_parameters_to_context(this->decoder, this->source->codecpar);
-        if (error < 0) {
-            return error;
-        }
+        if (error < 0) return error;
 
         this->decoder->pkt_timebase = this->source->time_base;
-        if ((error = avcodec_open2(this->decoder, codec, nullptr)) < 0) {
-            return error;
-        }
+        if ((error = avcodec_open2(this->decoder, codec, nullptr)) < 0) return error;
 
-        this->encoder->time_base = AVRational{1, 1000};
+        this->encoder->time_base = milliseconds;
         if (this->decoder->subtitle_header_size > 0) {
             this->encoder->subtitle_header = static_cast<uint8_t*>(av_mallocz(this->decoder->subtitle_header_size + 1));
-            if (!this->encoder->subtitle_header) {
-                return AVERROR(ENOMEM);
-            }
+            if (!this->encoder->subtitle_header) return AVERROR(ENOMEM);
 
             std::copy_n(this->decoder->subtitle_header, this->decoder->subtitle_header_size,
                         this->encoder->subtitle_header);
             this->encoder->subtitle_header_size = this->decoder->subtitle_header_size;
         }
-        if ((error = avcodec_open2(this->encoder, text, nullptr)) < 0) {
-            return error;
-        }
-
-        if ((error = avformat_alloc_output_context2(&this->format, nullptr, "srt", nullptr)) < 0) {
-            return error;
-        }
+        if ((error = avcodec_open2(this->encoder, text, nullptr)) < 0) return error;
+        if ((error = avformat_alloc_output_context2(&this->format, nullptr, "srt", nullptr)) < 0) return error;
 
         auto* stream = avformat_new_stream(this->format, nullptr);
-        if (!stream) {
-            return AVERROR(ENOMEM);
-        }
-
-        if ((error = avcodec_parameters_from_context(stream->codecpar, this->encoder)) < 0) {
-            return error;
-        }
+        if (!stream) return AVERROR(ENOMEM);
+        if ((error = avcodec_parameters_from_context(stream->codecpar, this->encoder)) < 0) return error;
 
         auto* buffer = static_cast<uint8_t*>(av_malloc(io_buffer_bytes));
-        if (!buffer) {
-            return AVERROR(ENOMEM);
-        }
+        if (!buffer) return AVERROR(ENOMEM);
 
         this->format->pb = avio_alloc_context(buffer, io_buffer_bytes, 1, &this->track_key, nullptr, write_output, nullptr);
         if (!this->format->pb) {
@@ -242,14 +217,12 @@ struct SubtitleOutput {
         return avformat_write_header(this->format, nullptr);
     }
 
-    int decode(AVPacket* packet, int64_t origin, bool* got) {
+    int decode(AVPacket* packet, int64_t origin, bool* produced = nullptr) {
         AVSubtitle subtitle{};
-        int produced = 0;
-        int error = avcodec_decode_subtitle2(this->decoder, &subtitle, &produced, packet);
-        *got = produced != 0;
-        if (error < 0 || !produced) {
-            return error < 0 ? error : 0;
-        }
+        int got_subtitle = 0;
+        int error = avcodec_decode_subtitle2(this->decoder, &subtitle, &got_subtitle, packet);
+        if (produced) *produced = got_subtitle != 0;
+        if (error < 0 || !got_subtitle) return error < 0 ? error : 0;
 
         if (subtitle.num_rects == 0) {
             avsubtitle_free(&subtitle);
@@ -267,12 +240,12 @@ struct SubtitleOutput {
             return AVERROR_INVALIDDATA;
         }
 
-        int64_t start = av_rescale_q(pts - origin, AV_TIME_BASE_Q, AVRational{1, 1000}) + subtitle.start_display_time;
-        int64_t end = av_rescale_q(pts - origin, AV_TIME_BASE_Q, AVRational{1, 1000}) + subtitle.end_display_time;
+        int64_t start = av_rescale_q(pts - origin, AV_TIME_BASE_Q, milliseconds) + subtitle.start_display_time;
+        int64_t end = av_rescale_q(pts - origin, AV_TIME_BASE_Q, milliseconds) + subtitle.end_display_time;
         if (subtitle.end_display_time == UINT32_MAX || end <= start) {
             if (packet->duration > 0) {
-                end = start + av_rescale_q(packet->duration, this->source->time_base, AVRational{1, 1000});
-            } else if (subtitle.num_rects > 0) {
+                end = start + av_rescale_q(packet->duration, this->source->time_base, milliseconds);
+            } else {
                 avsubtitle_free(&subtitle);
                 return AVERROR_INVALIDDATA;
             }
@@ -293,13 +266,8 @@ struct SubtitleOutput {
 
         const int length = avcodec_encode_subtitle(this->encoder, this->bytes.data(), this->bytes.size(), &subtitle);
         avsubtitle_free(&subtitle);
-        if (length < 0) {
-            return length;
-        }
-
-        if (length == 0 || end <= 0) {
-            return 0;
-        }
+        if (length < 0) return length;
+        if (length == 0 || end <= 0) return 0;
 
         // SRT uses blank lines to delimit cues. Drop whitespace-only lines from
         // the payload so a chunk split there cannot truncate a cue.
@@ -308,9 +276,9 @@ struct SubtitleOutput {
         escaped.reserve(length);
         size_t position = 0;
         while (position < payload.size()) {
-            const size_t end = payload.find('\n', position);
-            auto line = payload.substr(position, end - position);
-            position = end == std::string_view::npos ? payload.size() : end + 1;
+            const size_t line_end = payload.find('\n', position);
+            auto line = payload.substr(position, line_end - position);
+            position = line_end == std::string_view::npos ? payload.size() : line_end + 1;
             if (line.find_first_not_of(" \t\r") == std::string_view::npos) continue;
             if (line.back() == '\r') line.remove_suffix(1);
             if (!escaped.empty()) escaped += '\n';
@@ -351,11 +319,9 @@ struct SubtitleOutput {
         Cue cue{end, std::move(text)};
         if (start <= cutoff) return write_cue(start, cue);
 
-        const size_t bytes = cue.pending_size();
-        if (bytes > max_pending_bytes - this->pending_bytes) {
-            return AVERROR(ENOMEM);
-        }
-        this->pending_bytes += bytes;
+        const size_t cue_bytes = cue.pending_size();
+        if (cue_bytes > max_pending_bytes - this->pending_bytes) return AVERROR(ENOMEM);
+        this->pending_bytes += cue_bytes;
         this->pending.emplace(start, std::move(cue));
         return 0;
     }
@@ -381,7 +347,6 @@ struct SubtitleOutput {
         if (error < 0) return error;
 
         std::copy(cue.text.begin(), cue.text.end(), this->encoded->data);
-        const AVRational milliseconds{1, 1000};
         const AVRational time_base = this->format->streams[0]->time_base;
         this->encoded->pts = av_rescale_q(start, milliseconds, time_base);
         this->encoded->dts = this->encoded->pts;
@@ -401,20 +366,16 @@ inline const char* extract_subtitles(double size, const uint32_t* track_keys, si
         return subtitle_failure("Invalid subtitle extraction", AVERROR(EINVAL));
     }
 
-    if (count == 0) {
-        return subtitle_failure("No subtitle tracks selected", AVERROR(EINVAL));
-    }
+    if (count == 0) return subtitle_failure("No subtitle tracks selected", AVERROR(EINVAL));
 
     SubtitleInput input(size);
     int error = input.open();
-    if (error < 0) {
-        return subtitle_failure("Could not open subtitle input", error);
-    }
+    if (error < 0) return subtitle_failure("Could not open subtitle input", error);
 
     // The MP4 probe uses file track IDs because FFmpeg may classify some entries as data.
     // Matroska uses the ordinal among FFmpeg subtitle streams, including unsupported codecs.
     const bool mp4 = av_match_name("mov", input.format->iformat->name) != 0;
-    std::map<uint32_t, AVStream*> subtitle_streams;
+    std::map<uint32_t, AVStream*> subtitle_streams_by_key;
     uint32_t subtitle_index = 0;
     bool has_video = false;
     bool has_audio = false;
@@ -424,7 +385,7 @@ inline const char* extract_subtitles(double size, const uint32_t* track_keys, si
         const auto type = stream->codecpar->codec_type;
         if (type == AVMEDIA_TYPE_SUBTITLE) {
             const uint32_t key = mp4 ? static_cast<uint32_t>(stream->id) : subtitle_index++;
-            subtitle_streams.emplace(key, stream);
+            subtitle_streams_by_key.emplace(key, stream);
         } else if (type == AVMEDIA_TYPE_VIDEO && !(stream->disposition & AV_DISPOSITION_ATTACHED_PIC)) {
             has_video = true;
         } else if (type == AVMEDIA_TYPE_AUDIO) {
@@ -435,8 +396,8 @@ inline const char* extract_subtitles(double size, const uint32_t* track_keys, si
     std::vector<std::unique_ptr<SubtitleOutput>> outputs;
     for (size_t position = 0; position < count; ++position) {
         const auto track_key = track_keys[position];
-        const auto selected = subtitle_streams.find(track_key);
-        if (selected == subtitle_streams.end()) {
+        const auto selected = subtitle_streams_by_key.find(track_key);
+        if (selected == subtitle_streams_by_key.end()) {
             return subtitle_failure("Invalid subtitle track key", AVERROR(EINVAL));
         }
 
@@ -458,9 +419,7 @@ inline const char* extract_subtitles(double size, const uint32_t* track_keys, si
                       stream->time_base.num, stream->time_base.den);
         runtime_diagnostic(DiagnosticLevel::trace, message);
         auto output = std::make_unique<SubtitleOutput>(track_key, stream);
-        if ((error = output->open()) < 0) {
-            return subtitle_failure("Could not open subtitle output", error);
-        }
+        if ((error = output->open()) < 0) return subtitle_failure("Could not open subtitle output", error);
         outputs.push_back(std::move(output));
     }
 
@@ -492,30 +451,25 @@ inline const char* extract_subtitles(double size, const uint32_t* track_keys, si
     while ((error = av_read_frame(input.format, packet)) >= 0) {
         for (auto& output : outputs) {
             if (output->source->index == packet->stream_index) {
-                bool got;
-                error = output->decode(packet, origin, &got);
+                error = output->decode(packet, origin);
                 break;
             }
         }
 
         av_packet_unref(packet);
-        if (error < 0) {
-            break;
-        }
+        if (error < 0) break;
     }
 
-    if (error != AVERROR_EOF) {
-        return subtitle_failure("Could not extract subtitle packets", error);
-    }
+    if (error != AVERROR_EOF) return subtitle_failure("Could not extract subtitle packets", error);
 
     result = "[";
     for (auto& output : outputs) {
         AVPacket empty{};
         empty.pts = empty.dts = AV_NOPTS_VALUE;
-        bool got;
+        bool produced = false;
         do {
-            error = output->decode(&empty, origin, &got);
-        } while (error >= 0 && got);
+            error = output->decode(&empty, origin, &produced);
+        } while (error >= 0 && produced);
 
         if (error < 0 || (error = output->finish()) < 0) {
             return subtitle_failure("Could not finish subtitle output", error);
@@ -526,9 +480,7 @@ inline const char* extract_subtitles(double size, const uint32_t* track_keys, si
             return subtitle_failure("Could not deliver subtitle output", output->format->pb->error);
         }
 
-        if (result.size() > 1) {
-            result += ',';
-        }
+        if (result.size() > 1) result += ',';
 
         result += "{\"trackKey\":" + std::to_string(output->track_key);
         result += ",\"extension\":\"srt\",\"mimeType\":\"application/x-subrip\"";

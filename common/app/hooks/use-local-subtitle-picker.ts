@@ -17,7 +17,7 @@ export const useLocalSubtitlePicker = ({
 }: {
     source: FileWithId | undefined;
     host: SubtitleHost;
-    subtitleFiles: FileWithId[];
+    subtitleFiles: readonly FileWithId[];
     initialFiles: readonly (FileWithId | undefined)[];
     discoveryKey?: object;
 }) => {
@@ -45,15 +45,11 @@ export const useLocalSubtitlePicker = ({
     }, [cancel, closePicker]);
 
     const onManualFilesImported = useCallback(
-        (videoFile: FileWithId | undefined, files: FileWithId[]) => {
+        (videoFile: FileWithId | undefined, files: readonly FileWithId[]) => {
             setAutoDiscoverSource(undefined);
             if (files.length > 1) {
                 openSubtitleTrackSelectorWithFiles(files);
-            } else if (
-                videoFile &&
-                files.length === 0 &&
-                !subtitleFiles.some((file) => file.id !== '-' && !file.embedded)
-            ) {
+            } else if (videoFile && !files.length && !subtitleFiles.some((file) => file.id !== '-' && !file.embedded)) {
                 setAutoDiscoverSource({ file: videoFile.file });
             }
         },
@@ -84,11 +80,11 @@ export const useLocalSubtitlePicker = ({
         if (!subtitleTrackSelectorOpen || !source || !tracks) return;
         // Reapply cached embedded choices after a replacement import resets the external choices.
         setSubtitleTrackSelectorTracks((previous) => {
-            const merged = new Map(previous.map((track) => [track.id, track]));
+            const tracksById = new Map(previous.map((track) => [track.id, track]));
             for (const track of tracks) {
                 const id = embeddedSubtitleId(source.id, track.trackIndex);
-                merged.set(id, {
-                    ...merged.get(id),
+                tracksById.set(id, {
+                    ...tracksById.get(id),
                     id,
                     extension: track.outputFormat ?? 'srt',
                     language: track.language,
@@ -105,7 +101,7 @@ export const useLocalSubtitlePicker = ({
                         : t('error.unsupportedFormat', { format: subtitleCodecDisplayName(track.codec) }),
                 });
             }
-            return [...merged.values()];
+            return [...tracksById.values()];
         });
     }, [tracks, source, subtitleTrackSelectorOpen, discoveryKey, setSubtitleTrackSelectorTracks, t]);
 

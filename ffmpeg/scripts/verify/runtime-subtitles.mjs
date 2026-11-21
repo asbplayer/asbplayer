@@ -18,15 +18,15 @@ try {
         },
     });
     let input;
-    let outputs = new Map();
+    let chunksByTrackKey = new Map();
     module.asbReadInput = (offset, pointer, length) => {
         const bytes = input.subarray(offset, offset + length);
         module.HEAPU8.set(bytes, pointer);
         return bytes.length;
     };
-    module.asbWriteOutput = (index, pointer, length) => {
-        assert.ok(outputs.has(index), 'All chunks must belong to a requested subtitle track key');
-        outputs.get(index).push(Buffer.from(module.HEAPU8.subarray(pointer, pointer + length)));
+    module.asbWriteOutput = (trackKey, pointer, length) => {
+        assert.ok(chunksByTrackKey.has(trackKey), 'All chunks must belong to a requested subtitle track key');
+        chunksByTrackKey.get(trackKey).push(Buffer.from(module.HEAPU8.subarray(pointer, pointer + length)));
         return length;
     };
     const json = (pointer) => {
@@ -36,33 +36,35 @@ try {
     const load = async (name) => {
         input = await readFile(resolve(root, name));
     };
-    const extract = (indexes) => {
-        outputs = new Map(indexes.map((index) => [index, []]));
-        const size = indexes.length * Uint32Array.BYTES_PER_ELEMENT;
+    const extract = (trackKeys) => {
+        chunksByTrackKey = new Map(trackKeys.map((trackKey) => [trackKey, []]));
+        const size = trackKeys.length * Uint32Array.BYTES_PER_ELEMENT;
         const pointer = module._malloc(size);
-        assert.ok(pointer, 'Could not allocate subtitle track indexes');
+        assert.ok(pointer, 'Could not allocate subtitle track keys');
         try {
             const heap = module.HEAPU8;
             const selected = new DataView(heap.buffer, heap.byteOffset + pointer, size);
-            indexes.forEach((index, position) => {
-                selected.setUint32(position * Uint32Array.BYTES_PER_ELEMENT, index, true);
+            trackKeys.forEach((trackKey, position) => {
+                selected.setUint32(position * Uint32Array.BYTES_PER_ELEMENT, trackKey, true);
             });
-            const result = json(module._asb_extract_subtitles(input.length, pointer, indexes.length));
+            const result = json(module._asb_extract_subtitles(input.length, pointer, trackKeys.length));
             assert.deepEqual(
                 result.map((track) => track.trackKey),
-                indexes
+                trackKeys
             );
             assert.ok(result.every((track) => track.extension === 'srt' && track.mimeType === 'application/x-subrip'));
-            return new Map([...outputs].map(([index, chunks]) => [index, Buffer.concat(chunks).toString('utf8')]));
+            return new Map(
+                [...chunksByTrackKey].map(([trackKey, chunks]) => [trackKey, Buffer.concat(chunks).toString('utf8')])
+            );
         } finally {
             module._free(pointer);
         }
     };
     await load('mixed.mkv');
     const mixed = extract([1, 0]);
-    assert.ok(outputs.get(0).length > 1, 'Subtitle cues must be delivered before the entire track is encoded');
-    assert.match(outputs.get(0)[0].toString('utf8'), /00:00:09,000 --> 00:00:11,000/);
-    assert.doesNotMatch(outputs.get(0)[0].toString('utf8'), /Final cue/);
+    assert.ok(chunksByTrackKey.get(0).length > 1, 'Subtitle cues must be delivered before the entire track is encoded');
+    assert.match(chunksByTrackKey.get(0)[0].toString('utf8'), /00:00:09,000 --> 00:00:11,000/);
+    assert.doesNotMatch(chunksByTrackKey.get(0)[0].toString('utf8'), /Final cue/);
     assert.match(mixed.get(0), /00:00:09,000 --> 00:00:11,000/);
     assert.match(mixed.get(0), /00:00:10,000 --> 00:00:12,000/);
     assert.match(mixed.get(0), /Final cue/);
@@ -122,8 +124,8 @@ try {
     await load('outside-reorder-window.mkv');
     assert.throws(() => extract([0]), /Could not extract subtitle packets/);
     assert.deepEqual(warnings, ['Subtitle cue exceeds the reorder window']);
-    assert.match(Buffer.concat(outputs.get(0)).toString('utf8'), /Published cue/);
-    assert.doesNotMatch(Buffer.concat(outputs.get(0)).toString('utf8'), /Too late|Buffered cue/);
+    assert.match(Buffer.concat(chunksByTrackKey.get(0)).toString('utf8'), /Published cue/);
+    assert.doesNotMatch(Buffer.concat(chunksByTrackKey.get(0)).toString('utf8'), /Too late|Buffered cue/);
     process.stdout.write(
         'WASM subtitle regressions passed: track identity, presentation timing, reordered cues, text normalization, slow reads, zlib\n'
     );

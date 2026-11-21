@@ -156,7 +156,7 @@ it('opens a video-only import after supported embedded tracks are discovered', a
 it.each(['S_HDMV/PGS', 'S_VOBSUB', undefined])(
     'automatically opens only for supported embedded tracks (%s)',
     async (codec) => {
-        await render({ video: video('episode', codec === undefined ? '' : codec), files: [] });
+        await render({ video: video('episode', codec ?? ''), files: [] });
         await click('import');
         await finishRead(0);
         expect(output().dataset.open).toBe('false');

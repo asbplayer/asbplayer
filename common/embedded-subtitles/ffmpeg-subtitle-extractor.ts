@@ -7,7 +7,7 @@ import type {
 } from '@project/common/embedded-subtitles/subtitle-source';
 import { asbTrace } from '@project/common/util/log';
 
-/** Only the website loads this adapter; shared subtitle code uses SubtitleHost. */
+/** Only the website loads this adapter. Shared subtitle code uses SubtitleHost. */
 export const extractSubtitleTracks = async ({
     file,
     fileId,
@@ -19,14 +19,14 @@ export const extractSubtitleTracks = async ({
     createSession: (options: { signal: AbortSignal }) => FfmpegSession;
 }): Promise<ExtractedSubtitleFile[]> => {
     signal.throwIfAborted();
-    if (trackKeys.length === 0) return [];
+    if (!trackKeys.length) return [];
     const started = performance.now();
     const context: { sessionId?: string; fileId: string; inputBytes: number; trackKeys: number[] } = {
         fileId,
         inputBytes: file.size,
         trackKeys,
     };
-    const chunks = new Map(trackKeys.map((index) => [index, [] as Blob[]]));
+    const chunksByTrackKey = new Map(trackKeys.map((trackKey) => [trackKey, [] as Blob[]]));
     let session: FfmpegSession | undefined;
     let stage: 'creatingSession' | 'loadingExtractor' | 'extracting' | 'finalizing' = 'creatingSession';
     let outputBytes = 0;
@@ -50,12 +50,12 @@ export const extractSubtitleTracks = async ({
             input: file,
             trackKeys,
             signal,
-            onChunk: (index, chunk) => {
+            onChunk: (trackKey, chunk) => {
                 signal.throwIfAborted();
-                const parts = chunks.get(index);
+                const parts = chunksByTrackKey.get(trackKey);
                 if (!parts) throw new Error('Unexpected embedded subtitle track');
                 parts.push(new Blob([chunk]));
-                onChunk(index, chunk);
+                onChunk(trackKey, chunk);
                 outputBytes += chunk.byteLength;
                 chunkCount++;
             },
@@ -63,13 +63,13 @@ export const extractSubtitleTracks = async ({
         signal.throwIfAborted();
         stage = 'finalizing';
         const files = results.map((result): ExtractedSubtitleFile => {
-            const parts = chunks.get(result.trackKey);
+            const parts = chunksByTrackKey.get(result.trackKey);
             if (!parts) throw new Error('Unexpected embedded subtitle track');
-            const output = {
+            return {
                 trackKey: result.trackKey,
                 blob: new Blob(parts, { type: result.mimeType }),
+                format: 'srt',
             };
-            return { ...output, format: 'srt' };
         });
         asbTrace('app/subtitles', 'Finished embedded subtitle extraction', {
             ...context,

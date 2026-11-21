@@ -20,7 +20,7 @@ export const useEmbeddedSubtitles = ({
 }) => {
     const service = useMemo(() => new EmbeddedSubtitles(host), [host]);
     const discovery = useMemo(() => ({ source, service, discoveryKey }), [source, service, discoveryKey]);
-    const [catalog, setCatalog] = useState<{ file: File; tracks: EmbeddedSubtitleTrack[] }>();
+    const [catalog, setCatalog] = useState<{ file: File; tracks: readonly EmbeddedSubtitleTrack[] }>();
     const [failedDiscovery, setFailedDiscovery] = useState<typeof discovery>();
     const [loading, setLoading] = useState(false);
     const request = useRef<AbortController>(undefined);

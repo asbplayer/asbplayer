@@ -1095,11 +1095,11 @@ function App({
                     videoFileUrl = previous.videoFileUrl;
                 }
 
-                // A video-only selection retains file-backed subtitles; a new video drops embedded tracks.
+                // A video-only selection retains file-backed subtitles, while a new video drops embedded tracks.
                 let subtitleSource = mediaSources.subtitleSource;
                 if (
                     mediaSources.videoFile &&
-                    mediaSources.subtitleSourceFiles.length === 0 &&
+                    !mediaSources.subtitleSourceFiles.length &&
                     previous.subtitleSource.kind === 'files'
                 ) {
                     subtitleSource = newVideo
@@ -1450,11 +1450,9 @@ function App({
         }
         const files = draftFileInputRef.current?.files;
 
-        if (files && files.length > 0) {
+        if (files && files.length) {
             const filesWithId = [...files].map((file) => ({ file, id: uuidv4() }));
-            if (subtitleImport.validateFiles(filesWithId)) {
-                fileSelector.publishFiles(filesWithId);
-            }
+            if (subtitleImport.validateFiles(filesWithId)) fileSelector.publishFiles(filesWithId);
             draftFileInputRef.current!.value = '';
         }
     }, [subtitleImport, fileSelector]);
