@@ -39,6 +39,8 @@ import {
     mockSurroundingSubtitles,
     surroundingSubtitlesAroundInterval,
     extractText,
+    copySubtitleText,
+    enabledSubtitlesInDisplayOrder,
 } from '@project/common/util';
 import type { SubtitleCollection } from '@project/common/subtitle-collection';
 import type { RichTextWindow, RenderedRichText, SubtitleAnnotations } from '@project/common/annotations';
@@ -750,6 +752,10 @@ export default function SubtitlePlayer({
     clockRef.current = clock;
     const subtitleListRef = useRef<DisplaySubtitleModel[]>([]);
     subtitleListRef.current = subtitles;
+    const playbackStateRef = useRef(playbackState);
+    playbackStateRef.current = playbackState;
+    const disabledSubtitleTracksRef = useRef(disabledSubtitleTracks);
+    disabledSubtitleTracksRef.current = disabledSubtitleTracks;
 
     const virtuosoRef = useRef<TableVirtuosoHandle>(null);
     const scrollerElementRef = useRef<HTMLElement | null>(null);
@@ -1176,6 +1182,24 @@ export default function SubtitlePlayer({
         const index = Math.min(...subtitleIndexes);
         return subtitles[index];
     }, [clock, subtitles, length]);
+
+    useEffect(() => {
+        return keyBinder.bindCopyCurrentSubtitle(
+            () => {
+                const state = playbackStateRef.current;
+                const current = state
+                    ? state.showingSubtitleIndexes
+                          .filter((index) => !state.hiddenSubtitleIndexes?.includes(index))
+                          .map((index) => subtitleListRef.current[index])
+                          .filter((subtitle) => subtitle !== undefined)
+                    : subtitleCollectionRef.current.subtitlesAt(clockRef.current.time({ maxMs: lengthRef.current }))
+                          .showing;
+
+                return copySubtitleText(enabledSubtitlesInDisplayOrder(current, disabledSubtitleTracksRef.current));
+            },
+            () => disableKeyEventsRef.current
+        );
+    }, [keyBinder]);
 
     useEffect(() => {
         return keyBinder.bindCopy(

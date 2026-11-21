@@ -131,6 +131,7 @@
         "adjustOffsetToSubtitle": "调整偏移量，对齐上/下一句字幕",
         "adjustPlaybackRate": "调整播放速度（±0.1）",
         "ankiExport": "挖掘当前字幕并打开 Anki 对话框",
+        "copyCurrentSubtitle": "Copy current subtitle",
         "copySubtitle": "挖掘当前字幕",
         "decreaseOffset": "减小字幕偏移量（-100 毫秒）",
         "decreasePlaybackRate": "减慢播放速度",

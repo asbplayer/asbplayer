@@ -131,6 +131,7 @@
         "adjustOffsetToSubtitle": "Przestaw przesunięcie napisów tak",
         "adjustPlaybackRate": "Przestaw prędkość odtwarzania o ±0.1",
         "ankiExport": "Wykop bieżące napisy i otwórz okno dialogowe Anki",
+        "copyCurrentSubtitle": "Copy current subtitle",
         "copySubtitle": "Wykop bieżące napisy",
         "decreaseOffset": "Przestaw przesunięcie napisów o -100ms",
         "decreasePlaybackRate": "Zmniejsz prędkość odtwarzania",

@@ -131,6 +131,7 @@
         "adjustOffsetToSubtitle": "Adjust subtitle offset so that previous/next subtitle is at current timestamp",
         "adjustPlaybackRate": "Adjust playback rate by ±0.1",
         "ankiExport": "Mine current subtitle and open Anki dialog",
+        "copyCurrentSubtitle": "Copy current subtitle",
         "copySubtitle": "Mine current subtitle",
         "decreaseOffset": "Adjust subtitle offset by -100ms",
         "decreasePlaybackRate": "Decrease playback rate",

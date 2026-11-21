@@ -79,6 +79,10 @@ export default class AppKeyBinder implements KeyBinder {
         return this.defaultKeyBinder.bindCopy(onCopy, disabledGetter, subtitleGetter, useCapture);
     }
 
+    bindCopyCurrentSubtitle(copyCurrentSubtitle: () => boolean, disabledGetter: () => boolean, useCapture?: boolean) {
+        return this.defaultKeyBinder.bindCopyCurrentSubtitle(copyCurrentSubtitle, disabledGetter, useCapture);
+    }
+
     bindAnkiExport(
         onAnkiExport: (event: KeyboardEvent) => void,
         disabledGetter: () => boolean,
