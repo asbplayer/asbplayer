@@ -64,7 +64,7 @@ try {
             return {};
         },
     });
-    const transcode = async (file, onDiagnostic) => {
+    const transcode = async (file, { onDiagnostic, trackIndex = 0 } = {}) => {
         const input = await readFile(file);
         const chunks = [];
         const diagnostics = [];
@@ -77,11 +77,12 @@ try {
             module.HEAPU8.set(bytes, pointer);
             return bytes.length;
         };
-        module.asbWriteOutput = (pointer, length) => {
+        module.asbWriteOutput = (index, pointer, length) => {
+            assert.equal(index, trackIndex, 'Audio chunks must belong to the selected audio track');
             chunks.push(Buffer.from(module.HEAPU8.slice(pointer, pointer + length)));
             return length;
         };
-        const duration = module._asb_transcode_audio(input.length, 0);
+        const duration = module._asb_transcode_audio(input.length, trackIndex);
         assert.ok(duration > 0, module.UTF8ToString(module._asb_last_error()));
         const output = `${file}.webm`;
         await writeFile(output, Buffer.concat(chunks));
@@ -108,6 +109,10 @@ try {
         'ac3',
         source
     );
+    const multiTrack = join(root, 'multi-track.mp4');
+    ffmpeg('-i', source, '-map', '0:v', '-map', '0:a', '-map', '0:a', '-c', 'copy', multiTrack);
+    checkTone((await transcode(multiTrack, { trackIndex: 1 })).audio, 0.2, 0.7, 'second audio track');
+
     const cut = join(root, 'cut.mp4');
     ffmpeg('-ss', '1', '-i', source, '-c', 'copy', cut);
     const trimmed = await transcode(cut);
@@ -410,7 +415,7 @@ try {
         module.HEAPU8.set(bytes, pointer);
         return bytes.length;
     };
-    module.asbWriteOutput = (_pointer, length) => length;
+    module.asbWriteOutput = (_trackIndex, _pointer, length) => length;
     assert.equal(module._asb_transcode_audio(invalidClock.length, 0), -1, 'unrepresentable sample clock is rejected');
     assert.match(module.UTF8ToString(module._asb_last_error()), /Invalid data/, 'invalid clock reports a native error');
     checkSampleCount(await transcode(intact), undamaged.audio.length / channels, 'recovery after invalid timestamps');
@@ -437,8 +442,10 @@ try {
     assert.notEqual(tailSamples % 960, 0, 'fixture must end in a partial 20 ms Opus frame');
     checkSampleCount(await transcode(tail), tailSamples, 'resampler tail and partial final Opus frame');
     checkSampleCount(
-        await transcode(tail, () => {
-            throw new Error('Diagnostic sink failed');
+        await transcode(tail, {
+            onDiagnostic: () => {
+                throw new Error('Diagnostic sink failed');
+            },
         }),
         tailSamples,
         'throwing diagnostic sink preserves native conversion and cleanup'

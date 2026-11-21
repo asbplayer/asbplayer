@@ -10,6 +10,9 @@ import type {
     FileSessionRecord,
     FileSystemFileHandleWithId,
 } from '@project/common/file-system-access/file-system-access-repository';
+import { subtitleSourceMatches } from '@project/common/embedded-subtitles/subtitle-source';
+import type { EmbeddedSubtitleDescriptor } from '@project/common/embedded-subtitles/subtitle-source';
+import { asbError } from '@project/common/util/log';
 import { v4 as uuidv4 } from 'uuid';
 
 export function supportsFileSystemAccess(): boolean {
@@ -75,24 +78,66 @@ export function canRestoreSession(record: FileSessionRecord | undefined): boolea
     );
 }
 
-/** Restores each source occurrence with its playback slot index, retaining all parts of a track. */
-export function restoreSessionFiles(record: FileSessionRecord, resolvedFiles: FileWithId[]): MediaSourceFile[] {
-    const files = [...resolvedFiles, ...(record.cachedSubtitleFiles ?? [])];
-    if (record.subtitleTrackIds === undefined) {
+/** Prepare missing embedded sources before reconstructing slots. The player extracts them later. */
+export async function restoreSessionFiles(
+    record: FileSessionRecord,
+    resolvedFiles: FileWithId[],
+    prepare: (source: FileWithId, descriptors: EmbeddedSubtitleDescriptor[]) => Promise<Map<string, FileWithId>>
+): Promise<{ files: MediaSourceFile[]; missingEmbeddedSubtitles: EmbeddedSubtitleDescriptor[] }> {
+    const video = resolvedFiles.find((file) => file.id === record.videoHandle?.id);
+    const filesById = new Map(resolvedFiles.map((file) => [file.id, file]));
+    // Files read from disk may have changed since the session was cached.
+    for (const file of record.cachedSubtitleFiles ?? []) {
+        if (!filesById.has(file.id)) filesById.set(file.id, file);
+    }
+    const pendingById = new Map<string, EmbeddedSubtitleDescriptor>();
+    for (const [id, descriptor] of Object.entries(record.embeddedSubtitles ?? {})) {
+        if (!video || !subtitleSourceMatches(video, descriptor)) {
+            filesById.delete(id);
+            continue;
+        }
+        const cached = filesById.get(id);
+        if (descriptor.format === 'srt' && cached) {
+            filesById.set(id, { ...cached, embedded: descriptor });
+        } else {
+            filesById.delete(id);
+            pendingById.set(id, descriptor);
+        }
+    }
+    const missing = [...pendingById.values()];
+    if (video && missing.length) {
+        try {
+            for (const [id, file] of await prepare(video, missing)) filesById.set(id, file);
+        } catch (error) {
+            asbError('app/session', 'Failed to prepare embedded subtitles; preserving available session files:', error);
+        }
+    }
+    if (!record.subtitleTrackIds) {
         // Sessions without a saved arrangement treat each subtitle file as its own track.
         let track = 0;
-        return files.map((source) => (source.id === record.videoHandle?.id ? source : { ...source, track: track++ }));
+        return {
+            files: [...filesById.values()].map((source) =>
+                source.id === record.videoHandle?.id ? source : { ...source, track: track++ }
+            ),
+            missingEmbeddedSubtitles: missing,
+        };
     }
-
-    const filesById = new Map(files.map((file) => [file.id, file]));
-    const subtitleSourceFiles = record.subtitleTrackIds.flatMap((ids, track) =>
-        (ids.length > 0 ? ids : ['-']).map((id) => ({
-            ...((id === '-' ? undefined : filesById.get(id)) ?? { id: '-', file: new File([], '.srt') }),
-            track,
-        }))
-    );
-
-    return [...resolvedFiles.filter(({ id }) => id === record.videoHandle?.id), ...subtitleSourceFiles];
+    return {
+        files: [
+            ...(video ? [video] : []),
+            ...record.subtitleTrackIds.flatMap((ids, track) =>
+                (ids.length ? ids : ['-']).map((id) => ({
+                    ...((id === '-' ? undefined : filesById.get(id)) ?? {
+                        id: pendingById.has(id) ? id : '-',
+                        embedded: pendingById.get(id),
+                        file: new File([''], '.srt'),
+                    }),
+                    track,
+                }))
+            ),
+        ],
+        missingEmbeddedSubtitles: missing,
+    };
 }
 
 export async function showFilePicker(extensions: {

@@ -537,7 +537,7 @@ export default function SidePanel({
     const sources = useMemo(() => {
         if (viewingAsbplayer) {
             return new MediaSources({
-                kind: 'video',
+                kind: 'remote',
                 names: viewingAsbplayer.subtitleTracks?.map((t) => t.fileName) ?? [],
                 status: 'complete',
             });
@@ -545,7 +545,7 @@ export default function SidePanel({
 
         if (syncedVideoTab) {
             return new MediaSources({
-                kind: 'video',
+                kind: 'remote',
                 names: subtitleFileNames ?? syncedVideoTab.subtitleTracks?.map((t) => t.fileName) ?? [],
                 status: 'complete',
             });

@@ -845,3 +845,99 @@ describe('FFmpeg session', () => {
         expect(worker.terminate).toHaveBeenCalledTimes(1);
     });
 });
+
+describe('embedded subtitle operations', () => {
+    const replyWithResult = (worker: FakeWorker, value: unknown) => {
+        const request = worker.messages.at(-1)!;
+        worker.target.dispatchEvent(
+            new MessageEvent('message', {
+                data: {
+                    sessionId: request.sessionId,
+                    requestId: request.requestId,
+                    ok: true,
+                    result: value,
+                    diagnostics: { messages: [], omittedMessages: 0 },
+                },
+            })
+        );
+    };
+    const ready = async () => {
+        const worker = new FakeWorker();
+        const session = createFfmpegSession({
+            prepareAssets: async () => preparedAssets(),
+            workerFactory: () => worker,
+            onDiagnostics: () => {},
+        });
+        const runtime = await session.load();
+        worker.autoReply = false;
+        return { worker, session, runtime };
+    };
+    it('deduplicates subtitle track indexes and requires completion for empty outputs', async () => {
+        const { worker, runtime } = await ready();
+        const chunks: { trackKey: number; byteLength: number }[] = [];
+        const extraction = runtime.extractSubtitles({
+            input: new Blob(['video']),
+            trackKeys: [5, 2, 5],
+            onChunk: (trackKey, bytes) => chunks.push({ trackKey, byteLength: bytes.byteLength }),
+        });
+        const request = worker.messages.at(-1)!;
+        expect(request).toMatchObject({ operation: 'extractSubtitles', trackKeys: [5, 2] });
+        worker.target.dispatchEvent(
+            new MessageEvent('message', {
+                data: {
+                    sessionId: request.sessionId,
+                    requestId: request.requestId,
+                    type: 'chunk',
+                    trackKey: 5,
+                    chunk: new ArrayBuffer(3),
+                },
+            })
+        );
+        const outputs = [5, 2].map((trackKey) => ({
+            trackKey,
+            extension: 'srt',
+            mimeType: 'application/x-subrip',
+        }));
+        replyWithResult(worker, outputs);
+        await expect(extraction).resolves.toEqual(outputs);
+        expect(chunks).toEqual([{ trackKey: 5, byteLength: 3 }]);
+        const incomplete = runtime.extractSubtitles({
+            input: new Blob(['video']),
+            trackKeys: [5, 2],
+            onChunk: () => {},
+        });
+        replyWithResult(worker, outputs.slice(0, 1));
+        await expect(incomplete).rejects.toMatchObject({ code: 'protocol' });
+    });
+    it('rejects output routed to an unrequested track', async () => {
+        const { worker, runtime } = await ready();
+        const extraction = runtime.extractSubtitles({
+            input: new Blob(['video']),
+            trackKeys: [2],
+            onChunk: () => {},
+        });
+        const request = worker.messages.at(-1)!;
+        worker.target.dispatchEvent(
+            new MessageEvent('message', {
+                data: {
+                    sessionId: request.sessionId,
+                    requestId: request.requestId,
+                    type: 'chunk',
+                    trackKey: 0,
+                    chunk: new ArrayBuffer(1),
+                },
+            })
+        );
+        await expect(extraction).rejects.toMatchObject({ code: 'protocol' });
+    });
+    it('rejects image output descriptors', async () => {
+        const { worker, runtime } = await ready();
+        const extraction = runtime.extractSubtitles({
+            input: new Blob(['video']),
+            trackKeys: [3],
+            onChunk: () => {},
+        });
+        replyWithResult(worker, [{ trackKey: 3, extension: 'sup', mimeType: 'application/x-pgs' }]);
+        await expect(extraction).rejects.toMatchObject({ code: 'protocol' });
+    });
+});

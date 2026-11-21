@@ -1,3 +1,4 @@
+import { TextDecoder } from 'util';
 import { beforeAll, describe, expect, it, jest } from '@jest/globals';
 import { audioCodecDisplayName, audioTrackRequiringTranscode } from '@project/common/media-probe/audio-codec-probe';
 import ByteReader from '@project/common/media-probe/byte-reader';
@@ -6,6 +7,7 @@ import { isoBmffAudioSampleFormats } from '@project/common/media-probe/iso-bmff'
 
 // jsdom's Blob does not implement arrayBuffer().
 beforeAll(() => {
+    Object.assign(globalThis, { TextDecoder });
     if (Blob.prototype.arrayBuffer === undefined) {
         Blob.prototype.arrayBuffer = function () {
             return new Promise((resolve, reject) => {
@@ -51,17 +53,22 @@ const ebmlSize = (size: number) => {
 
 const ebmlElement = (id: number[], data: Uint8Array) => concat(id, ebmlSize(data.length), data);
 
-const trackEntry = (trackType: number, codecId: string) =>
-    ebmlElement([0xae], concat(ebmlElement([0x83], new Uint8Array([trackType])), ebmlElement([0x86], ascii(codecId))));
+const trackEntry = (trackType: number, codecId: string, ...metadata: Uint8Array[]) =>
+    ebmlElement(
+        [0xae],
+        concat(ebmlElement([0x83], new Uint8Array([trackType])), ebmlElement([0x86], ascii(codecId)), ...metadata)
+    );
 
 const matroskaFile = ({
     audioCodecIds,
     withVideoTrack = true,
     paddingElements = 1,
+    subtitleTracks = [],
 }: {
     audioCodecIds: string[];
     withVideoTrack?: boolean;
     paddingElements?: number;
+    subtitleTracks?: Uint8Array[];
 }) =>
     concat(
         ebmlElement([0x1a, 0x45, 0xdf, 0xa3], ascii('ebml')),
@@ -74,6 +81,7 @@ const matroskaFile = ({
                     [0x16, 0x54, 0xae, 0x6b],
                     concat(
                         ...(withVideoTrack ? [trackEntry(1, 'V_MPEG4/ISO/AVC')] : []),
+                        ...subtitleTracks,
                         ...audioCodecIds.map((codecId) => trackEntry(2, codecId))
                     )
                 )
@@ -88,13 +96,13 @@ const box = (type: string, data: Uint8Array) => {
     return concat([(size >>> 24) & 0xff, (size >>> 16) & 0xff, (size >>> 8) & 0xff, size & 0xff], ascii(type), data);
 };
 
-const trak = (handler: string, sampleEntry: Uint8Array) =>
+const trak = (handler: string, sampleEntry: Uint8Array, name = new Uint8Array()) =>
     box(
         'trak',
         box(
             'mdia',
             concat(
-                box('hdlr', concat(new Uint8Array(8), ascii(handler))),
+                box('hdlr', concat(new Uint8Array(8), ascii(handler), new Uint8Array(12), name)),
                 box(
                     'minf',
                     box(
@@ -223,6 +231,31 @@ describe('audioTrackRequiringTranscode', () => {
             .spyOn(HTMLMediaElement.prototype, 'canPlayType')
             .mockImplementation((type) => (playableContainers.includes(type) ? 'maybe' : ''));
 
+    it.each(['MP4', 'Matroska'] as const)(
+        'detects Dolby audio despite an oversized subtitle title in %s',
+        async (kind) => {
+            playsContainersButNoDolby();
+            const title = ascii('x'.repeat(66_000) + '\0');
+            const file =
+                kind === 'MP4'
+                    ? concat(
+                          box('ftyp', ascii('isom')),
+                          box(
+                              'moov',
+                              concat(
+                                  trak('sbtl', box('tx3g', new Uint8Array()), title),
+                                  trak('soun', box('ec-3', new Uint8Array(28)))
+                              )
+                          )
+                      )
+                    : matroskaFile({
+                          audioCodecIds: ['A_EAC3'],
+                          subtitleTracks: [trackEntry(17, 'S_TEXT/UTF8', ebmlElement([0x53, 0x6e], title))],
+                      });
+            expect(await audioTrackRequiringTranscode(blobOf(file))).toEqual({ trackIndex: 0, codec: 'eac3' });
+        }
+    );
+
     it.each(['A_AAC', 'A_OPUS'])(
         'leaves %s audio alone without requiring advertised codec support',
         async (codecId) => {
@@ -248,13 +281,13 @@ describe('audioTrackRequiringTranscode', () => {
     it('detects Matroska audio after more than 4096 padding elements', async () => {
         playsContainersButNoDolby();
         const file = matroskaFile({ audioCodecIds: ['A_EAC3'], paddingElements: 4097 });
-        expect(await audioTrackRequiringTranscode(blobOf(file))).toEqual({ index: 0, codec: 'eac3' });
+        expect(await audioTrackRequiringTranscode(blobOf(file))).toEqual({ trackIndex: 0, codec: 'eac3' });
     });
 
     it('detects MP4 audio after more than 4096 padding boxes', async () => {
         playsContainersButNoDolby();
         const file = isoBmffFile({ audioSampleFormats: ['ec-3'], moovAtEnd: true, paddingBoxes: 4097 });
-        expect(await audioTrackRequiringTranscode(blobOf(file))).toEqual({ index: 0, codec: 'eac3' });
+        expect(await audioTrackRequiringTranscode(blobOf(file))).toEqual({ trackIndex: 0, codec: 'eac3' });
     });
 
     it.each([
@@ -264,7 +297,7 @@ describe('audioTrackRequiringTranscode', () => {
     ])('normalizes Matroska %s for eligibility', async (codecId, codec) => {
         playsContainersButNoDolby();
         expect(await audioTrackRequiringTranscode(blobOf(matroskaFile({ audioCodecIds: [codecId] })))).toEqual({
-            index: 0,
+            trackIndex: 0,
             codec,
         });
     });
@@ -276,7 +309,7 @@ describe('audioTrackRequiringTranscode', () => {
     ])('normalizes MP4 %s for eligibility', async (format, codec) => {
         playsContainersButNoDolby();
         expect(await audioTrackRequiringTranscode(blobOf(isoBmffFile({ audioSampleFormats: [format] })))).toEqual({
-            index: 0,
+            trackIndex: 0,
             codec,
         });
     });
@@ -287,12 +320,15 @@ describe('audioTrackRequiringTranscode', () => {
         [0xa9, 'dts'],
     ])('identifies object type %i inside an MP4 mp4a entry', async (objectType, codec) => {
         playsContainersButNoDolby();
-        expect(await audioTrackRequiringTranscode(blobOf(mp4aFile(objectType, 0)))).toEqual({ index: 0, codec });
+        expect(await audioTrackRequiringTranscode(blobOf(mp4aFile(objectType, 0)))).toEqual({ trackIndex: 0, codec });
     });
 
     it('reads a decoder descriptor after the optional ES fields', async () => {
         playsContainersButNoDolby();
-        expect(await audioTrackRequiringTranscode(blobOf(mp4aFile(0xa9, 0xe0)))).toEqual({ index: 0, codec: 'dts' });
+        expect(await audioTrackRequiringTranscode(blobOf(mp4aFile(0xa9, 0xe0)))).toEqual({
+            trackIndex: 0,
+            codec: 'dts',
+        });
     });
 
     it('leaves ordinary AAC mp4a entries alone', async () => {
@@ -316,7 +352,7 @@ describe('audioTrackRequiringTranscode', () => {
     it('picks the first track when the browser can decode none of them', async () => {
         playsContainersButNoDolby();
         const track = await audioTrackRequiringTranscode(blobOf(matroskaFile({ audioCodecIds: ['A_EAC3', 'A_DTS'] })));
-        expect(track).toEqual({ index: 0, codec: 'eac3' });
+        expect(track).toEqual({ trackIndex: 0, codec: 'eac3' });
     });
 
     // Browsers fall back to a track they can decode, so these files already play.

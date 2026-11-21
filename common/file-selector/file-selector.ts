@@ -1,8 +1,9 @@
+import type { EmbeddedSubtitleDescriptor } from '@project/common/embedded-subtitles/subtitle-source';
 import { asbError } from '@project/common/util/log';
 
 export type FilesCallback = (files: FileWithId[]) => void;
 export type Unsubscriber = () => void;
-export type FileWithId = { file: File; id: string };
+export type FileWithId = { file: File; id: string; embedded?: EmbeddedSubtitleDescriptor };
 
 export interface FileSelector {
     open: () => void;

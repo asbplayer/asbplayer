@@ -19,7 +19,7 @@ const millisecondsPerSecond = 1000;
 /** Snapshot the single-track WebM our muxer produces, excluding an unfinished cluster. */
 export const snapshotWebmAudio = async (audio: Blob): Promise<{ blob: Blob; durationMs: number } | undefined> => {
     // Only timestamps and element headers are needed; avoid prefetching encoded packet payloads.
-    const reader = new ByteReader(audio, snapshotReadWindowBytes);
+    const reader = new ByteReader(audio, { windowSize: snapshotReadWindowBytes });
     let offset = 0,
         limit = audio.size,
         scale = webmDefaultTimestampScaleNs,

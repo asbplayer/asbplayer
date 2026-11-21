@@ -22,8 +22,6 @@ extern "C" {
 
 namespace asb::detail {
 
-inline constexpr double javascript_max_safe_integer = 9007199254740991.0;
-
 inline int prepare_frame(AVFrame* frame, AVCodecContext* encoder, int samples) {
     av_frame_unref(frame);
     frame->format = encoder->sample_fmt;
@@ -56,6 +54,7 @@ struct AudioTranscoder {
     AVPacket* packet = nullptr;
     AVPacket* encoded_packet = nullptr;
     AVStream* input_stream = nullptr;
+    uint32_t track_index = 0;
     int64_t origin = 0;
     int64_t written_samples = 0;
     int64_t source_position = 0;
@@ -323,8 +322,9 @@ struct AudioTranscoder {
         return result < 0 ? fail("Could not open input", result) : 0;
     }
 
-    int select_track(int track_index) {
-        int audio_count = 0;
+    int select_track(uint32_t track_index) {
+        this->track_index = track_index;
+        uint32_t audio_count = 0;
         for (unsigned int index = 0; index < this->input->nb_streams; ++index) {
             auto* stream = this->input->streams[index];
             if (stream->codecpar->codec_type == AVMEDIA_TYPE_AUDIO && audio_count++ == track_index) {
@@ -384,7 +384,7 @@ struct AudioTranscoder {
         output_stream->time_base = this->encoder->time_base;
         auto* output_buffer = static_cast<uint8_t*>(av_malloc(io_buffer_bytes));
         if (output_buffer == nullptr) return fail("Could not allocate audio output buffer", AVERROR(ENOMEM));
-        this->output->pb = avio_alloc_context(output_buffer, io_buffer_bytes, 1, nullptr,
+        this->output->pb = avio_alloc_context(output_buffer, io_buffer_bytes, 1, &this->track_index,
             nullptr, write_output, nullptr);
         if (this->output->pb == nullptr) {
             av_free(output_buffer);
@@ -483,7 +483,7 @@ struct AudioTranscoder {
         return 0;
     }
 
-    int open(InputBuffer* input_buffer, int track_index) {
+    int open(InputBuffer* input_buffer, uint32_t track_index) {
         if (open_input(input_buffer) < 0 || select_track(track_index) < 0 || open_decoder() < 0 || open_output() < 0) {
             return -1;
         }
@@ -520,9 +520,9 @@ struct AudioTranscoder {
     }
 };
 
-inline double transcode_audio(double input_size, int track_index) noexcept {
+inline double transcode_audio(double input_size, uint32_t track_index) noexcept {
     if (!std::isfinite(input_size) || input_size <= 0 || input_size > javascript_max_safe_integer ||
-        std::floor(input_size) != input_size || track_index < 0) {
+        std::floor(input_size) != input_size) {
         return fail("Invalid audio transcode arguments", AVERROR(EINVAL));
     }
     last_error.clear();

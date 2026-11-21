@@ -5,6 +5,7 @@ jest.mock('@qgustavor/srt-parser', () => ({ __esModule: true, default: class {} 
 import type { MediaSourceFile } from '@project/common/app/services/media-sources';
 import type { SerializedSubtitleFile } from '@project/common';
 import { MediaSources, decodeSubtitleSourceFiles } from '@project/common/app/services/media-sources';
+import { embeddedDescriptor } from '@project/common/embedded-subtitles/subtitle-source';
 import { LocalizedError } from '@project/common/app/components/localized-error';
 import SubtitleReader from '@project/common/subtitle-reader/subtitle-reader';
 import { SubtitleHtml } from '@project/common';
@@ -21,7 +22,7 @@ const trackNames = (sources: MediaSources) =>
 
 describe('MediaSources', () => {
     it('represents an empty selection without subtitle tracks or a video', () => {
-        const sources = MediaSources.fromFiles([]);
+        const sources = MediaSources.fromFiles([], { pendingEmbedded: false });
         expect(sources.subtitleTracks).toEqual([]);
         expect(sources.allSourceFiles).toEqual([]);
         expect(sources.videoFile).toBeUndefined();
@@ -29,7 +30,9 @@ describe('MediaSources', () => {
 
     it('assigns independent subtitle tracks without counting the selected video', () => {
         const video = source('video.MP4');
-        const sources = MediaSources.fromFiles([source('English.vtt'), video, source('Spanish.srt')]);
+        const sources = MediaSources.fromFiles([source('English.vtt'), video, source('Spanish.srt')], {
+            pendingEmbedded: false,
+        });
 
         expect(trackNames(sources)).toEqual([['English.vtt'], ['Spanish.srt']]);
         expect(sources.subtitleSourceFiles.map(({ track }) => track)).toEqual([0, 1]);
@@ -42,44 +45,56 @@ describe('MediaSources', () => {
     });
 
     it('groups interleaved fragments in track order and uses their first filenames as track names', () => {
-        const sources = MediaSources.fromFiles([
-            source('Spanish1.vtt', 1),
-            source('English1.vtt', 0),
-            source('Spanish2.vtt', 1),
-            source('English2.vtt', 0),
-        ]);
+        const sources = MediaSources.fromFiles(
+            [
+                source('Spanish1.vtt', 1),
+                source('English1.vtt', 0),
+                source('Spanish2.vtt', 1),
+                source('English2.vtt', 0),
+            ],
+            { pendingEmbedded: false }
+        );
 
         expect(trackNames(sources)).toEqual([
             ['English1.vtt', 'English2.vtt'],
             ['Spanish1.vtt', 'Spanish2.vtt'],
         ]);
         expect(sources.subtitleFileNames).toEqual(['English1.vtt', 'Spanish1.vtt']);
-        expect(sources.firstSubtitleSourceFiles.map(({ file }) => file.name)).toEqual(['English1.vtt', 'Spanish1.vtt']);
+        expect(sources.firstSubtitleSourceFiles.map((source) => source?.file.name)).toEqual([
+            'English1.vtt',
+            'Spanish1.vtt',
+        ]);
         expect(sources.hasSubtitleFile('English1.vtt')).toBe(true);
         expect(sources.hasSubtitleFile('English2.vtt')).toBe(false);
         expect(sources.hasSubtitleFile('missing.vtt')).toBe(false);
     });
 
     it('preserves an unfilled slot and a trailing empty SRT placeholder', () => {
-        const sources = MediaSources.fromFiles([
-            source('English1.vtt', 1),
-            source('English2.vtt', 1),
-            source('.srt', 2),
-        ]);
+        const sources = MediaSources.fromFiles(
+            [source('English1.vtt', 1), source('English2.vtt', 1), source('.srt', 2)],
+            { pendingEmbedded: false }
+        );
 
         expect(trackNames(sources)).toEqual([[], ['English1.vtt', 'English2.vtt'], ['.srt']]);
         expect(sources.subtitleFileNames).toEqual(['', 'English1.vtt', '.srt']);
+        expect(sources.firstSubtitleSourceFiles.map((source) => source?.file.name)).toEqual([
+            undefined,
+            'English1.vtt',
+            '.srt',
+        ]);
         expect(sources.hasSubtitleFile('')).toBe(false);
     });
 
     it('retains every fragment when an existing track is selected in another slot', () => {
         const english = source('English1.vtt', 0);
-        const loaded = MediaSources.fromFiles([english, source('English2.vtt', 0), source('Spanish.vtt', 1)]);
+        const loaded = MediaSources.fromFiles([english, source('English2.vtt', 0), source('Spanish.vtt', 1)], {
+            pendingEmbedded: false,
+        });
         const track = loaded.findSubtitleTrack(english)!;
-        const reselected = MediaSources.fromFiles([
-            source('.srt', 0),
-            ...track.fileParts.map((filePart) => ({ ...filePart, track: 1 })),
-        ]);
+        const reselected = MediaSources.fromFiles(
+            [source('.srt', 0), ...track.fileParts.map((filePart) => ({ ...filePart, track: 1 }))],
+            { pendingEmbedded: false }
+        );
 
         expect(trackNames(reselected)).toEqual([['.srt'], ['English1.vtt', 'English2.vtt']]);
         expect(reselected.subtitleSourceFiles.map(({ track }) => track)).toEqual([0, 1, 1]);
@@ -89,7 +104,7 @@ describe('MediaSources', () => {
     it('requires the same first file and ID to recover an existing track', () => {
         const first = source('first.vtt');
         const second = source('second.vtt', 0);
-        const sources = MediaSources.fromFiles([first, second]);
+        const sources = MediaSources.fromFiles([first, second], { pendingEmbedded: false });
 
         expect(sources.findSubtitleTrack(source('first.vtt'))).toBeUndefined();
         expect(sources.findSubtitleTrack({ ...first, id: 'different' })).toBeUndefined();
@@ -97,16 +112,41 @@ describe('MediaSources', () => {
     });
 
     it('keeps the subtitle track reference when the video is unloaded', () => {
-        const original = MediaSources.fromFiles([source('English.vtt'), source('video.mp4')]);
-        const unloaded = new MediaSources(original.subtitleSource);
+        const original = MediaSources.fromFiles([source('English.vtt'), source('video.mp4')], {
+            pendingEmbedded: false,
+        });
+        const unloaded = original.withoutVideo(new Set());
 
         expect(unloaded.subtitleTracks).toBe(original.subtitleTracks);
         expect(unloaded.subtitleFileNames).toEqual(['English.vtt']);
         expect(unloaded.videoFile).toBeUndefined();
     });
 
+    it('keeps completed embedded files as standalone subtitles and drops unfinished files on unload', () => {
+        const video = source('video.mkv');
+        const completed = {
+            ...source('empty-but-complete.srt', 0),
+            embedded: embeddedDescriptor(video, { trackIndex: 0, codec: 'subrip' }),
+        };
+        const pending = {
+            ...source('pending.srt', 1),
+            embedded: embeddedDescriptor(video, { trackIndex: 1, codec: 'subrip' }),
+        };
+        const external = source('English.vtt', 2);
+        const loaded = MediaSources.fromFiles([video, completed, pending, external], { pendingEmbedded: true });
+        const unloaded = loaded.withoutVideo(new Set([1]));
+
+        expect(unloaded.videoFile).toBeUndefined();
+        expect(trackNames(unloaded)).toEqual([['empty-but-complete.srt'], [], ['English.vtt']]);
+        expect(unloaded.subtitleSourceFiles).toEqual([{ id: completed.id, file: completed.file, track: 0 }, external]);
+        expect(unloaded.canDownloadSubtitles).toBe(true);
+        expect(loaded.subtitleSourceFiles[0].embedded).toBe(completed.embedded);
+    });
+
     it.each([-1, 0.5, NaN, Infinity, 1])('rejects an invalid track index of %s', (track) => {
-        expect(() => MediaSources.fromFiles([source('English.vtt', track)])).toThrow('Invalid subtitle track index');
+        expect(() => MediaSources.fromFiles([source('English.vtt', track)], { pendingEmbedded: false })).toThrow(
+            'Invalid subtitle track index'
+        );
     });
 
     it.each([
@@ -117,7 +157,10 @@ describe('MediaSources', () => {
         [['unsupported.txt'], 'error.unsupportedExtension'],
     ])('rejects unsupported file selections %s', (names, key) => {
         try {
-            MediaSources.fromFiles(names.map((name) => source(name)));
+            MediaSources.fromFiles(
+                names.map((name) => source(name)),
+                { pendingEmbedded: false }
+            );
             throw new Error('Expected invalid selection to be rejected');
         } catch (error) {
             expect(error).toBeInstanceOf(LocalizedError);
@@ -133,7 +176,9 @@ const serializedSourceFile = (name: string, track?: number): SerializedSubtitleF
 });
 
 const decodedTrackNames = (serializedSourceFiles: SerializedSubtitleFile[], flatten?: boolean) =>
-    trackNames(MediaSources.fromFiles(decodeSubtitleSourceFiles(serializedSourceFiles, flatten)));
+    trackNames(
+        MediaSources.fromFiles(decodeSubtitleSourceFiles(serializedSourceFiles, flatten), { pendingEmbedded: false })
+    );
 
 describe('subtitle downloads', () => {
     const reader = new SubtitleReader({
@@ -161,7 +206,7 @@ describe('subtitle downloads', () => {
 
     it('exports completed remote text tracks in their slots with original text and timing', async () => {
         const sources = new MediaSources({
-            kind: 'video',
+            kind: 'remote',
             names: ['embedded.ass', '', 'companion.vtt', 'image.SUP'],
             status: 'complete',
         });
@@ -196,8 +241,13 @@ describe('subtitle downloads', () => {
     it.each([{ names: [] }, { names: ['image.sup'] }, { names: ['image.SUP'] }])(
         'hides downloads for an empty or image-only selection $names',
         ({ names }) => {
-            expect(new MediaSources({ kind: 'video', names, status: 'complete' }).canDownloadSubtitles).toBe(false);
-            expect(MediaSources.fromFiles(names.map((name) => source(name))).canDownloadSubtitles).toBe(false);
+            expect(new MediaSources({ kind: 'remote', names, status: 'complete' }).canDownloadSubtitles).toBe(false);
+            expect(
+                MediaSources.fromFiles(
+                    names.map((name) => source(name)),
+                    { pendingEmbedded: false }
+                ).canDownloadSubtitles
+            ).toBe(false);
         }
     );
 
@@ -208,13 +258,16 @@ describe('subtitle downloads', () => {
             Object.defineProperty(file, 'text', { value: async () => content });
             return { id: name, file, track };
         };
-        const sources = MediaSources.fromFiles([
-            vtt('part1.vtt', 'First', 1, 0),
-            vtt('part2.vtt', 'Second', 3, 0),
-            source('.srt', 1),
-            vtt('companion.vtt', 'Companion', 1, 2),
-            { id: 'image', file: new File(['image data'], 'image.SUP'), track: 3 },
-        ]);
+        const sources = MediaSources.fromFiles(
+            [
+                vtt('part1.vtt', 'First', 1, 0),
+                vtt('part2.vtt', 'Second', 3, 0),
+                source('.srt', 1),
+                vtt('companion.vtt', 'Companion', 1, 2),
+                { id: 'image', file: new File(['image data'], 'image.SUP'), track: 3 },
+            ],
+            { pendingEmbedded: false }
+        );
         expect(sources.canDownloadSubtitles).toBe(true);
         expect(await sources.subtitleTracksForExport(reader, [])).toMatchObject([
             {
@@ -231,7 +284,7 @@ describe('subtitle downloads', () => {
 });
 
 describe('subtitle source messages', () => {
-    it('keeps video-owned track names available to history jumps and rewind without creating local files', () => {
+    it('keeps tab-owned track names available to history jumps and rewind without creating local files', () => {
         const sources = MediaSources.fromSync({
             command: 'syncv2',
             subtitles: [],
@@ -243,7 +296,7 @@ describe('subtitle source messages', () => {
             },
         });
 
-        expect(sources.subtitleSource.kind).toBe('video');
+        expect(sources.subtitleSource.kind).toBe('remote');
         expect(sources.subtitleFileNames).toEqual(['embedded.ass', '', 'companion.vtt']);
         expect(sources.hasSubtitleFile('embedded.ass')).toBe(true);
         expect(sources.hasSubtitleFile('companion.vtt')).toBe(true);
@@ -253,9 +306,9 @@ describe('subtitle source messages', () => {
         expect(sources.allSourceFiles).toEqual([]);
     });
 
-    it('preserves remote ownership for an empty video selection', () => {
+    it('preserves remote ownership for an empty subtitle selection', () => {
         const sources = MediaSources.fromSync({ command: 'syncv2', subtitles: [], subtitleSource: { tracks: [] } });
-        expect(sources.subtitleSource.kind).toBe('video');
+        expect(sources.subtitleSource.kind).toBe('remote');
         expect(sources.subtitleFileNames).toEqual([]);
         expect(sources.hasSubtitleFile('previous.ass')).toBe(false);
     });
