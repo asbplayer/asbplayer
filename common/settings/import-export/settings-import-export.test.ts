@@ -115,7 +115,7 @@ it('imports a file old enough to exercise the consistency migration paths', () =
     const annotation = track.dictionaryTokenAnnotationConfig;
     expect(annotation.colorizeEnabled).toBe(true);
     expect(annotation.video.color.onHoverEnabled).toBe(true);
-    expect(annotation.video.gloss).toEqual({ onHoverEnabled: true, size: 0.5 });
+    expect(annotation.video.gloss).toEqual({ onHoverEnabled: true, hoverPerToken: false, size: 0.5 });
     expect(annotation.onStates[TokenState.IGNORED].reading).toBe(true);
     expect(annotation.onStatuses.every((s) => s.reading && s.frequency && !s.gloss && !s.pitchAccent)).toBe(true);
 
@@ -163,10 +163,17 @@ it('imports a real v1.22.0 export through the settings dialog path', () => {
         readFileSync(join(__dirname, '__fixtures__', 'v1.22.0-settings-export.json'), 'utf-8')
     );
 
-    const imported = validateSettings(mergeImportedSettings(legacyExport, defaultSettings), defaultSettings);
+    const currentSettings = {
+        ...defaultSettings,
+        dictionaryTracks: defaultSettings.dictionaryTracks.map((track) => structuredClone(track)),
+    };
+    currentSettings.dictionaryTracks[0].dictionaryTokenAnnotationConfig.video.gloss.hoverPerToken = true;
+    const imported = validateSettings(mergeImportedSettings(legacyExport, currentSettings), currentSettings);
 
     expect(imported.customAnkiFieldSettings).toEqual({ MyCustomField: { order: 99, display: true } });
     expect(imported.customAnkiFields).toEqual({ MyCustomField: 'カスタム' });
+    expect(imported.dictionaryTracks?.[0].dictionaryTokenAnnotationConfig.video.gloss.hoverPerToken).toBe(true);
+    expect(imported.dictionaryTracks?.[1].dictionaryTokenAnnotationConfig.video.gloss.hoverPerToken).toBe(false);
 });
 
 it('fails validation when an unknown key is encountered', () => {

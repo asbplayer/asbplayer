@@ -569,7 +569,13 @@ If enabled, hovering a word will highlight it which helps you understand how yom
 This setting only applies if [**Colorize subtitles based on known words**](#colorize-subtitles-based-on-known-words) is enabled.
 :::
 
-If enabled for video or subtitle list, word colors are hidden by default and only appear when you hover over the subtitle text in the video or subtitle list respectively.
+Choose separately for video and subtitle list:
+
+- **Disabled** displays word colors normally.
+- **Enabled** reveals them throughout the cue on hover.
+- **Per word** reveals them only for the hovered or keyboard-selected word.
+
+Existing annotation eligibility rules still apply.
 
 ### Only display word reading on hover {#only-display-word-reading-on-hover}
 
@@ -577,7 +583,13 @@ If enabled for video or subtitle list, word colors are hidden by default and onl
 This setting only applies if [**Display word readings**](#display-word-readings) is enabled.
 :::
 
-If enabled for video or subtitle list, word readings are hidden by default and only appear when you hover over the subtitle text in the video or subtitle list respectively.
+Choose separately for video and subtitle list:
+
+- **Disabled** displays word readings normally.
+- **Enabled** reveals them throughout the cue on hover.
+- **Per word** reveals them only for the hovered or keyboard-selected word.
+
+Existing annotation eligibility rules still apply.
 
 ### Only display word frequency on hover {#only-display-word-frequency-on-hover}
 
@@ -585,7 +597,13 @@ If enabled for video or subtitle list, word readings are hidden by default and o
 This setting only applies if [**Display word frequency**](#display-word-frequency) is enabled.
 :::
 
-If enabled for video or subtitle list, word frequency is hidden by default and only appears when you hover over the subtitle text in the video or subtitle list respectively.
+Choose separately for video and subtitle list:
+
+- **Disabled** displays word frequency normally.
+- **Enabled** reveals it throughout the cue on hover.
+- **Per word** reveals it only for the hovered or keyboard-selected word.
+
+Existing annotation eligibility rules still apply.
 
 ### Only display word definitions on hover {#only-display-word-definitions-on-hover}
 
@@ -593,7 +611,13 @@ If enabled for video or subtitle list, word frequency is hidden by default and o
 This setting only applies if [**Display word definitions**](#display-word-definitions) is enabled.
 :::
 
-If enabled for video or subtitle list, word definitions are hidden by default and only appear when you hover over the subtitle text in the video or subtitle list respectively.
+Choose separately for video and subtitle list:
+
+- **Disabled** displays word definitions normally.
+- **Enabled** reveals them throughout the cue on hover.
+- **Per word** reveals them only for the hovered or keyboard-selected word.
+
+Existing annotation eligibility rules still apply.
 
 ### Only display pitch accent on hover {#only-display-pitch-accent-on-hover}
 
@@ -601,7 +625,13 @@ If enabled for video or subtitle list, word definitions are hidden by default an
 This setting only applies if [**Display pitch accent (Japanese)**](#display-pitch-accent-japanese) is enabled.
 :::
 
-If enabled for video or subtitle list, pitch accent is hidden by default and only appears when you hover over the subtitle text in the video or subtitle list respectively.
+Choose separately for video and subtitle list:
+
+- **Disabled** displays pitch accent normally.
+- **Enabled** reveals it throughout the cue on hover.
+- **Per word** reveals it only for the hovered or keyboard-selected word.
+
+Existing annotation eligibility rules still apply.
 
 ### Word reading size {#word-reading-size}
 

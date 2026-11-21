@@ -25,7 +25,8 @@ import {
 } from '@project/common/dictionary-statistics';
 import type { RichTextWindow, RenderedRichText } from '@project/common/annotations';
 import {
-    getAnnotationsHtml,
+    ASB_TOKEN_HIGHLIGHT_CLASS,
+    bindNativeTokenSelection,
     renderRichTextWindow,
     emptyRichTextWindow,
     renderRichTextForSubtitle,
@@ -120,7 +121,7 @@ const SentenceTableRow = ({
                     backgroundColor: (theme) =>
                         highlighted ? alpha(theme.palette.primary.main, 0.24) : theme.palette.action.hover,
                 },
-                '& .asb-token-highlight:hover': {
+                [`& .${ASB_TOKEN_HIGHLIGHT_CLASS}:hover`]: {
                     backgroundColor: 'rgb(0, 123, 255)',
                 },
             }}
@@ -208,7 +209,7 @@ const SentenceRowCells = React.memo(function SentenceRowCells({
                 <span
                     style={tokenAnnotationStyleValues(tokenAnnotationConfig)}
                     dangerouslySetInnerHTML={{
-                        __html: getAnnotationsHtml(sentence.text, rendered?.richText, rendered?.richTextOnHover),
+                        __html: rendered?.richText ?? sentence.text,
                     }}
                 />
             </TableCell>
@@ -291,6 +292,7 @@ export default function StatisticsSentenceDetailsDialog({
     onMineSentence,
 }: Props) {
     const { t } = useTranslation();
+    useEffect(() => (open ? bindNativeTokenSelection(document) : undefined), [open]);
     const [sortState, setSortState] = useState<DictionaryStatisticsSentenceSortState>(
         defaultDictionaryStatisticsSentenceSortState()
     );

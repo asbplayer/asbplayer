@@ -44,7 +44,6 @@ import type { SubtitleCollection } from '@project/common/subtitle-collection';
 import type { RichTextWindow, RenderedRichText, SubtitleAnnotations } from '@project/common/annotations';
 import type { TokenJumpMatch, TokenSelectionLocation } from '@project/common/annotations/token-navigation';
 import {
-    getAnnotationsHtml,
     renderRichTextWindow,
     emptyRichTextWindow,
     renderRichTextForSubtitle,
@@ -451,7 +450,7 @@ const SubtitleRowCells = React.memo(function SubtitleRowCells({
         <span
             className={disabledClassName}
             dangerouslySetInnerHTML={{
-                __html: getAnnotationsHtml(subtitle.text, rendered?.richText, rendered?.richTextOnHover),
+                __html: rendered?.richText ?? subtitle.text,
             }}
             data-track={subtitle.track}
             {...{ [ASB_SUBTITLE_INDEX_ATTRIBUTE]: subtitle.index }}

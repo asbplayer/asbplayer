@@ -11,7 +11,15 @@ import {
     ASB_TOKEN_START_ATTRIBUTE,
     ASB_SUBTITLE_TOKEN_SELECTED_CLASS,
     ASB_TOKEN_AUTO_PAUSE_SELECTED_CLASS,
+    ASB_TOKEN_BASE_CLASS,
+    ASB_TOKEN_CLASS,
+    ASB_TOKEN_HOVER_CLASS,
+    ASB_TOKEN_HOVER_CUE_CLASS,
+    ASB_TOKEN_HOVER_WORD_CLASS,
+    ASB_TOKEN_ON_CUE_HOVER_CLASS,
+    ASB_TOKEN_ON_WORD_HOVER_CLASS,
     ASB_TOKEN_SELECTED_CLASS,
+    bindNativeTokenSelection,
     clearTokenSelectionInRoot,
     currentTokenSelectionLocation,
     HoveredToken,
@@ -20,6 +28,156 @@ import {
 } from '@project/common/annotations/dom-annotations';
 import { renderRichTextOntoSubtitles } from '@project/common/annotations/render-annotations';
 import { findAdjacentTokenJumpMatch, findTokenContainingSearch } from '@project/common/annotations/token-navigation';
+
+describe('native token selection', () => {
+    it.each([false, true])('pins both ends of a cross-cue selection (backward: %s)', (backward) => {
+        const subtitles = document.createElement('div');
+        subtitles.innerHTML = ['first', 'second']
+            .map(
+                (
+                    word
+                ) => `<span class="asb-subtitles"><span class="${ASB_TOKEN_HOVER_CLASS} ${ASB_TOKEN_HOVER_WORD_CLASS}">
+                <span class="${ASB_TOKEN_BASE_CLASS}">${word}</span>
+                <span class="${ASB_TOKEN_ON_WORD_HOVER_CLASS}">${word}</span>
+            </span></span>`
+            )
+            .join(' ');
+        document.body.append(subtitles);
+        const unbind = bindNativeTokenSelection(document);
+        const selection = document.getSelection()!;
+        const endpoints = Array.from(subtitles.querySelectorAll(`.${ASB_TOKEN_ON_WORD_HOVER_CLASS}`));
+        const [start, end] = backward ? [...endpoints].reverse() : endpoints;
+        const pins = () => Array.from(subtitles.querySelectorAll('.asb-token-native-selection'));
+
+        try {
+            start.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+            expect(pins()).toEqual([start]);
+
+            selection.setBaseAndExtent(start.firstChild!, 1, end.firstChild!, 2);
+            document.dispatchEvent(new Event('selectionchange'));
+            end.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+            expect(pins()).toEqual(endpoints);
+
+            selection.removeAllRanges();
+            document.dispatchEvent(new Event('selectionchange'));
+            expect(pins()).toEqual([]);
+        } finally {
+            selection.removeAllRanges();
+            unbind();
+            subtitles.remove();
+        }
+    });
+
+    it.each([
+        { api: 'composed range', canPin: true },
+        { api: 'legacy Chrome', canPin: true },
+        { api: 'neither API', canPin: false },
+    ])('handles shadow subtitle selection with $api', ({ api, canPin }) => {
+        const host = document.createElement('div');
+        const root = host.attachShadow({ mode: 'open' });
+        root.innerHTML = ['first', 'second']
+            .map(
+                (word) => `<span class="${ASB_TOKEN_HOVER_CLASS}">
+                    <span class="${ASB_TOKEN_ON_WORD_HOVER_CLASS}">${word}</span>
+                </span>`
+            )
+            .join(' ');
+        document.body.append(host);
+        let shadowRoots: ShadowRoot[] = [];
+        const unbind = bindNativeTokenSelection(document, () => shadowRoots);
+        shadowRoots = [root]; // The extension discovers video roots after binding.
+        const selection = document.getSelection()!;
+        const endpoints = Array.from(root.querySelectorAll(`.${ASB_TOKEN_ON_WORD_HOVER_CLASS}`));
+        const [start, end] = endpoints;
+        const anchorNode = start.firstChild!;
+        const focusNode = end.firstChild!;
+        const pins = () => Array.from(root.querySelectorAll('.asb-token-native-selection'));
+
+        // jsdom has no shadow selection APIs. Simulate the browser exposing the actual endpoints
+        // through a composed range or the root's selection, but not through the document selection.
+        Object.defineProperty(selection, 'getComposedRanges', {
+            configurable: true,
+            value:
+                api === 'composed range'
+                    ? ({ shadowRoots: roots }: { shadowRoots: readonly ShadowRoot[] }) =>
+                          roots.includes(root)
+                              ? [{ startContainer: anchorNode, endContainer: focusNode, collapsed: false }]
+                              : []
+                    : undefined,
+        });
+        if (api === 'legacy Chrome') {
+            Object.defineProperty(root, 'getSelection', {
+                value: () => ({ anchorNode, focusNode, isCollapsed: false }),
+            });
+        }
+
+        try {
+            selection.collapse(document.body, 0);
+            start.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, composed: true }));
+            document.dispatchEvent(new Event('selectionchange'));
+            end.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, composed: true }));
+            expect(pins()).toEqual(canPin ? endpoints : []);
+
+            shadowRoots = [];
+            document.dispatchEvent(new Event('selectionchange'));
+            expect(pins()).toEqual([]);
+
+            shadowRoots = [root];
+            document.dispatchEvent(new Event('selectionchange'));
+            expect(pins()).toEqual(canPin ? endpoints : []);
+
+            selection.removeAllRanges();
+            document.dispatchEvent(new Event('selectionchange'));
+            expect(pins()).toEqual([]);
+        } finally {
+            selection.removeAllRanges();
+            Reflect.deleteProperty(selection, 'getComposedRanges');
+            unbind();
+            host.remove();
+        }
+    });
+
+    it('releases the branch after a click without a text selection', () => {
+        const cue = document.createElement('span');
+        cue.innerHTML = `<span class="${ASB_TOKEN_HOVER_CLASS}">
+            <span class="${ASB_TOKEN_ON_WORD_HOVER_CLASS}">word</span>
+        </span>`;
+        document.body.append(cue);
+        const unbind = bindNativeTokenSelection(document);
+        const branch = cue.querySelector(`.${ASB_TOKEN_ON_WORD_HOVER_CLASS}`)!;
+        try {
+            branch.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+            expect(cue.querySelector('.asb-token-native-selection')).toBe(branch);
+            branch.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+            expect(cue.querySelector('.asb-token-native-selection')).toBeNull();
+        } finally {
+            unbind();
+            cue.remove();
+        }
+    });
+
+    it('leaves shortcut-selected branches under shortcut control', () => {
+        const cue = document.createElement('div');
+        cue.innerHTML = `<span class="asb-subtitles" ${ASB_SUBTITLE_INDEX_ATTRIBUTE}="0">
+            <span class="${ASB_TOKEN_HOVER_CLASS} ${ASB_TOKEN_HOVER_WORD_CLASS}">
+                <span class="${ASB_TOKEN_BASE_CLASS}"><span ${ASB_TOKEN_START_ATTRIBUTE}="0">word</span></span>
+                <span class="${ASB_TOKEN_ON_WORD_HOVER_CLASS}"><span ${ASB_TOKEN_START_ATTRIBUTE}="0">word</span></span>
+            </span>
+        </span>`;
+        document.body.append(cue);
+        const unbind = bindNativeTokenSelection(document);
+        try {
+            expect(selectTokenInRoot(cue, { subtitleIndex: 0, tokenStart: 0 })).toBe(true);
+            document.dispatchEvent(new Event('selectionchange'));
+            expect(document.getSelection()?.toString()).toBe('word');
+            expect(cue.querySelector('.asb-token-native-selection')).toBeNull();
+        } finally {
+            document.getSelection()?.removeAllRanges();
+            unbind();
+            cue.remove();
+        }
+    });
+});
 
 describe('HoveredToken', () => {
     it('extracts visible token text and track while ignoring ruby text', () => {
@@ -91,6 +249,49 @@ describe('HoveredToken', () => {
         wrapper.remove();
     });
 
+    it.each([
+        {
+            name: 'collects the visible branch',
+            hitSelector: '.live',
+            detached: false,
+            expected: { token: 'word', track: 1 },
+        },
+        { name: 'ignores hidden collectible copies', hitSelector: '.uncolored', detached: false, expected: null },
+        { name: 'ignores a different word under the pointer', hitSelector: '.other', detached: false, expected: null },
+        { name: 'ignores a detached word', hitSelector: '.live', detached: true, expected: null },
+    ])('$name when the last mouse target is in the old base branch', ({ hitSelector, detached, expected }) => {
+        const hoveredToken = new HoveredToken();
+        const doc = document.implementation.createHTMLDocument();
+        const cue = doc.createElement('div');
+        cue.dataset.track = '1';
+        cue.innerHTML = `
+            <span class="${ASB_TOKEN_HOVER_CLASS}">
+                <span class="${ASB_TOKEN_BASE_CLASS}"><span data-asb-token-start="0">word</span></span>
+                <span class="${ASB_TOKEN_ON_CUE_HOVER_CLASS}" hidden>
+                    <span class="${ASB_TOKEN_CLASS}" data-asb-token-start="0">hidden</span>
+                </span>
+                <span class="${ASB_TOKEN_ON_WORD_HOVER_CLASS}">
+                    <span class="${hitSelector === '.uncolored' ? 'uncolored' : `live ${ASB_TOKEN_CLASS}`}"
+                        data-asb-token-start="0">word</span>
+                </span>
+            </span>
+            <span class="${ASB_TOKEN_HOVER_CLASS}">
+                <span class="other ${ASB_TOKEN_CLASS}" data-asb-token-start="5">other</span>
+            </span>`;
+        doc.body.append(cue);
+        const base = cue.querySelector<HTMLElement>(`.${ASB_TOKEN_BASE_CLASS}`)!;
+        // jsdom doesn't implement layout or hit testing.
+        Object.defineProperty(doc, 'elementFromPoint', {
+            value: (x: number, y: number) => (x === 10 && y === 20 ? cue.querySelector(hitSelector) : null),
+        });
+        cue.addEventListener('mouseover', (event) => hoveredToken.handleMouseOver(event));
+        base.firstElementChild!.dispatchEvent(new MouseEvent('mouseover', { bubbles: true, clientX: 10, clientY: 20 }));
+        base.hidden = true;
+        if (detached) cue.remove();
+
+        expect(hoveredToken.parse()).toEqual(expected);
+    });
+
     it('selects but does not collect a rendered token when color is disabled', () => {
         const subtitle = makeSubtitle({
             text: 'word',
@@ -114,6 +315,49 @@ describe('HoveredToken', () => {
 
         expect(selectTokenInRoot(wrapper, { subtitleIndex: subtitle.index, tokenStart: 0 })).toBe(true);
         expect(hoveredToken.parse()).toBeNull();
+        wrapper.remove();
+    });
+
+    it.each([false, true])('selects the word or cue variant and parses the token with coloring: %s', (colorize) => {
+        const track = makeDictionaryTrack({ dictionaryColorizeSubtitles: colorize });
+        track.dictionaryTokenAnnotationConfig.onStatuses[TokenStatus.UNKNOWN].gloss = true;
+        track.dictionaryTokenAnnotationConfig.onStatuses[TokenStatus.UNKNOWN].frequency = true;
+        track.dictionaryTokenAnnotationConfig.video.gloss.onHoverEnabled = true;
+        track.dictionaryTokenAnnotationConfig.video.gloss.hoverPerToken = true;
+        track.dictionaryTokenAnnotationConfig.video.frequency.onHoverEnabled = true;
+        const subtitle = makeSubtitle({
+            text: '語学 学習',
+            tokenization: {
+                tokens: [
+                    makeToken({ pos: [0, 2], status: TokenStatus.UNKNOWN, frequency: 5 }),
+                    makeToken({ pos: [3, 5], status: TokenStatus.UNKNOWN, frequency: 7, gloss: 'study' }),
+                ],
+            },
+        });
+        const wrapper = document.createElement('div');
+        wrapper.className = 'asb-subtitles';
+        wrapper.dataset.track = '0';
+        wrapper.setAttribute(ASB_SUBTITLE_INDEX_ATTRIBUTE, String(subtitle.index));
+        wrapper.innerHTML =
+            renderRichTextOntoSubtitles([subtitle], 'video', makeDictionaryTracks(track), {
+                adaptiveWordVisibilityEnabled: true,
+            }).get(0)?.richText ?? '';
+        document.body.append(wrapper);
+        const hovered = new HoveredToken();
+        const selectedVariant = (className: string) => {
+            const selected = document.getSelection()?.anchorNode;
+            const element = selected instanceof Element ? selected : selected?.parentElement;
+            return element?.closest(`.${className}`);
+        };
+        expect(selectTokenInRoot(wrapper, { subtitleIndex: subtitle.index, tokenStart: 3 })).toBe(true);
+        expect(selectedVariant(ASB_TOKEN_ON_WORD_HOVER_CLASS)).toBeInstanceOf(HTMLElement);
+        expect(hovered.parse()).toEqual(colorize ? { token: '学習', track: 0 } : null);
+        expect(wrapper.querySelectorAll(`.${ASB_TOKEN_HOVER_CLASS}.${ASB_TOKEN_SELECTED_CLASS}`)).toHaveLength(1);
+        expect(selectTokenInRoot(wrapper, { subtitleIndex: subtitle.index, tokenStart: 0 })).toBe(true);
+        expect(selectedVariant(ASB_TOKEN_ON_CUE_HOVER_CLASS)).toBeInstanceOf(HTMLElement);
+        expect(hovered.parse()).toEqual(colorize ? { token: '語学', track: 0 } : null);
+        clearTokenSelectionInRoot(wrapper);
+        expect(wrapper.querySelector(`.${ASB_TOKEN_SELECTED_CLASS}`)).toBeNull();
         wrapper.remove();
     });
 
@@ -402,8 +646,13 @@ describe('token jump navigation', () => {
 
     it('activates hover annotations and clears only the previous selection in the same root', () => {
         const firstRoot = document.createElement('div');
-        firstRoot.innerHTML =
-            '<span class="asb-subtitles" data-asb-subtitle-index="1"><span class="asbplayer-subtitle-text"><span class="asb-token" data-asb-token-start="0">plain</span></span><span class="asbplayer-subtitle-rich"><span class="asb-token" data-asb-token-start="0">rich</span></span></span>';
+        firstRoot.innerHTML = `<span class="asb-subtitles" ${ASB_SUBTITLE_INDEX_ATTRIBUTE}="1">
+            <span class="${ASB_TOKEN_HOVER_CLASS} ${ASB_TOKEN_HOVER_CUE_CLASS} ${ASB_TOKEN_HOVER_WORD_CLASS}">
+                <span class="${ASB_TOKEN_BASE_CLASS}"><span class="${ASB_TOKEN_CLASS}" ${ASB_TOKEN_START_ATTRIBUTE}="0">plain</span></span>
+                <span class="${ASB_TOKEN_ON_CUE_HOVER_CLASS}"><span class="${ASB_TOKEN_CLASS}" ${ASB_TOKEN_START_ATTRIBUTE}="0">cue</span></span>
+                <span class="${ASB_TOKEN_ON_WORD_HOVER_CLASS}"><span class="${ASB_TOKEN_CLASS}" ${ASB_TOKEN_START_ATTRIBUTE}="0">rich</span></span>
+            </span>
+        </span>`;
         const secondRoot = document.createElement('div');
         secondRoot.innerHTML =
             '<span class="asb-subtitles" data-asb-subtitle-index="2"><span class="asb-token" data-asb-token-start="0">other</span></span>';
@@ -413,9 +662,12 @@ describe('token jump navigation', () => {
         expect(selectTokenInRoot(firstRoot, { subtitleIndex: 1, tokenStart: 0 })).toBe(true);
 
         expect(firstRoot.querySelector(`.${ASB_SUBTITLE_TOKEN_SELECTED_CLASS}`)).not.toBeNull();
-        expect(firstRoot.querySelectorAll(`.${ASB_TOKEN_SELECTED_CLASS}`)).toHaveLength(2);
+        expect(firstRoot.querySelector(`.${ASB_TOKEN_HOVER_CLASS}.${ASB_TOKEN_SELECTED_CLASS}`)).not.toBeNull();
         expect(document.getSelection()?.toString()).toBe('rich');
         expect(secondRoot.querySelector(`.${ASB_TOKEN_SELECTED_CLASS}`)).not.toBeNull();
+        clearTokenSelectionInRoot(firstRoot);
+        expect(firstRoot.querySelector(`.${ASB_TOKEN_SELECTED_CLASS}`)).toBeNull();
+        expect(document.getSelection()?.toString()).toBe('');
 
         firstRoot.remove();
         secondRoot.remove();
