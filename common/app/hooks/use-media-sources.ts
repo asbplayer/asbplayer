@@ -7,17 +7,9 @@ import { embeddedDescriptor, embeddedSubtitleId } from '@project/common/embedded
 import { genericSubtitleDisplayLabel } from '@project/common/util/subtitle-language';
 import { subtitleCodecDisplayName } from '@project/common/media-probe';
 import { emptySubtitleTrack } from '@project/common/components/VideoDataSyncDialog';
-import { IndexedDBFileSessionRepository, supportsFileSystemAccess } from '@project/common/file-system-access';
+import { defaultFileSessionStore } from '@project/common/app/services/file-session';
 import { MediaSourcesController } from '@project/common/app/services/media-sources-controller';
 import type { SourcesAppliedEvent } from '@project/common/app/services/media-sources-controller';
-
-let sessionRepository: IndexedDBFileSessionRepository | undefined;
-const getSessionRepository = () => {
-    if (sessionRepository === undefined && supportsFileSystemAccess()) {
-        sessionRepository = new IndexedDBFileSessionRepository();
-    }
-    return sessionRepository;
-};
 
 /** Connects MediaSourcesController to React state, i18n formatting, and the player's subtitle producer. */
 export const useMediaSources = ({
@@ -39,7 +31,7 @@ export const useMediaSources = ({
         () =>
             new MediaSourcesController({
                 subtitleHost,
-                sessionRepository: getSessionRepository(),
+                sessionRepository: defaultFileSessionStore(),
                 onSourcesApplied: (event) => callbacksRef.current.onSourcesApplied(event),
                 onError: (error) => callbacksRef.current.onError(error),
             }),

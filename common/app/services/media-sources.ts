@@ -76,6 +76,59 @@ export class MediaSources {
         this.allSourceFiles = videoFile ? [...this.subtitleSourceFiles, videoFile] : this.subtitleSourceFiles;
     }
 
+    /** Merge incoming sources with the current state, preserving unchanged media and external subtitles on video-only loads. */
+    merge(
+        incoming: MediaSources,
+        createVideoUrl: (file: File) => string
+    ): {
+        sources: MediaSources;
+        newVideo: boolean;
+        revokedVideoUrl?: string;
+        loadingSources: FileWithId[];
+        resetJumpToSubtitle: boolean;
+    } {
+        const remoteSubtitles = incoming.subtitleSource.kind === 'remote';
+        const resetJumpToSubtitle = Boolean(remoteSubtitles || incoming.videoFile || incoming.subtitleFileNames.length);
+        const newVideo = incoming.videoFile !== undefined && incoming.videoFile.file !== this.videoFile?.file;
+
+        let videoFile = incoming.videoFile;
+        let videoFileUrl: string | undefined;
+        let revokedVideoUrl: string | undefined;
+
+        if (videoFile && !newVideo) {
+            videoFile = this.videoFile;
+            videoFileUrl = this.videoFileUrl;
+        } else if (videoFile) {
+            revokedVideoUrl = this.videoFileUrl;
+            videoFileUrl = createVideoUrl(videoFile.file);
+        } else if (!remoteSubtitles) {
+            videoFile = this.videoFile;
+            videoFileUrl = this.videoFileUrl;
+        } else {
+            revokedVideoUrl = this.videoFileUrl;
+        }
+
+        // A video-only selection retains file-backed subtitles, while a new video drops embedded tracks.
+        let subtitleSource = incoming.subtitleSource;
+        if (incoming.videoFile && !incoming.subtitleSourceFiles.length && this.subtitleSource.kind === 'files') {
+            subtitleSource = newVideo
+                ? {
+                      kind: 'files',
+                      pendingEmbedded: false,
+                      tracks: this.subtitleTracks.map(({ fileParts }) => ({
+                          fileParts: fileParts.filter((file) => !file.embedded),
+                      })),
+                  }
+                : this.subtitleSource;
+        }
+
+        const sources = new MediaSources(subtitleSource, videoFile, videoFileUrl);
+        const loadingSources = sources.allSourceFiles.filter(
+            (source) => !this.allSourceFiles.some((previous) => source.file === previous.file)
+        );
+        return { sources, newVideo, revokedVideoUrl, loadingSources, resetJumpToSubtitle };
+    }
+
     /** Keep completed subtitles for standalone playback when their video is unloaded. */
     withoutVideo(pendingTrackIndexes: ReadonlySet<number>): MediaSources {
         const source = this.subtitleSource;

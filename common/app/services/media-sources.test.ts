@@ -381,3 +381,68 @@ describe('subtitle source messages', () => {
         );
     });
 });
+
+describe('merge', () => {
+    it('retains external subtitles and drops embedded tracks when a new video is loaded alone', () => {
+        let nextUrl = 0;
+        const createUrl = () => `blob:video-${++nextUrl}`;
+        const video1 = source('first.mkv');
+        const video2 = source('second.mkv');
+        const external = source('external.srt', 0);
+        const embedded: MediaSourceFile = {
+            ...source('first.track-1.srt', 1),
+            embedded: {
+                videoId: video1.id,
+                fileName: video1.file.name,
+                fileSize: 0,
+                lastModified: 0,
+                trackIndex: 0,
+                codec: 'subrip',
+                format: 'srt',
+            },
+        };
+        const initial = new MediaSources(
+            MediaSources.fromFiles([external, embedded], { pendingEmbedded: false }).subtitleSource,
+            video1,
+            'blob:initial'
+        );
+
+        const replaced = initial.merge(new MediaSources(undefined, video2), createUrl);
+        expect(replaced.newVideo).toBe(true);
+        expect(replaced.revokedVideoUrl).toBe('blob:initial');
+        expect(replaced.sources.videoFile).toBe(video2);
+        expect(replaced.sources.videoFileUrl).toBe('blob:video-1');
+        expect(trackNames(replaced.sources)).toEqual([['external.srt'], []]);
+        expect(replaced.loadingSources).toEqual([video2]);
+        expect(replaced.resetJumpToSubtitle).toBe(true);
+
+        const sameVideo = initial.merge(new MediaSources(undefined, video1), createUrl);
+        expect(sameVideo.newVideo).toBe(false);
+        expect(sameVideo.revokedVideoUrl).toBeUndefined();
+        expect(sameVideo.sources.videoFileUrl).toBe('blob:initial');
+        expect(trackNames(sameVideo.sources)).toEqual([['external.srt'], ['first.track-1.srt']]);
+        expect(sameVideo.loadingSources).toEqual([]);
+    });
+
+    it('preserves the active video for local subtitle updates and revokes it for remote subtitles', () => {
+        const video = source('episode.mkv');
+        const initial = new MediaSources(undefined, video, 'blob:episode');
+        const sub = source('en.srt');
+
+        const withSub = initial.merge(MediaSources.fromFiles([sub], { pendingEmbedded: false }), () => 'blob:unused');
+        expect(withSub.newVideo).toBe(false);
+        expect(withSub.revokedVideoUrl).toBeUndefined();
+        expect(withSub.sources.videoFile).toBe(video);
+        expect(withSub.sources.videoFileUrl).toBe('blob:episode');
+        expect(withSub.loadingSources).toEqual([{ ...sub, track: 0 }]);
+
+        const remote = initial.merge(
+            new MediaSources({ kind: 'remote', names: ['remote.vtt'], status: 'complete' }),
+            () => 'blob:unused'
+        );
+        expect(remote.revokedVideoUrl).toBe('blob:episode');
+        expect(remote.sources.videoFile).toBeUndefined();
+        expect(remote.sources.videoFileUrl).toBeUndefined();
+        expect(remote.resetJumpToSubtitle).toBe(true);
+    });
+});
