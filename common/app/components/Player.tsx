@@ -150,6 +150,7 @@ function pause(clock: Clock, mediaAdapter: MediaAdapter, forwardToMedia: boolean
 interface PlayerProps {
     subtitleProducer?: SubtitleSourceProducer;
     audioTranscodeHost?: AudioTranscodeHost;
+    onMediaReady?: () => void;
     sources?: MediaSources;
     subtitles: DisplaySubtitleModel[];
     mediaId?: string;
@@ -241,6 +242,7 @@ function PlayerComponent(
         sources,
         audioTranscodeHost,
         subtitleProducer,
+        onMediaReady,
         subtitles,
         mediaId,
         subtitleReader,
@@ -730,7 +732,7 @@ function PlayerComponent(
         sourceStates,
     } = useSubtitleTracks({
         source:
-            tab && (sources === undefined || sources.subtitleSource.kind === 'video')
+            tab && (sources === undefined || sources.subtitleSource.kind === 'remote')
                 ? {
                       kind: 'remote',
                       supportsProgressiveSubtitles: extension.supportsProgressiveSubtitles,
@@ -758,7 +760,7 @@ function PlayerComponent(
         onError,
     });
     const subtitleFileNames =
-        sources?.subtitleSource.kind === 'video' ? sources.subtitleFileNames : loadedSubtitleFileNames;
+        sources?.subtitleSource.kind === 'remote' ? sources.subtitleFileNames : loadedSubtitleFileNames;
 
     sourceStatesRef.current = sourceStates;
     useEffect(() => {
@@ -1027,6 +1029,7 @@ function PlayerComponent(
             }),
         [channel, subtitles, videoFile]
     );
+    useEffect(() => channel?.onReady(() => onMediaReady?.()), [channel, onMediaReady]);
     useEffect(
         () =>
             channel?.onReady(() => {

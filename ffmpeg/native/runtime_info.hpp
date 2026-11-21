@@ -39,7 +39,7 @@ inline std::string runtime_info() {
     asb::append_json_string(output, swresample_configuration());
     output += ",\"license\":";
     asb::append_json_string(output, swresample_license());
-    output += "}],\"operations\":[\"inspect\",\"transcodeAudio\"]}";
+    output += "}],\"operations\":[\"inspect\",\"transcodeAudio\",\"extractSubtitles\"]}";
     return output;
 }
 

@@ -3,6 +3,7 @@ import {
     isoBmffAudioSampleFormats,
     isoBmffBoxTypeOffset,
     isoBmffBoxTypeBytes,
+    isoBmffTopLevelBoxTypes,
 } from '@project/common/media-probe/iso-bmff';
 import { matroskaAudioCodecIds } from '@project/common/media-probe/matroska';
 import { ebmlHeaderId, ebmlHeaderIdBytes } from '@project/common/media-probe/ebml';
@@ -12,12 +13,11 @@ export interface ProbedAudioTrack {
     /**
      * Position among the audio tracks, matching ffmpeg's `0:a:<index>` stream specifier.
      */
-    readonly index: number;
+    readonly trackIndex: number;
     readonly codec: string;
 }
 
 const containerProbeBytes = 12;
-const isoBmffTopLevelBoxTypes = ['ftyp', 'styp', 'moov', 'free', 'skip', 'wide', 'mdat'];
 
 /**
  * Codecs that no browser is guaranteed to decode, mapped to the MIME type used to ask the browser
@@ -177,5 +177,5 @@ export const audioTrackRequiringTranscode = async (blob: Blob): Promise<ProbedAu
     }
 
     asbTrace('media/probe', 'Audio conversion required', { trackIndex: 0, codec: container.audioCodecs[0] });
-    return { index: 0, codec: container.audioCodecs[0] };
+    return { trackIndex: 0, codec: container.audioCodecs[0] };
 };

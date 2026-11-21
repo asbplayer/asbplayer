@@ -217,6 +217,10 @@ export default class PlaybackPositionController<T extends IndexedSubtitleModel> 
     subtitlesChanged(): void {
         const position = this.pendingTimestampMs;
         if (position === undefined) return;
+        if (this.isAtOrBeyondLastSubtitleEnd(position)) {
+            this.dismissPlaybackPosition();
+            return;
+        }
         const ready = this.subtitlesReadyAt(position);
         if (this.resumeRequested && ready) {
             void this.resumePlaybackPosition().catch(this.callbacks.onError);
