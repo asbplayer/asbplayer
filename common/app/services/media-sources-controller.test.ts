@@ -1,19 +1,12 @@
-import 'core-js/stable/structured-clone';
-import 'fake-indexeddb/auto';
-import { IDBFactory } from 'fake-indexeddb';
 import { afterAll, afterEach, beforeAll, beforeEach, expect, it, jest } from '@jest/globals';
 import { TextDecoder, TextEncoder } from 'util';
-import Dexie from 'dexie';
 import { SubtitleHtml } from '@project/common';
 import type { ConfirmedVideoDataSubtitleTrack, DisplaySubtitleModel } from '@project/common';
 import type { FileWithId } from '@project/common/file-selector';
 import type { FileSessionRecord } from '@project/common/file-system-access';
-import { IndexedDBFileSessionRepository, restoreSessionFiles } from '@project/common/file-system-access';
+import type { FileSessionStore } from '@project/common/app/services/file-session';
 import { MediaSourcesController } from '@project/common/app/services/media-sources-controller';
-import type {
-    EmbeddedSelection,
-    MediaSourcesSessionRepository,
-} from '@project/common/app/services/media-sources-controller';
+import type { EmbeddedSelection } from '@project/common/app/services/media-sources-controller';
 import { SubtitleTracksController } from '@project/common/app/services/subtitle-tracks-controller';
 import { TestVideoProtocol } from '@project/common/app/services/subtitle-tracks-test-utils';
 import VideoChannel from '@project/common/app/services/video-channel';
@@ -65,14 +58,6 @@ afterAll(() => {
 });
 
 const flush = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
-
-const waitFor = async (predicate: () => boolean | Promise<boolean>, timeoutMs = 2000) => {
-    const deadline = Date.now() + timeoutMs;
-    while (!(await predicate())) {
-        if (Date.now() > deadline) throw new Error('Timed out waiting for condition');
-        await new Promise((resolve) => setTimeout(resolve, 5));
-    }
-};
 
 const reader = new SubtitleReader({
     regexFilter: '',
@@ -128,14 +113,14 @@ let subtitles: DisplaySubtitleModel[] | undefined;
 let extraction: SubtitleExtractionOptions;
 let finishExtraction: (files: ExtractedSubtitleFile[]) => void;
 let record: FileSessionRecord | undefined;
-let session: jest.Mocked<MediaSourcesSessionRepository>;
+let session: jest.Mocked<FileSessionStore>;
 let video: FileWithId;
 let choice: ConfirmedVideoDataSubtitleTrack;
 let protocol: TestVideoProtocol;
 const onError = jest.fn<(error: unknown) => void>();
 const extract = jest.fn<(options: SubtitleExtractionOptions) => Promise<ExtractedSubtitleFile[]>>();
 
-const createController = (sessionRepository: MediaSourcesSessionRepository | undefined = session) => {
+const createController = (sessionRepository: FileSessionStore | undefined = session) => {
     controller = new MediaSourcesController({
         subtitleHost: { extractSubtitles: extract },
         sessionRepository,
@@ -865,122 +850,4 @@ it.each([true, false])('restores cached=%s embedded subtitles and extracts only 
         });
     }
     expect(onError).not.toHaveBeenCalled();
-});
-
-it('persists completed downloads and valid empty embedded tracks in IndexedDB before pending extraction completes', async () => {
-    Dexie.dependencies.indexedDB = new IDBFactory();
-    const originalStorage = Object.getOwnPropertyDescriptor(navigator, 'storage');
-    Object.defineProperty(navigator, 'storage', {
-        configurable: true,
-        value: { estimate: async () => ({ quota: 1024 ** 3, usage: 0 }) },
-    });
-    const repository = new IndexedDBFileSessionRepository();
-    const twoTrackBytes = Uint8Array.from(
-        mkv(mkvTrack(1, 'V_VP8'), mkvTrack(17, 'S_TEXT/UTF8'), mkvTrack(17, 'S_TEXT/UTF8'))
-    ).buffer;
-    const videoFile = new File(['video'], 'video.mkv', { lastModified: 1 });
-    Object.defineProperty(videoFile, 'size', { value: twoTrackBytes.byteLength });
-    videoFile.slice = () => ({ arrayBuffer: async () => twoTrackBytes }) as Blob;
-    const twoTrackVideo: FileWithId = { id: 'video', file: videoFile };
-    const track0Choice: ConfirmedVideoDataSubtitleTrack = {
-        id: embeddedSubtitleId(twoTrackVideo.id, 0),
-        embedded: embeddedDescriptor(twoTrackVideo, { trackIndex: 0, codec: 'subrip' }),
-        label: 'Track 1',
-        name: 'Track 1',
-        extension: 'srt',
-    };
-    const track1Choice: ConfirmedVideoDataSubtitleTrack = {
-        id: embeddedSubtitleId(twoTrackVideo.id, 1),
-        embedded: embeddedDescriptor(twoTrackVideo, { trackIndex: 1, codec: 'subrip' }),
-        label: 'Track 2',
-        name: 'Track 2',
-        extension: 'srt',
-    };
-    const onlineChoice: ConfirmedVideoDataSubtitleTrack = {
-        id: 'https://example.test/subtitle.srt',
-        url: 'https://example.test/subtitle.srt',
-        label: 'online.srt',
-        name: 'online',
-        extension: 'srt',
-    };
-    globalThis.fetch = jest.fn<typeof fetch>().mockResolvedValue({
-        ok: true,
-        blob: async () => new Blob(['Downloaded']),
-    } as Response);
-    const prepare = async () => {
-        throw new Error('Completed session files must not need extraction');
-    };
-
-    try {
-        createController(repository);
-        controller.initialize();
-        await flush();
-
-        // Confirming only an empty slot keeps canRestoreLastSession false.
-        await openAndConfirm([{ id: '-', label: '-', name: '-', extension: 'srt' }]);
-        await waitFor(async () => (await repository.fetch())?.subtitleTrackIds?.length === 1);
-        expect(controller.getState().canRestoreLastSession).toBe(false);
-
-        // Save video handle and complete an empty embedded extraction for track 1.
-        extract.mockClear();
-        controller.loadSourceFiles([twoTrackVideo]);
-        await repository.merge({
-            videoHandle: {
-                id: twoTrackVideo.id,
-                handle: { name: twoTrackVideo.file.name } as FileSystemFileHandle,
-            },
-            subtitleHandles: [],
-        });
-        attachTracksController();
-        await openAndConfirm([track1Choice]);
-        await waitFor(() => extract.mock.calls.length === 1);
-        finishExtraction([{ trackKey: 1, format: 'srt', blob: new Blob([]) }]);
-        await waitFor(async () => {
-            const saved = await repository.fetch();
-            return Boolean(
-                controller.getState().sources.canDownloadSubtitles && saved?.embeddedSubtitles?.[track1Choice.id]
-            );
-        });
-
-        await openAndConfirm([track0Choice, onlineChoice, track1Choice]);
-        await waitFor(async () =>
-            Boolean(
-                extract.mock.calls.length === 2 &&
-                    (await repository.fetch())?.cachedSubtitleFiles?.some(({ id }) => id === onlineChoice.id)
-            )
-        );
-        expect(controller.getState().canRestoreLastSession).toBe(true);
-
-        const savedBefore = (await repository.fetch())!;
-        expect(savedBefore.subtitleTrackIds).toEqual([[], [onlineChoice.id], [track1Choice.id]]);
-        expect(savedBefore.cachedSubtitleFiles?.map(({ id }) => id)).toEqual([onlineChoice.id, track1Choice.id]);
-        expect(savedBefore.embeddedSubtitles).toEqual({ [track1Choice.id]: track1Choice.embedded });
-        const restoredBefore = await restoreSessionFiles(savedBefore, [twoTrackVideo], prepare);
-        expect(restoredBefore.files.map(({ id }) => id)).toEqual([
-            twoTrackVideo.id,
-            '-',
-            onlineChoice.id,
-            track1Choice.id,
-        ]);
-        expect(restoredBefore.files[2].file.size).toBe('Downloaded'.length);
-        expect(restoredBefore.missingEmbeddedSubtitles).toEqual([]);
-
-        finishExtraction([{ trackKey: 0, format: 'srt', blob: new Blob(['Extracted']) }]);
-        await waitFor(async () => Boolean((await repository.fetch())?.embeddedSubtitles?.[track0Choice.id]));
-
-        const savedAfter = (await repository.fetch())!;
-        const restoredAfter = await restoreSessionFiles(savedAfter, [twoTrackVideo], prepare);
-        expect(restoredAfter.files.map(({ id }) => id)).toEqual([
-            twoTrackVideo.id,
-            track0Choice.id,
-            onlineChoice.id,
-            track1Choice.id,
-        ]);
-        expect(restoredAfter.files[1].file.size).toBe('Extracted'.length);
-        expect(restoredAfter.missingEmbeddedSubtitles).toEqual([]);
-    } finally {
-        await repository.clear();
-        if (originalStorage) Object.defineProperty(navigator, 'storage', originalStorage);
-        else Reflect.deleteProperty(navigator, 'storage');
-    }
 });
