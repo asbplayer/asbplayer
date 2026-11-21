@@ -52,6 +52,7 @@
             "key": "amazonPrime",
             "host": "www\\.amazon\\..+|www\\.primevideo\\.com",
             "pageScript": "amazon-prime-page.js",
+            "durationChangesIndicateNewVideo": true,
             "syncAllowedAtPath": ".*",
             "autoSync": {
                 "enabled": true,

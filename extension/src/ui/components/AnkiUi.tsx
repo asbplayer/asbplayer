@@ -285,13 +285,13 @@ export default function AnkiUi({ bridge, localLookupEnabled }: Props) {
         [bridge]
     );
 
-    const handleRequestDefinition = useCallback(async (word: string, sentence: string) => {
+    const handleRequestTranslation = useCallback(async (sentence: string) => {
         const request: TabToExtensionCommand<GetLocalDefinitionMessage> = {
             sender: 'asbplayer-video-tab',
-            message: { command: 'get-local-definition', word, sentence },
+            message: { command: 'get-local-definition', sentence },
         };
         const response = await browser.runtime.sendMessage(request);
-        return response?.definition as string | undefined;
+        return response?.translation as string | undefined;
     }, []);
 
     useEffect(() => {
@@ -414,7 +414,7 @@ export default function AnkiUi({ bridge, localLookupEnabled }: Props) {
                         mp3Encoder={mp3Encoder}
                         lastSelectedExportMode={settings.lastSelectedAnkiExportMode}
                         inTutorial={inTutorial}
-                        onRequestDefinition={localLookupEnabled ? handleRequestDefinition : undefined}
+                        onRequestTranslation={localLookupEnabled ? handleRequestTranslation : undefined}
                     />
                 )}
             </ThemeProvider>

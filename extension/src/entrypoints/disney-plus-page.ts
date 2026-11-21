@@ -9,8 +9,9 @@ type DisneySeekRequest = {
 
 export default defineUnlistedScript(() => {
     // --- Disney+ player API access (reverse-engineered) ---
-    // The Disney+ web player attaches a media player object to the React fiber tree
-    // above the <video> element. It exposes seek(ms)/play()/pause() and
+    // The Disney+ web player exposes its media player object as the `mediaPlayer`
+    // property of the <disney-web-player> custom element (it used to live in the React
+    // fiber tree above the <video>). It exposes seek(ms)/play()/pause() and
     // timeline.info.playheadPositionMs (true content time in ms). On Disney+,
     // video.currentTime is per-MediaSource relative time and direct writes to it are
     // ignored by the player, so we drive the player API directly (Netflix-style).
@@ -30,90 +31,9 @@ export default defineUnlistedScript(() => {
         typeof value.play === 'function' &&
         typeof value.pause === 'function';
 
-    const playerFromObject = (value: any): any => {
-        if (!value || typeof value !== 'object') {
-            return undefined;
-        }
-
-        let keys: string[];
-
-        try {
-            keys = Object.keys(value);
-        } catch {
-            return undefined;
-        }
-
-        for (const key of keys.slice(0, 60)) {
-            let candidate: any;
-
-            try {
-                candidate = value[key];
-            } catch {
-                continue;
-            }
-
-            if (isDisneyPlusPlayer(candidate)) {
-                return candidate;
-            }
-        }
-
-        return undefined;
-    };
-
     const findDisneyPlusPlayer = (): any => {
-        for (const video of document.querySelectorAll('video')) {
-            let element: Element | null = video;
-            let fiberKey: string | undefined;
-            let host: any;
-
-            while (element) {
-                fiberKey = Object.keys(element).find(
-                    (key) => key.startsWith('__reactFiber$') || key.startsWith('__reactInternalInstance$')
-                );
-
-                if (fiberKey) {
-                    host = element;
-                    break;
-                }
-
-                element = element.parentElement;
-            }
-
-            if (!fiberKey) {
-                continue;
-            }
-
-            let fiber = host[fiberKey];
-            let steps = 0;
-
-            while (fiber && steps < 400) {
-                steps++;
-                let found = playerFromObject(fiber.memoizedProps);
-
-                if (!found) {
-                    let hook = fiber.memoizedState;
-                    let hookSteps = 0;
-
-                    while (hook && hookSteps < 20 && !found) {
-                        found = playerFromObject(hook.memoizedState);
-                        hook = hook.next;
-                        hookSteps++;
-                    }
-                }
-
-                if (!found && fiber.stateNode && typeof fiber.stateNode === 'object') {
-                    found = playerFromObject(fiber.stateNode);
-                }
-
-                if (found) {
-                    return found;
-                }
-
-                fiber = fiber.return;
-            }
-        }
-
-        return undefined;
+        const player = document.querySelector<any>('disney-web-player')?.mediaPlayer;
+        return isDisneyPlusPlayer(player) ? player : undefined;
     };
 
     const contentTime = (player: any): number | undefined => {
@@ -163,9 +83,11 @@ export default defineUnlistedScript(() => {
     };
 
     const disneyPlusPlayer = (): any => {
-        if (isDisneyPlusPlayer(cachedPlayer)) return cachedPlayer;
+        const player = findDisneyPlusPlayer();
+        if (player === undefined || player === cachedPlayer) return player;
 
-        cachedPlayer = findDisneyPlusPlayer();
+        cachedPlayer = player;
+        advancing = player.playbackStatus?.playing === true;
         cachedPlayer?.on('@EVENT/PLAYER/PLAYBACK/MEDIA_SEEK_COMPLETE', () => {
             const timestampMs = contentTime(cachedPlayer);
             if (timestampMs === undefined) return;
@@ -182,9 +104,6 @@ export default defineUnlistedScript(() => {
             }
 
             startQueuedSeek();
-        });
-        cachedPlayer?.on('@EVENT/PLAYER/TIMECODE', () => {
-            dispatchTimeEvent(cachedPlayer, advancing);
         });
         cachedPlayer?.on('@EVENT/PLAYER/PLAYBACK/MEDIA_PAUSED', () => {
             advancing = false;
@@ -246,6 +165,11 @@ export default defineUnlistedScript(() => {
         }
         if (queuedSeekRequest?.requestId === requestId) queuedSeekRequest = undefined;
     });
+    // The player no longer emits @EVENT/PLAYER/TIMECODE, so find it eagerly and poll its position.
+    setInterval(() => {
+        const player = disneyPlusPlayer();
+        if (player !== undefined && activeSeekRequest === undefined) dispatchTimeEvent(player, advancing);
+    }, 1000);
     document.addEventListener(playEventName, () => disneyPlusPlayer()?.play());
     document.addEventListener(pauseEventName, () => disneyPlusPlayer()?.pause());
 

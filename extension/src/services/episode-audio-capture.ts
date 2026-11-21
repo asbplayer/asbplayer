@@ -1,12 +1,15 @@
 import type { CaptureEpisodeAudioMessage } from '@project/common';
 import { localTranscriberUrl } from '@/services/local-transcriber';
 
-// Keep episode-sized blobs in the offscreen document. Chrome runtime messages use JSON serialization.
+// Streams the recording to the Whisper server as it happens: a whole season held in memory is lost if the extension
+// restarts. Chrome runtime messages use JSON serialization, so blobs never leave the offscreen document.
+const chunkMs = 30_000;
 let capture: EpisodeAudioCapture | undefined;
 
 class EpisodeAudioCapture {
     private readonly _abort = new AbortController();
-    private readonly _chunks: Blob[] = [];
+    private readonly _unsent: Blob[] = [];
+    private _sending?: Promise<void>;
     private _stream?: MediaStream;
     private _output?: AudioContext;
     private _recorder?: MediaRecorder;
@@ -35,7 +38,9 @@ class EpisodeAudioCapture {
         this._abort.signal.throwIfAborted();
         this._recorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' });
         this._recorder.addEventListener('dataavailable', ({ data }) => {
-            if (data.size > 0) this._chunks.push(data);
+            if (data.size === 0) return;
+            this._unsent.push(data);
+            void this._send();
         });
     }
 
@@ -43,7 +48,7 @@ class EpisodeAudioCapture {
         const recorder = this._recorder!;
         if (recorder.state === 'paused') recorder.resume();
         if (this._offset === undefined) {
-            recorder.start(1000);
+            recorder.start(chunkMs);
             this._offset = offset;
             clearTimeout(this._startTimeout);
         }
@@ -64,17 +69,42 @@ class EpisodeAudioCapture {
             recorder.stop();
         });
         this._releaseStream();
-        const audio = new Blob(this._chunks, { type: 'audio/webm' });
-        if (audio.size === 0) throw new Error('No episode audio was recorded.');
+        for (let attempt = 0; attempt < 3 && this._unsent.length > 0; ++attempt) await this._send();
+        if (this._unsent.length > 0) throw new Error('The Whisper server could not save the recording.');
 
         const url = localTranscriberUrl('transcribe', this._key);
+        url.searchParams.set('session', this.id);
         url.searchParams.set('offset', String(this._offset));
         const response = await fetch(url, {
             method: 'POST',
-            body: audio,
             signal: AbortSignal.any([this._abort.signal, AbortSignal.timeout(25_000)]),
         });
         if (response.status !== 202) throw new Error('The Whisper server could not accept the recording.');
+    }
+
+    /** Appends the unsent chunks in order; a failed one stays first in line for the next attempt. */
+    private _send(): Promise<void> {
+        this._sending ??= (async () => {
+            try {
+                while (this._unsent.length > 0) {
+                    const url = localTranscriberUrl('append', this._key);
+                    url.searchParams.set('session', this.id);
+                    // Not tied to close(): the last chunk still lands when the tab capture ends.
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        body: this._unsent[0],
+                        signal: AbortSignal.timeout(25_000),
+                    });
+                    if (response.status !== 204) return;
+                    this._unsent.shift();
+                }
+            } catch {
+                // The server is down; retry with the next chunk.
+            } finally {
+                this._sending = undefined;
+            }
+        })();
+        return this._sending;
     }
 
     close() {

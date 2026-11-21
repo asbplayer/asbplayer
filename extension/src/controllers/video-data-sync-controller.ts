@@ -167,7 +167,7 @@ export default class VideoDataSyncController {
     }
 
     unbind() {
-        this._transcription.reset();
+        this._transcription.stop();
         this.cancelSubtitleLoad({ clearSubtitles: false });
         if (this._dataReceivedListener) {
             this._dataReceivedEventTarget?.removeEventListener(
@@ -235,8 +235,8 @@ export default class VideoDataSyncController {
             this.cancelSubtitleLoad({ clearSubtitles: false });
         }
         if (request.kind === 'reload') {
-            if (request.videoChanged) this._transcription.reset();
-            else this._transcription.resetIfLocationChanged();
+            if (request.videoChanged) this._transcription.stop();
+            else this._transcription.stopIfLocationChanged();
         }
         if (!this._context.hasPageScript) {
             return;
@@ -431,13 +431,12 @@ export default class VideoDataSyncController {
             completeMatch: false,
         };
 
-        if (this.lastLanguagesSynced.length === 0) {
-            const localTranscript = subtitleTrackChoices.find(isLocalTranscriptTrack);
-            if (localTranscript !== undefined) {
-                tracks.autoSelectedTracks[0] = localTranscript;
-                tracks.completeMatch = true;
-                return tracks;
-            }
+        // A Whisper transcript was made for this video on purpose: load it whatever language was used last.
+        const localTranscript = subtitleTrackChoices.find(isLocalTranscriptTrack);
+        if (localTranscript !== undefined) {
+            tracks.autoSelectedTracks[0] = localTranscript;
+            tracks.completeMatch = true;
+            return tracks;
         }
 
         const emptyChoice = this.lastLanguagesSynced.some((lang) => lang !== '-') === undefined;
@@ -507,11 +506,17 @@ export default class VideoDataSyncController {
         return !isFirefoxBuild && !this._isTutorial && !!this._syncedData?.basename.trim();
     }
 
-    private _startTranscription() {
+    private _continueTranscription(data: VideoData) {
+        // An episode with a Whisper transcript already loaded is done; continuing would overwrite it.
+        if (data.subtitles === undefined || data.subtitles.some(isLocalTranscriptTrack)) return;
+        this._startTranscription(true);
+    }
+
+    private _startTranscription(continuing = false) {
         const key = this._syncedData?.basename;
         if (!this._canTranscribe() || !key) return;
 
-        void this._transcription.start(
+        void this._transcription[continuing ? 'continueOnto' : 'start'](
             key,
             async () => {
                 this._frame.clientIfLoaded?.updateState({ open: false });
@@ -543,6 +548,7 @@ export default class VideoDataSyncController {
     private async _setSyncedData(data: VideoData) {
         const previousData = this._syncedData;
         this._syncedData = data;
+        this._continueTranscription(data);
 
         if (this._updateOpenPickerFromRefresh(previousData, data)) return;
 

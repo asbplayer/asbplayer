@@ -43,6 +43,9 @@ export interface PageConfig {
     // Whether a changed media source identifies a new video even when the page URL is unchanged
     videoSrcChangesIndicateNewVideo?: boolean;
 
+    // Whether a changed media duration identifies a new video (e.g. autoplay reusing the player and its source)
+    durationChangesIndicateNewVideo?: boolean;
+
     // URL relative path regex where subtitle track data syncing is allowed
     syncAllowedAtPath?: string;
 

@@ -202,6 +202,7 @@ export interface BindingOptions {
     readonly hasPageScript: boolean;
     readonly frameId?: string;
     readonly videoSrcChangesIndicateNewVideo: boolean;
+    readonly durationChangesIndicateNewVideo?: boolean;
 }
 
 const subtitleParsingSettingsKeys = [
@@ -234,6 +235,7 @@ export default class Binding {
     private _lastSyncedLocation?: string;
     private _lastLoadedMetadataMediaIdentity: unknown;
     private readonly _videoSrcChangesIndicateNewVideo: boolean;
+    private readonly _durationChangesIndicateNewVideo: boolean;
 
     private _recordingState: RecordingState = RecordingState.notRecording;
     recordingPostMineAction?: PostMineAction;
@@ -286,6 +288,8 @@ export default class Binding {
     private seekedListener?: EventListener;
     private recordingPauseListener?: EventListener;
     private videoChangeListener?: EventListener;
+    private durationChangeListener?: EventListener;
+    private _lastEpisodeDuration = NaN;
     private canPlayListener?: EventListener;
     private mouseMoveListener?: (event: MouseEvent) => void;
     private listener?: (
@@ -322,6 +326,7 @@ export default class Binding {
         this._lastLoadedMetadataMediaIdentity = mediaSourceIdentity(video);
         this.hasPageScript = options.hasPageScript;
         this._videoSrcChangesIndicateNewVideo = options.videoSrcChangesIndicateNewVideo;
+        this._durationChangesIndicateNewVideo = options.durationChangesIndicateNewVideo ?? false;
         this.dictionary = new DictionaryProvider(new ExtensionDictionaryStorage());
         this.settings = new SettingsProvider(new ExtensionSettingsStorage());
         this.subtitleController = new SubtitleController(this, this.dictionary, this.settings);
@@ -1002,13 +1007,13 @@ export default class Binding {
                 },
                 disneyPlus ? 1000 : 0
             );
-            this.videoChangeListener = () => {
+            const onMediaChange = (durationChanged: boolean) => {
                 const mediaIdentity = mediaSourceIdentity(this.video);
                 const sourceChanged = !Object.is(mediaIdentity, this._lastLoadedMetadataMediaIdentity);
                 this._lastLoadedMetadataMediaIdentity = mediaIdentity;
                 const videoSrc = this.video.src || this._fallbackVideoSrc;
                 this._updateRegisteredVideoSrc(videoSrc);
-                const sameLocationVideoChanged = this._videoSrcChangesIndicateNewVideo && sourceChanged;
+                const sameLocationVideoChanged = (this._videoSrcChangesIndicateNewVideo && sourceChanged) || durationChanged;
 
                 asbTrace('playback/binding', 'Observed media metadata load', {
                     sourceChanged,
@@ -1035,7 +1040,13 @@ export default class Binding {
                 debouncedChangeListener(sameLocationVideoChanged);
                 if (disneyPlus) this.disneyPlusClock.reset();
             };
+            this.videoChangeListener = () => onMediaChange(this._episodeDurationChanged());
             this.video.addEventListener('loadedmetadata', this.videoChangeListener);
+            // e.g. Prime autoplays the next episode in the same player, URL and blob src: only the duration changes.
+            this.durationChangeListener = () => {
+                if (this._episodeDurationChanged()) onMediaChange(true);
+            };
+            this.video.addEventListener('durationchange', this.durationChangeListener);
         }
 
         this.heartbeatInterval = setInterval(() => {
@@ -1685,6 +1696,10 @@ export default class Binding {
         if (this.videoChangeListener) {
             this.video.removeEventListener('loadedmetadata', this.videoChangeListener);
             this.videoChangeListener = undefined;
+        }
+        if (this.durationChangeListener) {
+            this.video.removeEventListener('durationchange', this.durationChangeListener);
+            this.durationChangeListener = undefined;
         }
 
         if (this.mouseMoveListener) {
@@ -2505,6 +2520,15 @@ export default class Binding {
             if (!nonEmptyTrackIndex.includes(subtitle.track)) nonEmptyTrackIndex.push(subtitle.track);
         }
         return nonEmptyTrackIndex;
+    }
+
+    private _episodeDurationChanged() {
+        if (!this._durationChangesIndicateNewVideo) return false;
+        const previous = this._lastEpisodeDuration;
+        const duration = this.video.duration;
+        if (!Number.isFinite(duration) || duration <= 0) return false;
+        this._lastEpisodeDuration = duration;
+        return Number.isFinite(previous) && Math.abs(duration - previous) > 1;
     }
 
     private _resetSubtitles() {

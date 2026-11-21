@@ -9,6 +9,14 @@ import type { TranscriptionResponse } from '@/services/local-transcriber';
 
 type Pass = { id: string; abort: AbortController; location: string; src: string; key: string };
 
+const episodeChanged = 'The episode changed during transcription.';
+// Module-level so it survives Prime swapping the <video> element (and so this controller) between episodes.
+let continueOntoNextEpisodes = false;
+// Episodes recorded since the viewer clicked: a stale episode name must not record the next episode over this one.
+const recordedKeys = new Set<string>();
+// Settles once the last finished recording has uploaded and released the tab capture; Chrome allows one at a time.
+let handoff: Promise<unknown> = Promise.resolve();
+
 export class EpisodeTranscription {
     private _pass?: Pass;
     state: EpisodeTranscriptionState = { phase: 'ready' };
@@ -22,7 +30,11 @@ export class EpisodeTranscription {
     async start(key: string, play: () => Promise<void>, load: (key: string, signal: AbortSignal) => Promise<void>) {
         if (this._pass) return;
         const video = this._video;
+        continueOntoNextEpisodes = true;
+        if (!this._continuing) recordedKeys.clear();
+        recordedKeys.add(key);
         if (video.playbackRate !== 1 || video.seeking || video.ended) {
+            continueOntoNextEpisodes = false;
             this._setState({ phase: 'error', error: 'Set playback to 1× and choose a starting point in the episode.' });
             return;
         }
@@ -31,8 +43,8 @@ export class EpisodeTranscription {
         const signal = pass.abort.signal;
         this._pass = pass;
         this._setState({ phase: 'starting' });
-        window.addEventListener('pagehide', () => this.reset(), { signal });
-        video.addEventListener('emptied', () => this.reset(), { signal });
+        window.addEventListener('pagehide', () => this.stop(), { signal });
+        video.addEventListener('emptied', () => this.stop(), { signal });
 
         try {
             await this._send(pass, { action: 'start', key });
@@ -63,10 +75,10 @@ export class EpisodeTranscription {
             const pause = () => updateRecorder({ action: 'pause' });
             video.addEventListener('pause', pause, options);
             video.addEventListener('waiting', pause, options);
-            const invalidate = () =>
-                this._fail(pass, new Error('Playback moved or changed speed. Start a new pass at 1×.'));
-            video.addEventListener('seeking', invalidate, options);
-            video.addEventListener('ratechange', invalidate, options);
+            // Audio after a seek or speed change no longer lines up with the video, so transcribe what came before.
+            const finishEarly = () => this._finish?.();
+            video.addEventListener('seeking', finishEarly, options);
+            video.addEventListener('ratechange', finishEarly, options);
 
             this._finish = () => {
                 playbackListeners.abort();
@@ -76,6 +88,8 @@ export class EpisodeTranscription {
             video.addEventListener('ended', this._finish, options);
             this._setState({ phase: 'recording' });
             await play();
+            // A video that was already playing fires no 'playing' event, so the recorder would never start.
+            if (!video.paused) updateRecorder({ action: 'resume', offset: video.currentTime });
         } catch (error) {
             this._fail(pass, error);
         }
@@ -83,23 +97,81 @@ export class EpisodeTranscription {
 
     private _finish?: () => void;
 
+    /** The viewer ends the pass: transcribe it, and don't continue onto the next episode. */
     finish() {
+        continueOntoNextEpisodes = false;
         this._finish?.();
     }
 
-    resetIfLocationChanged() {
-        if (this._pass && this._pass.location !== location.href) this.reset();
+    /**
+     * Starts a pass for an episode that autoplay moved on to, from 0:00, if the viewer started one on an earlier
+     * episode and hasn't finished or cancelled since.
+     */
+    async continueOnto(
+        key: string,
+        play: () => Promise<void>,
+        load: (key: string, signal: AbortSignal) => Promise<void>
+    ) {
+        if (!continueOntoNextEpisodes || recordedKeys.has(key) || this._continuing) return;
+        this._continuing = true;
+        try {
+            this.stop();
+            await handoff;
+            const video = this._video;
+            // Autoplay can land after the intro. Seek before the pass starts, so the seek doesn't end it.
+            if (video.currentTime > 5) {
+                const seeked = new Promise((resolve) => video.addEventListener('seeked', resolve, { once: true }));
+                video.currentTime = 0;
+                await seeked;
+            }
+            if (continueOntoNextEpisodes) await this.start(key, play, load);
+        } finally {
+            this._continuing = false;
+        }
     }
 
+    private _continuing = false;
+
+    get key() {
+        return this._pass?.key;
+    }
+
+    stopIfLocationChanged() {
+        if (this._pass && this._pass.location !== location.href) this.stop();
+    }
+
+    /** Ends the pass because the episode went away (e.g. autoplay moved on), still transcribing what was recorded. */
+    stop() {
+        const pass = this._pass;
+        if (!pass || this.state.phase === 'starting') {
+            this._release();
+            this._setState({ phase: 'ready' });
+            return;
+        }
+        const recording = this._finish !== undefined;
+        this._pass = undefined;
+        this._finish = undefined;
+        pass.abort.abort();
+        // Never 'cancel' here: the offscreen recorder uploads on its own, and a cancel would abort the upload.
+        if (recording) handoff = this._send(pass, { action: 'finish' }).catch(() => {});
+        this._setState({ phase: 'ready' });
+    }
+
+    /** Ends the pass, discards the recording and stops continuing onto the next episodes. */
     reset() {
+        continueOntoNextEpisodes = false;
         this._release();
         this._setState({ phase: 'ready' });
     }
 
     private async _finishPass(pass: Pass, load: (key: string, signal: AbortSignal) => Promise<void>) {
-        this._checkPass(pass);
+        // No episode check here: Prime can switch to the next episode the moment this one ends, and the recording
+        // belongs to this one either way.
+        if (pass.abort.signal.aborted) throw pass.abort.signal.reason;
         this._setState({ phase: 'uploading' });
-        await this._send(pass, { action: 'finish' });
+        const finished = this._send(pass, { action: 'finish' });
+        handoff = finished.catch(() => {});
+        await finished;
 
         const deadline = Date.now() + 60 * 60_000;
         while (Date.now() < deadline) {
@@ -124,13 +196,19 @@ export class EpisodeTranscription {
     private _checkPass(pass: Pass) {
         if (pass.abort.signal.aborted) throw pass.abort.signal.reason;
         if (location.href !== pass.location || this._video.currentSrc !== pass.src || !this._video.isConnected) {
-            throw new Error('The episode changed during transcription.');
+            throw new Error(episodeChanged);
         }
     }
 
     private _fail(pass: Pass, error: unknown) {
         if (this._pass !== pass) return;
+        const message = error instanceof Error ? error.message : String(error);
+        if (message === episodeChanged) {
+            this.stop(); // keep what was recorded rather than discarding it
+            return;
+        }
         this._release();
+        continueOntoNextEpisodes = false; // a real failure would repeat on every episode
         this._setState({ phase: 'error', error: error instanceof Error ? error.message : String(error) });
     }
 

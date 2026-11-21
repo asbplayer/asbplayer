@@ -223,7 +223,7 @@ interface AnkiDialogProps {
     onDismissShowQuickSelectFtue?: () => void;
     inTutorial?: boolean;
     /** Looks up the word's meaning as used in the sentence, to pre-fill the definition field. */
-    onRequestDefinition?: (word: string, sentence: string) => Promise<string | undefined>;
+    onRequestTranslation?: (sentence: string) => Promise<string | undefined>;
 }
 
 const AnkiDialog = ({
@@ -254,7 +254,7 @@ const AnkiDialog = ({
     showQuickSelectFtue,
     onDismissShowQuickSelectFtue,
     inTutorial,
-    onRequestDefinition,
+    onRequestTranslation,
 }: AnkiDialogProps) => {
     const classes = useStyles();
     const [definition, setDefinition] = useState<string>('');
@@ -371,44 +371,6 @@ const AnkiDialog = ({
         initialCustomFieldValues,
     ]);
 
-    // Pre-fill the definition with the word's meaning in this sentence, but never overwrite one you typed yourself.
-    const autoDefinitionRef = useRef<{ request: string; definition: string }>(undefined);
-    useEffect(() => {
-        const trimmedWord = word.trim();
-        const request = `${trimmedWord}
-${text}`;
-        const lastAuto = autoDefinitionRef.current;
-
-        if (
-            !open ||
-            !onRequestDefinition ||
-            !trimmedWord ||
-            !text.trim() ||
-            (lastAuto?.request === request && definition === lastAuto.definition) ||
-            (definition !== '' && definition !== lastAuto?.definition)
-        ) {
-            return;
-        }
-
-        let cancelled = false;
-        // Wait until you stop typing the word.
-        const timeout = setTimeout(() => {
-            onRequestDefinition(trimmedWord, text)
-                .then((result) => {
-                    if (!cancelled && result) {
-                        autoDefinitionRef.current = { request, definition: result };
-                        setDefinition(result);
-                    }
-                })
-                .catch(() => {}); // The local lookup service is optional.
-        }, 600);
-
-        return () => {
-            cancelled = true;
-            clearTimeout(timeout);
-        };
-    }, [open, word, text, definition, onRequestDefinition]);
-
     // A custom Anki field keeps the sentence translation separate from the word definition.
     const translationMapped = Boolean(settings.customAnkiFields[sentenceTranslationField]?.trim());
     const translation = customFieldValues[sentenceTranslationField] ?? '';
@@ -417,7 +379,7 @@ ${text}`;
         const last = autoTranslationRef.current;
         if (
             !open ||
-            !onRequestDefinition ||
+            !onRequestTranslation ||
             !translationMapped ||
             !text.trim() ||
             (last?.sentence === text && translation === last.value) ||
@@ -427,7 +389,7 @@ ${text}`;
         }
         let cancelled = false;
         const timeout = setTimeout(() => {
-            onRequestDefinition('', text)
+            onRequestTranslation(text)
                 .then((result) => {
                     if (!cancelled && result) {
                         autoTranslationRef.current = { sentence: text, value: result };
@@ -440,7 +402,7 @@ ${text}`;
             cancelled = true;
             clearTimeout(timeout);
         };
-    }, [open, text, translation, translationMapped, onRequestDefinition]);
+    }, [open, text, translation, translationMapped, onRequestTranslation]);
 
     useEffect(() => {
         anki.version()
@@ -962,7 +924,7 @@ ${text}`;
                 </Toolbar>
                 <DialogContent ref={dialogRefCallback}>
                     <form className={classes.root}>
-                        {onRequestDefinition && translationMapped && (
+                        {onRequestTranslation && translationMapped && (
                             <TextField
                                 variant="filled"
                                 fullWidth
@@ -977,7 +939,7 @@ ${text}`;
                                 }
                             />
                         )}
-                        {onRequestDefinition && !translationMapped && translation && (
+                        {onRequestTranslation && !translationMapped && translation && (
                             <Alert severity="warning">{t('ankiDialog.sentenceTranslationUnmapped')}</Alert>
                         )}
                         {ankiFieldModels.map((model) => {
@@ -1077,7 +1039,7 @@ ${text}`;
                                     )}
                                     {model.custom &&
                                         model.field.display &&
-                                        !(onRequestDefinition && model.key === sentenceTranslationField) && (
+                                        !(onRequestTranslation && model.key === sentenceTranslationField) && (
                                             <CustomField
                                                 name={model.key}
                                                 text={customFieldValues[model.key] || ''}

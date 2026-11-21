@@ -40,6 +40,7 @@ Out of scope:
 - [ ] W1: with the server running, opening that video lists "Nederlands (Whisper)" in the subtitle picker and auto-load picks it. Tested on the NOS YouTube video.
 - [ ] W1: with the server off or no transcript stored, nothing changes and no errors are shown.
 - [ ] W2: on a Prime Invincible episode in the Dutch dub, one capture pass produces a track that lines up with the dub audio, and mining from it gives cards whose sentence matches the audio.
+- [ ] W2: after one "Transcribe this episode" click on S1E1, each episode Prime autoplays gets its own pass from 0:00 and its own `<episode>.srt`, until the viewer finishes or cancels, or a pass fails. Leaving an episode mid-pass still transcribes what was recorded.
 - [ ] `pnpm run verify` checks pass (see the S1 note on Windows).
 
 ## Plan

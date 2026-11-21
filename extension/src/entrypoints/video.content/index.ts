@@ -147,6 +147,7 @@ export default defineContentScript({
                             hasPageScript,
                             frameId: frameInfoBroadcaster?.frameId,
                             videoSrcChangesIndicateNewVideo: page.config.videoSrcChangesIndicateNewVideo ?? false,
+                            durationChangesIndicateNewVideo: page.config.durationChangesIndicateNewVideo,
                         });
                         binding.bind();
                         bindings.push(binding);

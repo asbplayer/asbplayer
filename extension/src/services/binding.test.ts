@@ -2231,6 +2231,28 @@ describe('Binding playback mode integration', () => {
         binding.unbind();
     });
 
+    it('refreshes subtitles when autoplay moves on in the same player and only the duration changes', async () => {
+        const video = createVideo();
+        let duration = 3042;
+        Object.defineProperty(video, 'duration', { get: () => duration, configurable: true });
+        const binding = new Binding(video, { ...bindingOptions(true, false), durationChangesIndicateNewVideo: true });
+        binding.bind();
+        await jest.advanceTimersByTimeAsync(0);
+        video.dispatchEvent(new Event('durationchange'));
+        sendSubtitles(binding, [makeSubtitle()]);
+        const requestSubtitles = jest.spyOn(binding.videoDataSyncController, 'requestSubtitles');
+
+        video.dispatchEvent(new Event('durationchange')); // same episode
+        await jest.advanceTimersByTimeAsync(0);
+        expect(requestSubtitles).not.toHaveBeenCalled();
+
+        duration = 2861;
+        video.dispatchEvent(new Event('durationchange'));
+        await jest.advanceTimersByTimeAsync(0);
+        expect(requestSubtitles).toHaveBeenCalledWith({ kind: 'reload', videoChanged: true });
+        binding.unbind();
+    });
+
     it('keeps same-location source changes suppressed for pages without the opt-in', async () => {
         const video = createVideo();
         const binding = new Binding(video, bindingOptions(true, false));

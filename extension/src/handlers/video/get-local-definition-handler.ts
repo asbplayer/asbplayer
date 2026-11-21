@@ -22,28 +22,28 @@ export default class GetLocalDefinitionHandler {
             return false;
         }
 
-        const { word, sentence } = command.message as GetLocalDefinitionMessage;
+        const { sentence } = command.message as GetLocalDefinitionMessage;
 
-        this._lookup(word, sentence)
+        this._lookup(sentence)
             .then(sendResponse)
             .catch(() => sendResponse(undefined));
 
         return true;
     }
 
-    private async _lookup(word: string, sentence: string) {
+    private async _lookup(sentence: string) {
         const token = await getLocalLookupToken();
         if (token.length < 32) {
             return undefined;
         }
 
-        const query = new URLSearchParams({ word, sentence });
-        return fetch(`http://${host}:${port}/define?${query}`, {
+        const query = new URLSearchParams({ sentence });
+        return fetch(`http://${host}:${port}/translate?${query}`, {
             headers: { Authorization: `Bearer ${token}` },
             redirect: 'error',
         }).then(async (response) => {
             const json = await response.json().catch(() => ({}));
-            return response.ok && typeof json.definition === 'string' ? { definition: json.definition } : undefined;
+            return response.ok && typeof json.translation === 'string' ? { translation: json.translation } : undefined;
         });
     }
 }

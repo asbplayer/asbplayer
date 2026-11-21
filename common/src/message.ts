@@ -142,10 +142,9 @@ export interface CaptureEpisodeAudioMessage extends Message {
     streamId?: string;
 }
 
-/** Asks the local transcriber for a word's meaning as used in a sentence, for the Anki definition field. */
+/** Asks the local transcriber for a sentence's translation, for the Anki sentence translation field. */
 export interface GetLocalDefinitionMessage extends Message {
     readonly command: 'get-local-definition';
-    readonly word: string;
     readonly sentence: string;
 }
 
