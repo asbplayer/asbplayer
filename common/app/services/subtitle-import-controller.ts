@@ -1,7 +1,7 @@
 import { v4 as uuid } from 'uuid';
 import type { ConfirmedVideoDataSubtitleTrack, LoadableSubtitleTrack } from '@project/common';
 import type { FileWithId } from '@project/common/file-selector';
-import type { SubtitleSourceProducer } from '@project/common/subtitle-reader/subtitle-stream';
+import type { SubtitleSourceProducer, SubtitleSourceStatus } from '@project/common/subtitle-reader/subtitle-stream';
 import type { EmbeddedSubtitleDescriptor } from '@project/common/embedded-subtitles/subtitle-source';
 import { embeddedSubtitleId } from '@project/common/embedded-subtitles/subtitle-source';
 import { embeddedSubtitleProducer } from '@project/common/embedded-subtitles/embedded-subtitle-producer';
@@ -51,9 +51,12 @@ export interface SubtitleImportOptions {
         | 'promoteDraftHandlesInSession'
         | 'clearDraftHandlesInSession'
         | 'saveSubtitleSelection'
+        | 'retainSourcesInSession'
     >;
     restoreError: string;
-    onSources: (sources: MediaSources) => void;
+    onSources: (sources: MediaSources, options: { applyAudioSelection: boolean }) => void;
+    onAudioTrackChanged: (audioTrackIndex: number | undefined) => void;
+    getSubtitleSourceStatus: () => SubtitleSourceStatus;
     onCompleted: (video: FileWithId, tracks: LoadableSubtitleTrack<FileWithId>[], signal: AbortSignal) => void;
     onError: (error: unknown) => void;
 }
@@ -67,6 +70,7 @@ export class SubtitleImportController {
     private draftFileInputSignal: AbortSignal | undefined;
     private currentVideo: File | undefined;
     private selectionWrite = Promise.resolve();
+    private standaloneSubtitlesNeedSaving = false;
 
     constructor(
         public options: SubtitleImportOptions,
@@ -99,24 +103,35 @@ export class SubtitleImportController {
         return this.draftFileInputSignal === this.pickerDraft.signal && !this.pickerDraft.signal.aborted;
     }
 
-    loadSources(sources: MediaSources, { keepDraftHandles }: { keepDraftHandles: boolean }): void {
+    loadSources(
+        sources: MediaSources,
+        { keepDraftHandles, applyAudioSelection = false }: { keepDraftHandles: boolean; applyAudioSelection?: boolean }
+    ): void {
         this.sourceLifetime.abort();
         this.sourceLifetime = new AbortController();
         this.resetPickerDraft();
         this.cancelSelectionAndRestore();
         this.options.picker.closeSubtitleTrackSelector();
         if (!keepDraftHandles) this.clearDraftHandles();
+        this.standaloneSubtitlesNeedSaving = false;
         if (sources.videoFile) this.currentVideo = sources.videoFile.file;
         else if (sources.subtitleSource.kind === 'remote') this.currentVideo = undefined;
         this.state = { embeddedSelection: undefined, discoveryKey: this.sourceLifetime.signal };
         this.stateChanged(this.state);
-        this.options.onSources(sources);
+        this.options.onSources(sources, { applyAudioSelection });
     }
 
     unloadVideo(): ReadonlySet<number> {
         const pendingTrackIndexes = new Set(
             this.state.embeddedSelection?.pendingDescriptors.map(({ trackIndex }) => trackIndex)
         );
+        const { subtitleSource, subtitleSourceFiles } = this.options.sources;
+        if (subtitleSource.kind === 'files') {
+            this.standaloneSubtitlesNeedSaving ||= subtitleSourceFiles.some(
+                ({ embedded }) =>
+                    embedded && (!subtitleSource.pendingEmbedded || !pendingTrackIndexes.has(embedded.trackIndex))
+            );
+        }
         this.currentVideo = undefined;
         this.sourceLifetime.abort();
         this.sourceLifetime = new AbortController();
@@ -226,59 +241,106 @@ export class SubtitleImportController {
         this.clearDraftHandles();
     }
 
-    confirm(tracks: ConfirmedVideoDataSubtitleTrack[]): void {
+    confirm(tracks: readonly ConfirmedVideoDataSubtitleTrack[], audioTrackIndex: number | undefined): void {
         if (!this.options.picker.subtitleTrackSelectorOpen) return;
         const video = this.options.sources.videoFile;
-        this.options.selection.confirm(tracks, async (preparedTracks, signal) => {
-            const session = await this.options.session.fetchSession();
-            signal.throwIfAborted();
-            const service = this.options.picker.embedded.service;
-            const pending: EmbeddedSubtitleDescriptor[] = [];
-            const selectedTracks = preparedTracks.map(({ fileParts }) => ({
-                fileParts: fileParts.map((file) => {
-                    if (!file.embedded || !video) return file;
-                    const completed = service.completedFile(video, file.embedded.trackIndex);
-                    if (completed) return completed;
-                    pending.push(file.embedded);
-                    return file;
-                }),
-            }));
-            const files = selectedTracks.flatMap(({ fileParts }, track) =>
-                fileParts.map((file) => ({ ...file, track }))
-            );
-            if (pending.length && video && this.matchesActiveExtraction(video, files)) {
-                this.options.picker.closeSubtitleTrackSelector();
-                this.clearDraftHandles();
-                return;
+        const preserveSubtitles = () => {
+            const { sources } = this.options;
+            const retainSources = () =>
+                this.options.session.retainSourcesInSession({
+                    subtitleTrackIds: sources.subtitleTracks.map(({ fileParts }) => fileParts.map(({ id }) => id)),
+                    videoId: sources.videoFile?.id,
+                    audioTrackIndex,
+                });
+            if (audioTrackIndex !== sources.audioTrackIndex) this.options.onAudioTrackChanged(audioTrackIndex);
+            if (this.standaloneSubtitlesNeedSaving) {
+                // Unloading detaches completed files in memory. Confirmation saves them without their old video.
+                this.standaloneSubtitlesNeedSaving = false;
+                const { signal } = this.sourceLifetime;
+                const write: Promise<void> = this.selectionWrite
+                    .then(async () => {
+                        if (signal.aborted || this.selectionWrite !== write) return;
+                        await retainSources();
+                        if (signal.aborted || this.selectionWrite !== write) return;
+                        await this.options.session.saveSubtitleSelection(sources.subtitleTracks, new Set());
+                    })
+                    .catch((error) => {
+                        if (!signal.aborted && this.selectionWrite === write) this.standaloneSubtitlesNeedSaving = true;
+                        this.options.onError(error);
+                    });
+                this.selectionWrite = write;
+            } else if (audioTrackIndex !== sources.audioTrackIndex) {
+                void retainSources().catch((error) => this.options.onError(error));
             }
-            const accepted = new Set([...files.map((file) => file.id), video?.id]);
-            const handles = [...(session?.subtitleHandles ?? []), ...(session?.bufferedSubtitleHandles ?? [])].filter(
-                (handle) => accepted.has(handle.id)
-            );
-            const pendingIds = new Set(
-                pending.map((descriptor) => embeddedSubtitleId(descriptor.videoId, descriptor.trackIndex))
-            );
-            // Commit the draft without cancelling the confirmation that owns it.
-            this.state = { ...this.state, embeddedSelection: undefined };
-            this.stateChanged(this.state);
-            this.options.onSources(MediaSources.fromFiles(files, { pendingEmbedded: pending.length > 0 }));
-            const sourceSignal = this.sourceLifetime.signal;
-            void this.saveHandles(handles).catch((error) => this.options.onError(error));
-            const promoted = this.options.session
-                .promoteDraftHandlesInSession(files.map((file) => file.id))
-                .catch((error) => this.options.onError(error));
-            // A fast extraction waits for this write before saving its finished files.
-            // An older selection must not discard handles saved by its replacement.
-            const write: Promise<void> = Promise.all([this.selectionWrite, promoted])
-                .then(async () => {
-                    if (!sourceSignal.aborted && this.selectionWrite === write) {
-                        await this.options.session.saveSubtitleSelection(selectedTracks, pendingIds);
-                    }
-                })
-                .catch((error) => this.options.onError(error));
-            this.selectionWrite = write;
-            if (video && pending.length) this.startEmbedded(video, selectedTracks, pending);
-            this.options.picker.closeSubtitleTrackSelector();
+            this.closePicker();
+        };
+        this.options.selection.confirm({
+            tracks,
+            audioTrackIndex,
+            subtitleSourceStatus: this.options.getSubtitleSourceStatus(),
+            onSubtitlesUnchanged: preserveSubtitles,
+            commit: async (preparedTracks, signal) => {
+                const session = await this.options.session.fetchSession();
+                signal.throwIfAborted();
+                const service = this.options.picker.embedded.service;
+                const pending: EmbeddedSubtitleDescriptor[] = [];
+                const selectedTracks = preparedTracks.map(({ fileParts }) => ({
+                    fileParts: fileParts.map((file) => {
+                        if (!file.embedded || !video) return file;
+                        const completed = service.completedFile(video, file.embedded.trackIndex);
+                        if (completed) return completed;
+                        pending.push(file.embedded);
+                        return file;
+                    }),
+                }));
+                const files = selectedTracks.flatMap(({ fileParts }, track) =>
+                    fileParts.map((file) => ({ ...file, track }))
+                );
+                if (
+                    pending.length &&
+                    video &&
+                    this.options.getSubtitleSourceStatus() !== 'failed' &&
+                    this.matchesActiveExtraction(video, files)
+                ) {
+                    preserveSubtitles();
+                    return;
+                }
+                const accepted = new Set([...files.map((file) => file.id), video?.id]);
+                const handles = [
+                    ...(session?.subtitleHandles ?? []),
+                    ...(session?.bufferedSubtitleHandles ?? []),
+                ].filter((handle) => accepted.has(handle.id));
+                const pendingIds = new Set(
+                    pending.map((descriptor) => embeddedSubtitleId(descriptor.videoId, descriptor.trackIndex))
+                );
+                // Commit the draft without cancelling the confirmation that owns it.
+                this.standaloneSubtitlesNeedSaving = false;
+                this.state = { ...this.state, embeddedSelection: undefined };
+                this.stateChanged(this.state);
+                this.options.onSources(
+                    MediaSources.fromFiles(files, { pendingEmbedded: pending.length > 0 }).withAudioTrackIndex(
+                        audioTrackIndex
+                    ),
+                    { applyAudioSelection: true }
+                );
+                const sourceSignal = this.sourceLifetime.signal;
+                void this.saveHandles(handles).catch((error) => this.options.onError(error));
+                const promoted = this.options.session
+                    .promoteDraftHandlesInSession(files.map((file) => file.id))
+                    .catch((error) => this.options.onError(error));
+                // A fast extraction waits for this write before saving its finished files.
+                // An older selection must not discard handles saved by its replacement.
+                const write: Promise<void> = Promise.all([this.selectionWrite, promoted])
+                    .then(async () => {
+                        if (!sourceSignal.aborted && this.selectionWrite === write) {
+                            await this.options.session.saveSubtitleSelection(selectedTracks, pendingIds);
+                        }
+                    })
+                    .catch((error) => this.options.onError(error));
+                this.selectionWrite = write;
+                if (video && pending.length) this.startEmbedded(video, selectedTracks, pending);
+                this.options.picker.closeSubtitleTrackSelector();
+            },
         });
     }
 
@@ -318,7 +380,10 @@ export class SubtitleImportController {
                 );
             }
             this.sessionRestoreController = undefined; // Restoration has finished preparing files, so the restored sources now own any extraction.
-            this.loadSources(restored, { keepDraftHandles: false });
+            this.loadSources(restored.withAudioTrackIndex(record.audioTrackIndex), {
+                keepDraftHandles: false,
+                applyAudioSelection: true,
+            });
             if (restored.videoFile && missingEmbeddedSubtitles.length) {
                 this.startEmbedded(restored.videoFile, restored.subtitleTracks, missingEmbeddedSubtitles);
             }

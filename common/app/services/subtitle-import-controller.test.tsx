@@ -25,7 +25,7 @@ import type {
 } from '@project/common/embedded-subtitles/subtitle-source';
 import { mkv, mkvTrack } from '@project/common/media-probe/test-media';
 import SubtitleReader from '@project/common/subtitle-reader/subtitle-reader';
-import { subtitleKey } from '@project/common/subtitle-reader/subtitle-stream';
+import { subtitleKey, subtitleSourceStatus } from '@project/common/subtitle-reader/subtitle-stream';
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 const encoder = new TextEncoder();
@@ -68,6 +68,8 @@ let session: SubtitleImportOptions['session'];
 let video: FileWithId;
 let choice: ConfirmedVideoDataSubtitleTrack;
 let protocol: TestVideoProtocol;
+let annotate: () => void;
+let initialAudioTrackIndex: number | undefined;
 const onError = jest.fn<(error: unknown) => void>();
 const onCompleted = jest.fn<SubtitleImportOptions['onCompleted']>();
 const extract = jest.fn<(options: SubtitleExtractionOptions) => Promise<ExtractedSubtitleFile[]>>();
@@ -82,7 +84,7 @@ const reader = new SubtitleReader({
 });
 
 function Harness({ channel, selectedTrackIds }: { channel: VideoChannel; selectedTrackIds: string[] }) {
-    const [sources, setSources] = useState(() => new MediaSources(undefined, video));
+    const [sources, setSources] = useState(() => new MediaSources(undefined, video, undefined, initialAudioTrackIndex));
     currentSources = sources;
     const [state, setState] = useState<SubtitleImportState>({ embeddedSelection: undefined, discoveryKey: undefined });
     const selection = useSubtitleSelection({
@@ -97,21 +99,36 @@ function Harness({ channel, selectedTrackIds }: { channel: VideoChannel; selecte
         selection,
         session,
         restoreError: 'Failed to restore session',
-        onSources: (incoming) =>
-            setSources(new MediaSources(incoming.subtitleSource, incoming.videoFile ?? sources.videoFile)),
+        onSources: (incoming, { applyAudioSelection }) =>
+            setSources(
+                new MediaSources(
+                    incoming.subtitleSource,
+                    incoming.videoFile ?? sources.videoFile,
+                    undefined,
+                    (incoming.videoFile && incoming.videoFile.file !== sources.videoFile?.file) || applyAudioSelection
+                        ? incoming.audioTrackIndex
+                        : sources.audioTrackIndex
+                )
+            ),
+        onAudioTrackChanged: (audioTrackIndex) =>
+            setSources((previous) => previous.withAudioTrackIndex(audioTrackIndex)),
+        getSubtitleSourceStatus: () => subtitleSourceStatus(sourceStates),
         onCompleted: (source, tracks, signal) => {
             onCompleted(source, tracks, signal);
             setSources(
-                new MediaSources(
-                    {
-                        kind: 'files',
-                        pendingEmbedded: false,
-                        tracks: tracks.map(({ fileParts }, track) => ({
-                            fileParts: fileParts.map((file) => ({ ...file, track })),
-                        })),
-                    },
-                    source
-                )
+                (previous) =>
+                    new MediaSources(
+                        {
+                            kind: 'files',
+                            pendingEmbedded: false,
+                            tracks: tracks.map(({ fileParts }, track) => ({
+                                fileParts: fileParts.map((file) => ({ ...file, track })),
+                            })),
+                        },
+                        source,
+                        previous.videoFileUrl,
+                        previous.audioTrackIndex
+                    )
             );
         },
         onError,
@@ -135,7 +152,7 @@ function Harness({ channel, selectedTrackIds }: { channel: VideoChannel; selecte
     );
     const [displayed, setDisplayed] = useState<DisplaySubtitleModel[]>();
     subtitles = displayed;
-    useSubtitleTracks({
+    const { sourceStates } = useSubtitleTracks({
         source: producer
             ? { kind: 'producer', producer, supportsProgressiveSubtitles: true, onInitialized: () => {} }
             : { kind: 'local', tracks: sources.subtitleTracks, reader, onInitialized: () => {} },
@@ -146,6 +163,15 @@ function Harness({ channel, selectedTrackIds }: { channel: VideoChannel; selecte
         onSubtitles: setDisplayed,
         onError,
     });
+    annotate = () =>
+        setDisplayed((previous) =>
+            previous?.map((cue) => ({
+                ...cue,
+                originalText: cue.text,
+                text: `<b>${cue.text}</b>`,
+                tokenization: { tokens: [] },
+            }))
+        );
     return null;
 }
 
@@ -160,6 +186,7 @@ beforeEach(() => {
         });
     });
     record = undefined;
+    initialAudioTrackIndex = undefined;
     const bytes = Uint8Array.from(mkv(mkvTrack(1, 'V_VP8'), mkvTrack(17, 'S_TEXT/UTF8'))).buffer;
     const file = new File([], 'video.mkv', { lastModified: 1 });
     Object.defineProperty(file, 'size', { value: bytes.byteLength });
@@ -188,6 +215,7 @@ beforeEach(() => {
         promoteDraftHandlesInSession: jest.fn(async () => {}),
         clearDraftHandlesInSession: jest.fn(async () => {}),
         saveSubtitleSelection: jest.fn(async () => {}),
+        retainSourcesInSession: jest.fn(async () => {}),
     };
     protocol = new TestVideoProtocol();
     root = createRoot(document.createElement('div'));
@@ -201,7 +229,7 @@ afterEach(() => {
 
 const render = async (selectedTrackIds = [choice.id]) =>
     act(async () => root.render(<Harness channel={new VideoChannel(protocol)} selectedTrackIds={selectedTrackIds} />));
-const confirm = async () => act(async () => controller.confirm([choice]));
+const confirm = async (audioTrackIndex?: number) => act(async () => controller.confirm([choice], audioTrackIndex));
 const emit = (text: string) => extraction.onChunk(0, encoder.encode(text).buffer);
 const srt = '1\n00:00:01,000 --> 00:00:02,000\nFirst\n\n';
 
@@ -215,6 +243,7 @@ it('reselects a completed embedded subtitle as a standalone file and saves it af
     await act(async () => unloadVideo());
     expect(currentSources.videoFile).toBeUndefined();
     const retained = currentSources.firstSubtitleSourceFiles[0]!;
+    const tracks = currentSources.subtitleTracks;
     choice = { ...choice, file: retained.file, embedded: retained.embedded };
     await confirm();
 
@@ -222,6 +251,10 @@ it('reselects a completed embedded subtitle as a standalone file and saves it af
         [{ fileParts: [{ id: extracted.id, file: extracted.file, track: 0 }] }],
         new Set()
     );
+    expect(currentSources.subtitleTracks).toBe(tracks);
+    const writes = jest.mocked(session.saveSubtitleSelection).mock.calls.length;
+    await confirm();
+    expect(session.saveSubtitleSelection).toHaveBeenCalledTimes(writes);
     expect(extract).toHaveBeenCalledTimes(1);
     expect(onError).not.toHaveBeenCalled();
 });
@@ -305,7 +338,7 @@ it('keeps the extraction and published cues when confirming the same selection a
 
     await render([choice.id, '-']); // The picker can add empty slots to a shorter saved selection.
     const empty = { id: '-', name: '', label: '', extension: 'srt' };
-    await act(async () => controller.confirm([choice, empty]));
+    await act(async () => controller.confirm([choice, empty], undefined));
     expect(signal.aborted).toBe(false);
     expect(extract).toHaveBeenCalledTimes(1);
     expect(subtitles!.map(subtitleKey)).toEqual(keys);
@@ -319,12 +352,15 @@ it('keeps the completed file when extraction finishes during another confirmatio
     await render();
     await confirm();
     await act(async () => emit(srt));
+    const local = { id: 'local', file: new File([], 'local.vtt') };
+    const localChoice = { ...local, name: 'local', label: 'local.vtt', extension: 'vtt' };
+    await render([choice.id, local.id]);
     let resume!: (record: FileSessionRecord | undefined) => void;
     session.fetchSession = () =>
         new Promise((resolve) => {
             resume = resolve;
         });
-    await confirm();
+    await act(async () => controller.confirm([choice, localChoice], undefined));
     expect(resume).toBeDefined();
 
     await act(async () => finish([{ trackKey: 0, format: 'srt', blob: new Blob([srt]) }]));
@@ -335,7 +371,7 @@ it('keeps the completed file when extraction finishes during another confirmatio
     expect(currentSources.subtitleSourceFiles[0].file).toBe(file);
     expect(subtitles?.map(({ text }) => text)).toEqual(['First']);
     expect(session.saveSubtitleSelection).toHaveBeenLastCalledWith(
-        [{ fileParts: [expect.objectContaining({ file })] }],
+        [{ fileParts: [expect.objectContaining({ file })] }, { fileParts: [local] }],
         new Set()
     );
 });
@@ -427,43 +463,112 @@ it('accepts a standalone file request after the subtitle picker changes', async 
     expect(onError).not.toHaveBeenCalled();
 });
 
-it.each([true, false])('restores cached=%s embedded subtitles and extracts only missing contents', async (cached) => {
-    await render();
-    const file = new File([srt], 'video.track1.en.srt', { type: 'application/x-subrip' });
-    Object.defineProperty(file, 'text', { value: async () => srt });
-    record = {
-        id: 1,
-        timestamp: 1,
-        videoHandle: {
-            id: video.id,
-            handle: {
-                name: video.file.name,
-                getFile: async () => video.file,
-                queryPermission: async () => 'granted',
-            } as unknown as FileSystemFileHandle,
-        },
-        subtitleHandles: [],
-        cachedSubtitleFiles: cached ? [{ id: choice.id, file }] : [],
-        embeddedSubtitles: { [choice.id]: choice.embedded! },
-        subtitleTrackIds: [[choice.id]],
-    };
-    await act(async () => controller.restoreSession());
-    expect(picker.onManualFilesImported).not.toHaveBeenCalled();
-    expect(currentSources.videoFile).toEqual(video);
-    if (cached) {
-        expect(subtitles?.map(({ text }) => text)).toEqual(['First']);
-        expect(extract).not.toHaveBeenCalled();
-        expect(picker.embedded.service.completedFile(video, 0)?.file).toBe(file);
-    } else {
-        expect(extract).toHaveBeenCalledTimes(1);
-        expect(extraction.signal.aborted).toBe(false);
-        await act(async () => {
-            emit(srt);
-            finish([{ trackKey: 0, format: 'srt', blob: new Blob([srt]) }]);
-        });
-        expect(subtitles?.map(({ text }) => text)).toEqual(['First']);
-        expect(onCompleted).toHaveBeenCalledTimes(1);
-        expect(session.saveSubtitleSelection).toHaveBeenCalledWith(onCompleted.mock.calls[0][1], new Set());
+it.each([
+    { cached: true, audioTrackIndex: undefined },
+    { cached: false, audioTrackIndex: undefined },
+    { cached: true, audioTrackIndex: 1 },
+    { cached: false, audioTrackIndex: 1 },
+])(
+    'restores cached=$cached embedded subtitles and audio=$audioTrackIndex for the active video',
+    async ({ cached, audioTrackIndex }) => {
+        initialAudioTrackIndex = audioTrackIndex === undefined ? 1 : undefined;
+        await render();
+        const file = new File([srt], 'video.track1.en.srt', { type: 'application/x-subrip' });
+        Object.defineProperty(file, 'text', { value: async () => srt });
+        record = {
+            id: 1,
+            timestamp: 1,
+            videoHandle: {
+                id: video.id,
+                handle: {
+                    name: video.file.name,
+                    getFile: async () => video.file,
+                    queryPermission: async () => 'granted',
+                } as unknown as FileSystemFileHandle,
+            },
+            subtitleHandles: [],
+            cachedSubtitleFiles: cached ? [{ id: choice.id, file }] : [],
+            embeddedSubtitles: { [choice.id]: choice.embedded! },
+            subtitleTrackIds: [[choice.id]],
+            audioTrackIndex,
+        };
+        await act(async () => controller.restoreSession());
+        expect(picker.onManualFilesImported).not.toHaveBeenCalled();
+        expect(currentSources.videoFile).toEqual(video);
+        expect(currentSources.audioTrackIndex).toBe(audioTrackIndex);
+        if (cached) {
+            expect(subtitles?.map(({ text }) => text)).toEqual(['First']);
+            expect(extract).not.toHaveBeenCalled();
+            expect(picker.embedded.service.completedFile(video, 0)?.file).toBe(file);
+        } else {
+            expect(extract).toHaveBeenCalledTimes(1);
+            expect(extraction.signal.aborted).toBe(false);
+            await act(async () => {
+                emit(srt);
+                finish([{ trackKey: 0, format: 'srt', blob: new Blob([srt]) }]);
+            });
+            expect(subtitles?.map(({ text }) => text)).toEqual(['First']);
+            expect(onCompleted).toHaveBeenCalledTimes(1);
+            expect(session.saveSubtitleSelection).toHaveBeenCalledWith(onCompleted.mock.calls[0][1], new Set());
+        }
+        expect(onError).not.toHaveBeenCalled();
     }
+);
+
+it.each([undefined, 1])(
+    'preserves active subtitles and extraction when confirming audio=%s',
+    async (audioTrackIndex) => {
+        await render();
+        await confirm();
+        await act(async () => emit(srt));
+        await act(async () => annotate());
+        const tracks = currentSources.subtitleTracks;
+        const keys = subtitles!.map(subtitleKey);
+        await confirm(audioTrackIndex);
+        expect(currentSources.audioTrackIndex).toBe(audioTrackIndex);
+        expect(currentSources.subtitleTracks).toBe(tracks);
+        expect(subtitles?.map(({ text }) => text)).toEqual(['<b>First</b>']);
+        expect(subtitles!.map(subtitleKey)).toEqual(keys);
+        expect(extraction.signal.aborted).toBe(false);
+        expect(extract).toHaveBeenCalledTimes(1);
+        expect(session.saveSubtitleSelection).toHaveBeenCalledTimes(1);
+        if (audioTrackIndex !== undefined) {
+            expect(session.retainSourcesInSession).toHaveBeenCalledWith({
+                videoId: video.id,
+                subtitleTrackIds: [[choice.id]],
+                audioTrackIndex,
+            });
+        } else {
+            expect(session.retainSourcesInSession).not.toHaveBeenCalled();
+        }
+        const later = '2\n00:00:03,000 --> 00:00:04,000\nSecond\n\n';
+        await act(async () => {
+            emit(later);
+            finish([{ trackKey: 0, format: 'srt', blob: new Blob([srt, later]) }]);
+        });
+        expect(currentSources.audioTrackIndex).toBe(audioTrackIndex);
+        expect(subtitles?.map(({ text }) => text)).toEqual(['<b>First</b>', 'Second']);
+        expect(subtitleKey(subtitles![0])).toBe(keys[0]);
+        expect(extract).toHaveBeenCalledTimes(1);
+        expect(onError).not.toHaveBeenCalled();
+    }
+);
+
+it('applies an initial audio choice and returns to Default without replacing subtitles', async () => {
+    await render();
+    await confirm(1);
+    expect(currentSources.audioTrackIndex).toBe(1);
+    await act(async () => emit(srt));
+    const tracks = currentSources.subtitleTracks;
+    await confirm();
+    expect(currentSources.audioTrackIndex).toBeUndefined();
+    expect(currentSources.subtitleTracks).toBe(tracks);
+    expect(session.retainSourcesInSession).toHaveBeenCalledWith({
+        videoId: video.id,
+        subtitleTrackIds: [[choice.id]],
+        audioTrackIndex: undefined,
+    });
+    expect(extract).toHaveBeenCalledTimes(1);
+    expect(extraction.signal.aborted).toBe(false);
     expect(onError).not.toHaveBeenCalled();
 });
