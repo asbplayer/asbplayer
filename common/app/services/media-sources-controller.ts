@@ -55,7 +55,7 @@ export interface SourcesAppliedEvent {
 
 export interface MediaSourcesControllerConfig {
     subtitleHost: SubtitleHost;
-    sessionRepository?: FileSessionStore;
+    sessionStore?: FileSessionStore;
     onSourcesApplied?: (event: SourcesAppliedEvent) => void;
     onError: (error: unknown) => void;
 }
@@ -159,7 +159,7 @@ export class MediaSourcesController {
         this.embeddedSubtitles = new EmbeddedSubtitles(config.subtitleHost);
         this.onSourcesApplied = config.onSourcesApplied;
         this.onError = config.onError;
-        this.session = new FileSession(config.sessionRepository, {
+        this.session = new FileSession(config.sessionStore, {
             onCanRestoreChanged: (canRestoreLastSession) => this.setState({ ...this.state, canRestoreLastSession }),
             onError: config.onError,
         });
@@ -356,8 +356,7 @@ export class MediaSourcesController {
         if (!incoming) return;
         if (incoming.videoFile) {
             const video = incoming.videoFile;
-            // Keep the draft's handles across the picker reset so confirmation can promote them.
-            this.loadSources(new MediaSources(undefined, video), { keepDraftHandles: true });
+            this.loadSources(new MediaSources(undefined, video), { keepDraftHandles: true }); // Keep draft handles across the picker reset so confirmation can promote them.
             this.openPickerWithFiles(incoming.subtitleSourceFiles);
             this.session.retainDraftVideoHandle(
                 video.id,
@@ -378,7 +377,7 @@ export class MediaSourcesController {
         }
         this.updatePicker({
             externalTracks: [...tracksById.values()],
-            selectedTrackIds: [0, 1, 2].map((index) => files[index]?.id ?? '-'),
+            selectedTrackIds: initialTrackIds.map((_, index) => files[index]?.id ?? '-'),
         });
     }
 
@@ -486,8 +485,7 @@ export class MediaSourcesController {
                     sources.subtitleSourceFiles.filter((file) => !pendingIds.has(file.id))
                 );
             }
-            // Restoration has finished preparing files, so the restored sources now own any extraction.
-            this.pendingRequest = undefined;
+            this.pendingRequest = undefined; // Restoration has finished preparing files, so the restored sources now own any extraction.
             this.loadSources(sources, { keepDraftHandles: false });
             if (sources.videoFile && missingEmbeddedSubtitles.length) {
                 this.startEmbedded(sources.videoFile, sources.subtitleTracks, missingEmbeddedSubtitles);
@@ -627,12 +625,8 @@ export class MediaSourcesController {
         this.pickerDraft = new AbortController();
     }
 
-    private openPickerWithFiles(candidates?: readonly (FileWithId | undefined)[]): void {
+    private openPickerWithFiles(candidates: readonly (FileWithId | undefined)[]): void {
         if (!this.state.picker.open) this.resetPickerDraft();
-        const externalTracks = candidates ? buildExternalTracks(candidates) : this.state.picker.externalTracks;
-        const selectedTrackIds = candidates
-            ? initialTrackIds.map((_, index) => candidates[index]?.id ?? '-')
-            : this.state.picker.selectedTrackIds;
         const video = this.state.sources.videoFile;
         const cachedTracks = video ? this.embeddedSubtitles.discoveredTracks(video) : undefined;
         const activeDiscovery =
@@ -642,16 +636,14 @@ export class MediaSourcesController {
         if (activeDiscovery) activeDiscovery.openOnSupported = false;
         this.updatePicker({
             open: true,
-            externalTracks,
-            selectedTrackIds,
+            externalTracks: buildExternalTracks(candidates),
+            selectedTrackIds: initialTrackIds.map((_, index) => candidates[index]?.id ?? '-'),
             embeddedTracks: cachedTracks,
             discovering: Boolean(activeDiscovery),
             discoveryError: false,
             selectionError: undefined,
         });
-        if (video && !cachedTracks && !activeDiscovery) {
-            void this.discoverEmbedded(video, { openOnSupported: false });
-        }
+        if (video && !cachedTracks && !activeDiscovery) void this.discoverEmbedded(video, { openOnSupported: false });
     }
 
     private cancelDiscovery(): void {

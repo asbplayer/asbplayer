@@ -256,8 +256,7 @@ it('retains a draft video handle only while active and unaborted, even if clearD
         await realSession.saveDraftHandles([videoHandle, subHandle]);
         realSession.retainDraftVideoHandle('video', () => true, controller.signal);
         realSession.clearDraftHandles();
-        // Await a trailing semaphore-guarded call to ensure both queued operations have completed.
-        await repository.clearBuffered();
+        await repository.clearBuffered(); // Await a trailing semaphore-guarded call so both queued operations finish.
         await flush();
         const saved = await repository.fetch();
         expect(saved?.videoHandle).toEqual(videoHandle);

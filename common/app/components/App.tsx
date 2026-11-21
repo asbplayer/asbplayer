@@ -795,9 +795,7 @@ function App({
 
     const handleUnloadVideo = useCallback(
         (videoFileUrl: string) => {
-            if (!mediaSourcesController.unloadVideo(videoFileUrl)) {
-                return;
-            }
+            if (!mediaSourcesController.unloadVideo(videoFileUrl)) return;
 
             void dictionaryProvider.publishStatisticsSnapshot(extension.id, undefined);
             setStatisticsOverlayOpen(false);
@@ -1373,9 +1371,8 @@ function App({
     );
 
     const handleSubtitleSourcesChanged = useCallback(
-        (sourceStates: readonly SubtitleSourceState[]) => {
-            mediaSourcesController.updateRemoteSubtitleSources(sourceStates);
-        },
+        (sourceStates: readonly SubtitleSourceState[]) =>
+            mediaSourcesController.updateRemoteSubtitleSources(sourceStates),
         [mediaSourcesController]
     );
 
