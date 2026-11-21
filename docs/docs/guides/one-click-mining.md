@@ -40,7 +40,9 @@ Enable the WebSocket client in the <a href={new URL('?view=settings#misc-setting
 
 Mining sentences using Yomitan will create cards with word definition, image, and audio already provided.
 
-To always use asbplayer's subtitle text for the Sentence field, enable [**Always use subtitle text for sentence field**](../reference/settings#always-use-subtitle-text-for-sentence-field) under **Mining** settings. This replaces the sentence text supplied by Yomitan with the mined subtitle text from all tracks.
+To always use asbplayer's subtitle text for the Sentence field, enable [**Always use subtitle text for sentence field**](../reference/settings.md#always-use-subtitle-text-for-sentence-field) under **Mining** settings. This replaces the sentence text supplied by Yomitan with the mined subtitle text from all tracks.
+
+If you mine several words from the same subtitle, **Update last card** can also update earlier matching cards. Enable [**sentence updates**](../reference/settings.md#update-sentence-for-cards-with-the-same-subtitle-text) to share the sentence and any configured subtitle tracks, or [**image/audio updates**](../reference/settings.md#update-all-cards-with-the-same-subtitle-text) to share the screenshot and audio clip.
 
 ## Add-on Settings
 

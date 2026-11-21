@@ -210,6 +210,7 @@ export const defaultSettings: AsbplayerSettings = {
     recordWithAudioPlayback: true,
     preferMp3: true,
     alwaysUseSubtitleForSentence: false,
+    updateLastCardSentenceForSameSubtitle: false,
     tabName: project.names.short,
     miningHistoryStorageLimit: 25,
     clickToMineDefaultAction: PostMineAction.showAnkiDialog,

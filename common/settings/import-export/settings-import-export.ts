@@ -362,6 +362,7 @@ export const settingsSchema = z
         subtitleListTimestampDisplay: z.enum(SubtitleListTimestampDisplay),
         copyToClipboardOnMine: z.boolean(),
         updateLastCardForSameSubtitle: z.boolean(),
+        updateLastCardSentenceForSameSubtitle: z.boolean(),
         rememberSubtitleOffset: z.boolean(),
         lastSubtitleOffset: z.number(),
         autoCopyCurrentSubtitle: z.boolean(),

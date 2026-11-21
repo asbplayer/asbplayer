@@ -135,6 +135,9 @@ export default function SettingsDialog({
                     extensionSupportsSubtitleTrackSelectorInWebApp={extension.supportsSubtitleTrackSelectorInWebApp}
                     extensionSupportsSubtitleListCustomization={extension.supportsSubtitleListCustomization}
                     extensionSupportsUpdateLastWithSameSubtitleText={extension.supportsUpdateLastWithSameSubtitleText}
+                    extensionSupportsUpdateLastSentenceWithSameSubtitleText={
+                        extension.supportsUpdateLastSentenceWithSameSubtitleText
+                    }
                     extensionSupportsAnimatedImageCapture={extension.supportsAnimatedImageCapture}
                     pageConfigs={extension.pageConfig}
                     insideApp

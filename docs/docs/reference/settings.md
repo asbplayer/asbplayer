@@ -80,11 +80,19 @@ If enabled, copies the target subtitle to clipboard anytime mining action is tri
 
 When enabled, fills the Sentence field with the mined subtitle text from all tracks, even if an external application supplies different sentence text. This is useful when [mining with Yomitan](../guides/one-click-mining.md).
 
-### When updating last card, also update image/audio for cards that have the same subtitle text" {#update-all-cards-with-the-same-subtitle-text}
+### When updating last card, also update sentence for cards that have the same subtitle text {#update-sentence-for-cards-with-the-same-subtitle-text}
 
-When enabled, the **Update last card** mining action also updates the audio and image fields on consecutively created notes from the same subtitle line. Each preceding note keeps its sentence, word, definition, and custom fields. Matching ignores sentence markup and allows the sentence to be part of the mined subtitle context.
+When enabled, the **Update last card** mining action also replaces the Sentence field and any configured Subtitle Track 1–3 fields on consecutively created notes whose existing sentence matches the exported sentence. The update tries to preserve each note's highlighting. Track fields without exported text are left unchanged. If a subtitle field shares an Anki field with a non-subtitle field, such as Definition, the sentence update leaves that field unchanged on earlier notes.
 
-The search includes notes added within the last two Anki days and stops at the first different or missing sentence. A sentence field must be configured. This setting is disabled by default and does not affect updates to a specifically selected card.
+This setting copies the sentence selected for the current export. Enable [**Always use subtitle text for sentence field**](#always-use-subtitle-text-for-sentence-field) to use the full mined subtitle text. The [image/audio update](#update-all-cards-with-the-same-subtitle-text) is independent.
+
+Matching uses the main Sentence field, ignores sentence markup, and accepts either sentence being contained in the other, so a note containing only the first line can match a full subtitle. The search includes notes added within the last two Anki days and stops at the first different or missing sentence. A sentence field and nonempty export sentence are required, including when updating track fields. This setting is disabled by default and does not affect updates to a specifically selected card.
+
+### When updating last card, also update image/audio for cards that have the same subtitle text {#update-all-cards-with-the-same-subtitle-text}
+
+When enabled, the **Update last card** mining action also updates the audio and image fields on consecutively created notes from the same subtitle line. Each preceding note keeps its word, definition, and custom fields. Its subtitle fields are unchanged unless the [sentence update](#update-sentence-for-cards-with-the-same-subtitle-text) is also enabled. Matching ignores sentence markup and allows the sentence to be part of the mined subtitle context.
+
+The search includes notes added within the last two Anki days and stops at the first different or missing sentence. A sentence field must be configured, and the exported sentence must contain text, not just whitespace or markup. This setting is disabled by default and does not affect updates to a specifically selected card.
 
 ### Play audio while recording from local video {#play-audio-while-recording-from-local-video}
 

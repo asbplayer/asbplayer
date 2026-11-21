@@ -203,6 +203,7 @@ interface Props {
     extensionSupportsSubtitleTrackSelectorInWebApp: boolean;
     extensionSupportsSubtitleListCustomization: boolean;
     extensionSupportsUpdateLastWithSameSubtitleText: boolean;
+    extensionSupportsUpdateLastSentenceWithSameSubtitleText: boolean;
     insideApp?: boolean;
     appVersionRepoPath?: string;
     dictionaryProvider: DictionaryProvider;
@@ -264,6 +265,7 @@ export default function SettingsForm({
     extensionSupportsDictionaryTokenStatusDisplayAlpha,
     extensionSupportsDictionaryYomitanMecab,
     extensionSupportsUpdateLastWithSameSubtitleText,
+    extensionSupportsUpdateLastSentenceWithSameSubtitleText,
     supportsDictionaryPlayback,
     insideApp,
     appVersionRepoPath,
@@ -546,6 +548,9 @@ export default function SettingsForm({
                         showWebmMediaFragmentSettings={Boolean(insideApp)}
                         supportsUpdateLastWithSameSubtitleText={
                             !extensionInstalled || extensionSupportsUpdateLastWithSameSubtitleText
+                        }
+                        supportsUpdateLastSentenceWithSameSubtitleText={
+                            !extensionInstalled || extensionSupportsUpdateLastSentenceWithSameSubtitleText
                         }
                     />
                 </TabPanel>
