@@ -419,6 +419,7 @@ function App({
         setSubtitleTrackSelectorSelectedTrackIds,
         subtitleTrackSelectorTracks,
         setSubtitleTrackSelectorTracks,
+        audioTracks: localAudioTracks,
         embedded: { service: subtitleService, loading: embeddedLoading, error: embeddedError },
     } = subtitlePicker;
     const subtitleSelection = useSubtitleSelection({
@@ -434,12 +435,6 @@ function App({
             : embeddedSelectionError || embeddedError
               ? t('error.embeddedSubtitlesLoadFailed')
               : '';
-    useEffect(() => {
-        if (subtitleTrackSelectorOpen) videoChannelRef.current?.pause();
-    }, [subtitleTrackSelectorOpen]);
-    const handleMediaReady = useCallback(() => {
-        if (subtitleTrackSelectorOpen) videoChannelRef.current?.pause();
-    }, [subtitleTrackSelectorOpen]);
     useEffect(() => {
         subtitleService.retain(sources.videoFile ? [sources.videoFile] : []);
     }, [subtitleService, sources.videoFile]);
@@ -474,7 +469,10 @@ function App({
         selection: subtitleSelection,
         session: fileSession,
         restoreError: t('error.restoreSessionFailed'),
-        onSources: (incoming) => applySources(incoming),
+        onSources: (incoming, options) => applySources(incoming, options),
+        onAudioTrackChanged: (audioTrackIndex) =>
+            setSources((previous) => previous.withAudioTrackIndex(audioTrackIndex)),
+        getSubtitleSourceStatus: () => playerRef.current?.getSubtitleSourceStatus() ?? 'complete',
         onCompleted: (video, completed, signal) => {
             setSources((previous) => {
                 if (signal.aborted || previous.videoFile?.file !== video.file) return previous;
@@ -487,7 +485,8 @@ function App({
                         })),
                     },
                     previous.videoFile,
-                    previous.videoFileUrl
+                    previous.videoFileUrl,
+                    previous.audioTrackIndex
                 );
             });
         },
@@ -1072,7 +1071,7 @@ function App({
     }, []);
 
     const applySources = useCallback(
-        (mediaSources: MediaSources) => {
+        (mediaSources: MediaSources, { applyAudioSelection }: { applyAudioSelection: boolean }) => {
             const remoteSubtitles = mediaSources.subtitleSource.kind === 'remote';
             if (remoteSubtitles || mediaSources.videoFile || mediaSources.subtitleFileNames.length > 0) {
                 setJumpToSubtitle(undefined);
@@ -1112,7 +1111,12 @@ function App({
                           }
                         : previous.subtitleSource;
                 }
-                const sources = new MediaSources(subtitleSource, videoFile, videoFileUrl);
+                let audioTrackIndex: number | undefined;
+                if (!remoteSubtitles) {
+                    audioTrackIndex =
+                        newVideo || applyAudioSelection ? mediaSources.audioTrackIndex : previous.audioTrackIndex;
+                }
+                const sources = new MediaSources(subtitleSource, videoFile, videoFileUrl, audioTrackIndex);
 
                 const previousLoadingSources = previous.allSourceFiles;
                 const loadingSources = sources.allSourceFiles.filter(
@@ -1123,6 +1127,7 @@ function App({
                 void retainSourcesInFileSession({
                     subtitleTrackIds: sources.subtitleTracks.map(({ fileParts }) => fileParts.map(({ id }) => id)),
                     videoId: sources.videoFile?.id,
+                    audioTrackIndex: sources.audioTrackIndex,
                 });
 
                 return sources;
@@ -1685,7 +1690,8 @@ function App({
 
     const handleCloseSubtitleTrackSelector = useCallback(() => subtitleImport.closePicker(), [subtitleImport]);
     const handleConfirmSubtitleTrackSelection = useCallback(
-        (tracks: ConfirmedVideoDataSubtitleTrack[]) => subtitleImport.confirm(tracks),
+        (tracks: ConfirmedVideoDataSubtitleTrack[], _remember: boolean, audioTrackIndex?: number) =>
+            subtitleImport.confirm(tracks, audioTrackIndex),
         [subtitleImport]
     );
     const handleOpenSubtitleTrackSelection = useCallback(
@@ -1837,6 +1843,8 @@ function App({
                                     isLoading={selectorBusy}
                                     discovering={embeddedLoading}
                                     suggestedName={sources.videoFile?.file.name ?? ''}
+                                    audioTracks={localAudioTracks}
+                                    audioTrackIndex={sources.audioTrackIndex}
                                     subtitleTracks={subtitleTrackSelectorTracks}
                                     selectedSubtitleTrackIds={subtitleTrackSelectorSelectedTrackIds}
                                     onSelectedSubtitleTrackIds={setSubtitleTrackSelectorSelectedTrackIds}
@@ -1931,7 +1939,7 @@ function App({
                                 <Player
                                     supportsDictionaryPlayback={supportsDictionaryPlayback}
                                     audioTranscodeHost={audioTranscodeHost}
-                                    onMediaReady={handleMediaReady}
+                                    subtitlePickerOpen={subtitleTrackSelectorOpen}
                                     ref={playerRef}
                                     origin={origin}
                                     subtitleReader={subtitleReader}

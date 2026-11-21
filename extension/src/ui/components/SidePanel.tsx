@@ -794,6 +794,7 @@ export default function SidePanel({
                         <>
                             <SidePanelRecordingOverlay show={recordingAudio} />
                             <Player
+                                subtitlePickerOpen={false}
                                 supportsDictionaryPlayback
                                 ref={playerRef}
                                 origin={browser.runtime.getURL('/sidepanel.html')}

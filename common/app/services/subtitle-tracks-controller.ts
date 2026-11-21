@@ -178,7 +178,7 @@ export class SubtitleTracksController {
             if (this.activity !== activity) return;
             asbTrace('playback/player', 'Failed to load player subtitles', { error });
             this.options.onError(error);
-            this.stream.replace([], names);
+            this.stream.replace([], names, error instanceof Error ? error.message : String(error));
         }
         if (this.activity !== activity) return;
         this.activity = { kind: 'files' };

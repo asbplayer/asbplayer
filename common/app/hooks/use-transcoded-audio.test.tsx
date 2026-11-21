@@ -11,8 +11,8 @@ jest.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) =>
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
-const Harness = ({ file, host }: { file?: FileWithId; host: TestHost }) => {
-    const conversion = useTranscodedAudio(file, host);
+const Harness = ({ file, host, audioTrackIndex }: { file?: FileWithId; host: TestHost; audioTrackIndex?: number }) => {
+    const conversion = useTranscodedAudio(file, host, audioTrackIndex);
     return (
         <>
             <output
@@ -74,8 +74,8 @@ const file = (id: string): FileWithId => ({
     file: new File([audioHeader], `${id}.mp4`),
 });
 const state = () => container.querySelector('output')!.getAttribute('data-state');
-const render = async (file: FileWithId | undefined, host: TestHost) => {
-    await act(async () => root.render(<Harness file={file} host={host} />));
+const render = async (file: FileWithId | undefined, host: TestHost, audioTrackIndex?: number) => {
+    await act(async () => root.render(<Harness file={file} host={host} audioTrackIndex={audioTrackIndex} />));
 };
 const click = async (selector: string) => {
     await act(async () => container.querySelector<HTMLButtonElement>(selector)!.click());
@@ -271,4 +271,40 @@ it('dismisses the notice without clearing the failure and shows a new failure fo
     await waitForWorker(host, 1);
     await waitForState('failed');
     expect(container.querySelector('[role="alert"]')).not.toBeNull();
+});
+
+it('always transcodes an explicit supported track and cancels it when switching or returning to default', async () => {
+    const host = new TestHost();
+    host.autoComplete = false;
+    jest.spyOn(HTMLMediaElement.prototype, 'canPlayType').mockReturnValue('probably');
+    const audioTrack = (codec: string) =>
+        box(
+            'trak',
+            box(
+                'mdia',
+                box('hdlr', new Uint8Array(8), new Uint8Array([115, 111, 117, 110])),
+                box('minf', box('stbl', box('stsd', new Uint8Array([0, 0, 0, 0, 0, 0, 0, 1]), box(codec))))
+            )
+        );
+    const source = { id: 'multi', file: new File([box('moov', audioTrack('mp4a'), audioTrack('Opus'))], 'multi.mp4') };
+    await render(source, host, 0);
+    await waitForWorker(host);
+    expect(host.workers[0].pending).toMatchObject({ operation: 'transcodeAudio', trackIndex: 0 });
+    await render(source, host, 1);
+    await waitForWorker(host, 1);
+    expect(host.workers[0].active).toBe(false);
+    expect(host.workers[1].pending).toMatchObject({ operation: 'transcodeAudio', trackIndex: 1 });
+    await render(source, host);
+    expect(host.workers[1].active).toBe(false);
+    await waitForState('idle');
+    expect(container.querySelector('output')!.getAttribute('data-required')).toBe('false');
+    expect(container.querySelector('output')!.getAttribute('data-bytes')).toBeNull();
+});
+
+it('requires selected audio while metadata is still loading so mining cannot use the original track', async () => {
+    const source = file('pending');
+    source.file.slice = () => ({ arrayBuffer: () => new Promise<ArrayBuffer>(() => {}) }) as Blob;
+    await render(source, new TestHost(), 0);
+    expect(container.querySelector('output')!.getAttribute('data-required')).toBe('true');
+    expect(container.querySelector('output')!.getAttribute('data-bytes')).toBeNull();
 });

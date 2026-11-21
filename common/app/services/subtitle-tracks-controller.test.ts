@@ -155,6 +155,7 @@ describe('SubtitleTracksController', () => {
         await load([broken]);
         expect(options.subtitles).toEqual([]);
         expect(state.loadingFiles).toBe(false);
+        expect(state.sources).toMatchObject([{ status: 'failed', error: 'File unavailable' }]);
         expect(protocol.subtitleMessages.at(-1)).toMatchObject({ value: [], names: ['Broken.vtt'] });
         expect(onError).toHaveBeenCalledWith(error);
         expect(onInitialized).toHaveBeenLastCalledWith();

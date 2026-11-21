@@ -30,6 +30,15 @@ const ffmpegConfigureArguments = [
     '--enable-decoder=dca',
     '--enable-decoder=truehd',
     '--enable-decoder=mlp',
+
+    // These decoder flags are only needed to transcode explicit audio track selections to Opus.
+    // They can be dropped if we stop transcoding these formats for explicit selections.
+    // The automatic unsupported-audio fallback uses the decoders above and shared Opus support below.
+    '--enable-decoder=aac,libopus,mp3float,mp2float,mp1float,flac,vorbis,alac,wavpack',
+    '--enable-decoder=pcm_s16le,pcm_s16be,pcm_s24le,pcm_s24be,pcm_s32le,pcm_s32be,pcm_u8',
+    '--enable-decoder=pcm_f32le,pcm_f32be,pcm_f64le,pcm_f64be',
+    '--enable-decoder=pcm_alaw,pcm_mulaw,tta,adpcm_ms,adpcm_ima_wav',
+
     '--enable-libopus',
     '--enable-zlib',
     '--enable-encoder=libopus',
