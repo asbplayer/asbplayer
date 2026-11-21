@@ -25,6 +25,10 @@ export class EmbeddedSubtitles {
         }
     }
 
+    discoveredTracks(source: FileWithId): readonly EmbeddedSubtitleTrack[] | undefined {
+        return this.catalogsByFile.get(source.file);
+    }
+
     completedFile(source: FileWithId, trackIndex: number): FileWithId | undefined {
         const file = this.outputsByFile.get(source.file)?.get(trackIndex);
         return file?.embedded?.videoId === source.id ? file : undefined;
