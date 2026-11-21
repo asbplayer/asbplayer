@@ -1,0 +1,41 @@
+#!/bin/bash
+set -euo pipefail
+
+SCRIPTPATH="$(cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P)"
+
+# English source keys of a namespace, flattened to dotted paths.
+en_keys() {
+    case "$1" in
+        common) jq -r 'paths(scalars) | join(".")' "$SCRIPTPATH/../../common/locales/en.json" ;;
+        extension) jq -r 'paths(scalars) | join(".")' "$SCRIPTPATH/../../extension/public/_locales/en/messages.json" ;;
+        external) jq -r 'paths(scalars) | join(".")' "$SCRIPTPATH/../../loc/external/en.json" ;;
+    esac | sort
+}
+
+# Translator note keys of a namespace.
+note_keys() {
+    jq -r --arg ns "$1" '.[$ns] // {} | keys[]' "$SCRIPTPATH/../../loc/notes.json" | sort
+}
+
+status=0
+for namespace in common extension external; do
+    while IFS= read -r key; do
+        echo "$namespace.$key has no translator note in loc/notes.json"
+        status=1
+    done < <(comm -23 <(en_keys "$namespace") <(note_keys "$namespace"))
+
+    while IFS= read -r key; do
+        echo "loc/notes.json has a note for $namespace.$key, but that key does not exist in the English sources"
+        status=1
+    done < <(comm -13 <(en_keys "$namespace") <(note_keys "$namespace"))
+
+    while IFS= read -r key; do
+        echo "loc/notes.json has an empty note for $namespace.$key"
+        status=1
+    done < <(jq -r --arg ns "$namespace" '.[$ns] // {} | to_entries[] | select((.value | type) != "string" or (.value | length) == 0) | .key' "$SCRIPTPATH/../../loc/notes.json")
+done
+
+if [ $status -ne 0 ]; then
+    echo "^^^^ loc/notes.json does not match the English source keys ^^^^"
+    exit 1
+fi
