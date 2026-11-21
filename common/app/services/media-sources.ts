@@ -89,22 +89,19 @@ export class MediaSources {
     } {
         const remoteSubtitles = incoming.subtitleSource.kind === 'remote';
         const resetJumpToSubtitle = Boolean(remoteSubtitles || incoming.videoFile || incoming.subtitleFileNames.length);
-        const newVideo = incoming.videoFile !== undefined && incoming.videoFile.file !== this.videoFile?.file;
+        const newVideo = Boolean(incoming.videoFile && incoming.videoFile.file !== this.videoFile?.file);
 
-        let videoFile = incoming.videoFile;
-        let videoFileUrl: string | undefined;
+        let videoFile = this.videoFile;
+        let videoFileUrl = this.videoFileUrl;
         let revokedVideoUrl: string | undefined;
 
-        if (videoFile && !newVideo) {
-            videoFile = this.videoFile;
-            videoFileUrl = this.videoFileUrl;
-        } else if (videoFile) {
-            revokedVideoUrl = this.videoFileUrl;
+        if (newVideo && incoming.videoFile) {
+            videoFile = incoming.videoFile;
             videoFileUrl = createVideoUrl(videoFile.file);
-        } else if (!remoteSubtitles) {
-            videoFile = this.videoFile;
-            videoFileUrl = this.videoFileUrl;
-        } else {
+            revokedVideoUrl = this.videoFileUrl;
+        } else if (!incoming.videoFile && remoteSubtitles) {
+            videoFile = undefined;
+            videoFileUrl = undefined;
             revokedVideoUrl = this.videoFileUrl;
         }
 

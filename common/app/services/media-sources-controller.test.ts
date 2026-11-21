@@ -120,10 +120,10 @@ let protocol: TestVideoProtocol;
 const onError = jest.fn<(error: unknown) => void>();
 const extract = jest.fn<(options: SubtitleExtractionOptions) => Promise<ExtractedSubtitleFile[]>>();
 
-const createController = (sessionRepository: FileSessionStore | undefined = session) => {
+const createController = (sessionStore: FileSessionStore | undefined = session) => {
     controller = new MediaSourcesController({
         subtitleHost: { extractSubtitles: extract },
-        sessionRepository,
+        sessionStore,
         onError,
     });
     return controller;

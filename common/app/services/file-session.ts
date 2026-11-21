@@ -11,11 +11,7 @@ import {
     SUBTITLE_EXT_SET,
 } from '@project/common/app/services/media-sources';
 import type { SubtitleSourceFile } from '@project/common/app/services/media-sources';
-import type {
-    FileSessionRecord,
-    FileSessionSourceIds,
-    FileSystemFileHandleWithId,
-} from '@project/common/file-system-access';
+import type { FileSessionRecord, FileSystemFileHandleWithId } from '@project/common/file-system-access';
 import {
     IndexedDBFileSessionRepository,
     canRestoreSession,
@@ -26,31 +22,22 @@ import {
 } from '@project/common/file-system-access';
 import { asbError, asbWarn } from '@project/common/util/log';
 
-export interface FileSessionStore {
-    fetch: () => Promise<FileSessionRecord | undefined>;
-    merge: (
-        incoming: Pick<FileSessionRecord, 'videoHandle' | 'subtitleHandles' | 'bufferedSubtitleHandles'>
-    ) => Promise<void>;
-    retain: (sources: FileSessionSourceIds) => Promise<void>;
-    promoteBuffered: (ids: string[]) => Promise<void>;
-    promoteBufferedVideo: (videoId: string) => Promise<boolean>;
-    clearBuffered: () => Promise<void>;
-    setCachedSubtitleFiles: (
-        files: FileWithId[],
-        selection: {
-            subtitleTrackIds: string[][];
-            embeddedSubtitles: Record<string, EmbeddedSubtitleDescriptor>;
-        }
-    ) => Promise<boolean>;
-    clear: () => Promise<void>;
-}
+export type FileSessionStore = Pick<
+    IndexedDBFileSessionRepository,
+    | 'fetch'
+    | 'merge'
+    | 'retain'
+    | 'promoteBuffered'
+    | 'promoteBufferedVideo'
+    | 'clearBuffered'
+    | 'setCachedSubtitleFiles'
+    | 'clear'
+>;
 
 let defaultStore: IndexedDBFileSessionRepository | undefined;
 
 export const defaultFileSessionStore = (): FileSessionStore | undefined => {
-    if (defaultStore === undefined && supportsFileSystemAccess()) {
-        defaultStore = new IndexedDBFileSessionRepository();
-    }
+    if (!defaultStore && supportsFileSystemAccess()) defaultStore = new IndexedDBFileSessionRepository();
     return defaultStore;
 };
 
@@ -58,7 +45,7 @@ export const defaultFileSessionStore = (): FileSessionStore | undefined => {
 export class FileSession {
     private initController: AbortController | undefined;
     private selectionWrite = Promise.resolve();
-    private _canRestore = false;
+    private canRestore = false;
 
     constructor(
         private readonly store: FileSessionStore | undefined,
@@ -268,8 +255,8 @@ export class FileSession {
     }
 
     private setCanRestore(canRestore: boolean): void {
-        if (canRestore === this._canRestore) return;
-        this._canRestore = canRestore;
+        if (canRestore === this.canRestore) return;
+        this.canRestore = canRestore;
         this.callbacks.onCanRestoreChanged(canRestore);
     }
 }

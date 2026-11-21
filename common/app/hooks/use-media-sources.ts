@@ -31,7 +31,7 @@ export const useMediaSources = ({
         () =>
             new MediaSourcesController({
                 subtitleHost,
-                sessionRepository: defaultFileSessionStore(),
+                sessionStore: defaultFileSessionStore(),
                 onSourcesApplied: (event) => callbacksRef.current.onSourcesApplied(event),
                 onError: (error) => callbacksRef.current.onError(error),
             }),
@@ -47,11 +47,8 @@ export const useMediaSources = ({
 
     const pickerTracks = useMemo<VideoDataSubtitleTrack[]>(() => {
         const tracksById = new Map<string, VideoDataSubtitleTrack>();
-        // A zero-byte SRT preserves empty slots without making confirmation fetch the "-" URL.
-        tracksById.set('-', { ...emptySubtitleTrack(t), file: new File([''], '.srt') });
-        for (const track of state.picker.externalTracks) {
-            tracksById.set(track.id, track);
-        }
+        tracksById.set('-', { ...emptySubtitleTrack(t), file: new File([''], '.srt') }); // A zero-byte SRT preserves empty slots without making confirmation fetch the "-" URL.
+        for (const track of state.picker.externalTracks) tracksById.set(track.id, track);
         const video = state.sources.videoFile;
         if (video && state.picker.embeddedTracks) {
             for (const track of state.picker.embeddedTracks) {
