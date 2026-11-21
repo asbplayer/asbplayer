@@ -1,5 +1,6 @@
 import { describe, expect, it, jest } from '@jest/globals';
 import { createFfmpegSession, ffmpegMetadata } from '@project/ffmpeg';
+import { ffmpegSubtitleFormats } from '@project/ffmpeg/protocol';
 import type {
     CreateFfmpegSessionOptions,
     FfmpegDiagnostics,
@@ -872,6 +873,17 @@ describe('embedded subtitle operations', () => {
         worker.autoReply = false;
         return { worker, session, runtime };
     };
+    it('accepts an asbimg output descriptor', async () => {
+        const { worker, runtime } = await ready();
+        const extraction = runtime.extractSubtitles({
+            input: new Blob(['video']),
+            trackKeys: [2],
+            onChunk: () => {},
+        });
+        const output = { trackKey: 2, ...ffmpegSubtitleFormats.image };
+        replyWithResult(worker, [output]);
+        await expect(extraction).resolves.toEqual([output]);
+    });
     it('deduplicates subtitle track indexes and requires completion for empty outputs', async () => {
         const { worker, runtime } = await ready();
         const chunks: { trackKey: number; byteLength: number }[] = [];
@@ -930,14 +942,17 @@ describe('embedded subtitle operations', () => {
         );
         await expect(extraction).rejects.toMatchObject({ code: 'protocol' });
     });
-    it('rejects image output descriptors', async () => {
+    it.each([
+        { extension: 'sup', mimeType: 'application/x-pgs' },
+        { extension: ffmpegSubtitleFormats.image.extension, mimeType: ffmpegSubtitleFormats.text.mimeType },
+    ])('rejects unsupported or mismatched output descriptors: %j', async (descriptor) => {
         const { worker, runtime } = await ready();
         const extraction = runtime.extractSubtitles({
             input: new Blob(['video']),
             trackKeys: [3],
             onChunk: () => {},
         });
-        replyWithResult(worker, [{ trackKey: 3, extension: 'sup', mimeType: 'application/x-pgs' }]);
+        replyWithResult(worker, [{ trackKey: 3, ...descriptor }]);
         await expect(extraction).rejects.toMatchObject({ code: 'protocol' });
     });
     it('rejects subtitle extraction on a disposed session even for empty track keys', async () => {

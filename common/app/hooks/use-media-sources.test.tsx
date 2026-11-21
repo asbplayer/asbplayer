@@ -105,7 +105,7 @@ it('formats supported and unsupported embedded tracks, preserves controller iden
     await act(async () => root.render(<Harness onError={onError2} />));
     expect(latest.controller).toBe(initialController);
 
-    const video = makeVideo('episode', 'S_TEXT/UTF8', 'S_HDMV/PGS');
+    const video = makeVideo('episode', 'S_TEXT/UTF8', 'S_HDMV/PGS', 'S_TEXT/UNKNOWN');
     await act(async () => {
         latest.controller.importManualFiles([video]);
     });
@@ -113,7 +113,8 @@ it('formats supported and unsupported embedded tracks, preserves controller iden
     expect(latest.picker.tracks.map(({ label, disabledReason }) => ({ label, disabledReason }))).toEqual([
         { label: 'extension.videoDataSync.emptySubtitleTrack', disabledReason: undefined },
         { label: 'English · SRT · Track 1', disabledReason: undefined },
-        { label: 'English · PGS · Track 2', disabledReason: 'Unsupported PGS' },
+        { label: 'English · PGS · Track 2', disabledReason: undefined },
+        { label: 'English · S_TEXT/UNKNOWN · Track 3', disabledReason: 'Unsupported S_TEXT/UNKNOWN' },
     ]);
 
     const online = {
@@ -130,8 +131,9 @@ it('formats supported and unsupported embedded tracks, preserves controller iden
         online.id,
         latest.picker.tracks[2].id,
         latest.picker.tracks[3].id,
+        latest.picker.tracks[4].id,
     ]);
-    expect(latest.picker.tracks).toHaveLength(4);
+    expect(latest.picker.tracks).toHaveLength(5);
 });
 
 it('formats embedded vs selection errors separately', async () => {

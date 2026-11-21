@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
@@ -36,7 +37,7 @@ try {
     const load = async (name) => {
         input = await readFile(resolve(root, name));
     };
-    const extract = (trackKeys) => {
+    const extract = (trackKeys, extension = 'srt') => {
         chunksByTrackKey = new Map(trackKeys.map((trackKey) => [trackKey, []]));
         const size = trackKeys.length * Uint32Array.BYTES_PER_ELEMENT;
         const pointer = module._malloc(size);
@@ -52,7 +53,13 @@ try {
                 result.map((track) => track.trackKey),
                 trackKeys
             );
-            assert.ok(result.every((track) => track.extension === 'srt' && track.mimeType === 'application/x-subrip'));
+            assert.ok(
+                result.every(
+                    (track) =>
+                        track.extension === extension &&
+                        track.mimeType === (extension === 'srt' ? 'application/x-subrip' : 'application/x-asbimg')
+                )
+            );
             return new Map(
                 [...chunksByTrackKey].map(([trackKey, chunks]) => [trackKey, Buffer.concat(chunks).toString('utf8')])
             );
@@ -156,8 +163,59 @@ try {
     assert.deepEqual(warnings, ['Subtitle cue exceeds the reorder window']);
     assert.match(Buffer.concat(chunksByTrackKey.get(0)).toString('utf8'), /Published cue/);
     assert.doesNotMatch(Buffer.concat(chunksByTrackKey.get(0)).toString('utf8'), /Too late|Buffered cue/);
+    const imageRecords = (trackKey) =>
+        extract([trackKey], 'asbimg')
+            .get(trackKey)
+            .trim()
+            .split('\n')
+            .map((line) => JSON.parse(line));
+    for (const name of ['pgs.mkv', 'dvd.mkv', 'dvb.mkv', 'dvd.mp4']) {
+        const codec = name.split('.')[0];
+        await load(name);
+        const trackKey = name.endsWith('.mp4') ? 2 : 0;
+        const records = imageRecords(trackKey);
+        assert.equal(records.length, 2, `${codec}: clears must close images without becoming cues`);
+        assert.equal(records[0].start, 2000);
+        assert.ok(records[0].end >= 3900 && records[0].end <= 4000);
+        assert.equal(records[1].start, 6000);
+        assert.ok(chunksByTrackKey.get(trackKey).length >= 2, 'Images must be delivered progressively');
+        for (const { textImage: image } of records) {
+            assert.equal(image.position, undefined);
+            assert.deepEqual(image.screen, { width: 320, height: 240 });
+            assert.match(image.dataUrl, /^data:image\/png;base64,/);
+        }
+        if (codec === 'pgs') {
+            const image = records[0].textImage;
+            assert.deepEqual(image.image, { width: 14, height: 4 });
+            const png = Buffer.from(image.dataUrl.split(',')[1], 'base64');
+            const pixels = execFileSync(
+                'ffmpeg',
+                ['-v', 'error', '-i', 'pipe:0', '-f', 'rawvideo', '-pix_fmt', 'rgba', 'pipe:1'],
+                { input: png }
+            );
+            assert.deepEqual([...pixels.subarray(0, 4)], [255, 255, 255, 255]);
+            assert.equal(pixels[7], 128, 'Palette alpha must survive PNG encoding');
+            assert.equal(pixels[11], 0, 'Transparent pixels must stay transparent');
+            const secondRectangle = (2 * 14 + 10) * 4;
+            assert.equal(pixels[secondRectangle + 3], 255, 'All rectangles must retain their relative positions');
+        }
+        const imageMemory = module.HEAPU8.buffer.byteLength;
+        for (let repeat = 0; repeat < 5; ++repeat) extract([trackKey], 'asbimg');
+        assert.equal(
+            module.HEAPU8.buffer.byteLength,
+            imageMemory,
+            `${codec}: repeated extraction must release native resources`
+        );
+    }
+    await load('dvd-cover.mkv');
+    assert.equal(imageRecords(0).length, 2, 'Attached cover art must not delay the subtitle timeline');
+    await load('uncleared.mkv');
+    const uncleared = imageRecords(0);
+    assert.equal(uncleared.length, 2);
+    assert.equal(uncleared[1].start, 6000);
+    assert.equal(uncleared[1].end, 10000, 'Container duration must bound the last display when its clear is absent');
     process.stdout.write(
-        'WASM subtitle regressions passed: track identity, presentation timing, reordered cues, text normalization, slow reads, zlib\n'
+        'WASM subtitle regressions passed: track identity, presentation timing, reordered cues, text normalization, slow reads, zlib, PGS/DVD/DVB bitmaps\n'
     );
 } finally {
     await rm(root, { recursive: true, force: true });

@@ -7,6 +7,8 @@ import {
     isoBmffBoxTypeBytes,
     isoBmffTopLevelBoxTypes,
 } from '@project/common/media-probe/iso-bmff';
+import { ffmpegSubtitleFormats } from '@project/ffmpeg/protocol';
+import type { SubtitleOutputFormat } from '@project/ffmpeg/protocol';
 
 export interface EmbeddedSubtitleTrack {
     /** Zero-based position among subtitle tracks, including unsupported codecs. */
@@ -16,7 +18,7 @@ export interface EmbeddedSubtitleTrack {
     readonly codec: string;
     readonly language?: string;
     readonly title?: string;
-    readonly outputFormat?: 'srt';
+    readonly outputFormat?: SubtitleOutputFormat;
 }
 
 const codecsByMatroskaId: Record<string, string> = {
@@ -31,7 +33,17 @@ const codecsByMatroskaId: Record<string, string> = {
     S_DVBSUB: 'dvb_subtitle',
 };
 const codecsByMp4Format: Record<string, string> = { tx3g: 'mov_text', text: 'mov_text', wvtt: 'webvtt', stpp: 'ttml' };
-const textCodecs = new Set(['subrip', 'text', 'ass', 'ssa', 'webvtt', 'mov_text']);
+const outputFormatsByCodec: Record<string, SubtitleOutputFormat> = {
+    subrip: ffmpegSubtitleFormats.text.extension,
+    text: ffmpegSubtitleFormats.text.extension,
+    ass: ffmpegSubtitleFormats.text.extension,
+    ssa: ffmpegSubtitleFormats.text.extension,
+    webvtt: ffmpegSubtitleFormats.text.extension,
+    mov_text: ffmpegSubtitleFormats.text.extension,
+    hdmv_pgs_subtitle: ffmpegSubtitleFormats.image.extension,
+    dvd_subtitle: ffmpegSubtitleFormats.image.extension,
+    dvb_subtitle: ffmpegSubtitleFormats.image.extension,
+};
 
 const displayNamesByCodec: Record<string, string> = {
     subrip: 'SRT',
@@ -69,7 +81,7 @@ const subtitle = ({
     codec,
     language,
     title,
-    ...(supported && textCodecs.has(codec) ? { outputFormat: 'srt' } : {}),
+    outputFormat: supported ? outputFormatsByCodec[codec] : undefined,
 });
 
 /** Discover dedicated subtitle tracks from container metadata, without loading FFmpeg. */
@@ -108,7 +120,9 @@ export const probeSubtitleTracks = async (blob: Blob, signal: AbortSignal): Prom
                 codec: codecsByMp4Format[track.format] ?? track.format,
                 language: track.language,
                 title: track.title,
-                supported: trackKey !== undefined && (track.format === 'tx3g' || track.format === 'text'),
+                supported:
+                    trackKey !== undefined &&
+                    (track.format === 'tx3g' || track.format === 'text' || track.format === 'dvd_subtitle'),
             });
         });
     }

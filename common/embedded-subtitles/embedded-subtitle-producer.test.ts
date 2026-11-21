@@ -15,6 +15,8 @@ import type {
     ExtractedSubtitleFile,
 } from '@project/common/embedded-subtitles/subtitle-source';
 import { mkv, mkvTrack } from '@project/common/media-probe/test-media';
+import { ffmpegSubtitleFormats, mimeTypeForSubtitleFormat } from '@project/ffmpeg/protocol';
+import type { SubtitleOutputFormat } from '@project/ffmpeg/protocol';
 
 const encoder = new TextEncoder();
 const originalText = Object.getOwnPropertyDescriptor(Blob.prototype, 'text');
@@ -73,12 +75,23 @@ const createReader = () =>
         },
     });
 
-async function loading(
-    externalFile = new File(['WEBVTT\n\n00:00:00.000 --> 00:00:01.000\nExternal\n'], 'external.vtt')
-) {
+async function loading({
+    externalFile = new File(['WEBVTT\n\n00:00:00.000 --> 00:00:01.000\nExternal\n'], 'external.vtt'),
+    format = ffmpegSubtitleFormats.text.extension,
+}: {
+    externalFile?: File;
+    format?: SubtitleOutputFormat;
+} = {}) {
     const source = {
         id: 'video',
-        file: new File([Uint8Array.from(mkv(mkvTrack(1, 'V_VP8'), mkvTrack(17, 'S_TEXT/UTF8'))).buffer], 'video.mkv'),
+        file: new File(
+            [
+                Uint8Array.from(
+                    mkv(mkvTrack(1, 'V_VP8'), mkvTrack(17, format === 'srt' ? 'S_TEXT/UTF8' : 'S_HDMV/PGS'))
+                ).buffer,
+            ],
+            'video.mkv'
+        ),
     };
     let options!: SubtitleExtractionOptions;
     let complete!: (files: ExtractedSubtitleFile[]) => void;
@@ -98,7 +111,11 @@ async function loading(
             })
     );
     const service = new EmbeddedSubtitles({ extractSubtitles: extract });
-    const descriptor = embeddedDescriptor(source, { trackIndex: 0, codec: 'subrip' });
+    const descriptor = embeddedDescriptor(source, {
+        trackIndex: 0,
+        codec: format === 'srt' ? 'subrip' : 'hdmv_pgs_subtitle',
+        outputFormat: format,
+    });
     const file = [...(await service.prepare(source, [descriptor], new AbortController().signal)).values()][0];
     const external = {
         id: 'external',
@@ -143,7 +160,13 @@ async function loading(
         options.onChunk(0, buffer);
     };
     const finish = () =>
-        complete([{ trackKey: 0, format: 'srt', blob: new Blob(bytes, { type: 'application/x-subrip' }) }]);
+        complete([
+            {
+                trackKey: 0,
+                format,
+                blob: new Blob(bytes, { type: mimeTypeForSubtitleFormat(format) }),
+            },
+        ]);
     return { emit, finish, fail, run, firstCue, stream, onFinished, abort, extract, produce, updates };
 }
 
@@ -249,7 +272,7 @@ it.each([
     ],
 ])('extracts and saves embedded text when an external subtitle has %s', async (_case, input, error) => {
     jest.spyOn(console, 'error').mockImplementation(() => {});
-    const job = await loading(new File([input], 'external.bbjson'));
+    const job = await loading({ externalFile: new File([input], 'external.bbjson') });
     job.emit(encoder.encode('1\n00:00:01,000 --> 00:00:02,000\nEmbedded cue\n\n'));
     job.finish();
     await job.run;
@@ -413,4 +436,40 @@ it('stops extraction when a timed publication fails while waiting for more worke
         [],
     ]);
     expect(jest.getTimerCount()).toBe(0);
+});
+
+it('progressively loads bitmap cues alongside text, then restores completed images without decoding again', async () => {
+    const job = await loading({ format: ffmpegSubtitleFormats.image.extension });
+    const image = {
+        dataUrl: 'data:image/png;base64,iVBORw0KGgo=',
+        screen: { width: 1920, height: 1080 },
+        image: { width: 300, height: 50 },
+    };
+    const bytes = encoder.encode(JSON.stringify({ start: 2000, end: 4000, textImage: image }) + '\n');
+    job.emit(bytes.slice(0, 20));
+    job.emit(bytes.slice(20));
+    await job.firstCue;
+    expect(job.stream.snapshot().subtitles.map(({ track, text, textImage }) => ({ track, text, textImage }))).toEqual([
+        { track: 1, text: 'External', textImage: undefined },
+        { track: 0, text: '', textImage: image },
+        { track: 2, text: '', textImage: image },
+    ]);
+    expect(job.onFinished).not.toHaveBeenCalled();
+    job.finish();
+    await job.run;
+    const completed = job.onFinished.mock.calls[0][0];
+    expect(completed[0].fileParts[0].file.name).toBe('video.track-1.eng.asbimg');
+    const restored = await createReader().subtitles(
+        completed.map(({ fileParts }) => ({ fileParts: fileParts.map(({ file }) => file) }))
+    );
+    expect(restored.filter(({ textImage }) => textImage).map(({ track, textImage }) => [track, textImage])).toEqual([
+        [0, image],
+        [2, image],
+    ]);
+    const updates = new SubtitleStream();
+    await job.produce((update) => updates.update(update), new AbortController().signal);
+    expect(job.extract).toHaveBeenCalledTimes(1);
+    expect(updates.snapshot().subtitles.map(({ start, end, textImage }) => ({ start, end, textImage }))).toEqual(
+        job.stream.snapshot().subtitles.map(({ start, end, textImage }) => ({ start, end, textImage }))
+    );
 });

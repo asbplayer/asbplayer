@@ -1,6 +1,7 @@
 #ifndef ASB_SUBTITLES_HPP
 #define ASB_SUBTITLES_HPP
 
+#include "bitmap-subtitles.hpp"
 #include "diagnostics.hpp"
 #include "error.hpp"
 #include "host_io.hpp"
@@ -277,7 +278,6 @@ struct SubtitleOutput {
     static constexpr size_t max_pending_bytes = 8 * 1024 * 1024;
     static constexpr size_t encode_buffer_bytes = 1024 * 1024;
     static constexpr size_t pending_cue_overhead_bytes = 128; // Map node and allocator overhead beyond stored text.
-    static constexpr AVRational milliseconds{1, 1000};
 
     struct Cue {
         int64_t end;
@@ -294,7 +294,8 @@ struct SubtitleOutput {
     AVFormatContext* format = nullptr;
     AVStream* source;
     AVPacket* encoded = nullptr;
-    std::vector<uint8_t> bytes = std::vector<uint8_t>(encode_buffer_bytes);
+    std::unique_ptr<BitmapSubtitleOutput> bitmap;
+    std::vector<uint8_t> bytes;
 
     std::multimap<int64_t, Cue> pending;
     size_t pending_bytes = 0;
@@ -323,13 +324,10 @@ struct SubtitleOutput {
         avformat_free_context(this->format);
     }
 
-    int open() {
+    int open(int video_width, int video_height) {
         const auto* codec = avcodec_find_decoder(this->source->codecpar->codec_id);
         this->decoder = avcodec_alloc_context3(codec);
-        const auto* text = avcodec_find_encoder(AV_CODEC_ID_TEXT);
-        this->encoder = avcodec_alloc_context3(text);
-        this->encoded = av_packet_alloc();
-        if (!codec || !text || !this->decoder || !this->encoder || !this->encoded) return AVERROR(ENOMEM);
+        if (!codec || !this->decoder) return AVERROR(ENOMEM);
 
         int error = avcodec_parameters_to_context(this->decoder, this->source->codecpar);
         if (error < 0) return error;
@@ -338,6 +336,17 @@ struct SubtitleOutput {
         this->decoder->sub_charenc_mode = FF_SUB_CHARENC_MODE_IGNORE;
         if ((error = avcodec_open2(this->decoder, codec, nullptr)) < 0) return error;
 
+        if (supported_bitmap_codec(this->source->codecpar->codec_id)) {
+            this->bitmap = std::make_unique<BitmapSubtitleOutput>(this->track_key, video_width, video_height);
+            return 0;
+        }
+
+        const auto* text = avcodec_find_encoder(AV_CODEC_ID_TEXT);
+        this->encoder = avcodec_alloc_context3(text);
+        this->encoded = av_packet_alloc();
+        if (!text || !this->encoder || !this->encoded) return AVERROR(ENOMEM);
+
+        this->bytes.resize(encode_buffer_bytes);
         this->encoder->time_base = milliseconds;
         if (this->decoder->subtitle_header && this->decoder->subtitle_header_size >= 0) {
             const size_t header_size = static_cast<size_t>(this->decoder->subtitle_header_size);
@@ -505,17 +514,17 @@ struct SubtitleOutput {
         int error = avcodec_decode_subtitle2(this->decoder, &subtitle, &got_subtitle, decode_packet);
         if (produced) *produced = got_subtitle != 0;
         if (error < 0) {
-            if (error == AVERROR(ENOMEM)) return error;
+            if (this->bitmap || error == AVERROR(ENOMEM)) return error;
             ++this->decode_errors;
             return 0;
         }
         if (!got_subtitle) return 0;
 
-        if (subtitle.num_rects == 0) {
+        if (!this->bitmap && subtitle.num_rects == 0) {
             avsubtitle_free(&subtitle);
             return 0;
         }
-        ++this->decoded_cues;
+        if (subtitle.num_rects > 0) ++this->decoded_cues;
 
         // Decoder subtitle PTS is in AV_TIME_BASE units, display intervals in milliseconds.
         int64_t pts = subtitle.pts;
@@ -535,6 +544,21 @@ struct SubtitleOutput {
             avsubtitle_free(&subtitle);
             return AVERROR_INVALIDDATA;
         }
+
+        if (this->bitmap) {
+            int64_t end = AV_NOPTS_VALUE;
+            bool invalid_end = subtitle.end_display_time != UINT32_MAX &&
+                __builtin_add_overflow(base_ms, static_cast<int64_t>(subtitle.end_display_time), &end);
+            if (!invalid_end && end <= start && packet->duration > 0) {
+                const int64_t duration_ms = av_rescale_q(packet->duration, this->source->time_base, milliseconds);
+                invalid_end = duration_ms == AV_NOPTS_VALUE || __builtin_add_overflow(start, duration_ms, &end);
+            }
+            error = invalid_end ? AVERROR_INVALIDDATA
+                : this->bitmap->display(subtitle, start, end > start ? end : AV_NOPTS_VALUE, this->decoder);
+            avsubtitle_free(&subtitle);
+            return error;
+        }
+
         subtitle.start_display_time = 0;
 
         // Avoid FFmpeg's uint32_t end_display_time narrowing of negative or >= 2^32 ms packet durations.
@@ -627,7 +651,8 @@ struct SubtitleOutput {
         return 0;
     }
 
-    int finish() {
+    int finish(int64_t duration) {
+        if (this->bitmap) return this->bitmap->finish(duration);
         if (this->decode_errors > 0 && this->decoded_cues == 0) return AVERROR_INVALIDDATA;
         const int error = flush_cues(INT64_MAX);
         return error < 0 ? error : av_write_trailer(this->format);
@@ -668,15 +693,21 @@ inline const char* extract_subtitles(double size, const uint32_t* track_keys, si
     const bool mp4 = av_match_name("mov", input.format->iformat->name) != 0;
     std::map<uint32_t, AVStream*> subtitle_streams_by_key;
     uint32_t subtitle_index = 0;
+    int video_width = 0, video_height = 0;
 
     for (unsigned i = 0; i < input.format->nb_streams; ++i) {
         auto* stream = input.format->streams[i];
-        if (stream->codecpar->codec_type == AVMEDIA_TYPE_ATTACHMENT) {
+        const auto type = stream->codecpar->codec_type;
+        if (type == AVMEDIA_TYPE_ATTACHMENT) {
             av_freep(&stream->codecpar->extradata);
             stream->codecpar->extradata_size = 0;
-        } else if (stream->codecpar->codec_type == AVMEDIA_TYPE_SUBTITLE) {
+        } else if (type == AVMEDIA_TYPE_SUBTITLE) {
             const uint32_t key = mp4 ? static_cast<uint32_t>(stream->id) : subtitle_index++;
             subtitle_streams_by_key.emplace(key, stream);
+        } else if (type == AVMEDIA_TYPE_VIDEO && !(stream->disposition & AV_DISPOSITION_ATTACHED_PIC) &&
+                   video_width <= 0 && video_height <= 0) {
+            video_width = stream->codecpar->width;
+            video_height = stream->codecpar->height;
         }
     }
 
@@ -689,7 +720,8 @@ inline const char* extract_subtitles(double size, const uint32_t* track_keys, si
         }
 
         auto* stream = selected->second;
-        if (!supported_text_codec(stream->codecpar->codec_id)) {
+        const bool bitmap = supported_bitmap_codec(stream->codecpar->codec_id);
+        if (!supported_text_codec(stream->codecpar->codec_id) && !bitmap) {
             return subtitle_failure("Unsupported subtitle track", AVERROR(EINVAL));
         }
 
@@ -701,12 +733,14 @@ inline const char* extract_subtitles(double size, const uint32_t* track_keys, si
 
         char message[384] = {};
         std::snprintf(message, sizeof(message),
-                      "Selected subtitle track: track_key=%u, stream_index=%d, codec=%s, input_time_base=%d/%d",
+                      "Selected subtitle track: track_key=%u, stream_index=%d, codec=%s, input_time_base=%d/%d, output_format=%s",
                       track_key, stream->index, avcodec_get_name(stream->codecpar->codec_id),
-                      stream->time_base.num, stream->time_base.den);
+                      stream->time_base.num, stream->time_base.den, bitmap ? "asbimg" : "srt");
         runtime_diagnostic(DiagnosticLevel::trace, message);
         auto output = std::make_unique<SubtitleOutput>(track_key, stream);
-        if ((error = output->open()) < 0) return subtitle_failure("Could not open subtitle output", error);
+        if ((error = output->open(video_width, video_height)) < 0) {
+            return subtitle_failure("Could not open subtitle output", error);
+        }
         outputs.push_back(std::move(output));
     }
 
@@ -738,6 +772,10 @@ inline const char* extract_subtitles(double size, const uint32_t* track_keys, si
 
     if (error != AVERROR_EOF) return subtitle_failure("Could not extract subtitle packets", error);
 
+    // A container duration can bound the final bitmap display when there is no clear.
+    const int64_t duration = input.format->duration == AV_NOPTS_VALUE
+        ? AV_NOPTS_VALUE
+        : av_rescale_q(input.format->duration, AV_TIME_BASE_Q, milliseconds);
     result = "[";
     for (auto& output : outputs) {
         av_packet_unref(packet);
@@ -746,19 +784,23 @@ inline const char* extract_subtitles(double size, const uint32_t* track_keys, si
             error = output->decode(packet, &produced);
         } while (error >= 0 && produced);
 
-        if (error < 0 || (error = output->finish()) < 0) {
+        if (error < 0 || (error = output->finish(duration)) < 0) {
             return subtitle_failure("Could not finish subtitle output", error);
         }
 
-        avio_flush(output->format->pb);
-        if (output->format->pb->error < 0) {
-            return subtitle_failure("Could not deliver subtitle output", output->format->pb->error);
+        if (output->format) {
+            avio_flush(output->format->pb);
+            if (output->format->pb->error < 0) {
+                return subtitle_failure("Could not deliver subtitle output", output->format->pb->error);
+            }
         }
 
         if (result.size() > 1) result += ',';
 
         result += "{\"trackKey\":" + std::to_string(output->track_key);
-        result += ",\"extension\":\"srt\",\"mimeType\":\"application/x-subrip\"";
+        result += output->bitmap
+            ? ",\"extension\":\"asbimg\",\"mimeType\":\"application/x-asbimg\""
+            : ",\"extension\":\"srt\",\"mimeType\":\"application/x-subrip\"";
         result += '}';
     }
 

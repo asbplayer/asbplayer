@@ -244,11 +244,24 @@ it('opens a video-only import after supported embedded tracks are discovered', a
     expect(extract).not.toHaveBeenCalled();
 });
 
-it.each(['S_HDMV/PGS', 'S_VOBSUB', undefined])(
-    'automatically opens only for supported embedded tracks (%s)',
+it.each(['S_HDMV/PGS', 'S_VOBSUB', 'S_DVBSUB'])(
+    'automatically opens for supported embedded bitmap tracks (%s)',
     async (codec) => {
         const reads: DeferredRead[] = [];
-        controller.importManualFiles([deferredVideo(reads, 'episode', codec ?? '')]);
+        controller.importManualFiles([deferredVideo(reads, 'episode', codec)]);
+        reads[0].finish();
+        await flush();
+        expect(controller.getState().picker.open).toBe(true);
+        expect(controller.getState().picker.embeddedTracks?.[0].outputFormat).toBe('asbimg');
+        expect(extract).not.toHaveBeenCalled();
+    }
+);
+
+it.each(['S_TEXT/UNKNOWN', ''])(
+    'does not automatically open for unsupported or absent embedded tracks (%s)',
+    async (codec) => {
+        const reads: DeferredRead[] = [];
+        controller.importManualFiles([deferredVideo(reads, 'episode', codec)]);
         reads[0].finish();
         await flush();
         expect(controller.getState().picker.open).toBe(false);
@@ -260,7 +273,7 @@ it.each(['S_HDMV/PGS', 'S_VOBSUB', undefined])(
             expect(embeddedTracks).toEqual([
                 expect.objectContaining({
                     trackIndex: 0,
-                    codec: codec === 'S_HDMV/PGS' ? 'hdmv_pgs_subtitle' : 'dvd_subtitle',
+                    codec,
                 }),
             ]);
             expect(embeddedTracks![0].outputFormat).toBeUndefined();
