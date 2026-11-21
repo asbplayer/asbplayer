@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, jest } from '@jest/globals';
-import type { CopyToClipboardMessage, VideoToExtensionCommand } from '@project/common';
+import type { Command, WriteClipboardMessage } from '@project/common';
 import { ASB_TOKEN_SELECTED_CLASS } from '@project/common/annotations';
 import {
     makeDictionaryTrack,
@@ -51,7 +51,7 @@ describe('SubtitleController appearance rendering', () => {
         return controller;
     };
 
-    it('copies only current, enabled text cues when the clipboard shortcut is assigned', () => {
+    it('copies only current, enabled text cues and ignores page-generated clipboard shortcuts', () => {
         const subtitleController = controllerForVideo();
         subtitleController.setSubtitleSettings(defaultSettings);
         subtitleController.subtitles = [
@@ -67,8 +67,8 @@ describe('SubtitleController appearance rendering', () => {
         const context = { synced: true, subtitleController } as unknown as Binding;
         const bindings = new KeyBindings();
         const sendMessage = jest
-            .fn<(command: VideoToExtensionCommand<CopyToClipboardMessage>) => Promise<void>>()
-            .mockResolvedValue(undefined);
+            .fn<(command: Command<WriteClipboardMessage>) => Promise<boolean>>()
+            .mockResolvedValue(true);
         const originalBrowser = Object.getOwnPropertyDescriptor(globalThis, 'browser');
         Object.defineProperty(globalThis, 'browser', { configurable: true, value: { runtime: { sendMessage } } });
 
@@ -88,10 +88,7 @@ describe('SubtitleController appearance rendering', () => {
                 timestampMs: 0,
                 paused: true,
             });
-        const copiedText = () =>
-            sendMessage.mock.calls.map(([command]) =>
-                decodeURIComponent(command.message.dataUrl.slice('data:text/plain,'.length))
-            );
+        const copiedText = () => sendMessage.mock.calls.map(([command]) => command.message.data);
 
         try {
             showSubtitles([1, 0, 2, 3]);
@@ -103,19 +100,22 @@ describe('SubtitleController appearance rendering', () => {
                 ...defaultSettings.keyBindSet,
                 copyCurrentSubtitle: { keys: 'c' },
             });
-            expect(pressCopyKey()).toBe(true);
-            expect(copiedText()).toEqual(['字幕\n次の行\nTranslation & notes']);
-            expect(sendMessage.mock.calls[0][0].message.command).toBe('copy-to-clipboard');
+            expect(pressCopyKey()).toBe(false);
+            expect(copiedText()).toEqual([]);
+
+            expect(subtitleController.copyCurrentSubtitle()).toBe(true);
+            expect(copiedText()).toEqual(['字幕\n次の行\n\nTranslation & notes']);
+            expect(sendMessage.mock.calls[0][0].message.command).toBe('clipboard-write');
 
             subtitleController.disabledSubtitleTracks[1] = true;
             subtitleController.refreshShowingSubtitles();
-            expect(pressCopyKey()).toBe(true);
-            expect(copiedText()).toEqual(['字幕\n次の行\nTranslation & notes', '字幕\n次の行']);
+            expect(subtitleController.copyCurrentSubtitle()).toBe(true);
+            expect(copiedText()).toEqual(['字幕\n次の行\n\nTranslation & notes', '字幕\n次の行']);
 
             showSubtitles([2, 3]);
-            expect(pressCopyKey()).toBe(false);
+            expect(subtitleController.copyCurrentSubtitle()).toBe(false);
             showSubtitles([]);
-            expect(pressCopyKey()).toBe(false);
+            expect(subtitleController.copyCurrentSubtitle()).toBe(false);
 
             showSubtitles([0]);
             bindings.setKeyBindSet(context, defaultSettings.keyBindSet);
@@ -123,6 +123,51 @@ describe('SubtitleController appearance rendering', () => {
             expect(copiedText()).toHaveLength(2);
         } finally {
             bindings.unbind();
+            if (originalBrowser) Object.defineProperty(globalThis, 'browser', originalBrowser);
+            else Reflect.deleteProperty(globalThis, 'browser');
+        }
+    });
+
+    it('auto-copies eligible visible cues while the video document is unfocused only when enabled', () => {
+        const controller = controllerForVideo();
+        controller.setSubtitleSettings(defaultSettings);
+        controller.subtitles = [
+            makeSubtitle({ index: 0, track: 0, text: 'First cue', originalText: 'First cue' }),
+            makeSubtitle({ index: 1, track: 0, text: 'Second cue', originalText: 'Second cue' }),
+            makeSubtitle({ index: 2, track: 1, text: 'Not eligible', originalText: 'Not eligible' }),
+            makeSubtitle({ index: 3, track: 0, text: 'Hidden cue', originalText: 'Hidden cue' }),
+        ];
+        jest.spyOn(document, 'hasFocus').mockReturnValue(false);
+        const sendMessage = jest.fn<(command: Command<WriteClipboardMessage>) => Promise<boolean>>();
+        sendMessage.mockResolvedValue(true);
+        const originalBrowser = Object.getOwnPropertyDescriptor(globalThis, 'browser');
+        Object.defineProperty(globalThis, 'browser', { configurable: true, value: { runtime: { sendMessage } } });
+
+        const showSubtitles = (showingSubtitleIndexes: number[]) =>
+            controller.playbackStateChanged({
+                showingSubtitleIndexes,
+                hiddenSubtitleIndexes: [3],
+                timestampMs: 0,
+                paused: false,
+            });
+
+        try {
+            showSubtitles([0]);
+            expect(sendMessage).not.toHaveBeenCalled();
+
+            controller.autoCopyCurrentSubtitle = true;
+            showSubtitles([]);
+            showSubtitles([2, 3]);
+            expect(sendMessage).not.toHaveBeenCalled();
+
+            showSubtitles([0]);
+            showSubtitles([0, 1, 2, 3]);
+            showSubtitles([0, 1, 2, 3]);
+            expect(sendMessage.mock.calls.map(([request]) => request.message.data)).toEqual([
+                'First cue',
+                'First cue\nSecond cue',
+            ]);
+        } finally {
             if (originalBrowser) Object.defineProperty(globalThis, 'browser', originalBrowser);
             else Reflect.deleteProperty(globalThis, 'browser');
         }

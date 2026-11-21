@@ -61,8 +61,10 @@ import type {
     SidePanelLocation,
     AckTabsMessage,
     BrowserFeatures,
+    WriteClipboardMessage,
 } from '@project/common';
 import { asbError } from '@project/common/util/log';
+import type { ClipboardFallback } from '@project/common/util/clipboard';
 import { buildSubtitleTracks } from '@project/common/util';
 import type { DictionaryStatisticsSnapshot } from '@project/common/dictionary-statistics';
 import type {
@@ -204,6 +206,10 @@ export default class ChromeExtension {
         };
 
         window.addEventListener('message', this.windowEventListener);
+    }
+
+    get supportsBackgroundClipboardWrite() {
+        return this.installed && gte(this.version, '1.24.0');
     }
 
     get supportsProgressiveSubtitles() {
@@ -369,6 +375,21 @@ export default class ChromeExtension {
 
     get id() {
         return id;
+    }
+
+    private readonly _backgroundClipboardWrite: ClipboardFallback = async (data) => {
+        const messageId = uuidv4();
+        const command: AsbPlayerCommand<WriteClipboardMessage & MessageWithId> = {
+            sender: 'asbplayerv2',
+            message: { command: 'clipboard-write', messageId, data },
+        };
+        const response = this._createResponsePromise<boolean>(messageId);
+        window.postMessage(command, window.origin);
+        if ((await response) !== true) throw new Error('Extension could not write to the clipboard');
+    };
+
+    get clipboardWriteFallback(): ClipboardFallback | undefined {
+        return this.supportsBackgroundClipboardWrite ? this._backgroundClipboardWrite : undefined;
     }
 
     setSubtitleTracks(subtitles: { track: number }[], subtitleFileNames: string[]) {

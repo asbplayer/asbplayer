@@ -2,6 +2,8 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { makeStyles } from '@mui/styles';
 import { timeDurationDisplay } from '@project/common/util';
+import { clipboardWrite } from '@project/common/util/clipboard';
+import { asbError } from '@project/common/util/log';
 import Button from '@mui/material/Button';
 import Paper from '@mui/material/Paper';
 import ListItemSecondaryAction from '@mui/material/ListItemSecondaryAction';
@@ -155,7 +157,7 @@ function Menu({
 }: MenuProps) {
     const { t } = useTranslation();
     const handleCopy = useCallback(() => {
-        void navigator.clipboard.writeText(item.subtitle.text);
+        void clipboardWrite(item.subtitle.text).catch((error) => asbError('app/clipboard', error));
         onClose();
     }, [item, onClose]);
 

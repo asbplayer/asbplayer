@@ -1,7 +1,6 @@
 import type { SubtitleSourceState } from '@project/common/subtitle-reader/subtitle-stream';
 import { diffCues, sameSubtitleAppearance, subtitleKey } from '@project/common/subtitle-reader/subtitle-stream';
 import type {
-    CopyToClipboardMessage,
     OffsetFromVideoMessage,
     SubtitlesUpdatedFromVideoMessage,
     SubtitleModel,
@@ -12,7 +11,6 @@ import type {
     PlaybackState,
 } from '@project/common';
 import { SubtitleHtml } from '@project/common';
-import { asbError } from '@project/common/util/log';
 import type {
     AutoCopyableTracks,
     DictionaryTrack,
@@ -25,7 +23,6 @@ import type {
 import {
     allTextSubtitleSettings,
     calculateAutoCopyableTracksValue,
-    isTrackAutoCopyable,
     tokenAnnotationStyleValues,
 } from '@project/common/settings';
 import type { SubtitleCollectionOptions } from '@project/common/subtitle-collection';
@@ -47,6 +44,7 @@ import type { RestorableTokenSelection, SelectTokenInRootOptions } from '@projec
 import type { TokenSelectionLocation } from '@project/common/annotations/token-navigation';
 import {
     arrayEquals,
+    autoCopySubtitleText,
     computeStyleString,
     copySubtitleText,
     enabledSubtitlesInDisplayOrder,
@@ -60,6 +58,7 @@ import { CachingElementOverlay, OffsetAnchor } from '@project/extension/src/serv
 import { v4 as uuidv4 } from 'uuid';
 import type { DictionaryProvider } from '@project/common/dictionary-db';
 import type Binding from '@/services/binding';
+import { extensionClipboardFallback } from '@/services/clipboard';
 
 const BOUNDING_BOX_PADDING = 25;
 
@@ -672,37 +671,17 @@ export default class SubtitleController {
         this.unblurredSubtitleTracks = {};
     }
 
-    private _autoCopyToClipboard(subtitles: SubtitleModel[]) {
-        if (this.autoCopyCurrentSubtitle && subtitles.length > 0 && document.hasFocus()) {
-            const text = subtitles
-                .filter((s) => isTrackAutoCopyable(this.autoCopyableTracks, s.track))
-                .map((s) => s.text)
-                .filter((text) => text !== '')
-                .join('\n');
-
-            if (text) void this._writeTextToClipboard(text).catch((error) => asbError('video/clipboard', error));
-        }
+    private _autoCopyToClipboard(subtitles: readonly SubtitleModel[]) {
+        if (!this.autoCopyCurrentSubtitle || !subtitles.length) return;
+        autoCopySubtitleText(subtitles, this.autoCopyableTracks, extensionClipboardFallback, 'video/clipboard');
     }
 
     /** @returns whether non-empty subtitle text was copied. */
     copyCurrentSubtitle(): boolean {
         return copySubtitleText(
             enabledSubtitlesInDisplayOrder(this.timelineShowingSubtitles, this.disabledSubtitleTracks),
-            (text) => this._writeTextToClipboard(text)
+            extensionClipboardFallback
         );
-    }
-
-    private async _writeTextToClipboard(text: string) {
-        const command: VideoToExtensionCommand<CopyToClipboardMessage> = {
-            sender: 'asbplayer-video',
-            message: {
-                command: 'copy-to-clipboard',
-                dataUrl: `data:text/plain,${encodeURIComponent(text)}`,
-            },
-            src: this.context.registeredVideoSrc,
-        };
-
-        await browser.runtime.sendMessage(command);
     }
 
     private _buildSubtitlesHtml(subtitles: readonly IndexedSubtitleModel[]) {

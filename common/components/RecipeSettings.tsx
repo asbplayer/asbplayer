@@ -43,6 +43,8 @@ import RecipeSelect from '@project/common/components/RecipeSelect';
 import RecipeSummary from '@project/common/components/RecipeSummary';
 import NoWrapButton from '@project/common/components/NoWrapButton';
 import useConfirmation from '@project/common/hooks/use-confirmation';
+import { clipboardWrite } from '@project/common/util/clipboard';
+import { asbError } from '@project/common/util/log';
 import { playbackModeLabelLocKey } from '@project/common/playback/controllers/playback-mode-controller';
 
 interface Props {
@@ -364,7 +366,11 @@ export default function RecipeSettings({ settings, onSettingsChanged, children }
                                     />
                                     <IconButton
                                         aria-label={t('action.copy')}
-                                        onClick={() => void navigator.clipboard.writeText(recipeImportUrl(preview))}
+                                        onClick={() =>
+                                            void clipboardWrite(recipeImportUrl(preview)).catch((error) =>
+                                                asbError('recipes/clipboard', error)
+                                            )
+                                        }
                                     >
                                         <ContentCopyIcon fontSize="small" />
                                     </IconButton>
@@ -376,7 +382,11 @@ export default function RecipeSettings({ settings, onSettingsChanged, children }
                                 <Button
                                     startIcon={<ContentCopyIcon />}
                                     sx={{ mr: 'auto' }}
-                                    onClick={() => void navigator.clipboard.writeText(JSON.stringify(preview, null, 2))}
+                                    onClick={() =>
+                                        void clipboardWrite(JSON.stringify(preview, null, 2)).catch((error) =>
+                                            asbError('recipes/clipboard', error)
+                                        )
+                                    }
                                 >
                                     {t('action.copy')}
                                 </Button>

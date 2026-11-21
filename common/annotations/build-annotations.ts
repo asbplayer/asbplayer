@@ -13,6 +13,7 @@ import {
     iterateOverStringInBlocks,
     areTokenizationsEqual,
     normalizeToken,
+    setsEqual,
 } from '@project/common/util';
 import type {
     DictionaryBuildAnkiCacheState,
@@ -633,7 +634,7 @@ export class BuildAnnotations {
         const requestedAnnotationsStartIndex = annotationsStartIndex;
         const requestedAnnotationsEndIndex = annotationsEndIndex;
         const startedAt = Date.now();
-        let tokensRefreshed: string[] = [];
+        const tokensRefreshed = new Set<string>();
         const skipTracks: number[] = [];
         let buildWasCancelled = false;
         let buildOutcome: 'completed' | 'cancelled' | 'retry' | 'skipped' = 'completed';
@@ -781,7 +782,7 @@ export class BuildAnnotations {
             if (this.refreshCache.size || this.tokensForRefresh.size) {
                 const existingIndexes = new Set(subtitlesToBuild.map((s) => s.index));
                 for (const token of this.tokensForRefresh) {
-                    tokensRefreshed.push(token);
+                    tokensRefreshed.add(token);
                     for (const index of this.tokenToIndexesCache.get(token) ?? []) this.refreshCache.add(index);
                 }
                 for (const index of this.refreshCache) {
@@ -909,7 +910,7 @@ export class BuildAnnotations {
                     BuildAnnotations.tokenCacheRefreshInterval = TOKEN_CACHE_DEFAULT_REFRESH_INTERVAL;
                 }
             }
-            if (tokensRefreshed.length && generatingStatistics) {
+            if (tokensRefreshed.size && generatingStatistics) {
                 void this.dictionaryStatistics.refreshDictionaryTokens(profile).catch((error) => {
                     asbError('annotations/statistics', 'Failed to refresh dictionary statistics:', error);
                 });
@@ -917,13 +918,13 @@ export class BuildAnnotations {
             if (this.shouldCancelBuild || skipTracks.length) {
                 buildWasCancelled = true;
                 buildOutcome = 'cancelled';
-                tokensRefreshed = [];
+                tokensRefreshed.clear();
                 updateThresholds = false;
             }
         } finally {
             if (this.tokenRequestFailedForTracks.size) {
                 buildOutcome = 'retry';
-                tokensRefreshed = [];
+                tokensRefreshed.clear();
                 updateThresholds = false;
                 for (const track of this.tokenRequestFailedForTracks) this.trackStates[track]?.resetYomitan();
                 this.tokenRequestFailedForTracks.clear();
@@ -939,11 +940,7 @@ export class BuildAnnotations {
                 this.buildUpperThreshold = annotationsEndIndex - TOKEN_CACHE_BUILD_AHEAD_THRESHOLD;
                 this.buildLowerThreshold = annotationsStartIndex; // Build whenever the user seeks backwards
             }
-            if (
-                tokensRefreshed.length &&
-                tokensRefreshed.length === this.tokensForRefresh.size &&
-                tokensRefreshed.every((token) => this.tokensForRefresh.has(token))
-            ) {
+            if (tokensRefreshed.size && setsEqual(tokensRefreshed, this.tokensForRefresh)) {
                 this.tokensForRefresh.clear();
             }
             this.shouldCancelBuild = false;
@@ -969,7 +966,7 @@ export class BuildAnnotations {
                 tokenizationAttemptCount,
                 tokenizationErrorCount,
                 tokenizationUpdateCount,
-                tokensRefreshedCount: tokensRefreshed.length,
+                tokensRefreshedCount: tokensRefreshed.size,
                 glossUpdateCounts: this.glossUpdateCounts,
                 deferredRefreshCacheSize: this.deferredRefreshCache.size,
             });
