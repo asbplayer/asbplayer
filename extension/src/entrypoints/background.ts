@@ -27,7 +27,7 @@ import OpenExtensionShortcutsHandler from '@/handlers/asbplayerv2/open-extension
 import ExtensionCommandsHandler from '@/handlers/asbplayerv2/extension-commands-handler';
 import OpenAsbplayerSettingsHandler from '@/handlers/video/open-asbplayer-settings-handler';
 import CaptureVisibleTabHandler from '@/handlers/foreground/capture-visible-tab-handler';
-import CopyToClipboardHandler from '@/handlers/video/copy-to-clipboard-handler';
+import CopyToClipboardHandler, { CopyImageToClipboardHandler } from '@/handlers/video/copy-to-clipboard-handler';
 import SettingsUpdatedHandler from '@/handlers/asbplayerv2/settings-updated-handler';
 import type {
     Command,
@@ -206,7 +206,8 @@ export default defineBackground(() => {
         new OpenStatisticsHandler(tabRegistry),
         new OpenStatisticsOverlayHandler(tabRegistry),
         new OpenAsbplayerSettingsHandler(),
-        new CopyToClipboardHandler(),
+        new CopyToClipboardHandler({ allowDevOrigin: import.meta.env.DEV }),
+        new CopyImageToClipboardHandler(),
         new EncodeMp3Handler(),
         new DictionaryHandler(dictionaryDB, tabRegistry),
         new VideoDisappearedHandler(tabRegistry),

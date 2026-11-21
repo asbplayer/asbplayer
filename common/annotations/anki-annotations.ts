@@ -1,4 +1,5 @@
 import { asbError, asbTrace, asbWarn } from '@project/common/util/log';
+import { setsEqual } from '@project/common/util';
 import type { DictionaryBuildAnkiCacheState, DictionaryBuildAnkiCacheStateError, Fetcher } from '@project/common';
 import { DictionaryBuildAnkiCacheStateErrorCode, DictionaryBuildAnkiCacheStateType } from '@project/common';
 import { Anki } from '@project/common/anki';
@@ -183,16 +184,13 @@ export class AnkiAnnotations {
     private async checkRecentlyModifiedCards(profile: string | undefined, fields: string[], decks: string[]) {
         try {
             if (!this.anki) throw new Error('Anki not initialized');
-            const cardIds = await this.anki.findRecentlyEditedOrReviewedCards(1, fields, decks); // Can't efficiently poll suspended status
+            const cardIds = new Set(await this.anki.findRecentlyEditedOrReviewedCards(1, fields, decks)); // Can't efficiently poll suspended status
             this.connectionError = false;
-            if (
-                cardIds.length === this.recentlyModifiedCardIds.size &&
-                cardIds.every((cardId) => this.recentlyModifiedCardIds.has(cardId))
-            ) {
+            if (setsEqual(cardIds, this.recentlyModifiedCardIds)) {
                 if (this.recentlyModifiedFirstCheck) this.recentlyModifiedFirstCheck = false;
                 return;
             }
-            this.recentlyModifiedCardIds = new Set(cardIds);
+            this.recentlyModifiedCardIds = cardIds;
             if (this.recentlyModifiedFirstCheck) {
                 this.recentlyModifiedFirstCheck = false;
                 return;

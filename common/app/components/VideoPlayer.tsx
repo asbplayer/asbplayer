@@ -44,6 +44,7 @@ import type {
 import {
     adjacentSubtitle,
     arrayEquals,
+    autoCopySubtitleText,
     copySubtitleText,
     enabledSubtitlesInDisplayOrder,
     seekWithNudge,
@@ -1343,18 +1344,19 @@ export default function VideoPlayer({
             }
             if (
                 showingChanged &&
-                showingSubtitles.length > 0 &&
+                showingSubtitles.length &&
                 miscSettingsRef.current.autoCopyCurrentSubtitle &&
-                document.hasFocus()
+                popOut
             ) {
-                navigator.clipboard
-                    .writeText(showingSubtitles.map((subtitle) => subtitle.text).join('\n'))
-                    .catch(() => {
-                        // ignore
-                    });
+                autoCopySubtitleText(
+                    showingSubtitles,
+                    miscSettingsRef.current.autoCopyableTracks,
+                    extension.clipboardWriteFallback,
+                    'app/clipboard'
+                );
             }
         },
-        []
+        [extension, popOut]
     );
 
     playbackStateChangedRef.current = (state) => {

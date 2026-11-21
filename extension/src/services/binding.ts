@@ -34,6 +34,8 @@ import type { SubtitleOffsetOptions } from '@project/common/playback/playback-en
 import type { RecipeShortcut } from '@project/common/key-binder/key-binder';
 
 import { asbError, asbTrace, asbWarn } from '@project/common/util/log';
+import { clipboardWrite } from '@project/common/util/clipboard';
+import { extensionClipboardFallback } from '@/services/clipboard';
 import {
     cropAndResize,
     PostMineAction,
@@ -1760,7 +1762,9 @@ export default class Binding {
         }
 
         if (this.copyToClipboardOnMine) {
-            void navigator.clipboard.writeText(subtitle.text);
+            void clipboardWrite(subtitle.text, extensionClipboardFallback).catch((error) =>
+                asbError('video/clipboard', 'Could not copy mined subtitle', error)
+            );
         }
 
         const mediaTimestamp = subtitleTimestampWithDelay(subtitle, this.imageDelay);

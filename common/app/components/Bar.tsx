@@ -28,6 +28,7 @@ import ListItemIcon from '@mui/material/ListItemIcon';
 import Popover from '@mui/material/Popover';
 import ErrorIcon from '@mui/icons-material/Error';
 import BarChartIcon from '@mui/icons-material/BarChart';
+import { clipboardWrite } from '@project/common/util/clipboard';
 
 interface BarProps {
     drawerWidth: number;
@@ -185,7 +186,7 @@ export default function Bar({
             errorString = String(lastError);
         }
 
-        await navigator.clipboard.writeText(errorString);
+        await clipboardWrite(errorString);
         onCopyLastError(errorString);
     }, [lastError, onCopyLastError]);
 

@@ -1,5 +1,6 @@
 import project from '@project/common/project';
-import { asbError, asbInfo, asbTrace } from '@project/common/util/log';
+import { asbError, asbTrace } from '@project/common/util/log';
+import { clipboardWrite, decodeClipboardPng, isClipboardText } from '@project/common/util/clipboard';
 import Binding from '@/services/binding';
 import { currentPageDelegate } from '@/services/pages';
 import VideoSelectController from '@/controllers/video-select-controller';
@@ -19,7 +20,6 @@ import { StatisticsOverlayController } from '@/controllers/statistics-overlay-co
 import { ExtensionSettingsStorage } from '@/services/extension-settings-storage';
 import { DefaultKeyBinder } from '@project/common/key-binder';
 import { incrementallyFindShadowRoots, shadowRootHosts } from '@/services/shadow-roots';
-import { isFirefoxBuild } from '@/services/build-flags';
 import { mediaSourceIdentity } from '@/pages/util';
 import { configureExtensionLogProvider } from '@/services/extension-log-provider';
 
@@ -216,35 +216,45 @@ export default defineContentScript({
                     return;
                 }
 
+                if (request.sender === 'asbplayer-background-clipboard') {
+                    // Reject messages from other extensions or from tab/content-script senders. Only the extension's
+                    // own background service worker (sender.tab === undefined) may invoke this relay.
+                    if (sender.id !== browser.runtime.id || sender.tab) return;
+
+                    if (request.message.command === 'clipboard-write') {
+                        const { data } = request.message;
+                        if (!isClipboardText(data)) {
+                            sendResponse(false);
+                            return false;
+                        }
+                        void clipboardWrite(data).then(
+                            () => sendResponse(true),
+                            (error) => {
+                                asbTrace('video/clipboard', 'Could not write clipboard data in the video tab', error);
+                                sendResponse(false);
+                            }
+                        );
+                        return true;
+                    }
+
+                    if (request.message.command === 'copy-to-clipboard') {
+                        // The Anki about:blank iframe shares the host site's origin, so host scripts could spoof its
+                        // bridge messages. Reject unfocused or non-user-activated writes to prevent silent hijacking.
+                        if (!document.hasFocus() || !navigator.userActivation.isActive) return;
+
+                        const { dataUrl } = request.message as CopyToClipboardMessage;
+                        void Promise.resolve()
+                            .then(() => clipboardWrite(decodeClipboardPng(dataUrl)))
+                            .catch((error) => asbError('video/clipboard', error));
+                    }
+                    return;
+                }
+
                 if (request.sender !== 'asbplayer-extension-to-video') {
                     return;
                 }
 
                 switch (request.message.command) {
-                    case 'copy-to-clipboard': {
-                        const copyToClipboardMessage = request.message as CopyToClipboardMessage;
-                        void fetch(copyToClipboardMessage.dataUrl)
-                            .then((response) => response.blob())
-                            .then((blob) => {
-                                if (isFirefoxBuild) {
-                                    if (blob.type.startsWith('text/plain')) {
-                                        blob.text()
-                                            .then((text) => navigator.clipboard.writeText(text))
-                                            .catch((error) => asbInfo('video/clipboard', error));
-                                    } else {
-                                        asbError(
-                                            'video/clipboard',
-                                            `Cannot write blob type ${blob.type} to clipboard on Firefox`
-                                        );
-                                    }
-                                } else {
-                                    navigator.clipboard
-                                        .write([new ClipboardItem({ [blob.type]: blob })])
-                                        .catch((error) => asbError('video/clipboard', error));
-                                }
-                            });
-                        break;
-                    }
                     case 'crop-and-resize': {
                         const cropAndResizeMessage = request.message as CropAndResizeMessage;
                         let rect = cropAndResizeMessage.rect;
