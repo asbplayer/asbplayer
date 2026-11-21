@@ -31,12 +31,9 @@ import type { AsbplayerSettings, SettingsProvider } from '@project/common/settin
 
 import type { DictionaryProvider } from '@project/common/dictionary-db';
 import { SubtitleCollection } from '@project/common/subtitle-collection';
-import {
-    bindNativeTokenSelection,
-    HoveredToken,
-    mergeSubtitleAnnotations,
-    SubtitleAnnotations,
-} from '@project/common/annotations';
+import { mergeSubtitleAnnotations, SubtitleAnnotations } from '@project/common/annotations';
+import { HoveredToken } from '@project/common/annotations/dom-hovered-token';
+import { bindNativeTokenSelection } from '@project/common/annotations/dom-native-selection';
 import type { SubtitleReader } from '@project/common/subtitle-reader';
 import type { KeyBinder } from '@project/common/key-binder';
 import { asbTrace } from '@project/common/util/log';

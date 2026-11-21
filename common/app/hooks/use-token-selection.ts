@@ -6,15 +6,17 @@ import {
     ASB_TOKEN_SELECTED_CLASS,
     ASB_TOKEN_START_ATTRIBUTE,
     ASB_TOKEN_CONTAINER_CLASS,
+} from '@project/common/annotations';
+import {
     clearTokenSelectionInRoot,
     clearAutoPauseTokenSelectionInRoot,
     currentTokenSelectionLocation,
     restorableTokenSelectionInRoot,
     selectTokenInRoot,
-} from '@project/common/annotations';
+} from '@project/common/annotations/dom-token-selection';
+import type { SelectTokenInRootOptions } from '@project/common/annotations/dom-token-selection';
 import { findAdjacentTokenJumpMatch } from '@project/common/annotations/token-navigation';
 import type { TokenJumpMatch, TokenSelectionLocation } from '@project/common/annotations/token-navigation';
-import type { SelectTokenInRootOptions } from '@project/common/annotations/dom-annotations';
 import type { SeekableTracks, TokenJumpTarget } from '@project/common/settings';
 import { retryWithAnimationFrame } from '@project/common/util';
 import { asbTrace } from '@project/common/util/log';

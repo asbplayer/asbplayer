@@ -22,7 +22,7 @@ import { incrementallyFindShadowRoots, shadowRootHosts } from '@/services/shadow
 import { isFirefoxBuild } from '@/services/build-flags';
 import { mediaSourceIdentity } from '@/pages/util';
 import { configureExtensionLogProvider } from '@/services/extension-log-provider';
-import { bindNativeTokenSelection } from '@project/common/annotations';
+import { bindNativeTokenSelection } from '@project/common/annotations/dom-native-selection';
 
 import './video.css';
 
