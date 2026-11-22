@@ -1,0 +1,160 @@
+{
+    "terms": [
+        {
+            "term": "Anki",
+            "description": "Spaced-repetition flashcard program that asbplayer exports cards to. Do not translate."
+        },
+        {
+            "term": "Anki Export",
+            "description": "The dialog where an Anki card is configured before being exported."
+        },
+        {
+            "term": "AnkiConnect",
+            "description": "Anki add-on that lets asbplayer communicate with a running Anki instance. Do not translate."
+        },
+        {
+            "term": "Annotation",
+            "description": "On-screen details attached to subtitle words: color, reading, frequency, definition and pitch accent."
+        },
+        {
+            "term": "asbplayer",
+            "description": "The name of this app. Do not translate."
+        },
+        {
+            "term": "Auto-pause",
+            "description": "Playback mode that pauses playback automatically at each subtitle."
+        },
+        {
+            "term": "Card",
+            "description": "In this app, always an Anki flashcard."
+        },
+        {
+            "term": "Comprehension",
+            "description": "Estimated percentage of the media's unique words that the user knows, weighted by word maturity and how often each word occurs."
+        },
+        {
+            "term": "Condensed",
+            "description": "Playback mode that skips over sections of the video without subtitles."
+        },
+        {
+            "term": "Deck",
+            "description": "In Anki, a named collection of flashcards. Use Anki's own localization if one exists."
+        },
+        {
+            "term": "Fast-forward",
+            "description": "Playback mode that plays at an increased rate, except for selected subtitles which play at normal rate."
+        },
+        {
+            "term": "Frequency",
+            "description": "How common a word is, based on its rank in the user's frequency dictionaries."
+        },
+        {
+            "term": "Graduated",
+            "description": "Word maturity between Learning and Young: the word's Anki cards have completed Anki's learning stage."
+        },
+        {
+            "term": "i+1",
+            "description": "Language-learning jargon for a sentence with exactly one unknown word, making it ideal to mine. Keep as-is."
+        },
+        {
+            "term": "Ignored",
+            "description": "Word state that deliberately excludes a word from known-status word matching and from comprehension statistics."
+        },
+        {
+            "term": "Jimaku",
+            "description": "Japanese subtitle repository used by the online subtitle search. Do not translate."
+        },
+        {
+            "term": "Known words",
+            "description": "Words with a maturity of Learning or above."
+        },
+        {
+            "term": "Lemma",
+            "description": "A word's dictionary form; for example, the lemma of \"goes\" is \"go\"."
+        },
+        {
+            "term": "Mature",
+            "description": "Highest word maturity: a word whose Anki cards have been reviewed successfully over a long time."
+        },
+        {
+            "term": "Maturity",
+            "description": "How well a word is known: one of Uncollected, Unknown, Learning, Graduated, Young or Mature, in increasing order."
+        },
+        {
+            "term": "MeCab",
+            "description": "Parser used by Yomitan to segment Japanese text into words. Do not translate."
+        },
+        {
+            "term": "Mine",
+            "description": "To create a flashcard from the current subtitle and its media. The noun form is \"mining\"."
+        },
+        {
+            "term": "Note type",
+            "description": "In Anki, the template that defines the fields and layout of new notes. Use Anki's own localization if one exists."
+        },
+        {
+            "term": "Playback mode",
+            "description": "A way of playing the video: Normal, Auto-pause, Condensed, Fast-forward or Repeat."
+        },
+        {
+            "term": "Profile",
+            "description": "A saved, switchable set of settings."
+        },
+        {
+            "term": "Recipe",
+            "description": "A named, shareable combination of playback modes and settings for a learning activity."
+        },
+        {
+            "term": "Regex",
+            "description": "Regular expression, a text-matching pattern. Commonly left untranslated."
+        },
+        {
+            "term": "Repeat",
+            "description": "Playback mode that plays each subtitle a configured number of times."
+        },
+        {
+            "term": "Screenshot",
+            "description": "Image of the video captured at the current subtitle, used as a card's image."
+        },
+        {
+            "term": "Side panel",
+            "description": "The browser's built-in side panel feature; use the browser's own localization."
+        },
+        {
+            "term": "Streaming video",
+            "description": "Video played on a website and synced with asbplayer via the extension, as opposed to a video file opened in the app."
+        },
+        {
+            "term": "Subtitle offset",
+            "description": "Time shift applied to subtitle timestamps so that they line up with the video."
+        },
+        {
+            "term": "Track",
+            "description": "One of the loaded subtitle streams, labeled \"Track 1\", \"Track 2\" or \"Track 3\"."
+        },
+        {
+            "term": "Uncollected",
+            "description": "Lowest word maturity: the word is not in any of the user's word databases."
+        },
+        {
+            "term": "Unknown",
+            "description": "Word maturity between Uncollected and Learning: the word is not being learned."
+        },
+        {
+            "term": "WaniKani",
+            "description": "Japanese vocabulary learning service that asbplayer can collect known words from. Do not translate."
+        },
+        {
+            "term": "Watch",
+            "description": "One complete viewing pass of the media, as in \"Current watch\" and \"Rewatch\"."
+        },
+        {
+            "term": "Word database",
+            "description": "asbplayer's collection of the user's words, built from Anki, WaniKani and local imports."
+        },
+        {
+            "term": "Yomitan",
+            "description": "Browser dictionary extension used for word lookups. Do not translate."
+        }
+    ]
+}

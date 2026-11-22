@@ -6,6 +6,8 @@ if [ -z "${CROWDIN_API_TOKEN:-}" ]; then
     exit 1
 fi
 
+export CROWDIN_PROJECT_ID="$(jq -r '.crowdin.projectId' "$(dirname "$0")/../../project.json")"
+
 node loc-xliff.js
 crowdin --verbose pull -T "$CROWDIN_API_TOKEN"
 node xliff-loc.js
