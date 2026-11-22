@@ -4,44 +4,44 @@ sidebar_position: 1
 
 import project from '@site/src/project';
 
-# What is asbplayer? {#what-is-asbplayer}
+# asbplayer란? {#what-is-asbplayer}
 
-## A language-learning assistant {#a-language-learning-assistant}
+## 언어 학습 도우미 {#a-language-learning-assistant}
 
-**asbplayer** is a language-learning assistant that makes it easier to learn languages through subtitled videos. Its original author created for himself to help with learning Japanese using [AJATT](https://tatsumoto-ren.github.io/blog/whats-ajatt.html). It was then popularized in the [Refold](https://refold.la/) Japanese-learning community as a **sentence mining** and **subtitle** tool. However, asbplayer's feature set is always growing. With asbplayer you can:
+**asbplayer**는 자막이 있는 동영상을 통해 언어를 더 쉽게 배울 수 있도록 돕는 언어 학습 도우미입니다. 최초 개발자는 [AJATT](https://tatsumoto-ren.github.io/blog/whats-ajatt.html) 방식으로 일본어를 공부하기 위해 직접 사용하려고 asbplayer를 만들었습니다. 이후 [Refold](https://refold.la/) 일본어 학습 커뮤니티에서 **문장 마이닝** 및 **자막** 도구로 널리 알려졌습니다. asbplayer에는 계속해서 기능이 추가되고 있습니다. asbplayer로 다음을 할 수 있습니다.
 
-- **Easily create high-quality, multimedia flashcards** out of subtitled videos.
-- **Load text-selectable subtitles onto most video sources**, including streaming sources. You can use **auto-detected subtitles** on popular streaming services like Netflix and YouTube, or your own **subtitle files**. A generic fallback subtitle detection algorithm allows asbplayer to detect subtitles on 85% of all other streaming services.
-- **Seek through subtitles** using a **navigable subtitle list**.
-- **Utilize customizable [keyboard shortcuts](./reference/settings.md#keyboard-shortcuts)** to access most of asbplayer's features.
-- **Optimize language acquisition** with **playback modes** like:
-    - **Condensed playback**: Skip unsubtitled sections of video.
-    - **Fast-forward playback**: Fast-forward through unsubtitled sections of video.
-    - **Auto-pause**: Automatically pause at the beginning or end of every subtitle.
-    - **Repeat**: Automatically repeat subtitles indefinitely or for a specified number of times.
-- **Use customizable [recipes](./guides/recipes.md)** to create and import immersion presets with asbplayer's rich playback features.
-- **Annotate subtitles** with the help of tools such as [Yomitan](https://yomitan.wiki/)
-    - **Word styling** (color/underline/outline, etc.) based on a word's status (uncollected/unknown/learning, etc.) synced from Anki, WaniKani, and/or tracked locally in asbplayer.
-    - **Reading annotation** for reading displayed above each word or based on status.
-    - **Accent annotation** such as pitch accent.
-    - **Frequency annotation** for rank-based frequency displayed below each word or based on status.
-    - **Glossary annotation** for a short definition or explanation of the word.
-    - **Statistics and Comprehension** on your known words for the current media.
-    - **Adaptive Playback** that uses **playback modes** and the annotation data to optimize your learning experience.
-    - **Word browser** to manage local and view words synced from external sources.
-    - Many more features for future releases! Some planned features include:
-        - **Auto mining** on uncollected/unknown/learning words.
-        - **Rich Anki Card Creation** for generating high-quality flashcards from annotated subtitles.
-        - **Statistics and Comprehension** on your known words across media.
+* 자막이 있는 동영상으로 **고품질 멀티미디어 플래시카드를 쉽게 만듭니다**.
+* 스트리밍 동영상을 포함한 대부분의 동영상에 **텍스트 선택이 가능한 자막을 불러옵니다**. Netflix, YouTube 등 인기 스트리밍 서비스에서 **자동 감지된 자막**을 사용하거나 직접 준비한 **자막 파일**을 사용할 수 있습니다. 일반 자막 감지 알고리즘을 통해 그 밖의 스트리밍 서비스에서도 약 85%의 자막을 감지할 수 있습니다.
+* **탐색 가능한 자막 목록**을 사용해 자막 사이를 이동합니다.
+* 사용자 지정 가능한 [키보드 단축키](./reference/settings.md#keyboard-shortcuts)로 asbplayer의 대부분 기능에 접근합니다.
+* 다음과 같은 **재생 모드**로 언어 습득을 돕습니다.
+    * **압축 재생**: 자막이 없는 동영상 구간을 건너뜁니다.
+    * **빨리 감기 재생**: 자막이 없는 구간을 빨리 감습니다.
+    * **자동 일시 정지**: 각 자막의 시작이나 끝에서 자동으로 일시 정지합니다.
+    * **반복**: 자막을 무기한 또는 지정한 횟수만큼 자동으로 반복합니다.
+* 사용자 지정 가능한 [레시피](./guides/recipes.md)로 asbplayer의 다양한 재생 기능을 활용한 몰입 학습 프리셋을 만들고 가져옵니다.
+* [Yomitan](https://yomitan.wiki/) 같은 도구를 사용해 **자막에 주석을 표시합니다**.
+    * Anki, WaniKani와 동기화하거나 asbplayer에 로컬로 기록한 단어 상태(미수집, 알 수 없음, 학습 중 등)에 따라 **단어 스타일**(색상, 밑줄, 윤곽선 등)을 지정합니다.
+    * 각 단어 위에 읽는 법을 표시하거나 상태에 따라 보여 주는 **읽기 주석**을 사용합니다.
+    * 피치 악센트와 같은 **악센트 주석**을 사용합니다.
+    * 각 단어 아래에 순위 기반 빈도를 표시하거나 상태에 따라 보여 주는 **빈도 주석**을 사용합니다.
+    * 단어의 간단한 정의나 설명을 표시하는 **용어집 주석**을 사용합니다.
+    * 현재 미디어에서 알고 있는 단어의 **통계 및 이해도**를 확인합니다.
+    * **재생 모드**와 주석 데이터를 사용해 학습 경험을 최적화하는 **적응형 재생**을 사용합니다.
+    * 로컬 단어를 관리하고 외부 소스와 동기화된 단어를 확인하는 **단어 브라우저**를 사용합니다.
+    * 앞으로 더 많은 기능이 추가될 예정입니다. 계획 중인 기능은 다음과 같습니다.
+        * 미수집, 알 수 없음, 학습 중 상태의 단어를 **자동 마이닝**합니다.
+        * 주석이 달린 자막으로 고품질 플래시카드를 만드는 **고급 Anki 카드 생성** 기능을 제공합니다.
+        * 여러 미디어에서 알고 있는 단어의 **통계 및 이해도**를 확인합니다.
 
-## A website and browser extension {#a-website-and-browser-extension}
+## 웹사이트 및 브라우저 확장 프로그램 {#a-website-and-browser-extension}
 
-In order to make asbplayer as widely available as possible, asbplayer comes in two different forms, a <a href={project.urls.app}>website</a> which works with local video files, and a <a href={project.extension.chrome.storeUrl}>browser extension</a> which works with streaming video. Neither one is required to use the other - however, they work together to make the asbplayer user experience as seamless as possible.
+asbplayer를 최대한 다양한 환경에서 사용할 수 있도록, 로컬 동영상 파일에서 작동하는 <a href={project.urls.app}>웹사이트</a>와 스트리밍 동영상에서 작동하는 <a href={project.extension.chrome.storeUrl}>브라우저 확장 프로그램</a>을 제공합니다. 어느 한쪽만 사용해도 되지만, 두 가지를 함께 사용하면 더욱 원활하게 asbplayer를 이용할 수 있습니다.
 
-## Why use asbplayer? {#why-use-asbplayer}
+## asbplayer를 사용하는 이유 {#why-use-asbplayer}
 
-- You want a way to watch videos with text-selectable subtitles.
-- You want a way to create high-quality, multimedia flashcards out of video and subtitle sources.
-- The video sources you are using are obscure and not supported by other similar tools.
-- You are somewhat tools-savvy. You will most likely need to combine asbplayer with other tools (like a dictionary app) for a complete language-learning toolset.
-- You don't want to pay money. asbplayer is free to use and open-source.
+- 텍스트를 선택할 수 있는 자막으로 동영상을 보고 싶습니다.
+- 동영상과 자막으로 고품질 멀티미디어 플래시카드를 만들고 싶습니다.
+- 사용 중인 동영상 소스가 잘 알려지지 않아 다른 유사 도구에서 지원되지 않습니다.
+- 도구 사용에 익숙하며, 완전한 언어 학습 환경을 위해 asbplayer를 사전 앱 등 다른 도구와 함께 사용할 수 있습니다.
+- 비용을 지불하고 싶지 않습니다. asbplayer는 무료 오픈 소스입니다.

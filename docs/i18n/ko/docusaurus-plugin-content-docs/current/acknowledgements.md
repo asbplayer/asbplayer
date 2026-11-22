@@ -4,13 +4,13 @@ sidebar_position: 7
 
 import project from '@site/src/project';
 
-# Acknowledgements {#acknowledgements}
+# 감사의 말 {#acknowledgements}
 
-asbplayer would not be what it is today without the community around it. We thank all the people who have used and benefited from asbplayer, who have advocated for it, suggested features, reported bugs, and made contributions.
+커뮤니티가 없었다면 지금의 asbplayer도 없었을 것입니다. asbplayer를 사용하고 도움을 받은 모든 분, asbplayer를 널리 알려 주신 분, 기능을 제안하고 버그를 신고해 주신 분, 기여해 주신 모든 분께 감사드립니다.
 
-We epecially acknowledge the wonderful humans below.
+아래의 멋진 분들께 특별히 감사드립니다.
 
-## Contributors {#contributors}
+## 기여자 {#contributors}
 
 [@Renji-XD](https://www.github.com/Renji-XD),
 [@MatiasIslaA](https://www.github.com/MatiasIslaA),
@@ -79,30 +79,30 @@ We epecially acknowledge the wonderful humans below.
 [@joaquinmuzzi](https://github.com/joaquinmuzzi),
 [@mvanhorn](https://github.com/mvanhorn)
 
-## Translators {#translators}
+## 번역자 {#translators}
 
-**Mana Tsutsumi** (Japanese, initial translation),
-**kasader** (Japanese),
-**Kai Böse** (German),
-**Triline**, **[@nekorushi](https://github.com/nekorushi)** (Polish),
-**NeverWinterSwor** (Simplified Chinese),
-**[@AkihaZhang](https://github.com/AkihaZhang)** (Simplified Chinese),
-**senorli** (Simplified Chinese),
-**Yagxter**, **[@chatterine](https://github.com/chatterine)** (Brazilian Portuguese),
-**Leo Gonzalez** (Spanish),
-**[@NovaKing007](https://github.com/NovaKing007)** (Spanish),
-**Yuri ([@ganqqwerty](https://github.com/ganqqwerty))** (Russian),
-**Kellen (kputuhuk)** (Russian),
-**Vladislav Kochetkov (vakochetkov)** (Russian),
-**[@825i](https://github.com/825i)** (Finnish),
-**[@Jaybird1291](https://github.com/jaybird1291)** (French),
-**Tigerbabe aka Gyaru Jinsei Juku** (Korean),
-**[@yaaacha](https://github.com/yaaacha)** (Indonesian),
-**[@NeriSal](https://github.com/nerisal)** (Italian)
+**Mana Tsutsumi** (일본어, 최초 번역),
+**kasader** (일본어),
+**Kai Böse** (독일어),
+**Triline**, **[@nekorushi](https://github.com/nekorushi)** (폴란드어),
+**NeverWinterSwor** (중국어 간체),
+**[@AkihaZhang](https://github.com/AkihaZhang)** (중국어 간체),
+**senorli** (중국어 간체),
+**Yagxter**, **[@chatterine](https://github.com/chatterine)** (브라질 포르투갈어),
+**Leo Gonzalez** (스페인어),
+**[@NovaKing007](https://github.com/NovaKing007)** (스페인어),
+**Yuri ([@ganqqwerty](https://github.com/ganqqwerty))** (러시아어),
+**Kellen (kputuhuk)** (러시아어),
+**Vladislav Kochetkov (vakochetkov)** (러시아어),
+**[@825i](https://github.com/825i)** (핀란드어),
+**[@Jaybird1291](https://github.com/jaybird1291)** (프랑스어),
+**Tigerbabe aka Gyaru Jinsei Juku** (한국어),
+**[@yaaacha](https://github.com/yaaacha)** (인도네시아어),
+**[@NeriSal](https://github.com/nerisal)** (이탈리아어)
 
-If you are a non-English native, and would like to help translate asbplayer, join the [Crowdin project](https://crowdin.com/project/asbplayer). If your language isn't there, feel free to create an issue on the <a href={`${project.urls.repo}/issues`}>issues page</a>.
+영어가 모국어가 아니며 asbplayer 번역에 참여하고 싶다면 [Crowdin 프로젝트](https://crowdin.com/project/asbplayer)에 참여해 주세요. 사용 언어가 목록에 없다면 <a href={`${project.urls.repo}/issues`}>이슈 페이지</a>에서 이슈를 열어 주세요.
 
-## Sponsors {#sponsors}
+## 후원자 {#sponsors}
 
 [@vivekchoksi](https://www.github.com/vivekchoksi),
 [@nzarbayezid](https://www.github.com/nzarbayezid),
@@ -153,4 +153,4 @@ marcman3001,
 shiki,
 kansha-gratitude
 
-and those who have donated privately.
+비공개로 기부해 주신 분들께도 감사드립니다.

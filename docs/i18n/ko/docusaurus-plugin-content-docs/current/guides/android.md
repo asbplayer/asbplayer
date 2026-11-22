@@ -6,43 +6,43 @@ import project from '@site/src/project';
 
 # Android {#android}
 
-While the UX is worse, it's possible to use asbplayer on Android devices.
+사용 환경은 다소 불편하지만 Android 기기에서도 asbplayer를 사용할 수 있습니다.
 
-## Website {#website}
+## 웹사이트 {#website}
 
-The website can be used as-is. The **Overlay UI** will be displayed instead of the default, desktop-optimized video controls.
+웹사이트는 별도 설정 없이 사용할 수 있습니다. 기본 데스크톱용 동영상 컨트롤 대신 **오버레이 UI**가 표시됩니다.
 
-### Add to home screen {#add-to-home-screen}
+### 홈 화면에 추가 {#add-to-home-screen}
 
-As a progressive web app, the website can be added to the home screen of your Android device. From the browser menu, tap "add to home screen."
+웹사이트는 프로그레시브 웹 앱이므로 Android 기기의 홈 화면에 추가할 수 있습니다. 브라우저 메뉴에서 "홈 화면에 추가"를 탭합니다.
 
-## Extension {#extension}
+## 확장 프로그램 {#extension}
 
 :::warning
-**Many features are missing**: the **side panel**, **screenshots**, and the **WebSocket interface**. See the [compatibility](../compatibility.md#browsers-and-features) section for a table of supported and unsupported features on each browser.
+**여러 기능을 사용할 수 없습니다**: **사이드 패널**, **스크린샷**, **WebSocket 인터페이스**가 지원되지 않습니다. 브라우저별 지원 여부는 [호환성](../compatibility.md#browsers-and-features) 섹션의 표를 참고하세요.
 :::
 
-As with the website, the primary way to interact with asbplayer extension is through the **Overlay UI**. The side panel is missing, so instead **subtitles are loaded by selecting the asbplayer button from the browser's extension menu.**. Using a (bluetooth) keyboard is not necessary but can be very useful for those who prefer to use the [keyboard shortcuts](../reference/settings.md#keyboard-shortcuts) with the extension.
+웹사이트와 마찬가지로 확장 프로그램에서는 주로 **오버레이 UI**를 사용합니다. 사이드 패널이 없으므로 브라우저의 확장 프로그램 메뉴에서 asbplayer 버튼을 선택해 **자막을 불러옵니다**. 키보드 사용은 필수가 아니지만, 확장 프로그램에서 [키보드 단축키](../reference/settings.md#keyboard-shortcuts)를 사용하려면 (Bluetooth) 키보드가 유용합니다.
 
-Below are Android browsers where asbplayer can be installed.
+asbplayer를 설치할 수 있는 Android 브라우저는 다음과 같습니다.
 
 ### Firefox for Android {#firefox-for-android}
 
-Install asbplayer from the <a href={project.extension.firefoxAndroid.storeUrl}>AMO page</a>. Firefox for Android suffers from the same limitations as Firefox - it's not possible to record audio from DRM-protected streams.
+<a href={project.extension.firefoxAndroid.storeUrl}>AMO 페이지</a>에서 asbplayer를 설치합니다. Firefox for Android는 Firefox와 같은 제한이 있어 DRM으로 보호된 스트림에서는 오디오를 녹음할 수 없습니다.
 
 ### Edge Canary {#edge-canary}
 
-Edge Canary is another Chromium-based mobile browser that can run extensions. As of this writing, asbplayer on Edge Canary does not support audio recording.
-To install asbplayer on Edge Canary:
+Edge Canary는 확장 프로그램을 실행할 수 있는 또 다른 Chromium 기반 모바일 브라우저입니다. 현재 Edge Canary용 asbplayer에서는 오디오 녹음을 지원하지 않습니다.
+Edge Canary에 asbplayer를 설치하려면 다음 단계를 따릅니다.
 
 1. Download the asbplayer `crx` file from the <a href={`${project.urls.repo}/releases/latest`}>releases page</a>.
-2. If not already, enable developer mode from the Edge Canary settings by going to "about Microsoft Edge" and tapping on the build version string several times.
-3. From **Developer Options** tap **Extension install by crx** and select the `crx` file you just downloaded.
+2. 아직 사용 설정하지 않았다면 Edge Canary 설정에서 "Microsoft Edge 정보"로 이동한 다음 빌드 버전 문자열을 여러 번 탭해 개발자 모드를 사용 설정합니다.
+3. **개발자 옵션**에서 **CRX로 확장 프로그램 설치**를 탭하고 방금 다운로드한 `crx` 파일을 선택합니다.
 
-### Kiwi Browser (discontinued) {#kiwi-browser-discontinued}
+### Kiwi Browser (개발 중단) {#kiwi-browser-discontinued}
 
-Kiwi Browser is a Chromium-based mobile browser that can run extensions. However, it's development has been discontinued and the only way to install it is from the [GitHub page](https://github.com/kiwibrowser/src.next/releases). Once Kiwi Browser is installed, asbplayer can be installed from the Chrome <a href={project.extension.chrome.storeUrl}>web store</a>.
+Kiwi Browser는 확장 프로그램을 실행할 수 있는 Chromium 기반 모바일 브라우저입니다. 다만 개발이 중단되어 [GitHub 페이지](https://github.com/kiwibrowser/src.next/releases)에서만 설치할 수 있습니다. Kiwi Browser를 설치한 다음 Chrome <a href={project.extension.chrome.storeUrl}>웹 스토어</a>에서 asbplayer를 설치할 수 있습니다.
 
-## Anki integration {#anki-integration}
+## Anki 연동 {#anki-integration}
 
-Install [AnkiConnect Android](https://github.com/KamWithK/AnkiconnectAndroid) for Anki integration.
+Anki와 연동하려면 [AnkiConnect Android](https://github.com/KamWithK/AnkiconnectAndroid)를 설치합니다.
