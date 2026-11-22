@@ -7,15 +7,15 @@ import CodeBlock from '@theme/CodeBlock';
 
 import NoteAddIcon from '@site/src/components/NoteAddIcon';
 
-# Mining subtitles {#mining-subtitles}
+# Menambang takarir {#mining-subtitles}
 
-**Sentence mining** is the act of creating flashcards out of sentences. asbplayer allows you to create high-quality sentence flashcards by combining video, audio, and subtitles into a single card. asbplayer integrates with **Anki**, a popular flashcard application.
+**Menambang kalimat** adalah kegiatan membuat kartu flash dari kalimat. asbplayer membantu Anda membuat kartu kalimat berkualitas tinggi dengan menggabungkan video, audio, dan takarir ke dalam satu kartu. asbplayer terintegrasi dengan **Anki**, aplikasi kartu flash yang populer.
 
-## Setup Anki {#setup-anki}
+## Menyiapkan Anki {#setup-anki}
 
-1. Install [Anki](https://apps.ankiweb.net/).
-2. Add [AnkiConnect](https://ankiweb.net/shared/info/2055492159) to Anki.
-3. If mining from video files, add <code>{appOrigin}</code> to the `webCorsOriginList` in AnkiConnect's settings:
+1. Pasang [Anki](https://apps.ankiweb.net/).
+2. Tambahkan [AnkiConnect](https://ankiweb.net/shared/info/2055492159) ke Anki.
+3. Jika menambang dari berkas video, tambahkan <code>{appOrigin}</code> ke `webCorsOriginList` dalam pengaturan AnkiConnect:
 
    <CodeBlock language="json">{JSON.stringify({
      apiKey: null,
@@ -26,25 +26,25 @@ import NoteAddIcon from '@site/src/components/NoteAddIcon';
      webCorsOriginList: [appOrigin],
    }, null, 2)}</CodeBlock>
 
-4. Add a **Deck**.
-5. Add a **Note Type**.
-   We encourage you to create your own note type or use a pre-made one. But if you'd like to just get started follow the steps below to create a basic note type:
-   1. Click Tools → Manage Note Types.
-   2. Add a "Basic" note type.
-   3. Configure **Fields**:
-      - Sentence
-      - Word
-      - Definition
-      - Image
+4. Tambahkan sebuah **Deck**.
+5. Tambahkan sebuah **Note type**.
+   Sebaiknya buat jenis catatan sendiri atau gunakan yang sudah tersedia. Jika ingin langsung mulai, ikuti langkah berikut untuk membuat jenis catatan dasar:
+   1. Klik Alat → Kelola Jenis Catatan.
+   2. Tambahkan jenis catatan "Basic".
+   3. Atur **Kolom**:
+      - Kalimat
+      - Kata
+      - Definisi
+      - Gambar
       - Audio
-      - Source
+      - Sumber
       - URL
-   4. Configure **Card**:
-      - Front:
+   4. Atur **Kartu**:
+      - Depan:
         ```
         {{Sentence}}
         ```
-      - Back:
+      - Belakang:
         ```
         {{FrontSide}}
         <hr id=answer>
@@ -61,21 +61,21 @@ import NoteAddIcon from '@site/src/components/NoteAddIcon';
         {{URL}}
         ```
 
-## Configure asbplayer {#configure-asbplayer}
+## Mengonfigurasi asbplayer {#configure-asbplayer}
 
-1. Open <a href={new URL('?view=settings', project.urls.app).href}>asbplayer's settings</a>.
-2. Select the **Deck** and **Note Type** you just created.
-3. For each of the **Sentence**, **Definition**, **Word**, **Audio**, **Image**, **Source**, and **URL** fields, select the corresponding field in the note type.
+1. Buka <a href={new URL('?view=settings', project.urls.app).href}>pengaturan asbplayer</a>.
+2. Pilih **Deck** dan **Note type** yang baru saja Anda buat.
+3. Untuk setiap kolom **Sentence**, **Definition**, **Word**, **Audio**, **Image**, **Source**, dan **URL**, pilih kolom yang sesuai pada jenis catatan.
 
-## Install a dictionary app {#install-a-dictionary-app}
+## Memasang aplikasi kamus {#install-a-dictionary-app}
 
-asbplayer does not have a built-in dictionary. We recommend installing a dictionary app to make it easy to fill out the **Definition** field of cards. Below are a couple popular ones:
+asbplayer tidak memiliki kamus bawaan. Kami menyarankan Anda memasang aplikasi kamus agar lebih mudah mengisi kolom **Definition** pada kartu. Berikut beberapa pilihan populer:
 
-- [Yomitan](https://yomitan.wiki/) is a browser extension that allows you to lookup words by hovering over them. It was originally made for Japanese, but is beginning to support other languages as well.
-- [VocabSieve](https://docs.freelanguagetools.org/) is a standalone language-learning app with support for European languages.
+- [Yomitan](https://yomitan.wiki/) adalah ekstensi peramban yang memungkinkan Anda mencari kata dengan mengarahkan kursor ke kata tersebut. Awalnya dibuat untuk bahasa Jepang, tetapi kini mulai mendukung bahasa lain.
+- [VocabSieve](https://docs.freelanguagetools.org/) adalah aplikasi belajar bahasa mandiri yang mendukung bahasa-bahasa Eropa.
 
-## Mine subtitles {#mine-subtitles}
+## Menambang takarir {#mine-subtitles}
 
-1. [Load subtitles](./loading-subtitles.md) onto any video source.
-2. Click the **Mine Subtitle** <NoteAddIcon /> button .
-3. Fill out the dialog that appears and click **Export**.
+1. [Muat takarir](./loading-subtitles.md) ke sumber video mana pun.
+2. Klik tombol **Tambang Takarir** <NoteAddIcon />.
+3. Isi dialog yang muncul, lalu klik **Ekspor**.

@@ -2,10 +2,10 @@
 sidebar_position: 10
 ---
 
-# Audio track selection {#audio-track-selection}
+# Memilih trek audio {#audio-track-selection}
 
-Some video files have multiple audio tracks. On the website, an audio track selector is available when the **Experimental Web Platform features** flag is enabled from `chrome://flags` (or equivalent for the current browser).
+Beberapa berkas video memiliki beberapa trek audio. Di situs web, pemilih trek audio tersedia jika tanda **Experimental Web Platform features** diaktifkan dari `chrome://flags` (atau halaman setara pada peramban yang digunakan).
 
 :::warning
-As of this writing **Experimental Web Platform features** completely breaks the browser extension for streaming video (on some websites, maybe all). Enable this flag at your own risk.
+Saat tulisan ini dibuat, **Experimental Web Platform features** benar-benar merusak ekstensi peramban untuk video streaming (di beberapa situs, mungkin semua situs). Aktifkan tanda ini dengan risiko Anda sendiri.
 :::

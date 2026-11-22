@@ -1,14 +1,14 @@
 ---
 sidebar_position: 7
-description: Use asbplayer offline through its progressive web app support.
+description: Gunakan asbplayer secara offline melalui dukungan aplikasi web progresif.
 ---
 
 import project from '@site/src/project';
 
-# Offline Usage {#offline-usage}
+# Penggunaan offline {#offline-usage}
 
-The <a href={project.urls.app}>website</a> can be used offline thanks to PWA support via [vite-pwa](https://vite-pwa-org.netlify.app/). Updates are fetched the next time the website is accessed with an Internet connection.
+<a href={project.urls.app}>Situs web</a> dapat digunakan secara offline berkat dukungan PWA melalui [vite-pwa](https://vite-pwa-org.netlify.app/). Pembaruan akan diunduh saat situs web dibuka kembali dengan koneksi internet.
 
-## Add to home screen {#add-to-home-screen}
+## Tambahkan ke layar utama {#add-to-home-screen}
 
-As a progressive web app, the website can be added to the home screen of your Android device. From the browser menu, tap "add to home screen."
+Sebagai aplikasi web progresif, situs web dapat ditambahkan ke layar utama perangkat Android Anda. Buka menu peramban, lalu ketuk "Tambahkan ke layar utama".

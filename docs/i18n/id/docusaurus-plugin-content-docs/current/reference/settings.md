@@ -6,439 +6,439 @@ import project from '@site/src/project';
 
 import NoteAddIcon from '@site/src/components/NoteAddIcon';
 
-# Settings {#settings}
+# Pengaturan {#settings}
 
 ## <a href={new URL('?view=settings#anki-settings', project.urls.app).href}>Anki</a> {#anki}
 
-### AnkiConnect URL {#ankiconnect-url}
+### URL AnkiConnect {#ankiconnect-url}
 
-URL to the AnkiConnect server running as on addon inside Anki.
+URL server AnkiConnect yang berjalan sebagai add-on di dalam Anki.
 
-### AnkiConnect API Key {#ankiconnect-api-key}
+### Kunci API AnkiConnect {#ankiconnect-api-key}
 
-API key configured in AnkiConnect when API key protection is enabled.
+Kunci API yang dikonfigurasikan di AnkiConnect jika perlindungan kunci API diaktifkan.
 
-### Refresh Anki Card Browser after updating cards {#refresh-anki-card-browser}
+### Segarkan Penjelajah Kartu Anki setelah memperbarui kartu {#refresh-anki-card-browser}
 
-When enabled, refreshes the open Anki Card Browser after asbplayer updates a card so that its fields display their current values. This may bring the Card Browser window to the foreground. This setting is disabled by default.
+Jika diaktifkan, Penjelajah Kartu Anki yang terbuka akan disegarkan setelah asbplayer memperbarui kartu agar kolomnya menampilkan nilai terkini. Jendela Penjelajah Kartu mungkin akan muncul di depan. Pengaturan ini nonaktif secara bawaan.
 
 ### Deck {#deck}
 
-Anki deck where cards are sent.
+Deck Anki tujuan pengiriman kartu.
 
-### Note Type {#note-type}
+### Jenis catatan {#note-type}
 
-Anki note type to use for cards. A note type defines a "model" and a "view" for the cards. More specifically, a set of card fields, and an HTML template that determines how to render those fields on the card's front and back.
+Jenis catatan Anki yang digunakan untuk kartu. Jenis catatan menentukan "model" dan "tampilan" kartu, yaitu kumpulan kolom kartu dan templat HTML yang menentukan cara menampilkan kolom tersebut pada sisi depan dan belakang kartu.
 
-### Card Fields {#card-fields}
+### Kolom kartu {#card-fields}
 
-Each card field setting determines what content gets mapped to which field of the configured note type. The **field label** - Sentence, Definition, Word, Image, Audio, or URL - is the **content** - and the **field value** is the **field inside the note type**.
+Setiap pengaturan kolom kartu menentukan konten yang dipetakan ke kolom jenis catatan yang dikonfigurasikan. **Label kolom**—Sentence, Definition, Word, Image, Audio, atau URL—adalah **kontennya**, sedangkan **nilai kolom** adalah **kolom di dalam jenis catatan**.
 
-Fields will appear in the **Anki Export Dialog** in the order that they appear in the settings. The order can be changed using the **⋮ menu** → **Move Down** or **Move Up**.
+Kolom akan muncul di **Dialog Ekspor Anki** mengikuti urutannya dalam pengaturan. Urutan dapat diubah melalui **menu ⋮** → **Pindahkan ke bawah** atau **Pindahkan ke atas**.
 
-| Field                 | Content                                            |
+| Kolom                 | Konten                                            |
 | --------------------- | -------------------------------------------------- |
-| Sentence (all tracks) | All subtitles at the mined timestamp               |
-| Definition            | The user-provided word definition                  |
-| Word                  | The user-provided word                             |
-| Audio                 | Audio recorded from video source                   |
-| Image                 | Screenshot of video source                         |
-| Source                | Subtitle file or video name and timestamp          |
-| URL                   | Current URL if card was mined from streaming video |
-| Subtitle Track 1      | Subtitles from track 1 at the mined timestamp      |
-| Subtitle Track 2      | Subtitles from track 2 at the mined timestamp      |
-| Subtitle Track 3      | Subtitles from track 3 at the mined timestamp      |
-| Custom Fields         | User-provided values                               |
+| Kalimat (semua trek) | Semua takarir pada waktu yang ditambang               |
+| Definition            | Definisi kata dari pengguna                  |
+| Word                  | Kata dari pengguna                             |
+| Audio                 | Audio rekaman dari sumber video                   |
+| Image                 | Tangkapan layar sumber video                         |
+| Source                | Nama berkas takarir atau video dan penanda waktu          |
+| URL                   | URL saat ini jika kartu ditambang dari video streaming |
+| Subtitle Track 1      | Takarir trek 1 pada waktu yang ditambang      |
+| Subtitle Track 2      | Takarir trek 2 pada waktu yang ditambang      |
+| Subtitle Track 3      | Takarir trek 3 pada waktu yang ditambang      |
+| Kolom khusus         | Nilai dari pengguna                               |
 
-### Tags {#tags}
+### Tag {#tags}
 
-Default tags to supply with each card.
+Tag bawaan yang disertakan pada setiap kartu.
 
-## <a href={new URL('?view=settings#mining-settings', project.urls.app).href}>Mining</a> {#mining}
+## <a href={new URL('?view=settings#mining-settings', project.urls.app).href} >Penambangan</a> {#mining}
 
-### Mining button default action {#mining-button-default-action}
+### Tindakan bawaan tombol tambang {#mining-button-default-action}
 
-"Mining button" <NoteAddIcon/> refers to the leftmost button that appears in the **Overlay UI**, and the button that appears next to subtitles in the **Subtitle List**. This setting configures what those buttons do.
+"Tombol tambang" <NoteAddIcon/> merujuk pada tombol paling kiri di **Antarmuka Overlay** dan tombol di samping takarir pada **Daftar Takarir**. Pengaturan ini menentukan tindakan tombol tersebut.
 
-| Setting                 | Behavior                                                                                                                                                                                               |
+| Pengaturan             | Tindakan                                                                                                                                                                                               |
 | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Show Anki dialog        | Record target subtitle in mining history and show **Anki Export Dialog**                                                                                                                               |
-| Update last card        | Record target subtitle in mining history and update the last card in the configured deck with all asbplayer-provided context - all fields except the user-provided definition, word, and custom fields |
-| Show update card dialog | Record target subtitle in mining history and show the dialog for updating the last card with asbplayer-provided context                                                                                |
-| Export card             | Record target subtitle in mining history and export a card _only_ with asbplayer-provided context - all fields except the user-provided definition, word, and custom fields                            |
-| None                    | Record target subtitle in mining history                                                                                                                                                               |
+| Tampilkan dialog Anki | Simpan takarir sasaran di riwayat penambangan dan tampilkan **Dialog Ekspor Anki**                                                                                                                               |
+| Perbarui kartu terakhir | Simpan takarir sasaran di riwayat penambangan dan perbarui kartu terakhir di deck yang dikonfigurasikan dengan semua konteks dari asbplayer—semua kolom kecuali definisi, kata, dan kolom khusus yang diisi pengguna |
+| Tampilkan dialog pembaruan kartu | Simpan takarir sasaran di riwayat penambangan dan tampilkan dialog untuk memperbarui kartu terakhir dengan konteks dari asbplayer                                                                                |
+| Ekspor kartu | Simpan takarir sasaran di riwayat penambangan dan ekspor kartu _hanya_ dengan konteks dari asbplayer—semua kolom kecuali definisi, kata, dan kolom khusus yang diisi pengguna                            |
+| Tidak ada | Simpan takarir sasaran di riwayat penambangan                                                                                                                                                               |
 
-### Post-mining playback state {#post-mining-playback-state}
+### Status pemutaran setelah menambang {#post-mining-playback-state}
 
-Configures the desired playback state after triggering a mining action.
+Mengatur status pemutaran yang diinginkan setelah tindakan penambangan dijalankan.
 
-### Copy mined subtitles to clipboard {#copy-mined-subtitles-to-clipboard}
+### Salin takarir yang ditambang ke papan klip {#copy-mined-subtitles-to-clipboard}
 
-If enabled, copies the target subtitle to clipboard anytime mining action is triggered.
+Jika diaktifkan, takarir sasaran akan disalin ke papan klip setiap kali tindakan penambangan dijalankan.
 
-### Always use subtitle text for sentence field {#always-use-subtitle-text-for-sentence-field}
+### Selalu gunakan teks takarir untuk kolom kalimat {#always-use-subtitle-text-for-sentence-field}
 
-When enabled, fills the Sentence field with the mined subtitle text from all tracks, even if an external application supplies different sentence text. This is useful when [mining with Yomitan](../guides/one-click-mining.md).
+Jika diaktifkan, kolom Sentence diisi dengan teks takarir yang ditambang dari semua trek, meskipun aplikasi eksternal menyediakan teks kalimat yang berbeda. Ini berguna saat [menambang dengan Yomitan](../guides/one-click-mining.md).
 
-### When updating last card, also update image/audio for cards that have the same subtitle text" {#update-all-cards-with-the-same-subtitle-text}
+### Saat memperbarui kartu terakhir, perbarui juga gambar/audio kartu dengan teks takarir yang sama" {#update-all-cards-with-the-same-subtitle-text}
 
-When enabled, the **Update last card** mining action also updates the audio and image fields on consecutively created notes from the same subtitle line. Each preceding note keeps its sentence, word, definition, and custom fields. Matching ignores sentence markup and allows the sentence to be part of the mined subtitle context.
+Jika diaktifkan, tindakan penambangan **Perbarui kartu terakhir** juga memperbarui kolom audio dan gambar pada catatan yang dibuat berurutan dari baris takarir yang sama. Setiap catatan sebelumnya tetap menyimpan kalimat, kata, definisi, dan kolom khususnya. Pencocokan mengabaikan markup kalimat dan memungkinkan kalimat menjadi bagian dari konteks takarir yang ditambang.
 
-The search includes notes added within the last two Anki days and stops at the first different or missing sentence. A sentence field must be configured. This setting is disabled by default and does not affect updates to a specifically selected card.
+Pencarian mencakup catatan yang ditambahkan dalam dua hari Anki terakhir dan berhenti saat menemukan kalimat yang berbeda atau tidak ada. Kolom kalimat harus dikonfigurasikan. Pengaturan ini nonaktif secara bawaan dan tidak memengaruhi pembaruan kartu yang dipilih secara khusus.
 
-### Play audio while recording from local video {#play-audio-while-recording-from-local-video}
+### Putar audio saat merekam dari video lokal {#play-audio-while-recording-from-local-video}
 
-asbplayer uses the browser's built-in [MediaRecorder](https://developer.mozilla.org/ja/docs/Web/API/MediaRecorder) API to record audio from local video files. This setting configures whether sound should play during recording.
+asbplayer menggunakan API [MediaRecorder](https://developer.mozilla.org/ja/docs/Web/API/MediaRecorder) bawaan peramban untuk merekam audio dari berkas video lokal. Pengaturan ini menentukan apakah suara diputar selama perekaman.
 
-### Re-encode audio as mp3 {#re-encode-audio-as-mp3}
+### Enkode ulang audio sebagai mp3 {#re-encode-audio-as-mp3}
 
-Recorded audio is not encoded as an `mp3` by default. This setting will cause audio to be re-encoded as an `mp3`. In general there's no reason to turn this setting off, especially for users who want to review their cards on iOS.
+Secara bawaan, audio rekaman tidak dienkode sebagai `mp3`. Pengaturan ini akan mengenkode ulang audio sebagai `mp3`. Umumnya tidak ada alasan untuk menonaktifkan pengaturan ini, terutama jika Anda ingin meninjau kartu di iOS.
 
-### Audio padding start {#audio-padding-start}
+### Jeda awal audio {#audio-padding-start}
 
-How many milliseconds **before** the target subtitle to start recording audio.
+Jumlah milidetik **sebelum** takarir sasaran untuk mulai merekam audio.
 
-### Audio padding end {#audio-padding-end}
+### Jeda akhir audio {#audio-padding-end}
 
-How many milliseconds **after** the target subtitle to stop recording audio.
+Jumlah milidetik **setelah** takarir sasaran untuk berhenti merekam audio.
 
-### Image capture format (website only) {#image-capture-format}
+### Format pengambilan gambar (khusus situs web) {#image-capture-format}
 
-Specifies the image capture format for mined cards. Only available on the website for local video files where the only additional option is "video clip."
+Menentukan format gambar untuk kartu hasil penambangan. Hanya tersedia di situs web untuk berkas video lokal; satu-satunya opsi tambahan adalah "klip video".
 
-### Max capture width/height {#max-capture-dimensions}
+### Lebar/tinggi maksimum tangkapan {#max-capture-dimensions}
 
-Max width/height in pixels of screenshots. `0` means "no limit."
+Lebar/tinggi maksimum tangkapan layar dalam piksel. `0` berarti "tanpa batas".
 
-### Trim black bars from screenshots {#trim-black-bars-from-screenshots}
+### Pangkas bilah hitam dari tangkapan layar {#trim-black-bars-from-screenshots}
 
-When enabled, trims black bars due to letterboxing from screenshots.
+Jika diaktifkan, bilah hitam akibat letterboxing akan dipangkas dari tangkapan layar.
 
-### Clip trim start/end {#clip-trim-start-end}
+### Pangkas awal/akhir klip {#clip-trim-start-end}
 
-Specifies how much time to trim off the start and end of a subtitle's time interval when determining the default time interval for the video clip. Only available when the video clip image capture format is selected.
+Menentukan durasi yang dipangkas dari awal dan akhir interval takarir saat menentukan interval bawaan klip video. Hanya tersedia jika format pengambilan gambar klip video dipilih.
 
-### Max clip length {#max-clip-length}
+### Durasi klip maksimum {#max-clip-length}
 
-Specifies the max video clip length. Only available when video clip image capture format is selected.
+Menentukan durasi maksimum klip video. Hanya tersedia jika format pengambilan gambar klip video dipilih.
 
-### Screenshot capture delay {#screenshot-capture-delay}
+### Jeda pengambilan tangkapan layar {#screenshot-capture-delay}
 
-How long to wait after the target subtitle appears before taking the screenshot.
+Lama waktu menunggu setelah takarir sasaran muncul sebelum mengambil tangkapan layar.
 
-### Surrounding subtitles count radius {#surrounding-subtitles-count-radius}
+### Jumlah takarir sekitar {#surrounding-subtitles-count-radius}
 
-At the bottom of **Anki Export Dialog** there's a slider which can be used to adjust the selected time interval. The slider includes surrounding subtitles as additional context. This setting controls limits the number of those surrounding subtitles.
+Di bagian bawah **Dialog Ekspor Anki** terdapat penggeser untuk menyesuaikan rentang waktu yang dipilih. Penggeser menyertakan takarir sekitar sebagai konteks tambahan. Pengaturan ini membatasi jumlah takarir tersebut.
 
-### Surrounding subtitles time radius {#surrounding-subtitles-time-radius}
+### Rentang waktu takarir sekitar {#surrounding-subtitles-time-radius}
 
-At the bottom of **Anki Export Dialog** there's a slider which can be used to adjust the selected time interval. The slider includes surrounding subtitles as additional context. This setting controls the size of the allowed time interval around the target subtitle, for those surrounding subtitles.
+At the bottom of **Anki Export Dialog** there's a slider which can be used to adjust the selected time interval. Penggeser menyertakan takarir sekitar sebagai konteks tambahan. Pengaturan ini menentukan rentang waktu yang diizinkan untuk takarir sekitar sasaran.
 
-## <a href={new URL('?view=settings#subtitle-appearance', project.urls.app).href}>Subtitle appearance</a> {#subtitle-appearance}
+## <a href={new URL('?view=settings#subtitle-appearance', project.urls.app).href}>Tampilan takarir</a> {#subtitle-appearance}
 
-### Subtitle track {#subtitle-appearance-track}
+### Trek takarir {#subtitle-appearance-track}
 
-asbplayer can load multiple subtitle tracks simultaneously. This dropdown selects the track(s) to which the settings below will apply. The default selection is "All." Modifying any appearance setting with "All" selected, modifies that setting for all tracks simultaneously. When you configure a track-specific value for a setting, that setting disappears from the "All" page.
+asbplayer dapat memuat beberapa trek takarir sekaligus. Menu tarik-turun ini memilih trek yang akan dikenai pengaturan di bawah. Pilihan bawaan adalah "Semua". Perubahan pada pengaturan tampilan saat "Semua" dipilih berlaku untuk semua trek. Jika Anda mengatur nilai khusus trek, pengaturan tersebut tidak lagi muncul di halaman "Semua".
 
-### Subtitle preview {#subtitle-preview}
+### Pratinjau takarir {#subtitle-preview}
 
-Preview and edit the subtitle text used to show the effect of the appearance settings.
+Pratinjau dan edit teks takarir untuk melihat efek pengaturan tampilannya.
 
-### Styling {#styling}
+### Gaya {#styling}
 
-| Setting                           | Description                                                                          | CSS property                |
+| Pengaturan                       | Deskripsi                                                                          | CSS property                |
 | --------------------------------- | ------------------------------------------------------------------------------------ | --------------------------- |
-| Subtitle color                    | Color                                                                                | `color`                     |
-| Subtitle size                     | Size in `px`                                                                         | `font-size`                 |
-| Subtitle font thickness           | Font thickness                                                                       | `font-weight`               |
-| Subtitle outline color            | Color of the stroke                                                                  | `-webkit-text-stroke-color` |
-| Subtitle outline thickness        | Thickness of the stroke                                                              | `-webkit-text-stroke-width` |
-| Subtitle shadow color             | Color of the shadow                                                                  | `text-shadow`               |
-| Subtitle shadow thickness         | Thickness of the shadow                                                              | `text-shadow`               |
-| Subtitle background color         | Background color                                                                     | `background-color`          |
-| Subtitle background opacity       | Background opacity                                                                   | `background`                |
-| Subtitle font family              | Font. A dropdown of available fonts appears when local font access is granted.       | `font-family`               |
+| Warna takarir                    | Color                                                                                | `color`                     |
+| Ukuran takarir                     | Ukuran dalam `px`                                                                         | `font-size`                 |
+| Ketebalan fon takarir           | Ketebalan fon                                                                       | `font-weight`               |
+| Warna kerangka takarir            | Warna garis luar                                                                  | `-webkit-text-stroke-color` |
+| Ketebalan kerangka takarir        | Ketebalan of the stroke                                                              | `-webkit-text-stroke-width` |
+| Warna bayangan takarir             | Warna bayangan                                                                  | `text-shadow`               |
+| Ketebalan bayangan takarir         | Ketebalan of the shadow                                                              | `text-shadow`               |
+| Warna latar takarir         | Warna latar                                                                     | `background-color`          |
+| Opasitas latar takarir       | Opasitas latar                                                                   | `background`                |
+| Keluarga fon takarir              | Font. A dropdown of available fonts appears when local font access is granted.       | `font-family`               |
 | CSS:\<style key\>                 | String value of any custom CSS property added using the **Add Custom CSS** dropdown. | Custom property             |
-| Subtitle blur                     | Applies a blur effect to subtitles. Unblurs on hover.                                | `filter:blur(...)`          |
-| Image-based subtitle scale factor | Scales image-based subtitles.                                                        | —                           |
+| Buram takarir                     | Memburamkan takarir. Efek buram hilang saat kursor diarahkan.                                | `filter:blur(...)`          |
+| Faktor skala takarir berbasis gambar | Menskalakan takarir berbasis gambar.                                                        | —                           |
 
-### Layout {#layout}
+### Tata letak {#layout}
 
-| Setting                              | Description                                                                  |
+| Pengaturan                          | Deskripsi                                                                  |
 | ------------------------------------ | ---------------------------------------------------------------------------- |
-| Subtitle alignment                   | Whether to place subtitles at the top or bottom of the video element.        |
-| Subtitle position offset from bottom | Distance from the bottom of the video element of all bottom subtitle tracks. |
-| Subtitle position offset from top    | Distance from the top of the video element of all top subtitle tracks.       |
-| Subtitles width                      | Width of subtitle container, in `%` or pixels.                               |
+| Perataan takarir                   | Menentukan posisi takarir di bagian atas atau bawah elemen video.        |
+| Offset posisi takarir dari bawah | Jarak semua trek takarir bawah dari bagian bawah elemen video. |
+| Offset posisi takarir dari atas    | Jarak semua trek takarir atas dari bagian atas elemen video.       |
+| Lebar takarir                      | Lebar wadah takarir, dalam `%` atau piksel.                               |
 
-## <a href={new URL('?view=settings#keyboard-shortcuts', project.urls.app).href}>Keyboard shortcuts</a> {#keyboard-shortcuts}
+## <a href={new URL('?view=settings#keyboard-shortcuts', project.urls.app).href}>Pintasan keyboard</a> {#keyboard-shortcuts}
 
-Keyboard shortcuts can be used to access most of asbplayer's features.
+Pintasan keyboard dapat digunakan untuk mengakses sebagian besar fitur asbplayer.
 
-### <a href={new URL('?view=settings#subtitle-appearance', project.urls.app).href}>Subtitles</a> keyboard shortcuts {#subtitles-keyboard-shortcuts}
+### <a href={new URL('?view=settings#subtitle-appearance', project.urls.app).href}>Takarir</a> pintasan keyboard {#subtitles-keyboard-shortcuts}
 
-| Behavior                             | Default shortcut |
+| Tindakan                            | Pintasan bawaan |
 | ------------------------------------ | ---------------- |
-| Select subtitle tracks to load.      | Ctrl + Shift + F |
-| Toggle subtitles                     | ↓                |
-| Toggle subtitle track 1 in video     | 1                |
-| Toggle subtitle track 2 in video     | 2                |
-| Toggle subtitle track 3 in video     | 3                |
-| Toggle subtitle track 1 in asbplayer | W + 1            |
-| Toggle subtitle track 2 in asbplayer | W + 2            |
-| Toggle subtitle track 3 in asbplayer | W + 3            |
-| Unblur subtitle track 1 in asbplayer | B + 1            |
-| Unblur subtitle track 2 in asbplayer | B + 2            |
-| Unblur subtitle track 3 in asbplayer | B + 3            |
-| Move bottom subtitles up             |                  |
-| Move bottom subtitles down           |                  |
-| Move top subtitles up                |                  |
-| Move top subtitles down              |                  |
+| Pilih trek takarir yang akan dimuat.      | Ctrl + Shift + F |
+| Tampilkan/sembunyikan takarir                     | ↓                |
+| Tampilkan/sembunyikan trek takarir 1 di video     | 1                |
+| Tampilkan/sembunyikan trek takarir 2 di video     | 2                |
+| Tampilkan/sembunyikan trek takarir 3 di video     | 3                |
+| Tampilkan/sembunyikan trek takarir 1 di asbplayer | W + 1            |
+| Tampilkan/sembunyikan trek takarir 2 di asbplayer | W + 2            |
+| Tampilkan/sembunyikan trek takarir 3 di asbplayer | W + 3            |
+| Hilangkan buram trek takarir 1 di asbplayer | B + 1            |
+| Hilangkan buram trek takarir 2 di asbplayer | B + 2            |
+| Hilangkan buram trek takarir 3 di asbplayer | B + 3            |
+| Naikkan takarir bawah             |                  |
+| Turunkan takarir bawah           |                  |
+| Naikkan takarir atas                |                  |
+| Turunkan takarir atas              |                  |
 
-### <a href={new URL('?view=settings#mining-settings', project.urls.app).href}>Mining</a> keyboard shortcuts {#mining-keyboard-shortcuts}
+### <a href={new URL('?view=settings#mining-settings', project.urls.app).href} >Penambangan</a> keyboard shortcuts {#mining-keyboard-shortcuts}
 
-| Behavior                                                                             | Default shortcut           |
+| Tindakan                                                                            | Pintasan bawaan           |
 | ------------------------------------------------------------------------------------ | -------------------------- |
-| Mine current subtitle                                                                | Ctrl + Shift + Z (website) |
-| Mine current subtitle and open Anki dialog                                           | Ctrl + Shift + X           |
-| Update last-created Anki card with asbplayer-captured screenshot, audio, etc.        | Ctrl + Shift + U           |
-| Export card to Anki, bypassing dialog.                                               |                            |
-| Manually take screenshot, overriding the one that is automatically taken when mining | Ctrl + Shift + V (website) |
-| Manually start/stop audio recording, even when a subtitle file is loaded.            | Ctrl + Shift + R (website) |
+| Tambang takarir saat ini                                                                | Ctrl + Shift + Z (website) |
+| Tambang takarir saat ini dan buka dialog Anki                                           | Ctrl + Shift + X           |
+| Perbarui kartu Anki terakhir dengan tangkapan layar, audio, dan lainnya dari asbplayer        | Ctrl + Shift + U           |
+| Ekspor kartu ke Anki tanpa membuka dialog.                                               |                            |
+| Ambil tangkapan layar secara manual, menggantikan tangkapan otomatis saat menambang | Ctrl + Shift + V (website) |
+| Mulai/hentikan perekaman audio secara manual, meskipun berkas takarir telah dimuat.            | Ctrl + Shift + R (website) |
 
-### <a href={new URL('?view=settings#playback', project.urls.app).href}>Playback</a> keyboard shortcuts {#playback-keyboard-shortcuts}
+### <a href={new URL('?view=settings#playback', project.urls.app).href}>Pemutaran</a> pintasan keyboard {#playback-keyboard-shortcuts}
 
-| Behavior                        | Default shortcut |
+| Tindakan                       | Pintasan bawaan |
 | ------------------------------- | ---------------- |
-| Toggle side panel               | \`               |
-| Play/pause                      | Space            |
-| Toggle auto-pause               | Shift + P        |
-| Toggle condensed playback       | Shift + O        |
-| Toggle fast forward playback    | Shift + F        |
-| Toggle repeat mode              | Shift + R        |
-| Toggle when subtitles are shown |                  |
-| Cycle auto-pause resume mode    |                  |
-| Cycle through recipes forward   |                  |
-| Cycle through recipes backward  |                  |
-| Toggle recipe 1                 |                  |
-| Toggle recipe 2                 |                  |
-| Toggle recipe 3                 |                  |
-| Toggle recipe 4                 |                  |
-| Toggle recipe 5                 |                  |
-| Toggle recipe 6                 |                  |
-| Toggle recipe 7                 |                  |
-| Toggle recipe 8                 |                  |
-| Toggle recipe 9                 |                  |
-| Toggle recipe 10                |                  |
+| Tampilkan/sembunyikan panel samping               | \`               |
+| Putar/jeda                      | Space            |
+| Aktifkan/nonaktifkan jeda otomatis               | Shift + P        |
+| Aktifkan/nonaktifkan pemutaran ringkas       | Shift + O        |
+| Aktifkan/nonaktifkan pemutaran maju cepat    | Shift + F        |
+| Aktifkan/nonaktifkan mode pengulangan              | Shift + R        |
+| Alihkan waktu penayangan takarir |                  |
+| Beralih mode lanjut setelah jeda otomatis    |                  |
+| Beralih ke resep berikutnya   |                  |
+| Beralih ke resep sebelumnya  |                  |
+| Aktifkan/nonaktifkan resep 1                 |                  |
+| Aktifkan/nonaktifkan resep 2                 |                  |
+| Aktifkan/nonaktifkan resep 3                 |                  |
+| Aktifkan/nonaktifkan resep 4                 |                  |
+| Aktifkan/nonaktifkan resep 5                 |                  |
+| Aktifkan/nonaktifkan resep 6                 |                  |
+| Aktifkan/nonaktifkan resep 7                 |                  |
+| Aktifkan/nonaktifkan resep 8                 |                  |
+| Aktifkan/nonaktifkan resep 9                 |                  |
+| Aktifkan/nonaktifkan resep 10                |                  |
 
-### <a href={new URL('?view=settings#playback', project.urls.app).href}>Seek</a> keyboard shortcuts {#seek-keyboard-shortcuts}
+### <a href={new URL('?view=settings#playback', project.urls.app).href}>Lompat</a> pintasan keyboard {#seek-keyboard-shortcuts}
 
-| Behavior                                                                  | Default shortcut |
+| Tindakan                                                                 | Pintasan bawaan |
 | ------------------------------------------------------------------------- | ---------------- |
-| Seek backward (default 3 seconds, [configurable](#seek-interval-seconds)) | A                |
-| Seek forward (default 3 seconds, [configurable](#seek-interval-seconds))  | D                |
-| Seek to previous subtitle                                                 | ←                |
-| Seek to next subtitle                                                     | →                |
-| Seek to beginning of current/previous subtitle                            | ↑                |
+| Mundur (bawaan 3 detik, [dapat dikonfigurasikan](#seek-interval-seconds)) | A                |
+| Maju (bawaan 3 detik, [dapat dikonfigurasikan](#seek-interval-seconds))  | D                |
+| Lompat ke takarir sebelumnya                                                 | ←                |
+| Lompat ke takarir berikutnya                                                     | →                |
+| Lompat ke awal takarir saat ini/sebelumnya                            | ↑                |
 
-### <a href={new URL('?view=settings#playback', project.urls.app).href}>Playback rate</a> keyboard shortcuts {#playback-rate-keyboard-shortcuts}
+### <a href={new URL('?view=settings#playback', project.urls.app).href}>Kecepatan pemutaran</a> pintasan keyboard {#playback-rate-keyboard-shortcuts}
 
-| Behavior               | Default shortcut |
+| Tindakan              | Pintasan bawaan |
 | ---------------------- | ---------------- |
-| Increase playback rate | Ctrl + Shift + ] |
-| Decrease playback rate | Ctrl + Shift + [ |
+| Tambah kecepatan pemutaran | Ctrl + Shift + ] |
+| Kurangi kecepatan pemutaran | Ctrl + Shift + [ |
 
-### <a href={new URL('?view=settings#playback', project.urls.app).href}>Subtitle offset</a> keyboard shortcuts {#subtitle-offset-keyboard-shortcuts}
+### <a href={new URL('?view=settings#playback', project.urls.app).href}>Offset takarir</a> pintasan keyboard {#subtitle-offset-keyboard-shortcuts}
 
-| Behavior                                                                 | Default shortcut |
+| Tindakan                                                                | Pintasan bawaan |
 | ------------------------------------------------------------------------ | ---------------- |
-| Adjust subtitle offset so that previous subtitle is at current timestamp | Ctrl + ←         |
-| Adjust subtitle offset so that next subtitle is at current timestamp     | Ctrl + →         |
-| Adjust subtitle offset by +100ms                                         | Ctrl + Shift + ← |
-| Adjust subtitle offset by -100ms                                         | Ctrl + Shift + → |
-| Reset subtitle offset                                                    | Ctrl + Shift + ↓ |
+| Sesuaikan offset takarir agar takarir sebelumnya berada pada waktu saat ini | Ctrl + ←         |
+| Sesuaikan offset takarir agar takarir berikutnya berada pada waktu saat ini     | Ctrl + →         |
+| Tambah offset takarir sebesar 100 ms                                         | Ctrl + Shift + ← |
+| Kurangi offset takarir sebesar 100 ms                                         | Ctrl + Shift + → |
+| Atur ulang offset takarir                                                    | Ctrl + Shift + ↓ |
 
-### <a href={new URL('?view=settings#annotation', project.urls.app).href}>Annotation</a> keyboard shortcuts {#annotation-keyboard-shortcuts}
+### <a href={new URL('?view=settings#annotation', project.urls.app).href}>Anotasi</a> pintasan keyboard {#annotation-keyboard-shortcuts}
 
-| Behavior                          | Default shortcut |
+| Tindakan                          | Pintasan bawaan |
 | --------------------------------- | ---------------- |
-| Open statistics                   | Q + S            |
-| Jump to next word                 | Q + E            |
-| Jump to previous word             | Q + W            |
-| Mark hovered word as Mature       | Q + 5            |
-| Jump to next Mature word          |                  |
-| Jump to previous Mature word      |                  |
-| Mark hovered word as Young        | Q + 4            |
-| Jump to next Young word           |                  |
-| Jump to previous Young word       |                  |
-| Mark hovered word as Graduated    | Q + 3            |
-| Jump to next Graduated word       |                  |
-| Jump to previous Graduated word   |                  |
-| Mark hovered word as Learning     | Q + 2            |
-| Jump to next Learning word        |                  |
-| Jump to previous Learning word    |                  |
-| Mark hovered word as Unknown      | Q + 1            |
-| Jump to next Unknown word         |                  |
-| Jump to previous Unknown word     |                  |
-| Mark hovered word as Uncollected  | Q + 0            |
-| Jump to next Uncollected word     |                  |
-| Jump to previous Uncollected word |                  |
-| Toggle hovered word as Ignored    | Q + I            |
-| Jump to next Ignored word         |                  |
-| Jump to previous Ignored word     |                  |
+| Buka statistik                   | Q + S            |
+| Lompat ke kata berikutnya                 | Q + E            |
+| Lompat ke kata sebelumnya             | Q + W            |
+| Tandai kata yang diarahkan sebagai Matang       | Q + 5            |
+| Lompat ke kata Matang berikutnya          |                  |
+| Lompat ke kata Matang sebelumnya      |                  |
+| Tandai kata yang diarahkan sebagai Muda        | Q + 4            |
+| Lompat ke kata Muda berikutnya           |                  |
+| Lompat ke kata Muda sebelumnya       |                  |
+| Tandai kata yang diarahkan sebagai Lulus    | Q + 3            |
+| Lompat ke kata Lulus berikutnya       |                  |
+| Lompat ke kata Lulus sebelumnya   |                  |
+| Tandai kata yang diarahkan sebagai Sedang dipelajari     | Q + 2            |
+| Lompat ke kata Sedang dipelajari berikutnya        |                  |
+| Lompat ke kata Sedang dipelajari sebelumnya    |                  |
+| Tandai kata yang diarahkan sebagai Tidak diketahui      | Q + 1            |
+| Lompat ke kata Tidak diketahui berikutnya         |                  |
+| Lompat ke kata Tidak diketahui sebelumnya     |                  |
+| Tandai kata yang diarahkan sebagai Belum dikumpulkan  | Q + 0            |
+| Lompat ke kata Belum dikumpulkan berikutnya     |                  |
+| Lompat ke kata Belum dikumpulkan sebelumnya |                  |
+| Tandai kata yang diarahkan sebagai Diabaikan    | Q + I            |
+| Lompat ke kata Diabaikan berikutnya         |                  |
+| Lompat ke kata Diabaikan sebelumnya     |                  |
 
-### Seek interval (seconds) {#seek-interval-seconds}
+### Interval lompatan (detik) {#seek-interval-seconds}
 
-Controls the interval used by the [Seek keyboard shortcuts](#seek-keyboard-shortcuts).
+Mengatur interval yang digunakan oleh [pintasan keyboard lompat](#seek-keyboard-shortcuts).
 
-### Always play after invoking 'Seek to beginning of current/previous subtitle' {#always-play-on-subtitle-seek}
+### Selalu putar setelah memilih 'Lompat ke awal takarir saat ini/sebelumnya' {#always-play-on-subtitle-seek}
 
-Instead of retaining the current playback state, always play when using the [Seek keyboard shortcut](#seek-keyboard-shortcuts) that seeks to the beginning of the current/previous subtitle. Saves a keypress.
+Alih-alih mempertahankan status pemutaran saat ini, selalu putar saat menggunakan [pintasan keyboard lompat](#seek-keyboard-shortcuts) untuk melompat ke awal takarir saat ini/sebelumnya. Menghemat satu penekanan tombol.
 
-### Playback speed adjust step {#playback-speed-adjust-step}
+### Langkah penyesuaian kecepatan pemutaran {#playback-speed-adjust-step}
 
-Increment to use when using the "increase/decrease playback rate" [keyboard shortcuts](#playback-rate-keyboard-shortcuts).
+Nilai kenaikan yang digunakan oleh [pintasan keyboard](#playback-rate-keyboard-shortcuts) "tambah/kurangi kecepatan pemutaran".
 
-### Extension shortcuts {#extension-shortcuts}
+### Pintasan ekstensi {#extension-shortcuts}
 
-When the browser extension is installed, some mining shortcuts (e.g. mine current subtitle, mine current subtitle and open Anki dialog) are implemented as browser commands rather than vanilla key event listeners, and can only be edited in the browser's extension shortcuts editor.
+Jika ekstensi peramban terpasang, beberapa pintasan penambangan (misalnya tambang takarir saat ini, tambang takarir saat ini dan buka dialog Anki) diterapkan sebagai perintah peramban, bukan pendengar peristiwa tombol biasa. Pintasan tersebut hanya dapat diedit di editor pintasan ekstensi peramban.
 
 - Chrome: `chrome://extensions/shortcuts`
-- Firefox: `about:addons` → `Manage Extension Shortcuts`
+- Firefox: `about:addons` → `Kelola Pintasan Ekstensi`
 
-## <a href={new URL('?view=settings#annotation', project.urls.app).href}>Annotation</a> {#annotation}
+## <a href={new URL('?view=settings#annotation', project.urls.app).href}>Anotasi</a> {#annotation}
 
-### Word Browser {#word-browser}
+### Penjelajah kata {#word-browser}
 
 :::info
-Only local words can be edited/deleted, external sources are read-only and can only update through [syncing](#re-build-anki-word-database).
+Hanya kata lokal yang dapat diedit atau dihapus; sumber eksternal hanya dapat dibaca dan diperbarui melalui [sinkronisasi](#re-build-anki-word-database).
 :::
 
-Opens the Word Browser, where you can view and manage all words in your local word database and Anki-synced word database.
+Opens the Penjelajah kata, where you can view and manage all words in your local word database and Anki-synced word database.
 
 :::tip
-You can lookup words in any script of the language (e.g romaji/hiragana/katakana/kanji for Japanese).
+Anda dapat mencari kata dalam aksara bahasa apa pun (misalnya romaji/hiragana/katakana/kanji untuk bahasa Jepang).
 
-There are also some other common QOL substitutions, such as `e -> é` or `ss -> ß` done automatically.
+Beberapa penggantian praktis umum juga dilakukan secara otomatis, seperti `e -> é` atau `ss -> ß`.
 :::
 
-### Import Words {#import-words}
+### Impor kata {#import-words}
 
-Imports words into asbplayer's **local word database**.
+Mengimpor kata ke **basis data kata lokal** asbplayer.
 
-Imported words are considered local and take priority over the external sources when determining word status.
+Kata yang diimpor dianggap lokal dan lebih diutamakan daripada sumber eksternal saat menentukan status kata.
 
-The import dialog supports pasting arbitrary text (asbplayer will tokenize it) and importing previously-exported files.
+Dialog impor mendukung penempelan teks apa pun (asbplayer akan memecahnya menjadi token) dan mengimpor berkas yang sebelumnya diekspor.
 
 :::tip
-You can hover over words and use the [Annotation keyboard shortcuts](#annotation-keyboard-shortcuts) to change their status locally.
+You can hover over words and use the [Anotasi keyboard shortcuts](#annotation-keyboard-shortcuts) to change their status locally.
 :::
 
-### Export Words {#export-words}
+### Ekspor kata {#export-words}
 
-Exports your local word database so it can be backed up, moved to another device, or shared between the website and extension.
+Mengekspor basis data kata lokal agar dapat dicadangkan, dipindahkan ke perangkat lain, atau dibagikan antara situs web dan ekstensi.
 
-### Re-Build Anki word database {#re-build-anki-word-database}
+### Bangun ulang basis data kata Anki {#re-build-anki-word-database}
 
-Builds (or rebuilds) the local cache of word-status information sourced from Anki.
+Membangun atau membangun ulang cache lokal informasi status kata yang bersumber dari Anki.
 
 :::tip
-The cache is also updated automatically during playback when a track is enabled and Anki is connectable.
+Cache juga diperbarui secara otomatis selama pemutaran jika trek diaktifkan dan Anki dapat dihubungkan.
 
-This button is disabled unless your annotation settings [benefit from Anki integration](../common-issues.md#enable-or-disable-annotation-for-a-track).
+Tombol ini dinonaktifkan kecuali pengaturan anotasi Anda [memerlukan integrasi Anki](../common-issues.md#enable-or-disable-annotation-for-a-track).
 
-To clear the Anki word database entries for a track, [follow these steps](../common-issues.md#clear-anki-word-database).
+Untuk menghapus entri basis data kata Anki pada sebuah trek, [ikuti langkah-langkah ini](../common-issues.md#clear-anki-word-database).
 :::
 
-### Re-Build WaniKani word database {#re-build-wanikani-word-database}
+### Bangun ulang basis data kata WaniKani {#re-build-wanikani-word-database}
 
-Builds (or rebuilds) the local cache of vocabulary information sourced from WaniKani.
+Membangun atau membangun ulang cache lokal informasi kosakata yang bersumber dari WaniKani.
 
 :::tip
-The cache is also updated automatically during playback when a track is enabled and a token is configured.
+Cache juga diperbarui secara otomatis selama pemutaran jika trek diaktifkan dan token telah dikonfigurasikan.
 
-This button is disabled unless your annotation settings [benefit from WaniKani integration](../common-issues.md#enable-or-disable-annotation-for-a-track).
+Tombol ini dinonaktifkan kecuali pengaturan anotasi Anda [memerlukan integrasi WaniKani](../common-issues.md#enable-or-disable-annotation-for-a-track).
 
-To clear the WaniKani word database entries for a track, [follow these steps](../common-issues.md#clear-wanikani-word-database).
+Untuk menghapus entri basis data kata WaniKani pada sebuah trek, [ikuti langkah-langkah ini](../common-issues.md#clear-wanikani-word-database).
 :::
 
-### Subtitle track {#annotation-track}
+### Trek takarir {#annotation-track}
 
-Selects which subtitle track these annotation settings apply to.
+Memilih trek takarir yang dikenai pengaturan anotasi ini.
 
-### Colorize subtitles based on known words {#colorize-subtitles-based-on-known-words}
+### Warnai takarir berdasarkan kata yang diketahui {#colorize-subtitles-based-on-known-words}
 
-Enables word-status styling (uncollected/unknown/learning/etc.). Styling uses the configured [**Word color style**](#word-color-style) and [**Word status colors**](#word-status-colors).
+Enables word-status styling (uncollected/unknown/learning/etc.). Gaya uses the configured [**Gaya warna kata**](#word-color-style) and [**Warna status kata**](#word-status-colors).
 
-### Generate statistics automatically {#generate-statistics-automatically}
+### Buat statistik secara otomatis {#generate-statistics-automatically}
 
-Automatically generate statistics for the current media upon load. This will also enable the statistics overlay. The [Open statistics keyboard shortcut](#annotation-keyboard-shortcuts) is in the Annotation group.
+Automatically generate statistics for the current media upon load. This will also enable the statistics overlay. The [Buka statistik keyboard shortcut](#annotation-keyboard-shortcuts) is in the Anotasi group.
 
-### Display word readings {#display-word-readings}
+### Tampilkan bacaan kata {#display-word-readings}
 
-Shows readings (e.g. furigana) above words based on the word status and states.
+Menampilkan bacaan (misalnya furigana) di atas kata berdasarkan status dan keadaannya.
 
-### Display word frequency {#display-word-frequency}
+### Tampilkan frekuensi kata {#display-word-frequency}
 
-Shows a rank-based frequency value below words (when available) based on status and states. This is useful for prioritizing which words are worth spending time learning.
+Menampilkan nilai frekuensi berbasis peringkat di bawah kata (jika tersedia) berdasarkan status dan keadaannya. Ini berguna untuk menentukan kata mana yang perlu diprioritaskan untuk dipelajari.
 
 :::tip
-Frequency information requires at least one rank-based frequency dictionary to be available in your Yomitan instance. If a frequency dictionary doesn't declare its mode, asbplayer will try to infer whether it is rank-based and use it accordingly.
+Informasi frekuensi memerlukan setidaknya satu kamus frekuensi berbasis peringkat di Yomitan. Jika kamus frekuensi tidak menyatakan modenya, asbplayer akan mencoba memperkirakan apakah frekuensinya berbasis peringkat dan menggunakannya jika sesuai.
 
-If multiple frequency numbers are available for a word, the lowest (most frequent) number is used.
+Jika tersedia beberapa angka frekuensi untuk sebuah kata, angka terkecil (paling sering) yang digunakan.
 :::
 
-### Display pitch accent (Japanese) {#display-pitch-accent-japanese}
+### Tampilkan aksen nada (bahasa Jepang) {#display-pitch-accent-japanese}
 
 :::note
-Too see the pitch accent on furigana, it must be enabled via [**Display word readings**](#display-word-readings).
+Too see the pitch accent on furigana, it must be enabled via [**Tampilkan bacaan kata**](#display-word-readings).
 :::
 
-Shows pitch accent on furigana or the kana itself based on status and states.
+Menampilkan aksen nada pada furigana atau kana itu sendiri berdasarkan status dan keadaannya.
 
 :::info
-The attaching particle's pitch accent following a word is determined by the pitch accent of the word, if the data is available.
+Jika datanya tersedia, aksen nada partikel yang mengikuti kata ditentukan oleh aksen nada kata tersebut.
 
-Typically only kanji would receive furigana readings but with this feature enabled all characters in a word will receive furigana readings if at least one character is kanji. This makes it easier to reading the pitch accent for compound words.
+Biasanya hanya kanji yang diberi bacaan furigana, tetapi jika fitur ini diaktifkan, semua karakter dalam kata akan diberi bacaan furigana jika setidaknya satu karakternya kanji. Ini memudahkan pembacaan aksen nada pada kata majemuk.
 :::
 
-### Display word definitions {#display-word-definitions}
+### Tampilkan definisi kata {#display-word-definitions}
 
-Controls whether short definitions or explanations are displayed for each word based on the word status and states.
+Mengatur apakah definisi atau penjelasan singkat ditampilkan untuk setiap kata berdasarkan status dan keadaannya.
 
-### Word field search strategy {#word-field-search-strategy}
+### Strategi pencarian kolom kata {#word-field-search-strategy}
 
-Controls how asbplayer matches a subtitle word against your known words.
+Mengatur cara asbplayer mencocokkan kata pada takarir dengan kata yang Anda ketahui.
 
-- **Exact form collected**: the field must contain the exact surface form from the subtitle (running -> running).
-- **Lemma form collected**: you must have the lemma/base form collected (running -> run).
-- **Lemma or exact form collected**: treat the word as collected if either lemma or exact form matches (any of the above).
-- **Any form collected**: treat the word as collected if any related form matches (running -> run, ran, runs, etc.).
+- **Bentuk tepat dikumpulkan**: the field must contain the exact surface form from the subtitle (running -> running).
+- **Bentuk lema dikumpulkan**: you must have the lemma/base form collected (running -> run).
+- **Bentuk lema atau tepat dikumpulkan**: treat the word as collected if either lemma or exact form matches (any of the above).
+- **Bentuk apa pun dikumpulkan**: treat the word as collected if any related form matches (running -> run, ran, runs, etc.).
 
-When **Lemma form collected**, **Lemma or exact form collected**, or **Any form collected** is selected, [**Match across language scripts**](#match-across-language-scripts) controls whether lemma-based matching may cross between different scripts for a language (e.g Kanji, Hiragana, Katakana).
+When **Bentuk lema dikumpulkan**, **Bentuk lema atau tepat dikumpulkan**, or **Bentuk apa pun dikumpulkan** is selected, [**Cocokkan lintas aksara bahasa**](#match-across-language-scripts) controls whether lemma-based matching may cross between different scripts for a language (e.g Kanji, Hiragana, Katakana).
 
-### Card choice priority {#card-choice-priority}
+### Prioritas pemilihan kartu {#card-choice-priority}
 
-If multiple Anki cards match a word, this controls which card is used to determine the word's status:
+Jika beberapa kartu Anki cocok dengan kata, opsi ini menentukan kartu yang digunakan untuk menetapkan status kata:
 
-- **Field contains exact form** (fallback to best known card if multiple)
-- **Field contains lemma** (fallback to best known card if multiple)
-- **Best known card**
-- **Least known card**
+- **Kolom berisi bentuk tepat** (fallback to best known card if multiple)
+- **Kolom berisi lema** (fallback to best known card if multiple)
+- **Kartu paling dikenal**
+- **Kartu paling tidak dikenal**
 
-### Sentence field search strategy {#sentence-field-search-strategy}
+### Strategi pencarian kolom kalimat {#sentence-field-search-strategy}
 
-Controls how asbplayer searches your configured [**Anki sentence fields**](#anki-sentence-fields), it has the same options as [**Word field search strategy**](#word-field-search-strategy).
+Controls how asbplayer searches your configured [**Kolom kalimat Anki**](#anki-sentence-fields), it has the same options as [**Strategi pencarian kolom kata**](#word-field-search-strategy).
 
-When **Lemma form collected**, **Lemma or exact form collected**, or **Any form collected** is selected, [**Match across language scripts**](#match-across-language-scripts) controls whether lemma-based matching may cross between different scripts for a language (e.g Kanji, Hiragana, Katakana).
+When **Bentuk lema dikumpulkan**, **Bentuk lema atau tepat dikumpulkan**, or **Bentuk apa pun dikumpulkan** is selected, [**Cocokkan lintas aksara bahasa**](#match-across-language-scripts) controls whether lemma-based matching may cross between different scripts for a language (e.g Kanji, Hiragana, Katakana).
 
 :::tip
-Since sentences will contain multiple words thus diluting the relevance of the card state to any individual word, it's best to keep this as **Exact form collected** unless you only have sentence cards.
+Karena kalimat berisi banyak kata sehingga status kartu kurang relevan untuk setiap kata, sebaiknya gunakan **Bentuk tepat dikumpulkan** kecuali Anda hanya memiliki kartu kalimat.
 :::
 
-### Match across language scripts {#match-across-language-scripts}
+### Cocokkan lintas aksara bahasa {#match-across-language-scripts}
 
-Controls whether lemma-based matching may cross between different scripts for a language (e.g Kanji, Hiragana, Katakana).
+Mengatur apakah pencocokan berbasis lema dapat dilakukan lintas aksara dalam suatu bahasa (misalnya kanji, hiragana, katakana).
 
 ```
 if true:
@@ -449,48 +449,48 @@ if false:
   - Essentially a strict mode where the you need to collect all script forms of a word.
 ```
 
-### Yomitan API URL {#yomitan-api-url}
+### URL API Yomitan {#yomitan-api-url}
 
-The URL for the Yomitan API endpoint. If the URL is unreachable or invalid, asbplayer will show an error.
+URL endpoint API Yomitan. Jika URL tidak dapat dijangkau atau tidak valid, asbplayer akan menampilkan kesalahan.
 
 :::tip
-You will need a configured [Yomitan](https://yomitan.wiki/) instance and the [yomitan-api](https://github.com/yomidevs/yomitan-api).
+Anda memerlukan [Yomitan](https://yomitan.wiki/) yang telah dikonfigurasikan dan [yomitan-api](https://github.com/yomidevs/yomitan-api).
 :::
 
-### Yomitan parser {#yomitan-parser}
+### Parser Yomitan {#yomitan-parser}
 
-Selects which Yomitan parser to use for tokenizing subtitle text:
+Selects which Parser Yomitan to use for tokenizing subtitle text:
 
 - **Scanning Parser (All languages)**: Yomitan's internal parser that matches the longest words from your dictionaries.
 - **MeCab (Japanese)**: Uses MeCab to parse Japanese text. Requires Yomitan to be configured with MeCab support, preferably with at least one UniDic dictionary.
 
-### Max word length {#max-word-length}
+### Panjang kata maksimum {#max-word-length}
 
 :::info
-This setting only applies to the Scanning Parser.
+Pengaturan ini hanya berlaku untuk Scanning Parser.
 :::
 
-Limits the maximum word length that asbplayer will try to scan/tokenize for annotation.
+Membatasi panjang maksimum kata yang akan dipindai atau dipecah menjadi token oleh asbplayer untuk anotasi.
 
 :::tip
-Setting this too low will miss longer words, setting it too high may cause performance issues.
+Nilai yang terlalu rendah akan melewatkan kata yang lebih panjang; nilai yang terlalu tinggi dapat menurunkan kinerja.
 :::
 
-### Anki decks (optional) {#anki-decks}
+### Deck Anki (opsional) {#anki-decks}
 
-Restricts Anki searches to the selected decks. If left empty, asbplayer searches across all decks.
+Membatasi pencarian Anki pada deck yang dipilih. Jika dikosongkan, asbplayer mencari di semua deck.
 
-### Anki word fields {#anki-word-fields}
+### Kolom kata Anki {#anki-word-fields}
 
-Anki note fields that contain _only_ the target word. This is the recommended way to source known-status information from Anki.
+Kolom catatan Anki yang hanya berisi kata sasaran. Ini cara yang disarankan untuk memperoleh informasi status kata dari Anki.
 
-### Anki sentence fields {#anki-sentence-fields}
+### Kolom kalimat Anki {#anki-sentence-fields}
 
-Anki note fields that contain a sentence (commonly used for sentence decks). This will be used as a fallback if there are no cards with the target word in [**Anki word fields**](#anki-word-fields).
+Anki note fields that contain a sentence (commonly used for sentence decks). This will be used as a fallback if there are no cards with the target word in [**Kolom kata Anki**](#anki-word-fields).
 
-### Mature Anki stability/interval (days) {#mature-anki-stability-interval}
+### Stabilitas/interval Anki untuk status Matang (hari) {#mature-anki-stability-interval}
 
-Controls the cutoff (in days) for treating an Anki card as **Mature** versus lower maturity statuses.
+Menentukan batas (dalam hari) untuk menganggap kartu Anki berstatus **Matang** atau berstatus kematangan yang lebih rendah.
 
 - **Uncollected**: not found in Anki.
 - **Unknown**: found in Anki with `is:new`.
@@ -500,29 +500,29 @@ Controls the cutoff (in days) for treating an Anki card as **Mature** versus low
 - **Mature**: found in Anki with `-is:new -is:learn prop:s>=${cutoff}`.
 
 :::tip
-If a card has its FSRS stability available (last review of the card was with FSRS enabled), it will be used instead of the interval.
+Jika stabilitas FSRS kartu tersedia (kartu terakhir ditinjau saat FSRS aktif), nilai itu akan digunakan sebagai pengganti interval.
 
-For more information on word statuses, see [**Word status colors**](#word-status-colors).
+For more information on word statuses, see [**Warna status kata**](#word-status-colors).
 :::
 
-### Treat suspended Anki cards as {#treat-suspended-anki-cards-as}
+### Perlakukan kartu Anki yang ditangguhkan sebagai {#treat-suspended-anki-cards-as}
 
-Controls how **suspended** cards are treated when building word status from Anki:
+Mengatur cara kartu yang **ditangguhkan** diperlakukan saat membangun status kata dari Anki:
 
 - **Normal**: use Anki status as-is.
 - Or choose a specific word status (e.g. **Mature**, **Unknown**, etc.) to force suspended cards to be treated as that status.
 
 :::tip
-If only some of the cards for a word are suspended, the suspended cards will be filtered out and the word status will be based on the unsuspended cards.
+Jika hanya sebagian kartu untuk suatu kata yang ditangguhkan, kartu tersebut akan disaring dan status kata ditentukan berdasarkan kartu yang tidak ditangguhkan.
 
-For more information on word statuses, see [**Word status colors**](#word-status-colors).
+For more information on word statuses, see [**Warna status kata**](#word-status-colors).
 :::
 
-### WaniKani API token {#wanikani-api-token}
+### Token API WaniKani {#wanikani-api-token}
 
-Use the WaniKani API token to sync your known words from WaniKani. For setup, follow the instructions in the [annotations guide](../guides/annotation.md#setup).
+Use the Token API WaniKani to sync your known words from WaniKani. For setup, follow the instructions in the [annotations guide](../guides/annotation.md#setup).
 
-For asbplayer, we only use the `vocabulary` and `kana_vocabulary` subject types to determine known words. Statuses are determined based on the SRS stage based on the configured [spaced repetition system](https://docs.api.wanikani.com/20170710/#spaced-repetition-system) for that subject. WaniKani statuses are determined as follows:
+asbplayer hanya menggunakan jenis subjek `vocabulary` dan `kana_vocabulary` untuk menentukan kata yang diketahui. Status ditentukan berdasarkan tahap SRS dan [sistem pengulangan berjeda](https://docs.api.wanikani.com/20170710/#spaced-repetition-system) yang dikonfigurasikan untuk subjek tersebut. Status WaniKani ditentukan sebagai berikut:
 
 - **Uncollected**: not found in WaniKani.
 - **Unknown**: found in WaniKani with an SRS stage below `Starting stage`.
@@ -532,12 +532,12 @@ For asbplayer, we only use the `vocabulary` and `kana_vocabulary` subject types 
 - **Mature**: found in WaniKani with an SRS stage at or above `Burning stage`.
 
 :::tip
-For more information on word statuses, see [**Word status colors**](#word-status-colors).
+For more information on word statuses, see [**Warna status kata**](#word-status-colors).
 :::
 
-### Word color style {#word-color-style}
+### Gaya warna kata {#word-color-style}
 
-Controls how status colors are applied to words for [**Colorize subtitles based on known words**](#colorize-subtitles-based-on-known-words):
+Controls how status colors are applied to words for [**Warnai takarir berdasarkan kata yang diketahui**](#colorize-subtitles-based-on-known-words):
 
 - **Text**: color of the word is changed.
 - **Background**: color behind the word is changed.
@@ -546,82 +546,82 @@ Controls how status colors are applied to words for [**Colorize subtitles based 
 - **Outline**: outline the word with the status color.
 
 :::tip
-When using **Outline**, you may need to set [**Subtitle outline thickness**](#subtitle-appearance-track) to `0` for the best results.
+Saat menggunakan **Kerangka**, Anda mungkin perlu mengatur [**Ketebalan kerangka takarir**](#subtitle-appearance-track) ke `0` agar hasilnya optimal.
 :::
 
-### Thickness {#thickness}
+### Ketebalan {#thickness}
 
-Controls the thickness (in pixels) of **Underline**, **Overline**, and **Outline** styling.
+Mengatur ketebalan (dalam piksel) gaya **Garis bawah**, **Garis atas**, dan **Kerangka**.
 
-### Highlight words on hover {#highlight-words-on-hover}
+### Sorot kata saat kursor diarahkan {#highlight-words-on-hover}
 
 :::info
-This highlight reflects the focus asbplayer has to register keyboard shortcuts. If the highlight does not appear, you may need to click on the player to focus it. Keyboard shortcuts only work for either the video or the subtitle list (but not both at the same time) depending on where the focus is.
+This highlight reflects the focus asbplayer has to register keyboard shortcuts. If the highlight does not appear, you may need to click on the player to focus it. Pintasan keyboard only work for either the video or the subtitle list (but not both at the same time) depending on where the focus is.
 
-The highlight exists primarily to help you understand which word you're hovering over for collection. As such it requires that the hover target must be a word and that you have coloring enabled.
+Sorotan ini terutama membantu Anda mengetahui kata mana yang sedang diarahkan kursor untuk dikumpulkan. Karena itu, sasaran kursor harus berupa kata dan pewarnaan harus diaktifkan.
 :::
 
-If enabled, hovering a word will highlight it which helps you understand how yomitan has tokenized it.
+Jika diaktifkan, mengarahkan kursor ke kata akan menyorotnya sehingga Anda dapat melihat cara Yomitan memecahnya menjadi token.
 
-### Only display word color on hover {#only-display-word-color-on-hover}
+### Tampilkan warna kata hanya saat diarahkan {#only-display-word-color-on-hover}
 
 :::note
-This setting only applies if [**Colorize subtitles based on known words**](#colorize-subtitles-based-on-known-words) is enabled.
+This setting only applies if [**Warnai takarir berdasarkan kata yang diketahui**](#colorize-subtitles-based-on-known-words) is enabled.
 :::
 
-If enabled for video or subtitle list, word colors are hidden by default and only appear when you hover over the subtitle text in the video or subtitle list respectively.
+Jika diaktifkan untuk video atau daftar takarir, warna kata disembunyikan secara bawaan dan hanya muncul saat kursor diarahkan ke teks takarir di video atau daftar takarir.
 
-### Only display word reading on hover {#only-display-word-reading-on-hover}
+### Tampilkan bacaan kata hanya saat diarahkan {#only-display-word-reading-on-hover}
 
 :::note
-This setting only applies if [**Display word readings**](#display-word-readings) is enabled.
+This setting only applies if [**Tampilkan bacaan kata**](#display-word-readings) is enabled.
 :::
 
-If enabled for video or subtitle list, word readings are hidden by default and only appear when you hover over the subtitle text in the video or subtitle list respectively.
+Jika diaktifkan untuk video atau daftar takarir, bacaan kata disembunyikan secara bawaan dan hanya muncul saat kursor diarahkan ke teks takarir di video atau daftar takarir.
 
-### Only display word frequency on hover {#only-display-word-frequency-on-hover}
+### Tampilkan frekuensi kata hanya saat diarahkan {#only-display-word-frequency-on-hover}
 
 :::note
-This setting only applies if [**Display word frequency**](#display-word-frequency) is enabled.
+This setting only applies if [**Tampilkan frekuensi kata**](#display-word-frequency) is enabled.
 :::
 
-If enabled for video or subtitle list, word frequency is hidden by default and only appears when you hover over the subtitle text in the video or subtitle list respectively.
+Jika diaktifkan untuk video atau daftar takarir, frekuensi kata disembunyikan secara bawaan dan hanya muncul saat kursor diarahkan ke teks takarir di video atau daftar takarir.
 
-### Only display word definitions on hover {#only-display-word-definitions-on-hover}
+### Tampilkan definisi kata hanya saat diarahkan {#only-display-word-definitions-on-hover}
 
 :::note
-This setting only applies if [**Display word definitions**](#display-word-definitions) is enabled.
+This setting only applies if [**Tampilkan definisi kata**](#display-word-definitions) is enabled.
 :::
 
-If enabled for video or subtitle list, word definitions are hidden by default and only appear when you hover over the subtitle text in the video or subtitle list respectively.
+Jika diaktifkan untuk video atau daftar takarir, definisi kata disembunyikan secara bawaan dan hanya muncul saat kursor diarahkan ke teks takarir di video atau daftar takarir.
 
-### Only display pitch accent on hover {#only-display-pitch-accent-on-hover}
+### Tampilkan aksen nada hanya saat diarahkan {#only-display-pitch-accent-on-hover}
 
 :::note
-This setting only applies if [**Display pitch accent (Japanese)**](#display-pitch-accent-japanese) is enabled.
+This setting only applies if [**Tampilkan aksen nada (bahasa Jepang)**](#display-pitch-accent-japanese) is enabled.
 :::
 
-If enabled for video or subtitle list, pitch accent is hidden by default and only appears when you hover over the subtitle text in the video or subtitle list respectively.
+Jika diaktifkan untuk video atau daftar takarir, aksen nada disembunyikan secara bawaan dan hanya muncul saat kursor diarahkan ke teks takarir di video atau daftar takarir.
 
-### Word reading size {#word-reading-size}
+### Ukuran bacaan kata {#word-reading-size}
 
-Controls the size of word readings (furigana) in em units (% of subtitle font size).
+Mengatur ukuran bacaan kata (furigana) dalam satuan em (% dari ukuran fon takarir).
 
-### Word frequency size {#word-frequency-size}
+### Ukuran frekuensi kata {#word-frequency-size}
 
-Controls the size of word frequency in em units (% of subtitle font size).
+Mengatur ukuran frekuensi kata dalam satuan em (% dari ukuran fon takarir).
 
-### Word definition size {#word-definition-size}
+### Ukuran definisi kata {#word-definition-size}
 
-Controls the size of word definitions in em units (% of subtitle font size).
+Mengatur ukuran definisi kata dalam satuan em (% dari ukuran fon takarir).
 
-### Pitch accent size {#pitch-accent-size}
+### Ukuran aksen nada {#pitch-accent-size}
 
-Controls the size of pitch accent in em units (% of subtitle font size).
+Mengatur ukuran aksen nada dalam satuan em (% dari ukuran fon takarir).
 
-### Word status colors {#word-status-colors}
+### Warna status kata {#word-status-colors}
 
-Each status has a configurable color and transparency used by [**Word color style**](#word-color-style) which can be individually enabled or disabled.
+Each status has a configurable color and transparency used by [**Gaya warna kata**](#word-color-style) which can be individually enabled or disabled.
 
 - **Uncollected**: Word is not present in your asbplayer database.
 - **Unknown**: Word is present but considered unknown.
@@ -631,342 +631,342 @@ Each status has a configurable color and transparency used by [**Word color styl
 - **Mature**: Word is fully known (mature).
 
 :::tip
-You can disable status stylings per your liking, e.g. disabling **Mature** to reduce clutter.
+Anda dapat menonaktifkan gaya status sesuai keinginan, misalnya menonaktifkan **Matang** agar tampilan lebih rapi.
 
-You can reuse colors (e.g. **Graduated** and **Young**) if you don't want to differentiate between certain statuses.
+Anda dapat menggunakan warna yang sama (misalnya untuk **Lulus** dan **Muda**) jika tidak ingin membedakan status tertentu.
 
-For how Anki Card statuses are determined, see [**Mature Anki stability/interval (days)**](#mature-anki-stability-interval).
-For how WaniKani statuses are determined, see [**WaniKani API token**](#wanikani-api-token).
+For how Anki Card statuses are determined, see [**Stabilitas/interval Anki untuk status Matang (hari)**](#mature-anki-stability-interval).
+For how WaniKani statuses are determined, see [**Token API WaniKani**](#wanikani-api-token).
 :::
 
-## <a href={new URL('?view=settings#playback', project.urls.app).href}>Playback</a> {#playback}
+## <a href={new URL('?view=settings#playback', project.urls.app).href}>Pemutaran</a> {#playback}
 
-### Subtitle tracks affected by playback modes and keyboard shortcuts {#playback-subtitle-tracks}
+### Trek takarirs affected by playback modes and keyboard shortcuts {#playback-subtitle-tracks}
 
-Specifies which tracks will be considered when using the [Subtitles](#subtitles-keyboard-shortcuts) and [Seek](#seek-keyboard-shortcuts) keyboard shortcuts, or when using playback modes. For example, when condensed mode is enabled, blank space to be automatically skipped, is considered to be any part of the timeline without subtitles in the tracks specified by this option.
+Menentukan trek yang dipertimbangkan saat menggunakan pintasan keyboard [Takarir](#subtitles-keyboard-shortcuts) dan [Lompat](#seek-keyboard-shortcuts), atau mode pemutaran. Misalnya, saat mode ringkas diaktifkan, bagian kosong yang dilewati otomatis adalah bagian linimasa tanpa takarir pada trek yang ditentukan di sini.
 
-### Auto-pause when mousing over subtitles {#auto-pause-when-mousing-over-subtitles}
+### Jeda otomatis saat kursor diarahkan ke takarir {#auto-pause-when-mousing-over-subtitles}
 
-Auto-pause behavior when mousing over subtitles. "Enabled with auto-resume" means that playback will automatically resume when mousing off of subtitles.
+Perilaku jeda otomatis saat kursor diarahkan ke takarir. "Aktif dengan lanjut otomatis" berarti pemutaran akan dilanjutkan otomatis saat kursor menjauh dari takarir.
 
-### Playback modes {#playback-modes}
+### Pemutaran modes {#playback-modes}
 
-Playback modes can be toggled with the [Playback keyboard shortcuts](#playback-keyboard-shortcuts).
+Pemutaran modes can be toggled with the [Pemutaran keyboard shortcuts](#playback-keyboard-shortcuts).
 
-### Playback rate {#playback-rate}
+### Pemutaran rate {#playback-rate}
 
-Controls the normal media playback speed, including the speed used inside subtitles while fast-forward is enabled. New playback always starts at this rate. Use the [Playback rate keyboard shortcuts](#playback-rate-keyboard-shortcuts) to adjust it while watching.
+Mengatur kecepatan pemutaran media normal, termasuk kecepatan di dalam takarir saat mode maju cepat aktif. Pemutaran baru selalu dimulai dengan kecepatan ini. Gunakan [pintasan keyboard kecepatan pemutaran](#playback-rate-keyboard-shortcuts) untuk menyesuaikannya saat menonton.
 
-### Show playback rate notification {#show-playback-rate-notification}
+### Tampilkan notifikasi kecepatan pemutaran {#show-playback-rate-notification}
 
-Shows a notification when the playback rate changes outside fast-forward playback.
+Menampilkan notifikasi saat kecepatan pemutaran berubah di luar mode maju cepat.
 
-### Auto-pause preference {#auto-pause-preference}
+### Preferensi jeda otomatis {#auto-pause-preference}
 
-When auto-pause is enabled, whether to auto-pause at the start, end, or both edges of subtitles. When both edges and repeat are enabled, repeats pauses at the end before repeating, but the start pause is skipped to prevent double pausing.
+Saat jeda otomatis aktif, menentukan apakah jeda dilakukan di awal, akhir, atau kedua batas takarir. Jika kedua batas dan pengulangan aktif, jeda dilakukan di akhir sebelum mengulang, sedangkan jeda awal dilewati agar tidak terjadi jeda ganda.
 
-### Repeat count preference {#repeat-count-preference}
+### Preferensi jumlah pengulangan {#repeat-count-preference}
 
-Controls how many times each subtitle repeats before playback continues. A value of `0` repeats indefinitely.
+Mengatur berapa kali setiap takarir diulang sebelum pemutaran dilanjutkan. Nilai `0` berarti pengulangan tanpa batas.
 
-### Repeats before showing subtitles {#repeats-before-showing-subtitles}
+### Jumlah pengulangan sebelum takarir ditampilkan {#repeats-before-showing-subtitles}
 
-Suppress subtitles in a repeating segment until it has repeated this many times. `0` adds no suppression, `1` removes suppression from the first repeat.
+Sembunyikan takarir pada segmen berulang sampai segmen tersebut diulang sebanyak jumlah ini. `0` tidak menyembunyikan takarir; `1` menampilkannya mulai pengulangan pertama.
 
-### Subtitle trigger start and end offsets {#subtitle-trigger-start-and-end-offsets}
+### Offset pemicu awal dan akhir takarir {#subtitle-trigger-start-and-end-offsets}
 
-Offsets the subtitle start and end triggers used by auto-pause and repeat in milliseconds. These offsets are applied after the global subtitle offset. Start and end offsets can be configured independently; positive values trigger playback effects later, while negative values trigger them earlier. Each shifted edge is limited by the media and neighboring subtitle-event boundaries. If the shifted start and end cross, their chronological roles are swapped.
+Menggeser pemicu awal dan akhir takarir yang digunakan oleh jeda otomatis dan pengulangan, dalam milidetik. Offset ini diterapkan setelah offset takarir global. Offset awal dan akhir dapat dikonfigurasikan secara terpisah; nilai positif memicu efek pemutaran lebih lambat, sedangkan nilai negatif memicunya lebih cepat. Setiap batas yang digeser dibatasi oleh media dan batas peristiwa takarir di sekitarnya. Jika waktu awal dan akhir yang digeser saling melewati, urutan waktunya ditukar.
 
-### Fast-forward minimum skip interval {#fast-forward-minimum-skip-interval}
+### Interval lompatan minimum untuk maju cepat {#fast-forward-minimum-skip-interval}
 
-Fast-forward for the full gap between subtitles when the gap is at least this long. Shorter gaps stay at the normal playback rate.
+Majukan video dengan cepat pada seluruh jeda antartakarir jika jeda setidaknya sepanjang nilai ini. Jeda yang lebih pendek tetap menggunakan kecepatan pemutaran normal.
 
-### Fast-forward playback rate {#fast-forward-playback-rate}
+### Kecepatan pemutaran maju cepat {#fast-forward-playback-rate}
 
-How fast to fast-forward when fast-forward mode is enabled.
+Kecepatan maju cepat saat mode maju cepat diaktifkan.
 
-### Condensed playback minimum skip interval {#condensed-playback-minimum-skip-interval}
+### Interval lompatan minimum untuk pemutaran ringkas {#condensed-playback-minimum-skip-interval}
 
-When condensed playback is enabled, skip to the next subtitle only if the next subtitle is at least this amount of time away.
+Saat pemutaran ringkas aktif, lompat ke takarir berikutnya hanya jika jarak waktunya setidaknya sebesar nilai ini.
 
-### Subtitle gap trigger start and end offsets {#subtitle-gap-trigger-start-and-end-offsets}
+### Offset pemicu awal dan akhir jeda takarir {#subtitle-gap-trigger-start-and-end-offsets}
 
-Offsets the subtitle gap triggers used by fast-forward and condensed playback. The gap start offset is non-negative and moves the trigger later from the moment the subtitle ends; the gap end offset is non-positive and moves the trigger earlier from the moment before the next subtitle. Each gap is limited by the media and neighboring subtitle-event boundaries.
+Menggeser pemicu jeda takarir yang digunakan oleh mode maju cepat dan ringkas. Offset awal jeda bernilai nonnegatif dan menunda pemicu dari saat takarir berakhir; offset akhir jeda bernilai nonpositif dan memajukan pemicu dari saat sebelum takarir berikutnya. Setiap jeda dibatasi oleh media dan batas peristiwa takarir di sekitarnya.
 
-### Auto-pause resume mode {#auto-pause-resume-mode}
+### Mode melanjutkan setelah jeda otomatis {#auto-pause-resume-mode}
 
-Controls how an automatic pause finishes.
+Mengatur cara jeda otomatis berakhir.
 
-- **Manual**: Playback stays paused until you resume it.
+- **Manual**: Pemutaran stays paused until you resume it.
 
 - **Fixed**: Every automatic pause lasts for the same configured time.
-  - Controls [Fixed pause duration](#fixed-pause-duration) and [Resume delay after auto-pause](#resume-delay-after-auto-pause).
+  - Controls [Durasi jeda tetap](#fixed-pause-duration) and [Jeda sebelum melanjutkan setelah jeda otomatis](#resume-delay-after-auto-pause).
 
 - **Subtitle length**: The pause duration is calculated from the subtitle's character count. Only subtitles on seekable tracks are counted, so a translation track loaded alongside the target language does not inflate the pause.
-  - Controls [Minimum pause duration](#minimum-pause-duration), [Maximum pause duration](#maximum-pause-duration), [Pause time per character](#pause-time-per-character), and [Resume delay after auto-pause](#resume-delay-after-auto-pause).
+  - Controls [Durasi jeda minimum](#minimum-pause-duration), [Durasi jeda maksimum](#maximum-pause-duration), [Waktu jeda per karakter](#pause-time-per-character), and [Jeda sebelum melanjutkan setelah jeda otomatis](#resume-delay-after-auto-pause).
 
-### Fixed pause duration {#fixed-pause-duration}
+### Durasi jeda tetap {#fixed-pause-duration}
 
-The amount of time an automatic pause lasts in **Fixed** mode.
+Durasi jeda otomatis dalam mode **Tetap**.
 
-### Minimum pause duration {#minimum-pause-duration}
+### Durasi jeda minimum {#minimum-pause-duration}
 
-The shortest pause allowed in **Subtitle length** mode, regardless of the subtitle's character count.
+Durasi jeda terpendek dalam mode **Panjang takarir**, terlepas dari jumlah karakternya.
 
-### Maximum pause duration {#maximum-pause-duration}
+### Durasi jeda maksimum {#maximum-pause-duration}
 
-The longest pause allowed in **Subtitle length** mode. A value of `0` means there is no upper limit. A nonzero maximum cannot be lower than the minimum pause duration.
+Durasi jeda terpanjang dalam mode **Panjang takarir**. Nilai `0` berarti tanpa batas maksimum. Nilai maksimum selain nol tidak boleh lebih kecil daripada durasi jeda minimum.
 
-### Pause time per character {#pause-time-per-character}
+### Waktu jeda per karakter {#pause-time-per-character}
 
-The number of milliseconds assigned to each character in **Subtitle length** mode. The character count multiplied by this value is clamped between the minimum and maximum pause durations.
+Jumlah milidetik untuk setiap karakter dalam mode **Panjang takarir**. Jumlah karakter dikalikan nilai ini, lalu dibatasi antara durasi jeda minimum dan maksimum.
 
-### Resume delay after auto-pause {#resume-delay-after-auto-pause}
+### Jeda sebelum melanjutkan setelah jeda otomatis {#resume-delay-after-auto-pause}
 
-In **Fixed** and **Subtitle length** modes, an automatic pause runs in two phases: the subtitle is shown for the configured pause duration, then hidden while playback stays paused for the resume delay. This setting controls the length of that second phase.
+Dalam mode **Tetap** dan **Panjang takarir**, jeda otomatis berlangsung dalam dua tahap: takarir ditampilkan selama durasi jeda yang dikonfigurasikan, lalu disembunyikan sementara pemutaran tetap dijeda selama jeda lanjut. Pengaturan ini menentukan durasi tahap kedua.
 
-### Show subtitles {#show-subtitles}
+### Tampilkan takarir {#show-subtitles}
 
-- **When due**: Subtitles appear while their timing is active.
+- **Saat waktunya**: Takarir muncul selama rentang waktunya aktif.
 
-- **While paused**: Subtitles appear only when they are due and playback is paused.
+- **Saat dijeda**: Takarir hanya muncul saat waktunya aktif dan pemutaran dijeda.
 
-- **While manually paused**: Subtitles appear only when they are due and playback is manually paused.
+- **Saat dijeda manual**: Takarir hanya muncul saat waktunya aktif dan pemutaran dijeda secara manual.
 
-## <a href={new URL('?view=settings#playback', project.urls.app).href}>Playback > Annotation</a> {#playback-annotation}
+## <a href={new URL('?view=settings#playback', project.urls.app).href}>Pemutaran > Anotasi</a> {#playback-annotation}
 
-These settings use the word statuses, states, and frequencies from [Annotation](#annotation) for the selected subtitle track. The auto-pause, condensed, fast-forward, and repeat rules take effect while their playback modes are on. **No word filter** means no statuses or states are selected for that track. Rules apply per track: a seekable track without statuses or states selected for one of those modes keeps that mode's usual behavior, even when it plays alongside a track that has rules.
+These settings use the word statuses, states, and frequencies from [Anotasi](#annotation) for the selected subtitle track. The auto-pause, condensed, fast-forward, and repeat rules take effect while their playback modes are on. **No word filter** means no statuses or states are selected for that track. Rules apply per track: a seekable track without statuses or states selected for one of those modes keeps that mode's usual behavior, even when it plays alongside a track that has rules.
 
-### Subtitle track {#playback-annotation-track}
+### Trek takarir {#playback-annotation-track}
 
-Selects the subtitle track whose annotation playback settings you are editing. The selected track is shared with the Annotation tab.
+Selects the subtitle track whose annotation playback settings you are editing. The selected track is shared with the Anotasi tab.
 
-### Select first matching word on pause {#select-first-matching-word-on-pause}
+### Pilih kata cocok pertama saat dijeda {#select-first-matching-word-on-pause}
 
-Selects the first word matching any chosen status or state whenever playback pauses, including manual pauses, and after seeking while paused. Leave the selection empty to disable this behavior. Selection happens in the video player, or in the subtitle player when no video is loaded or connected.
+Memilih kata pertama yang cocok dengan status atau keadaan terpilih setiap kali pemutaran dijeda, termasuk jeda manual dan setelah melompat saat dijeda. Kosongkan pilihan untuk menonaktifkan perilaku ini. Pemilihan terjadi di pemutar video, atau di pemutar takarir jika tidak ada video yang dimuat atau terhubung.
 
-When an [annotation-based auto-pause rule](#auto-pause-subtitles-containing-these-words) causes the pause, its matching word is selected instead. This dropdown continues to control selection on manual pauses.
+Jika jeda disebabkan oleh [aturan jeda otomatis berbasis anotasi](#auto-pause-subtitles-containing-these-words), kata yang cocok dengan aturan itu akan dipilih. Menu tarik-turun ini tetap mengatur pemilihan kata saat jeda manual.
 
-Each of the word rules below has its own status and state selection, word-count limit, and frequency limit. A word must have a selected status or state and satisfy both limits.
+Setiap aturan kata di bawah ini memiliki pilihan status dan keadaan, batas jumlah kata, serta batas frekuensi masing-masing. Kata harus memiliki status atau keadaan terpilih dan memenuhi kedua batas tersebut.
 
-### Auto-pause subtitles containing these words {#auto-pause-subtitles-containing-these-words}
+### Jeda otomatis pada takarir yang berisi kata-kata ini {#auto-pause-subtitles-containing-these-words}
 
-When auto-pause mode is on, pause only on subtitles containing a matching word and select the first matching word. This takes precedence over [**Select first matching word on pause**](#select-first-matching-word-on-pause) for automatic pauses; that dropdown still applies on manual pauses.
+When auto-pause mode is on, pause only on subtitles containing a matching word and select the first matching word. This takes precedence over [**Pilih kata cocok pertama saat dijeda**](#select-first-matching-word-on-pause) for automatic pauses; that dropdown still applies on manual pauses.
 
-### Repeat subtitles containing these words {#repeat-subtitles-containing-these-words}
+### Ulangi takarir yang berisi kata-kata ini {#repeat-subtitles-containing-these-words}
 
-When repeat mode is on, repeat only subtitles containing a matching word.
+Saat mode pengulangan aktif, ulangi hanya takarir yang berisi kata cocok.
 
-### Play subtitles containing these words in condensed mode {#play-subtitles-containing-these-words-in-condensed-mode}
+### Putar takarir yang berisi kata-kata ini dalam mode ringkas {#play-subtitles-containing-these-words-in-condensed-mode}
 
-When condensed mode is on, keep subtitles containing a matching word in the condensed timeline. Skip through other subtitles.
+Saat mode ringkas aktif, pertahankan takarir yang berisi kata cocok di linimasa ringkas. Lewati takarir lainnya.
 
-### Play subtitles containing these words at normal speed in fast-forward mode {#play-subtitles-containing-these-words-at-normal-speed-in-fast-forward-mode}
+### Putar takarir yang berisi kata-kata ini dengan kecepatan normal dalam mode maju cepat {#play-subtitles-containing-these-words-at-normal-speed-in-fast-forward-mode}
 
-When fast-forward mode is on, play subtitles containing a matching word at the normal playback rate. Fast-forward through other subtitles.
+Saat mode maju cepat aktif, putar takarir yang berisi kata cocok pada kecepatan pemutaran normal. Majukan video dengan cepat saat melewati takarir lainnya.
 
-### Adjust fast-forward rate by comprehension {#adjust-fast-forward-rate-by-comprehension}
+### Sesuaikan kecepatan maju cepat berdasarkan pemahaman {#adjust-fast-forward-rate-by-comprehension}
 
-While fast-forward mode is on, use the sentence comprehension score to choose the rate within a subtitle.
+Saat mode maju cepat aktif, gunakan nilai pemahaman kalimat untuk menentukan kecepatan pemutaran di dalam takarir.
 
-At or below [**Minimum comprehension**](#minimum-comprehension), use the normal playback rate; at 100%, use the configured fast-forward rate. Rates between those points are interpolated.
+At or below [**Pemahaman minimum**](#minimum-comprehension), use the normal playback rate; at 100%, use the configured fast-forward rate. Rates between those points are interpolated.
 
-Changing the speed in a comprehension-controlled subtitle changes the configured fast-forward rate, then recalculates the applied rate from comprehension. This also applies when comprehension keeps the subtitle at normal speed. Keyboard shortcuts and player speed controls use the same behavior; the normal rate is unchanged.
+Changing the speed in a comprehension-controlled subtitle changes the configured fast-forward rate, then recalculates the applied rate from comprehension. This also applies when comprehension keeps the subtitle at normal speed. Pintasan keyboard and player speed controls use the same behavior; the normal rate is unchanged.
 
-### Minimum comprehension {#minimum-comprehension}
+### Pemahaman minimum {#minimum-comprehension}
 
-Sets the percentage where acceleration starts (0–99%, default 60%).
+Mengatur persentase dimulainya percepatan (0–99%, bawaan 60%).
 
-### Show these words during playback {#show-these-words-during-playback}
+### Tampilkan kata-kata ini selama pemutaran {#show-these-words-during-playback}
 
-Select the statuses and states whose words should remain visible.
+Pilih status dan keadaan kata yang harus tetap terlihat.
 
-### Hide the entire subtitle when at least this percentage of words would be hidden {#whole-subtitle-hidden-percentage}
+### Sembunyikan seluruh takarir jika setidaknya persentase ini kata akan disembunyikan {#whole-subtitle-hidden-percentage}
 
-Hide the whole subtitle when at least this percentage of its words would be hidden by the show rule. For example, at **80%**, if four words in a five-word subtitle would be hidden, the entire subtitle is hidden, including the one word selected to show. Punctuation and other non-letter characters do not count.
+Sembunyikan seluruh takarir jika aturan tampil akan menyembunyikan setidaknya persentase kata ini. Misalnya, pada **80%**, jika empat kata dalam takarir lima kata akan disembunyikan, seluruh takarir disembunyikan, termasuk satu kata yang dipilih untuk ditampilkan. Tanda baca dan karakter nonhuruf lainnya tidak dihitung.
 
-### Hide non-matching words individually {#hide-non-matching-words-individually}
+### Sembunyikan setiap kata yang tidak cocok {#hide-non-matching-words-individually}
 
-When enabled, words that do not meet the show rule are hidden individually while the subtitle is below the whole-subtitle threshold. When disabled, the subtitle stays fully visible until the threshold is reached.
+Jika diaktifkan, kata yang tidak memenuhi aturan tampil akan disembunyikan satu per satu selama takarir berada di bawah ambang penyembunyian seluruh takarir. Jika dinonaktifkan, seluruh takarir tetap terlihat sampai ambang tercapai.
 
-### Minimum words per selected category {#minimum-words-per-selected-category}
+### Jumlah minimum kata per kategori terpilih {#minimum-words-per-selected-category}
 
-Each selected category (such as **Uncollected** or **Ignored**) is counted separately within a subtitle. If its count is below this limit, words in that category do not trigger the rule. `0` disables the limit.
+Setiap kategori terpilih (seperti **Belum dikumpulkan** atau **Diabaikan**) dihitung terpisah dalam sebuah takarir. Jika jumlahnya di bawah batas ini, kata dalam kategori tersebut tidak memicu aturan. `0` menonaktifkan batas.
 
-### Maximum words per selected category {#maximum-words-per-selected-category}
+### Jumlah maksimum kata per kategori terpilih {#maximum-words-per-selected-category}
 
-Each selected category (such as **Uncollected** or **Ignored**) is counted separately within a subtitle. If its count exceeds this limit, words in that category do not trigger the rule. `0` disables the limit.
+Setiap kategori terpilih (seperti **Belum dikumpulkan** atau **Diabaikan**) dihitung terpisah dalam sebuah takarir. Jika jumlahnya melebihi batas ini, kata dalam kategori tersebut tidak memicu aturan. `0` menonaktifkan batas.
 
-### Only when word frequency is at least {#only-when-word-frequency-is-at-least}
+### Hanya jika frekuensi kata setidaknya {#only-when-word-frequency-is-at-least}
 
-A matching word must have a frequency at or above this value. Missing frequency counts as `1`. `0` disables the limit.
+Frekuensi kata yang cocok harus sama dengan atau lebih tinggi dari nilai ini. Frekuensi yang tidak tersedia dihitung sebagai `1`. `0` menonaktifkan batas.
 
-### Only when word frequency is at most {#only-when-word-frequency-is-at-most}
+### Hanya jika frekuensi kata paling banyak {#only-when-word-frequency-is-at-most}
 
-A matching word must have a frequency at or below this value. Missing frequency counts as `1`. `0` disables the limit.
+Frekuensi kata yang cocok harus sama dengan atau lebih rendah dari nilai ini. Frekuensi yang tidak tersedia dihitung sebagai `1`. `0` menonaktifkan batas.
 
-## <a href={new URL('?view=settings#streaming-video', project.urls.app).href}>Streaming video</a> (extension only) {#streaming-video}
+## <a href={new URL('?view=settings#streaming-video', project.urls.app).href}>Video streaming</a> (extension only) {#streaming-video}
 
-Streaming video settings are available only when the browser extension is installed.
+Video streaming settings are available only when the browser extension is installed.
 
-### When loading subtitles, also open subtitle list via the app in a separate tab {#open-subtitle-list-in-tab}
+### Saat memuat takarir, buka juga daftar takarir di aplikasi pada tab terpisah {#open-subtitle-list-in-tab}
 
-Anytime subtitles are loaded into a video element, opens the website, and syncs the loaded subtitles with the website in a separate tab.
+Setiap kali takarir dimuat ke elemen video, buka situs web di tab terpisah dan sinkronkan takarir yang dimuat dengannya.
 
-### App URL {#app-url}
+### URL aplikasi {#app-url}
 
-Determines where the extension fetches some configuration, and what URL to open when syncing subtitles to the website running in a separate tab. Essentially the website URL.
+Menentukan sumber ekstensi mengambil beberapa konfigurasi dan URL yang dibuka saat menyinkronkan takarir ke situs web di tab terpisah. Pada dasarnya, ini adalah URL situs web.
 
-### Enable controls overlay {#enable-controls-overlay}
+### Aktifkan overlay kontrol {#enable-controls-overlay}
 
-Display the overlay UI on video elements with loaded subtitles.
+Tampilkan antarmuka Overlay pada elemen video yang memuat takarir.
 
-### Display subtitles {#display-subtitles}
+### Tampilkan takarir {#display-subtitles}
 
-Display loaded subtitles on video elements.
+Tampilkan takarir yang dimuat pada elemen video.
 
-### Record audio when mining {#record-audio-when-mining}
+### Rekam audio saat menambang {#record-audio-when-mining}
 
-When mining a subtitle, record the audio covered by the subtitle for inclusion in the flashcard.
+Saat menambang takarir, rekam audio yang dicakup takarir untuk disertakan di kartu flash.
 
-### Take screenshot when mining {#take-screenshot-when-mining}
+### Ambil tangkapan layar saat menambang {#take-screenshot-when-mining}
 
-When mining a subtitle, take a screenshot for inclusion in the flashcard.
+Saat menambang takarir, ambil tangkapan layar untuk disertakan di kartu flash.
 
-### Clean screenshot when mining {#clean-screenshot-when-mining}
+### Bersihkan tangkapan layar saat menambang {#clean-screenshot-when-mining}
 
-When mining a subtitle and screenshots are enabled, keep the screenshot "clean" by removing any HTML elements on top of the video element before taking the screenshot.
+Saat menambang takarir dengan fitur tangkapan layar aktif, bersihkan tangkapan layar dengan menghapus elemen HTML apa pun di atas elemen video sebelum mengambilnya.
 
-### Crop screenshot when mining {#crop-screenshot-when-mining}
+### Pangkas tangkapan layar saat menambang {#crop-screenshot-when-mining}
 
-When mining a subtitle, crop the screenshot to the video element.
+Saat menambang takarir, pangkas tangkapan layar agar hanya mencakup elemen video.
 
-### Image capture format {#streaming-image-capture-format}
+### Format pengambilan gambar {#streaming-image-capture-format}
 
-Specifies the image capture format for cards mined from streaming video. The additional option is "Animated WebP," which captures the video playing in the tab for the subtitle's time interval - including the audio padding - and saves it as an animated image, instead of a single screenshot.
+Menentukan format gambar untuk kartu yang ditambang dari video streaming. Opsi tambahannya adalah "Animated WebP", yang merekam video di tab selama rentang waktu takarir—termasuk jeda audio—dan menyimpannya sebagai gambar animasi, bukan satu tangkapan layar.
 
-Animated WebP is only used while [recording audio when mining](#record-audio-when-mining) is enabled, and otherwise a screenshot is taken as usual. It applies to every way of mining that records media, including manual recording started and stopped with the record keyboard shortcut, which captures everything up to the moment recording is stopped (up to 30 seconds). Only one recording can run at a time. Animated WebP is not available in Firefox, and videos protected by DRM can't be captured. The tab has to stay visible while the clip is being captured, since Chrome stops rendering hidden tabs.
+Animated WebP hanya digunakan saat [rekam audio ketika menambang](#record-audio-when-mining) diaktifkan; jika tidak, tangkapan layar biasa diambil. Fitur ini berlaku untuk setiap cara menambang yang merekam media, termasuk perekaman manual dengan pintasan rekam yang menangkap video hingga perekaman dihentikan (maksimal 30 detik). Hanya satu perekaman yang dapat berjalan pada satu waktu. Animated WebP tidak tersedia di Firefox dan video yang dilindungi DRM tidak dapat direkam. Tab harus tetap terlihat saat klip direkam karena Chrome berhenti merender tab tersembunyi.
 
-### Animated image FPS {#animated-image-fps}
+### FPS gambar animasi {#animated-image-fps}
 
-How many frames per second to capture for animated WebP images. Longer clips automatically use fewer frames to keep the card small. Only available when the Animated WebP image capture format is selected.
+Jumlah bingkai per detik yang diambil untuk gambar Animated WebP. Klip yang lebih panjang otomatis menggunakan lebih sedikit bingkai agar ukuran kartu tetap kecil. Hanya tersedia jika format gambar Animated WebP dipilih.
 
-### Animated image quality {#animated-image-quality}
+### Kualitas gambar animasi {#animated-image-quality}
 
-Quality of each frame of animated WebP images, from `0.1` to `1`. Higher is better looking but results in a larger file. Only available when the Animated WebP image capture format is selected.
+Kualitas setiap bingkai gambar Animated WebP, dari `0.1` hingga `1`. Nilai lebih tinggi menghasilkan gambar lebih baik, tetapi berkasnya lebih besar. Hanya tersedia jika format gambar Animated WebP dipilih.
 
-### Allow subtitle file drag-and-drop {#allow-subtitle-file-drag-and-drop}
+### Izinkan seret dan letakkan berkas takarir {#allow-subtitle-file-drag-and-drop}
 
-Allow subtitle files to be drag-and-dropped into video elements.
+Izinkan berkas takarir diseret dan dilepaskan ke elemen video.
 
-### Auto-load detected subtitles {#auto-load-detected-subtitles}
+### Muat otomatis takarir yang terdeteksi {#auto-load-detected-subtitles}
 
-If subtitle auto-detection is supported on the current website, load them automatically. If multiple tracks are detected, load the track for the preferred language. The preferred language is the one that was last loaded with the "remember these track choices" box checked.
+Jika deteksi takarir otomatis didukung di situs web saat ini, muat takarir secara otomatis. Jika beberapa trek terdeteksi, muat trek dalam bahasa pilihan. Bahasa pilihan adalah trek yang terakhir dimuat saat kotak "ingat pilihan trek ini" dicentang.
 
-### Prompt when auto-loading detected subtitles fails {#prompt-on-subtitle-autoload-failure}
+### Tampilkan peringatan jika gagal memuat takarir yang terdeteksi secara otomatis {#prompt-on-subtitle-autoload-failure}
 
-When automatic subtitle loading fails, prompt before trying to load detected subtitles.
+Jika pemuatan takarir otomatis gagal, tampilkan konfirmasi sebelum mencoba memuat takarir yang terdeteksi.
 
-## <a href={new URL('?view=settings#streaming-video', project.urls.app).href}>Streaming video > Pages</a> {#pages}
+## <a href={new URL('?view=settings#streaming-video', project.urls.app).href}>Video streaming > Pages</a> {#pages}
 
-Settings for page-specific integrations like YouTube, Netflix, etc. asbplayer has pre-configured default settings for each page. The pages section allows those defaults to be modified.
+Pengaturan untuk integrasi khusus halaman seperti YouTube, Netflix, dan lainnya. asbplayer memiliki pengaturan bawaan untuk setiap halaman; bagian halaman memungkinkan Anda mengubah nilai bawaan tersebut.
 
-### Target language codes for machine translation (YouTube only) {#youtube-translation-languages}
+### Kode bahasa sasaran untuk terjemahan mesin (khusus YouTube) {#youtube-translation-languages}
 
-Specifies which target languages to use for YouTube's machine translation. When languages are specified here, additional tracks for each target language appear in the subtitle track selector.
+Menentukan bahasa sasaran untuk terjemahan mesin YouTube. Jika bahasa ditentukan di sini, trek tambahan untuk setiap bahasa sasaran akan muncul di pemilih trek takarir.
 
-## <a href={new URL('?view=settings#misc-settings', project.urls.app).href}>Misc</a> {#misc}
+## <a href={new URL('?view=settings#misc-settings', project.urls.app).href}>Lain-lain</a> {#misc}
 
-### Import/export settings {#import-export-settings}
+### Impor/ekspor pengaturan {#import-export-settings}
 
-Imports or exports settings as a `json` file.
+Mengimpor atau mengekspor pengaturan sebagai berkas `json`.
 
-### Theme {#theme}
+### Tema {#theme}
 
-Display all asbplayer in a light or dark theme.
+Menampilkan seluruh asbplayer dengan tema terang atau gelap.
 
-### Language {#language}
+### Bahasa {#language}
 
-Language to display UI in.
+Bahasa to display UI in.
 
-Note: not all strings have been localized in every language that asbplayer supports. Unlocalized will be displayed in English. Feel free to help out with localization at the [Crowdin project](https://crowdin.com/project/asbplayer).
+Catatan: belum semua string diterjemahkan ke setiap bahasa yang didukung asbplayer. String yang belum diterjemahkan akan ditampilkan dalam bahasa Inggris. Silakan bantu menerjemahkannya di [proyek Crowdin](https://crowdin.com/project/asbplayer).
 
-### Auto-maximize local video {#auto-maximize-local-video}
+### Perbesar video lokal secara otomatis {#auto-maximize-local-video}
 
-Automatically maximize the local video when the subtitle panel is opened.
+Perbesar video lokal secara otomatis saat panel takarir dibuka.
 
-### Show mining button in subtitle list {#show-mining-button-in-subtitle-list}
+### Tampilkan tombol tambang di daftar takarir {#show-mining-button-in-subtitle-list}
 
-When enabled, shows a mining button next to each subtitle in the subtitle list.
+Jika diaktifkan, tombol tambang ditampilkan di samping setiap takarir dalam daftar takarir.
 
-### Subtitle list timestamps {#subtitle-list-timestamps}
+### Penanda waktu di daftar takarir {#subtitle-list-timestamps}
 
-Controls how timestamps are displayed in the subtitle list.
+Mengatur tampilan penanda waktu di daftar takarir.
 
-- **Hidden**: Not shown.
-- **Start**: Shows subtitle's start timestamp only.
-- **Start and end**: Shows both start and end timestamps of the subtitle.
+- **Tersembunyi**: Tidak ditampilkan.
+- **Awal**: Hanya menampilkan penanda waktu awal takarir.
+- **Awal dan akhir**: Menampilkan penanda waktu awal dan akhir takarir.
 
-### Remember subtitle offset {#remember-subtitle-offset}
+### Ingat offset takarir {#remember-subtitle-offset}
 
-When enabled, timing offset is "sticky." Subtitles are loaded with the last-used offset.
+Jika diaktifkan, offset waktu akan diingat. Takarir dimuat menggunakan offset terakhir.
 
-### Remember last playback rate {#remember-last-playback-rate}
+### Ingat kecepatan pemutaran terakhir {#remember-last-playback-rate}
 
-Updates the playback rate setting when the rate is changed on a video. When disabled, playback still starts at the configured playback rate, but changes made while watching remain temporary.
+Memperbarui pengaturan kecepatan pemutaran saat kecepatannya diubah pada video. Jika dinonaktifkan, pemutaran tetap dimulai dengan kecepatan yang dikonfigurasikan, tetapi perubahan saat menonton hanya berlaku sementara.
 
-### Remember last playback modes {#remember-last-playback-modes}
+### Ingat mode pemutaran terakhir {#remember-last-playback-modes}
 
-Restores the last enabled playback modes when loading playback again. When disabled, playback starts in normal mode.
+Memulihkan mode pemutaran yang terakhir diaktifkan saat pemutaran dimuat kembali. Jika dinonaktifkan, pemutaran dimulai dalam mode normal.
 
-### Auto-copy current subtitle to clipboard {#auto-copy-current-subtitle-to-clipboard}
+### Salin takarir saat ini ke papan klip secara otomatis {#auto-copy-current-subtitle-to-clipboard}
 
-Automatically copies subtitle to clipboard when it appears on screen. Useful for sending subtitles to apps that can monitor the clipboard.
+Menyalin takarir ke papan klip secara otomatis saat muncul di layar. Berguna untuk mengirim takarir ke aplikasi yang dapat memantau papan klip.
 
-### Subtitle tracks eligible for auto-copy {#subtitle-tracks-eligible-for-auto-copy}
+### Trek takarirs eligible for auto-copy {#subtitle-tracks-eligible-for-auto-copy}
 
-Specifies which tracks will be auto-copied when the [Auto-copy current subtitle to clipboard](#auto-copy-current-subtitle-to-clipboard) setting is enabled.
+Specifies which tracks will be auto-copied when the [Salin takarir saat ini ke papan klip secara otomatis](#auto-copy-current-subtitle-to-clipboard) setting is enabled.
 
-### Show preview thumbnails {#show-preview-thumbnails}
+### Tampilkan gambar mini pratinjau {#show-preview-thumbnails}
 
-Shows preview thumbnails in the subtitle list.
+Menampilkan gambar mini pratinjau di daftar takarir.
 
-### Subtitle above thumbnail {#subtitle-above-thumbnail}
+### Tampilkan takarir di atas gambar mini {#subtitle-above-thumbnail}
 
-Shows the subtitle above the preview thumbnail in the subtitle list.
+Menampilkan takarir di atas gambar mini pratinjau dalam daftar takarir.
 
-### Subtitle regex filter {#subtitle-regex-filter}
+### Filter regex takarir {#subtitle-regex-filter}
 
-Substrings matched by this regex will be replaced by the value of [Subtitle regex filter text replacement](#subtitle-regex-filter-text-replacement)
+Substrings matched by this regex will be replaced by the value of [Filter regex takarir text replacement](#subtitle-regex-filter-text-replacement)
 
-### Subtitle regex filter text replacement {#subtitle-regex-filter-text-replacement}
+### Filter regex takarir text replacement {#subtitle-regex-filter-text-replacement}
 
-Substrings matched by the regex above are replaced with the value of this setting. If left empty, matched substrings are simply removed.
+Subteks yang cocok dengan regex di atas akan diganti dengan nilai pengaturan ini. Jika dikosongkan, subteks yang cocok akan dihapus.
 
-### Subtitle HTML {#subtitle-html}
+### HTML takarir {#subtitle-html}
 
-How to handle HTML that appears in subtitle files.
+Mengatur cara menangani HTML dalam berkas takarir.
 
-### Detect and Display Ruby {#detect-and-display-ruby}
+### Deteksi dan tampilkan Ruby {#detect-and-display-ruby}
 
-When enabled, asbplayer will automatically detect Netflix-style word readings and display them stylistically using `ruby` tags. Netflix-style readings frequently appear in Japanese subtitles and look like `花子（はなこ）` where a reading in parentheses follows a word.
+Jika diaktifkan, asbplayer akan otomatis mendeteksi bacaan kata bergaya Netflix dan menampilkannya dengan gaya khusus menggunakan tag `ruby`. Bacaan bergaya Netflix sering muncul dalam takarir bahasa Jepang, seperti `花子（はなこ）`, yaitu bacaan dalam tanda kurung setelah kata.
 
-### Enable WebSocket client {#enable-websocket-client}
+### Aktifkan klien WebSocket {#enable-websocket-client}
 
-Enables the WebSocket client. Allows asbplayer to be controlled using the WebSocket interface.
+Mengaktifkan klien WebSocket agar asbplayer dapat dikendalikan melalui antarmuka WebSocket.
 
-### WebSocket Server URL {#websocket-server-url}
+### URL server WebSocket {#websocket-server-url}
 
-The URL of the WebSocket server to connect to when enabling the WebSocket client. Usually this would be a locally-running instance of the [pre-packaged WebSocket server](../guides/web-socket-server.md).
+URL server WebSocket yang dihubungkan saat klien WebSocket diaktifkan. Biasanya URL ini mengarah ke [server WebSocket yang disertakan](../guides/web-socket-server.md) dan berjalan secara lokal.
 
-### Mining history storage limit {#mining-history-storage-limit}
+### Batas penyimpanan riwayat penambangan {#mining-history-storage-limit}
 
-Limits the number of cards that can be saved in the mining history.
+Membatasi jumlah kartu yang dapat disimpan dalam riwayat penambangan.
 
-### Name of the tab {#name-of-the-tab}
+### Nama tab {#name-of-the-tab}
 
-The name to use for the app tab.
+Nama yang digunakan untuk tab aplikasi.
 
-## Profiles {#profiles}
+## Profil {#profiles}
 
-A settings profile is a completely different set of settings values. The active settings profile can be changed from the settings UI or from the **Load Subtitles** and **Anki Export** dialogs.
+Profil pengaturan adalah kumpulan nilai pengaturan yang sepenuhnya berbeda. Profil aktif dapat diubah dari antarmuka pengaturan atau dialog **Muat Takarir** dan **Ekspor Anki**.

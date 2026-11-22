@@ -4,140 +4,140 @@ sidebar_position: 5
 
 import project from '@site/src/project';
 
-# Common issues {#common-issues}
+# Masalah umum {#common-issues}
 
-## General {#general}
+## Umum {#general}
 
-### Subtitles aren't showing up {#subtitles-arent-showing-up}
+### Takarir tidak muncul {#subtitles-arent-showing-up}
 
-It's possible to hide the subtitles in asbplayer through a few ways:
+Takarir di asbplayer dapat disembunyikan dengan beberapa cara:
 
-- The [`Toggle subtitles`](./reference/settings.md#subtitles-keyboard-shortcuts) keyboard shortcut.
-- The [`Toggle subtitle track X in video`](./reference/settings.md#subtitles-keyboard-shortcuts) keyboard shortcuts.
-- The [`Show subtitles`](./reference/settings.md#show-subtitles) option in `Playback > Playback modes`
+- Pintasan keyboard [`Tampilkan/sembunyikan takarir`](./reference/settings.md#subtitles-keyboard-shortcuts).
+- Pintasan keyboard [`Tampilkan/sembunyikan trek takarir X di video`](./reference/settings.md#subtitles-keyboard-shortcuts).
+- Opsi [`Tampilkan takarir`](./reference/settings.md#show-subtitles) di `Pemutaran > Mode pemutaran`.
 
-### asbplayer can't connect to Anki. It shows an error message e.g. 'Failed to fetch.' {#anki-connection-failed}
+### asbplayer tidak dapat terhubung ke Anki. Muncul pesan kesalahan seperti 'Failed to fetch.' {#anki-connection-failed}
 
-This can happen due to ad blockers:
+Hal ini dapat disebabkan oleh pemblokir iklan:
 
-- If you're using Brave, make sure asbplayer isn't being blocked by Shield.
-- Check that your browser or an ad blocker isn't blocking the request. A good place to start is by opening your browser's developer console and looking for errors.
+- Jika menggunakan Brave, pastikan Shield tidak memblokir asbplayer.
+- Pastikan peramban atau pemblokir iklan tidak memblokir permintaan. Coba buka konsol pengembang peramban dan cari pesan kesalahan.
 
-Misconfiguration:
+Konfigurasi yang salah:
 
-- If using the website, make sure that asbplayer is allowed by AnkiConnect, as described [here](./getting-started/mining-subtitles.md).
+- Jika menggunakan situs web, pastikan AnkiConnect mengizinkan asbplayer seperti yang dijelaskan [di sini](./getting-started/mining-subtitles.md).
 
-Or bugs:
+Atau bug:
 
-- As of this writing enabling experimental web platform features is known to cause this issue. Try disabling this flag from `chrome://flags`.
-- On later versions of macOS, AnkiConnect will not respond when Anki is in the background ([Notes for MacOS Users](https://git.sr.ht/~foosoft/anki-connect#notes-for-macos-users)).
+- Saat tulisan ini dibuat, fitur platform web eksperimental diketahui dapat menyebabkan masalah ini. Coba nonaktifkan tanda tersebut dari `chrome://flags`.
+- Pada versi macOS yang lebih baru, AnkiConnect tidak akan merespons saat Anki berjalan di latar belakang ([Catatan untuk Pengguna macOS](https://git.sr.ht/~foosoft/anki-connect#notes-for-macos-users)).
 
-### When using the 'update last card' feature, the card does not update in Anki. {#card-not-updating}
+### Kartu tidak diperbarui di Anki saat menggunakan fitur 'perbarui kartu terakhir'. {#card-not-updating}
 
-Make sure Anki's card browser is closed when using "update last card." There is a [known issue](https://github.com/FooSoft/anki-connect/issues/82) with AnkiConnect where cards will not appear to update when the card browser is open.
+Pastikan penjelajah kartu Anki ditutup saat menggunakan "perbarui kartu terakhir". Ada [masalah yang diketahui](https://github.com/FooSoft/anki-connect/issues/82) pada AnkiConnect yang membuat kartu seolah-olah tidak diperbarui saat penjelajah kartu terbuka.
 
-### When loading a local file asbplayer either shows a black screen, or doesn't play audio. {#local-video-playback-issues}
+### Saat memuat berkas lokal, asbplayer menampilkan layar hitam atau tidak memutar audio. {#local-video-playback-issues}
 
-Browsers have varying ability to decode certain video and audio formats. See the [compatibility section](./compatibility.md#browsers-and-media-formats).
+Kemampuan peramban dalam mendekode format video dan audio tertentu berbeda-beda. Lihat bagian [kompatibilitas](./compatibility.md#browsers-and-media-formats).
 
-### My popup dictionary extension (e.g. Yomitan) doesn't work on the side panel {#popup-dictionary-in-side-panel}
+### Ekstensi kamus popup saya (misalnya Yomitan) tidak berfungsi di panel samping {#popup-dictionary-in-side-panel}
 
-For security reasons, browsers do not allow extension scripts to be injected into other extension pages, so there is no fix for this. If you want to scan text with other extensions then you will need to do it from the subtitles displayed inside the video element, or from the subtitle list on the asbplayer website.
+Demi alasan keamanan, peramban tidak mengizinkan skrip ekstensi disisipkan ke halaman ekstensi lain, jadi masalah ini tidak dapat diperbaiki. Jika ingin memindai teks dengan ekstensi lain, lakukan dari takarir yang ditampilkan di elemen video atau dari daftar takarir di situs web asbplayer.
 
-### asbplayer isn't detecting streaming video. {#asbplayer-isnt-detecting-streaming-video}
+### asbplayer tidak mendeteksi video streaming. {#asbplayer-isnt-detecting-streaming-video}
 
-Make sure that in the extension details, the extension has access to all sites.
+Pastikan ekstensi memiliki akses ke semua situs pada detail ekstensi.
 
-### Keyboard shortcuts aren't working. {#keyboard-shortcuts-arent-working}
+### Pintasan keyboard tidak berfungsi. {#keyboard-shortcuts-arent-working}
 
-Check the <a href={new URL('?view=settings#keyboard-shortcuts', project.urls.app).href}>keyboard shortcut settings</a> or the [keyboard shortcuts reference](./reference/settings.md#keyboard-shortcuts).
+Periksa <a href={new URL('?view=settings#keyboard-shortcuts', project.urls.app).href}>pengaturan pintasan keyboard</a> atau [referensi pintasan keyboard](./reference/settings.md#keyboard-shortcuts).
 
-Also, if using the extension:
+Jika menggunakan ekstensi:
 
-- Check `chrome://extensions/shortcuts` in Chrome, or `about:addons` → gear icon → `Manage Extension Shortcuts` in Firefox.
-- Try refreshing the page and loading subtitles again.
-- Try uninstalling and reinstalling the extension, and restarting your browser.
-- Make sure the extension isn't installed twice.
+- Periksa `chrome://extensions/shortcuts` di Chrome, atau `about:addons` → ikon roda gigi → `Kelola Pintasan Ekstensi` di Firefox.
+- Coba muat ulang halaman dan muat takarir lagi.
+- Coba hapus dan pasang ulang ekstensi, lalu mulai ulang peramban.
+- Pastikan ekstensi tidak dipasang dua kali.
 
-### asbplayer isn't properly cropping screenshots from streaming video. {#screenshot-cropping-issues}
+### asbplayer tidak memotong tangkapan layar video streaming dengan benar. {#screenshot-cropping-issues}
 
-Make sure the browser zoom setting is at 100%. Cropping can be disabled altogether from the <a href={new URL('?view=settings#misc-settings', project.urls.app).href}>extension settings</a>.
+Pastikan pembesaran peramban diatur ke 100%. Pemotongan dapat dinonaktifkan sepenuhnya dari <a href={new URL('?view=settings#misc-settings', project.urls.app).href}>pengaturan ekstensi</a>.
 
-### I'm having trouble creating cards using JP mining note. {#jp-mining-note-issues}
+### Saya kesulitan membuat kartu dengan catatan JP mining. {#jp-mining-note-issues}
 
-See this [issue](https://github.com/asbplayer/asbplayer/issues/220#issuecomment-1501124166).
+Lihat [masalah ini](https://github.com/asbplayer/asbplayer/issues/220#issuecomment-1501124166).
 
-### asbplayer keeps asking for permission to record audio {#repeated-audio-permission-prompts}
+### asbplayer terus meminta izin untuk merekam audio {#repeated-audio-permission-prompts}
 
-asbplayer is not currently compatible with the Volume Master extension. So you'll need to disable it.
+Saat ini asbplayer tidak kompatibel dengan ekstensi Volume Master, jadi Anda perlu menonaktifkannya.
 
-### Audio recordings are garbled, scratchy, or spotty {#garbled-audio-recordings}
+### Rekaman audio terdengar rusak, berderak, atau terputus-putus {#garbled-audio-recordings}
 
-This is usually due to insufficient CPU. If you are on a laptop, make sure it's connected to a power source. In general make sure your CPU is not being throttled by battery-saving mode, etc.
+Biasanya hal ini disebabkan oleh CPU yang tidak memadai. Jika menggunakan laptop, pastikan laptop tersambung ke sumber daya. Secara umum, pastikan mode hemat baterai dan sebagainya tidak membatasi kinerja CPU.
 
-### When I use a keyboard shortcut to open asbplayer for streaming video, nothing happens and the page becomes unresponsive. {#streaming-shortcut-unresponsive}
+### Saya menggunakan pintasan keyboard untuk membuka asbplayer pada video streaming, tetapi tidak terjadi apa-apa dan halaman tidak merespons. {#streaming-shortcut-unresponsive}
 
-This can happen because `Experimental Web Platform features` is enabled in `chrome://flags`. Make sure it's disabled and try again.
+Hal ini dapat terjadi karena `Experimental Web Platform features` aktif di `chrome://flags`. Pastikan tanda tersebut dinonaktifkan, lalu coba lagi.
 
-## Annotation {#annotation}
+## Anotasi {#annotation}
 
-### Enable or disable annotation for a track {#enable-or-disable-annotation-for-a-track}
+### Mengaktifkan atau menonaktifkan anotasi untuk trek {#enable-or-disable-annotation-for-a-track}
 
-Annotation is considered disabled if the following settings are set to these values:
+Anotasi dianggap nonaktif jika pengaturan berikut memiliki nilai ini:
 
-- In [`Settings > Annotation`](./reference/settings.md#annotation):
-  - [`Colorize subtitles based on known words`](./reference/settings.md#colorize-subtitles-based-on-known-words): **Off**
-  - [`Generate statistics automatically`](./reference/settings.md#generate-statistics-automatically): **Off**
-  - [`Display word readings`](./reference/settings.md#display-word-readings): _Nothing selected_ (empty value)
-  - [`Display word frequency`](./reference/settings.md#display-word-frequency): _Nothing selected_ (empty value)
-  - [`Display pitch accent (Japanese)`](./reference/settings.md#display-pitch-accent-japanese): _Nothing selected_ (empty value)
-  - [`Display word definitions`](./reference/settings.md#display-word-definitions): _Nothing selected_ (empty value)
-- In [`Settings > Playback > Annotation`](./reference/settings.md#playback-annotation):
-  - [`Select first matching word on pause`](./reference/settings.md#select-first-matching-word-on-pause): Never
-  - [`Auto-pause subtitles containing these words`](./reference/settings.md#auto-pause-subtitles-containing-these-words): No word filter
-  - [`Play subtitles containing these words in condensed mode`](./reference/settings.md#play-subtitles-containing-these-words-in-condensed-mode): No word filter
-  - [`Play subtitles containing these words at normal speed in fast-forward mode`](./reference/settings.md#play-subtitles-containing-these-words-at-normal-speed-in-fast-forward-mode): No word filter
-  - [`Repeat subtitles containing these words`](./reference/settings.md#repeat-subtitles-containing-these-words): No word filter
-  - [`Show these words during playback`](./reference/settings.md#show-these-words-during-playback): No word filter
-  - [`Adjust fast-forward rate by comprehension`](./reference/settings.md#adjust-fast-forward-rate-by-comprehension): **Off**
+- Di [`Pengaturan > Anotasi`](./reference/settings.md#annotation):
+  - [`Warnai takarir berdasarkan kata yang diketahui`](./reference/settings.md#colorize-subtitles-based-on-known-words): **Mati**
+  - [`Buat statistik secara otomatis`](./reference/settings.md#generate-statistics-automatically): **Mati**
+  - [`Tampilkan bacaan kata`](./reference/settings.md#display-word-readings): _Tidak ada yang dipilih_ (nilai kosong)
+  - [`Tampilkan frekuensi kata`](./reference/settings.md#display-word-frequency): _Tidak ada yang dipilih_ (nilai kosong)
+  - [`Tampilkan aksen nada (bahasa Jepang)`](./reference/settings.md#display-pitch-accent-japanese): _Tidak ada yang dipilih_ (nilai kosong)
+  - [`Tampilkan definisi kata`](./reference/settings.md#display-word-definitions): _Tidak ada yang dipilih_ (nilai kosong)
+- Di [`Pengaturan > Pemutaran > Anotasi`](./reference/settings.md#playback-annotation):
+  - [`Pilih kata cocok pertama saat jeda`](./reference/settings.md#select-first-matching-word-on-pause): Tidak pernah
+  - [`Jeda otomatis pada takarir yang berisi kata-kata ini`](./reference/settings.md#auto-pause-subtitles-containing-these-words): Tanpa filter kata
+  - [`Putar takarir yang berisi kata-kata ini dalam mode ringkas`](./reference/settings.md#play-subtitles-containing-these-words-in-condensed-mode): Tanpa filter kata
+  - [`Putar takarir yang berisi kata-kata ini dengan kecepatan normal dalam mode maju cepat`](./reference/settings.md#play-subtitles-containing-these-words-at-normal-speed-in-fast-forward-mode): Tanpa filter kata
+  - [`Ulangi takarir yang berisi kata-kata ini`](./reference/settings.md#repeat-subtitles-containing-these-words): Tanpa filter kata
+  - [`Tampilkan kata-kata ini selama pemutaran`](./reference/settings.md#show-these-words-during-playback): Tanpa filter kata
+  - [`Sesuaikan kecepatan maju cepat berdasarkan pemahaman`](./reference/settings.md#adjust-fast-forward-rate-by-comprehension): **Mati**
 
-To enable annotation for a track, set at least one of the above settings to a value other than the disabled value. Certain annotations may only show on hover if they are [configured to do so](./reference/settings.md#only-display-word-color-on-hover).
+Untuk mengaktifkan anotasi pada trek, ubah setidaknya satu pengaturan di atas ke nilai selain nilai nonaktifnya. Anotasi tertentu mungkin hanya muncul saat diarahkan jika [diatur demikian](./reference/settings.md#only-display-word-color-on-hover).
 
 :::tip
-The [`Re-build Anki word database`](./reference/settings.md#re-build-anki-word-database) and [`Re-build WaniKani word database`](./reference/settings.md#re-build-wanikani-word-database) buttons will be disabled unless the above settings have specific values that benefit from their integration.
+Tombol [`Bangun ulang basis data kata Anki`](./reference/settings.md#re-build-anki-word-database) dan [`Bangun ulang basis data kata WaniKani`](./reference/settings.md#re-build-wanikani-word-database) akan dinonaktifkan kecuali pengaturan di atas memiliki nilai tertentu yang memerlukan integrasi tersebut.
 :::
 
-### Clear Anki word database {#clear-anki-word-database}
+### Menghapus basis data kata Anki {#clear-anki-word-database}
 
-To clear the Anki word database entries for a track, set the [`Anki word fields`](./reference/settings.md#anki-word-fields) and [`Anki sentence fields`](./reference/settings.md#anki-sentence-fields) to empty values and use the [`Re-build Anki word database`](./reference/settings.md#re-build-anki-word-database) button. If the button is disabled, [follow these steps](#enable-or-disable-annotation-for-a-track) to enable annotation for the track first.
+Untuk menghapus entri basis data kata Anki pada sebuah trek, kosongkan [`kolom kata Anki`](./reference/settings.md#anki-word-fields) dan [`kolom kalimat Anki`](./reference/settings.md#anki-sentence-fields), lalu gunakan tombol [`Bangun ulang basis data kata Anki`](./reference/settings.md#re-build-anki-word-database). Jika tombolnya nonaktif, [ikuti langkah-langkah ini](#enable-or-disable-annotation-for-a-track) untuk mengaktifkan anotasi pada trek terlebih dahulu.
 
-### Clear WaniKani word database {#clear-wanikani-word-database}
+### Menghapus basis data kata WaniKani {#clear-wanikani-word-database}
 
-To clear the WaniKani word database entries for a track, set the [WaniKani API token](./reference/settings.md#wanikani-api-token) to an empty value and use the [`Re-build WaniKani word database`](./reference/settings.md#re-build-wanikani-word-database) button. If the button is disabled, [follow these steps](#enable-or-disable-annotation-for-a-track) to enable annotation for the track first.
+Untuk menghapus entri basis data kata WaniKani pada sebuah trek, kosongkan [token API WaniKani](./reference/settings.md#wanikani-api-token), lalu gunakan tombol [`Bangun ulang basis data kata WaniKani`](./reference/settings.md#re-build-wanikani-word-database). Jika tombolnya nonaktif, [ikuti langkah-langkah ini](#enable-or-disable-annotation-for-a-track) untuk mengaktifkan anotasi pada trek terlebih dahulu.
 
-### Delete locally tracked words {#delete-locally-tracked-words}
+### Menghapus kata yang dilacak secara lokal {#delete-locally-tracked-words}
 
-You can delete a locally tracked word by hovering over it and using the [Annotation keyboard shortcuts](./reference/settings.md#annotation-keyboard-shortcuts) to set its status to **Uncollected** and toggle **Ignored** if it was set.
+Untuk menghapus kata yang dilacak secara lokal, arahkan kursor ke kata tersebut dan gunakan [pintasan keyboard anotasi](./reference/settings.md#annotation-keyboard-shortcuts) untuk mengubah statusnya menjadi **Belum dikumpulkan**. Jika status **Abaikan** aktif, nonaktifkan juga.
 
-To bulk delete locally tracked words, use the [`Word Browser`](./reference/settings.md#word-browser) to mark words as **Uncollected** and remove their states. You can also use the [`Import Words`](./reference/settings.md#import-words) feature.
+Untuk menghapus banyak kata yang dilacak secara lokal sekaligus, gunakan [`Penjelajah kata`](./reference/settings.md#word-browser) untuk menandai kata sebagai **Belum dikumpulkan** dan menghapus statusnya. Anda juga dapat menggunakan fitur [`Impor kata`](./reference/settings.md#import-words).
 
-### Everything is uncollected {#everything-is-uncollected}
+### Semua kata berstatus belum dikumpulkan {#everything-is-uncollected}
 
-If you accidentally enabled annotation, [follow these steps](#enable-or-disable-annotation-for-a-track) to disable it.
+Jika anotasi tidak sengaja diaktifkan, [ikuti langkah-langkah ini](#enable-or-disable-annotation-for-a-track) untuk menonaktifkannya.
 
-If word statuses never change from **Uncollected**:
+Jika status kata tidak pernah berubah dari **Belum dikumpulkan**:
 
-- If you rely on local status, import words into the local word database or use the hover + [Annotation keyboard shortcuts](./reference/settings.md#annotation-keyboard-shortcuts) to set statuses.
-- If you rely on Anki for status, make sure Anki is running and your **AnkiConnect URL** is correct.
-    - Configure [`Anki word fields`](./reference/settings.md#anki-word-fields) (recommended) and/or [`Anki sentence fields`](./reference/settings.md#anki-sentence-fields).
-    - Run [`Re-build Anki word database`](./reference/settings.md#re-build-anki-word-database).
-    - You do not need to keep Anki running after the database is built but keeping Anki open during playback will keep asbplayer in sync.
-- If you rely on WaniKani for status, make sure your [`WaniKani API token`](./reference/settings.md#wanikani-api-token) is correct.
-    - Run [`Re-build WaniKani word database`](./reference/settings.md#re-build-wanikani-word-database).
-    - asbplayer will automatically sync with WaniKani during playback.
+- Jika mengandalkan status lokal, impor kata ke basis data kata lokal atau gunakan hover dan [pintasan keyboard anotasi](./reference/settings.md#annotation-keyboard-shortcuts) untuk mengatur status.
+- Jika mengandalkan Anki untuk status, pastikan Anki berjalan dan **URL AnkiConnect** sudah benar.
+    - Atur [`kolom kata Anki`](./reference/settings.md#anki-word-fields) (disarankan) dan/atau [`kolom kalimat Anki`](./reference/settings.md#anki-sentence-fields).
+    - Jalankan [`Bangun ulang basis data kata Anki`](./reference/settings.md#re-build-anki-word-database).
+    - Anki tidak perlu terus berjalan setelah basis data dibuat, tetapi membiarkannya terbuka selama pemutaran akan menjaga sinkronisasi asbplayer.
+- Jika mengandalkan WaniKani untuk status, pastikan [`token API WaniKani`](./reference/settings.md#wanikani-api-token) sudah benar.
+    - Jalankan [`Bangun ulang basis data kata WaniKani`](./reference/settings.md#re-build-wanikani-word-database).
+    - asbplayer akan menyinkronkan data dengan WaniKani secara otomatis selama pemutaran.
 
-### Red strikethrough styling appears {#red-strikethrough-styling-appears}
+### Gaya coret merah muncul {#red-strikethrough-styling-appears}
 
-If you accidentally enabled annotation, [follow these steps](#enable-or-disable-annotation-for-a-track) to disable it.
+Jika anotasi tidak sengaja diaktifkan, [ikuti langkah-langkah ini](#enable-or-disable-annotation-for-a-track) untuk menonaktifkannya.
 
-This indicates there was an error processing the subtitles, most likely due to an issue connecting to Yomitan. Check the browser console for error messages and seek support in the asbplayer Discord if you can’t resolve the issue.
+Ini menandakan terjadi kesalahan saat memproses takarir, kemungkinan besar karena masalah koneksi ke Yomitan. Periksa pesan kesalahan di konsol peramban dan minta bantuan di Discord asbplayer jika masalah belum teratasi.

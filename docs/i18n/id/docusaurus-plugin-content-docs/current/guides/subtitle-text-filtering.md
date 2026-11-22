@@ -6,21 +6,21 @@ import project from '@site/src/project';
 
 import CodeBlock from '@theme/CodeBlock'; // Empty fenced code blocks lose their title and copy button; CodeBlock preserves both.
 
-# Subtitle text filtering {#subtitle-text-filtering}
+# Memfilter teks takarir {#subtitle-text-filtering}
 
-If you'd like to filter out specific instances subtitle text, one way to do so is by using a regular expression (regex). asbplayer can match any sequence following a specified regex pattern and remove the matches.
+Untuk menyaring bagian tertentu dari teks takarir, Anda dapat menggunakan ekspresi reguler (regex). asbplayer dapat mencocokkan rangkaian teks sesuai pola regex yang ditentukan dan menghapus hasil yang cocok.
 
-## Configure the regex filter {#configure-the-regex-filter}
+## Mengonfigurasi filter regex {#configure-the-regex-filter}
 
-Under the <a href={new URL('?view=settings#misc-settings', project.urls.app).href}>misc</a> section in asbplayer settings, locate the "Subtitle regex filter" textbox. Enter an appropriate regex to filter desired content.
-You can replace filtered content similarly by entering a string into the "Subtitle regex filter text replacement" textbox. Leaving this blank will simply remove the content.
+Di bagian <a href={new URL('?view=settings#misc-settings', project.urls.app).href}>lain-lain</a> pada pengaturan asbplayer, cari kotak teks "Subtitle regex filter". Masukkan regex yang sesuai untuk menyaring konten yang diinginkan.
+Anda juga dapat mengganti konten yang disaring dengan memasukkan teks ke kotak "Subtitle regex filter text replacement". Jika dikosongkan, konten akan dihapus.
 
-### Remove speaker names {#remove-speaker-names}
+### Menghapus nama pembicara {#remove-speaker-names}
 
-Remove names enclosed by parenthesis to indicate speakers (e.g. "**（山田）**　元気ですか？")
+Hapus nama pembicara yang diapit tanda kurung (misalnya "**（山田）**　元気ですか？").
 
 <details>
-<summary>Use this filter</summary>
+<summary>Gunakan filter ini</summary>
 
 ```text title="Subtitle regex filter"
 ([\(（]([^\(\)（）]|(([\(（][^\(\)（）]+[\)）])))+[\)）])
@@ -32,11 +32,11 @@ Remove names enclosed by parenthesis to indicate speakers (e.g. "**（山田）*
 
 </details>
 
-### Preserve Japanese readings {#preserve-japanese-readings}
+### Mempertahankan bacaan bahasa Jepang {#preserve-japanese-readings}
 
-Remove parenthesized names or descriptions while keeping Japanese readings immediately after Japanese text. For example, `（山田）漢字(かんじ)を読む。` becomes `漢字(かんじ)を読む。`. Both `(かんじ)` and `（かんじ）` are preserved when immediately preceded by a character in the kanji, hiragana, or katakana ranges shown in the regex.
+Hapus nama atau deskripsi dalam tanda kurung, tetapi pertahankan bacaan bahasa Jepang yang langsung mengikuti teks bahasa Jepang. Misalnya, `（山田）漢字(かんじ)を読む。` menjadi `漢字(かんじ)を読む。`. `(かんじ)` dan `（かんじ）` akan dipertahankan jika tepat didahului karakter dalam rentang kanji, hiragana, atau katakana yang tercantum di regex.
 
-This is a heuristic: it also keeps descriptions immediately after Japanese text, such as `こんにちは（笑）`, and removes readings separated from their base text by a space. It does not handle nested parentheses. Leave "Subtitle regex filter text replacement" blank.
+Ini merupakan pendekatan heuristik: deskripsi yang langsung mengikuti teks bahasa Jepang, seperti `こんにちは（笑）`, juga akan dipertahankan, sedangkan bacaan yang dipisahkan dari teks dasarnya dengan spasi akan dihapus. Tanda kurung bersarang tidak ditangani. Kosongkan "Subtitle regex filter text replacement".
 
 <details>
 <summary>Use this filter</summary>
@@ -51,11 +51,11 @@ This is a heuristic: it also keeps descriptions immediately after Japanese text,
 
 </details>
 
-### Merge subtitle lines {#merge-subtitle-lines}
+### Menggabungkan baris takarir {#merge-subtitle-lines}
 
-Some subtitles are split in several lines and this regex forces them into a single line. For this filter to work, you must also put `$1 $2` in the "Subtitle regex filter text replacement" field.
+Beberapa takarir terbagi menjadi beberapa baris; regex ini menggabungkannya menjadi satu baris. Agar filter ini berfungsi, masukkan `$1 $2` di kolom "Subtitle regex filter text replacement".
 
-When combining this pattern with others, keep it last so a more specific alternative can match first at the same position. Alternatives do not run as separate filtering passes. Every match uses the same replacement text, and adding capturing groups in other alternatives changes the numbers needed in `$1 $2`.
+Jika menggabungkan pola ini dengan pola lain, letakkan pola ini paling akhir agar alternatif yang lebih spesifik dapat dicocokkan terlebih dahulu pada posisi yang sama. Alternatif tidak dijalankan sebagai tahap penyaringan terpisah. Semua kecocokan menggunakan teks pengganti yang sama, dan penambahan grup tangkapan pada alternatif lain akan mengubah nomor yang diperlukan dalam `$1 $2`.
 
 <details>
 <summary>Use this filter</summary>
@@ -70,9 +70,9 @@ $1 $2
 
 </details>
 
-### Remove newlines {#remove-newlines}
+### Menghapus baris baru {#remove-newlines}
 
-Remove all newline characters without inserting spaces. For example, two lines containing `こんにちは` and `世界` become `こんにちは世界`. Leave "Subtitle regex filter text replacement" blank. To insert a space between lines instead, use the [merge subtitle lines example](#merge-subtitle-lines).
+Hapus semua karakter baris baru tanpa menyisipkan spasi. Misalnya, dua baris berisi `こんにちは` dan `世界` menjadi `こんにちは世界`. Kosongkan "Subtitle regex filter text replacement". Untuk menyisipkan spasi di antara baris, gunakan [contoh menggabungkan baris takarir](#merge-subtitle-lines).
 
 <details>
 <summary>Use this filter</summary>
@@ -87,9 +87,9 @@ Remove all newline characters without inserting spaces. For example, two lines c
 
 </details>
 
-### Remove bracketed descriptions {#remove-bracketed-descriptions}
+### Menghapus deskripsi dalam tanda kurung siku {#remove-bracketed-descriptions}
 
-Remove indications enclosed by square brackets that sound or music that is playing (e.g. "**\[PLAYFUL MUSIC]**" or "**\-[GASPS]**")
+Hapus keterangan suara atau musik yang diapit tanda kurung siku (misalnya "**\[MUSIK CERIA]**" atau "**\-[TERKEJUT]**").
 
 <details>
 <summary>Use this filter</summary>
@@ -104,9 +104,9 @@ Remove indications enclosed by square brackets that sound or music that is playi
 
 </details>
 
-### Remove uppercase descriptions {#remove-uppercase-descriptions}
+### Menghapus deskripsi huruf kapital {#remove-uppercase-descriptions}
 
-As an alternative to the above, filter out descriptions written in capital letters, but without the square brackets (e.g. "**PLAYFUL MUSIC**"). If your language has additional letters with diacritics, you feel free to add them to this list.
+Sebagai alternatif, saring deskripsi yang ditulis dengan huruf kapital tanpa tanda kurung siku (misalnya "**MUSIK CERIA**"). Jika bahasa Anda memiliki huruf tambahan dengan diakritik, Anda dapat menambahkannya ke daftar ini.
 
 <details>
 <summary>Use this filter</summary>
@@ -121,9 +121,9 @@ As an alternative to the above, filter out descriptions written in capital lette
 
 </details>
 
-### Remove music symbols {#remove-music-symbols}
+### Menghapus simbol musik {#remove-music-symbols}
 
-Any combination of symbols on their own that represent playing music (e.g. `♪♬♪`)
+Hapus rangkaian simbol musik yang berdiri sendiri (misalnya `♪♬♪`).
 
 <details>
 <summary>Use this filter</summary>
@@ -138,9 +138,9 @@ Any combination of symbols on their own that represent playing music (e.g. `♪�
 
 </details>
 
-### Remove sound effect cues {#remove-sound-effect-cues}
+### Menghapus keterangan efek suara {#remove-sound-effect-cues}
 
-Remove subtitle cues consisting entirely of a bracketed description or music symbols, such as `[THUNDER RUMBLING]`, `-[GASPS]`, or `♪♬♪`. The `^` and `$` anchors require the entire subtitle text to match, so dialogue such as `Hello [GASPS]` or `♪ Hello ♪` is kept. Leave "Subtitle regex filter text replacement" blank.
+Hapus teks takarir yang seluruhnya terdiri atas deskripsi dalam tanda kurung atau simbol musik, seperti `[SUARA GUNTUR]`, `-[TERKEJUT]`, atau `♪♬♪`. Jangkar `^` dan `$` mengharuskan seluruh teks takarir cocok, sehingga dialog seperti `Halo [TERKEJUT]` atau `♪ Halo ♪` tetap dipertahankan. Kosongkan "Subtitle regex filter text replacement".
 
 <details>
 <summary>Use this filter</summary>
@@ -155,9 +155,9 @@ Remove subtitle cues consisting entirely of a bracketed description or music sym
 
 </details>
 
-### Remove left-to-right marks {#remove-left-to-right-marks}
+### Menghapus tanda kiri-ke-kanan {#remove-left-to-right-marks}
 
-Remove U+200E, the invisible left-to-right mark (LRM). For example, text containing `Hello`, an LRM, and `world` becomes `Helloworld`. Enter the literal escape `\u200E` in the regex field and leave "Subtitle regex filter text replacement" blank.
+Hapus U+200E, tanda kiri-ke-kanan (LRM) yang tidak terlihat. Misalnya, teks berisi `Halo`, LRM, dan `dunia` akan menjadi `Halodunia`. Masukkan escape literal `\u200E` di kolom regex dan kosongkan "Subtitle regex filter text replacement".
 
 <details>
 <summary>Use this filter</summary>
@@ -172,9 +172,9 @@ Remove U+200E, the invisible left-to-right mark (LRM). For example, text contain
 
 </details>
 
-### Remove bidirectional controls {#remove-bidi-controls}
+### Menghapus kontrol dua arah {#remove-bidi-controls}
 
-Remove all Unicode bidirectional control characters, including the left-to-right mark (U+200E), right-to-left mark (U+200F), and embedding, override, and isolate controls. Leave "Subtitle regex filter text replacement" blank. These characters can affect the display order of right-to-left or mixed-direction text, so use this filter only when you want to remove them.
+Hapus semua karakter kontrol Unicode dua arah, termasuk tanda kiri-ke-kanan (U+200E), tanda kanan-ke-kiri (U+200F), serta kontrol embedding, override, dan isolate. Kosongkan "Subtitle regex filter text replacement". Karakter ini dapat memengaruhi urutan tampilan teks kanan-ke-kiri atau teks dengan arah campuran, jadi gunakan filter ini hanya jika Anda ingin menghapusnya.
 
 <details>
 <summary>Use this filter</summary>
@@ -189,15 +189,15 @@ Remove all Unicode bidirectional control characters, including the left-to-right
 
 </details>
 
-### Combining regexes {#combining-regexes}
+### Menggabungkan regex {#combining-regexes}
 
-Regular expressions can be combined with the character `|` (no spaces needed inbetween). E.g., if you want to use the two regexes from the list above, you can use `-?\[.*\]|[♪♬#～〜]+`. You can combine as many regexes as you wish this way.
+Ekspresi reguler dapat digabungkan dengan karakter `|` (tidak perlu spasi di antaranya). Misalnya, untuk menggunakan dua regex dari daftar di atas, masukkan `-?\[.*\]|[♪♬#～〜]+`. Anda dapat menggabungkan sebanyak mungkin regex dengan cara ini.
 
-### Remove parenthesized text and newlines {#remove-parenthesized-text-and-newlines}
+### Menghapus teks dalam tanda kurung dan baris baru {#remove-parenthesized-text-and-newlines}
 
-To remove parenthesized text and all newlines together, use:
+Untuk menghapus teks dalam tanda kurung dan semua baris baru sekaligus, gunakan:
 
-Leave "Subtitle regex filter text replacement" blank. For example, `（山田）こんにちは` followed by a newline and `世界` becomes `こんにちは世界`. This removes both ASCII and full-width parentheses and their contents, including Japanese readings, and joins lines without adding spaces. It does not handle nested parentheses; use the [speaker names example](#remove-speaker-names) for those.
+Kosongkan "Subtitle regex filter text replacement". Misalnya, `（山田）こんにちは` yang diikuti baris baru dan `世界` menjadi `こんにちは世界`. Pola ini menghapus tanda kurung ASCII dan lebar penuh beserta isinya, termasuk bacaan bahasa Jepang, lalu menggabungkan baris tanpa menambahkan spasi. Tanda kurung bersarang tidak ditangani; untuk itu gunakan [contoh nama pembicara](#remove-speaker-names).
 
 <details>
 <summary>Use this filter</summary>
@@ -212,11 +212,11 @@ Leave "Subtitle regex filter text replacement" blank. For example, `（山田）
 
 </details>
 
-### Combine all removal filters {#combine-all-removal-filters}
+### Menggabungkan semua filter penghapusan {#combine-all-removal-filters}
 
-To also remove bidi controls, parenthesized speaker names (including nested parentheses), bracketed descriptions, and music symbols, use:
+Untuk menghapus kontrol dua arah, nama pembicara dalam tanda kurung (termasuk tanda kurung bersarang), deskripsi dalam tanda kurung siku, dan simbol musik sekaligus, gunakan:
 
-Leave "Subtitle regex filter text replacement" blank. This combines the removal examples above and joins lines without adding spaces. It removes Japanese readings too; use the [reading-preserving example](#preserve-japanese-readings) if you want to keep them.
+Kosongkan "Subtitle regex filter text replacement". Pola ini menggabungkan contoh penghapusan di atas dan menggabungkan baris tanpa menambahkan spasi. Bacaan bahasa Jepang juga akan dihapus; gunakan [contoh yang mempertahankan bacaan](#preserve-japanese-readings) jika ingin menyimpannya.
 
 <details>
 <summary>Use this filter</summary>
@@ -231,14 +231,14 @@ Leave "Subtitle regex filter text replacement" blank. This combines the removal 
 
 </details>
 
-## Invisible characters and blank subtitles {#invisible-characters}
+## Karakter tak terlihat dan takarir kosong {#invisible-characters}
 
-An apparently empty subtitle can contain invisible characters such as an LRM. asbplayer drops text cues containing only whitespace, control characters, or default-ignorable Unicode characters after parsing and filtering. Direction marks within meaningful text are preserved unless your regex explicitly removes them.
+Takarir yang tampak kosong mungkin mengandung karakter tak terlihat seperti LRM. Setelah penguraian dan penyaringan, asbplayer membuang cue teks yang hanya berisi spasi, karakter kontrol, atau karakter Unicode yang secara bawaan dapat diabaikan. Tanda arah di dalam teks bermakna akan dipertahankan kecuali regex Anda menghapusnya secara eksplisit.
 
-Invisible characters at the beginning or end of a cue can prevent an anchored pattern such as `^\[.+\]$` from matching. If the pattern does not match, asbplayer retries it without surrounding whitespace and invisible controls, but only drops the cue if that retry leaves no meaningful text. For example, `[THUNDER]` followed by an LRM is removed with this pattern and an empty replacement. The retry preserves the original cue when its replacement would contain meaningful text.
+Karakter tak terlihat di awal atau akhir cue dapat membuat pola berjangkar seperti `^\[.+\]$` tidak cocok. Jika pola tidak cocok, asbplayer mencobanya lagi tanpa spasi dan kontrol tak terlihat di sekelilingnya, tetapi cue hanya dibuang jika percobaan ulang tidak menyisakan teks bermakna. Misalnya, `[GUNTUR]` yang diikuti LRM dihapus dengan pola ini dan teks pengganti kosong. Percobaan ulang mempertahankan cue asli jika teks penggantinya masih bermakna.
 
-When combining an anchored pattern with a bidi-removal alternative, remember that replacements happen in one pass. For example, `^\[.+\]$|\u200E` applied to `[THUNDER]` followed by an LRM removes the LRM, but does not retry the bracketed description afterward. To remove both in the same pass, use the unanchored `\[.+\]|\p{Bidi_Control}` with an empty replacement. This also removes bracketed descriptions within dialogue.
+Saat menggabungkan pola berjangkar dengan alternatif penghapusan dua arah, ingat bahwa penggantian dilakukan dalam satu tahap. Misalnya, `^\[.+\]$|\u200E` yang diterapkan pada `[GUNTUR]` diikuti LRM akan menghapus LRM, tetapi tidak mencoba ulang deskripsi dalam tanda kurung setelahnya. Untuk menghapus keduanya dalam tahap yang sama, gunakan pola tanpa jangkar `\[.+\]|\p{Bidi_Control}` dengan teks pengganti kosong. Pola ini juga menghapus deskripsi dalam tanda kurung yang berada di tengah dialog.
 
-## Learn {#learn}
+## Pelajari {#learn}
 
-Learn how to write and test custom regular expressions at [Regex Learn - Playground](https://regexlearn.com/playground).
+Pelajari cara menulis dan menguji ekspresi reguler khusus di [Regex Learn - Playground](https://regexlearn.com/playground).
