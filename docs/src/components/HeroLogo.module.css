@@ -1,0 +1,48 @@
+/*
+ * Brand mark for the hero, above the subtitle stream. The logo is a
+ * frosted-glass tile: backdrop blur and saturation over a translucent brand
+ * gradient. Subtitle rows scrolling out of frame behind it get diffused
+ * instead of colliding with it. HeroSubtitleStream renders the rows above
+ * the highlight brighter, so there is content behind the glass for the blur
+ * to act on.
+ */
+.wrapper {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    justify-content: center;
+    margin-bottom: 0.75rem;
+    pointer-events: none;
+}
+
+/* The glass tile, same geometry as the logo square. Applying backdrop-filter
+   to the svg element or combining it with a mask is unreliable across
+   browsers, so the blur lives on this plain div. */
+.glass {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 72px;
+    height: 72px;
+    border-radius: 12.5%;
+    backdrop-filter: blur(12px) saturate(160%);
+    -webkit-backdrop-filter: blur(12px) saturate(160%);
+    background: linear-gradient(150deg, rgba(255, 31, 98, 0.7), rgba(73, 0, 122, 0.75) 160%);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+/* Dark mode wants a shallower tint or the tile reads as an opaque dark chip;
+   white on the 30% gradient keeps the glyph legible. */
+[data-theme='dark'] .glass {
+    background: linear-gradient(150deg, rgba(255, 31, 98, 0.3), rgba(73, 0, 122, 0.35) 160%);
+    border-color: rgba(255, 255, 255, 0.15);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+.logo {
+    position: relative;
+    width: 72px;
+    height: 72px;
+}
