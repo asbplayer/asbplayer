@@ -1,35 +1,35 @@
 ---
 sidebar_position: 2
-description: Technical reference for asbplayer’s external interface and the WebSocket server that implements it.
+description: asbplayerの外部インターフェースと、それを実装するWebSocketサーバーの技術リファレンスです。
 ---
 
 import project, { ankiConnectUrl } from '@site/src/project';
 import CodeBlock from '@theme/CodeBlock';
 
-# External API {#external-api}
+# 外部API {#external-api}
 
-This page is intended to be an technical reference on asbplayer's external interface. Below are ways to call the interface:
+このページでは、asbplayerの外部インターフェースについて技術的に説明します。インターフェースの呼び出し方法は次のとおりです。
 
-- The <a href={`${project.urls.repo}/tree/main/scripts/web-socket-server`}>pre-packaged WebSocket server</a>. See the [guide](../guides/web-socket-server.md) for how to setup the WebSocket server.
-- (v1.23 and above) Using an extension-to-extension connection obtained from [browser.runtime.connect](https://developer.chrome.com/docs/extensions/reference/api/runtime#method-connect). See the [guide](../guides/external-extensions.md) for how to connect to asbplayer from another extension.
+- <a href={`${project.urls.repo}/tree/main/scripts/web-socket-server`}>パッケージに含まれるWebSocketサーバー</a>。WebSocketサーバーのセットアップ方法は[ガイド](../guides/web-socket-server.md)を参照してください。
+- （v1.23以降）[browser.runtime.connect](https://developer.chrome.com/docs/extensions/reference/api/runtime#method-connect)から取得した拡張機能間接続を使用する方法。他の拡張機能からasbplayerに接続する方法は[ガイド](../guides/external-extensions.md)を参照してください。
 
-## Commands {#commands}
+## コマンド {#commands}
 
-asbplayer responds to the following commands, represented as JSON-RPC messages. The OpenRPC schema can be found [here](https://github.com/asbplayer/asbplayer/blob/main/external-api/openrpc.json).
+asbplayerはJSON-RPCメッセージで表された次のコマンドに応答します。OpenRPCスキーマは[こちら](https://github.com/asbplayer/asbplayer/blob/main/external-api/openrpc.json)で確認できます。
 
 :::info
-asbplayer extensions v1.22 and below support the schema `{ command, messageId, body }` instead of `{ method, id, params }`.
+asbplayer拡張機能v1.22以前では、`{ method, id, params }`ではなく`{ command, messageId, body }`のスキーマをサポートします。
 :::
 
 ## `mine-subtitle` {#mine-subtitle}
 
-Mines from the active tab by default. Set `mediaId` to an ID returned by [`get-bound-media`](#get-bound-media) to target specific media. If the media is not found or has no subtitles, `published` is `false`.
+初期状態では、アクティブなタブからカードをマイニングします。特定のメディアを対象にするには、`mediaId`に[`get-bound-media`](#get-bound-media)が返すIDを設定します。メディアが見つからない場合、または字幕がない場合は、`published`が`false`になります。
 
-When `postMineAction` is `2`, `noteId` selects the Anki note to update. If omitted, the last-added note is updated. `noteId` applies to streaming media only and is ignored for local media.
+`postMineAction`が`2`の場合、`noteId`で更新するAnkiノートを選択します。省略すると、最後に追加されたノートが更新されます。`noteId`はストリーミングメディアにのみ適用され、ローカルメディアでは無視されます。
 
-> `mediaId` and `noteId` require extension v1.20.0 or later.
+> `mediaId`と`noteId`には拡張機能v1.20.0以降が必要です。
 
-### Request {#mine-subtitle-request}
+### リクエスト {#mine-subtitle-request}
 
     ```javascript
     {
@@ -52,7 +52,7 @@ When `postMineAction` is `2`, `noteId` selects the Anki note to update. If omitt
     }
     ```
 
-### Response {#mine-subtitle-response}
+### レスポンス {#mine-subtitle-response}
 
     ```javascript
     {
@@ -68,11 +68,11 @@ When `postMineAction` is `2`, `noteId` selects the Anki note to update. If omitt
 
 ## `load-subtitles` {#load-subtitles}
 
-Loads the files into the active tab's media by default, showing the video selector when the tab has more than one video. Set `mediaId` to an ID returned by [`get-bound-media`](#get-bound-media) to load the files directly into that media.
+初期状態では、ファイルをアクティブなタブのメディアに読み込みます。タブに動画が複数ある場合は、動画セレクターが表示されます。ファイルを特定のメディアに直接読み込むには、`mediaId`に[`get-bound-media`](#get-bound-media)が返すIDを設定します。
 
-> `mediaId` requires extension v1.23.0 or later. Earlier versions load the files into every tab with a bound video
+> `mediaId`には拡張機能v1.23.0以降が必要です。それ以前のバージョンでは、動画が紐付いたすべてのタブにファイルが読み込まれます。
 
-### Request {#load-subtitles-request}
+### リクエスト {#load-subtitles-request}
 
 ```javascript
 {
@@ -92,7 +92,7 @@ Loads the files into the active tab's media by default, showing the video select
 }
 ```
 
-### Response {#load-subtitles-response}
+### レスポンス {#load-subtitles-response}
 
 ```javascript
 {
@@ -105,11 +105,11 @@ Loads the files into the active tab's media by default, showing the video select
 
 ## `seek-timestamp` {#seek-timestamp}
 
-Seeks the active tab's media by default. Set `mediaId` to an ID returned by [`get-bound-media`](#get-bound-media) to target specific media.
+初期状態では、アクティブなタブのメディア内をシークします。特定のメディアを対象にするには、`mediaId`に[`get-bound-media`](#get-bound-media)が返すIDを設定します。
 
-> `mediaId` requires extension v1.20.0+. Seeking local media requires extension v1.23.0+
+> `mediaId`には拡張機能v1.20.0以降が必要です。ローカルメディアのシークには拡張機能v1.23.0以降が必要です。
 
-### Request {#seek-timestamp-request}
+### リクエスト {#seek-timestamp-request}
 
 ```javascript
 {
@@ -125,7 +125,7 @@ Seeks the active tab's media by default. Set `mediaId` to an ID returned by [`ge
 }
 ```
 
-### Response {#seek-timestamp-response}
+### レスポンス {#seek-timestamp-response}
 
 ```javascript
 {
@@ -138,11 +138,11 @@ Seeks the active tab's media by default. Set `mediaId` to an ID returned by [`ge
 
 ## `get-bound-media` {#get-bound-media}
 
-> Requires extension v1.20.0+
+> 拡張機能v1.20.0以降が必要です。
 
-Returns the media asbplayer is currently tracking, including both `streaming` and `local` media.
+`streaming`と`local`の両方を含む、asbplayerが現在追跡しているメディアを返します。
 
-### Request {#get-bound-media-request}
+### リクエスト {#get-bound-media-request}
 
 ```javascript
 {
@@ -153,7 +153,7 @@ Returns the media asbplayer is currently tracking, including both `streaming` an
 }
 ```
 
-### Response {#get-bound-media-response}
+### レスポンス {#get-bound-media-response}
 
 ```javascript
 {
@@ -186,12 +186,12 @@ Returns the media asbplayer is currently tracking, including both `streaming` an
 
 ## `get-subtitles` {#get-subtitles}
 
-> Requires extension v1.20.0+
+> 拡張機能v1.20.0以降が必要です。
 
-Returns the subtitles currently loaded for a piece of media. By default it targets the active tab's media; pass a `mediaId` from [`get-bound-media`](#get-bound-media) to target specific media.
-Returns an empty list when no matching media is found or no subtitles are loaded.
+メディアに現在読み込まれている字幕を返します。初期状態ではアクティブなタブのメディアが対象です。特定のメディアを対象にするには、[`get-bound-media`](#get-bound-media)から取得した`mediaId`を渡します。
+一致するメディアが見つからない場合、または字幕が読み込まれていない場合は、空のリストを返します。
 
-### Request {#get-subtitles-request}
+### リクエスト {#get-subtitles-request}
 
 ```javascript
 {
@@ -207,7 +207,7 @@ Returns an empty list when no matching media is found or no subtitles are loaded
 }
 ```
 
-### Response {#get-subtitles-response}
+### レスポンス {#get-subtitles-response}
 
 ```javascript
 {
@@ -225,9 +225,9 @@ Returns an empty list when no matching media is found or no subtitles are loaded
 
 ## `client-info` {#client-info}
 
-Returns asbplayer client info, such as supported protocols. The latest versions of asbplayer support JSON-RPC.
+サポートされるプロトコルなど、asbplayerクライアントの情報を返します。最新バージョンのasbplayerはJSON-RPCに対応しています。
 
-### Request {#client-info-request}
+### リクエスト {#client-info-request}
 
 ```javascript
 {
@@ -239,7 +239,7 @@ Returns asbplayer client info, such as supported protocols. The latest versions 
 }
 ```
 
-### Response {#client-info-response}
+### レスポンス {#client-info-response}
 
 ```javascript
 {
@@ -254,9 +254,9 @@ Returns asbplayer client info, such as supported protocols. The latest versions 
 
 ## `rpc.discover` {#rpc-discover}
 
-Returns the OpenRPC document for the running build. Use it to discover the current method names, params, results, and transport tags instead of hard-coding them.
+実行中のビルドのOpenRPCドキュメントを返します。メソッド名、パラメーター、結果、トランスポートタグをコードに固定せず、ここから現在の値を取得できます。
 
-### Request {#rpc-discover-request}
+### リクエスト {#rpc-discover-request}
 
 ```javascript
 {
@@ -267,13 +267,13 @@ Returns the OpenRPC document for the running build. Use it to discover the curre
 }
 ```
 
-### Response {#rpc-discover-response}
+### レスポンス {#rpc-discover-response}
 
-Returns the OpenRPC document describing the supported JSON-RPC methods. See [`external-api/openrpc.json`](https://github.com/asbplayer/asbplayer/blob/main/external-api/openrpc.json) for the full document.
+サポートされているJSON-RPCメソッドを説明するOpenRPCドキュメントを返します。ドキュメント全体は[`external-api/openrpc.json`](https://github.com/asbplayer/asbplayer/blob/main/external-api/openrpc.json)を参照してください。
 
-## Error codes {#error-codes}
+## エラーコード {#error-codes}
 
-Errors use the standard JSON-RPC error object:
+エラーには標準のJSON-RPCエラーオブジェクトを使います。
 
 ```javascript
 {
@@ -289,17 +289,17 @@ Errors use the standard JSON-RPC error object:
 }
 ```
 
-| Code     | Meaning          | Notes                                                           |
+| コード     | 意味          | 備考                                                           |
 | -------- | ---------------- | --------------------------------------------------------------- |
-| `-32700` | Parse error      | The frame is not valid JSON.                                    |
-| `-32600` | Invalid request  | The frame is not a valid JSON-RPC request.                      |
-| `-32601` | Method not found | Unknown method, or a method unavailable on that transport.      |
-| `-32602` | Invalid params   | The method's params failed schema validation.                   |
-| `-32603` | Internal error   | The handler failed or returned a result that failed validation. |
-| `-32000` | Request timeout  | A server did not receive a response from asbplayer in time.     |
-| `-32001` | No clients       | A server has no connected asbplayer to forward the request to.  |
-| `-32002` | Not approved     | An external extension sent a command before being approved.     |
+| `-32700` | 解析エラー      | フレームが有効なJSONではありません。                                    |
+| `-32600` | 無効なリクエスト  | フレームが有効なJSON-RPCリクエストではありません。                      |
+| `-32601` | メソッドが見つからない | 不明なメソッド、またはそのトランスポートで利用できないメソッドです。      |
+| `-32602` | 無効なパラメーター   | メソッドのパラメーターがスキーマ検証に失敗しました。                   |
+| `-32603` | 内部エラー   | ハンドラーが失敗したか、返された結果が検証に失敗しました。 |
+| `-32000` | リクエストのタイムアウト  | サーバーが時間内にasbplayerから応答を受け取りませんでした。     |
+| `-32001` | クライアントなし       | リクエストを転送できるasbplayerがサーバーに接続されていません。  |
+| `-32002` | 未承認     | 外部拡張機能が承認前にコマンドを送信しました。     |
 
-Notifications are never answered, including when handling fails. A request with an unusable `id` receives an error response with `id: null`.
+通知には、処理に失敗した場合も含め、応答は返されません。使用できない`id`を含むリクエストには、`id: null`のエラー応答が返されます。
 
-The Go server's HTTP bridge maps these errors to HTTP statuses; see [`external-api/README.md`](https://github.com/asbplayer/asbplayer/blob/main/external-api/README.md#error-codes).
+GoサーバーのHTTPブリッジはこれらのエラーをHTTPステータスに対応付けます。[`external-api/README.md`](https://github.com/asbplayer/asbplayer/blob/main/external-api/README.md#error-codes)を参照してください。

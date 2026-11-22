@@ -4,140 +4,140 @@ sidebar_position: 5
 
 import project from '@site/src/project';
 
-# Common issues {#common-issues}
+# よくある問題 {#common-issues}
 
-## General {#general}
+## 一般 {#general}
 
-### Subtitles aren't showing up {#subtitles-arent-showing-up}
+### 字幕が表示されない {#subtitles-arent-showing-up}
 
-It's possible to hide the subtitles in asbplayer through a few ways:
+いくつかの方法で、asbplayerの字幕を非表示にできます。
 
-- The [`Toggle subtitles`](./reference/settings.md#subtitles-keyboard-shortcuts) keyboard shortcut.
-- The [`Toggle subtitle track X in video`](./reference/settings.md#subtitles-keyboard-shortcuts) keyboard shortcuts.
-- The [`Show subtitles`](./reference/settings.md#show-subtitles) option in `Playback > Playback modes`
+- [`字幕の表示を切り替え`](./reference/settings.md#subtitles-keyboard-shortcuts)キーボードショートカット。
+- [`動画内の字幕トラックXを切り替え`](./reference/settings.md#subtitles-keyboard-shortcuts)キーボードショートカット。
+- `再生 > プレイバックモード`にある[`字幕を表示`](./reference/settings.md#show-subtitles)オプション。
 
-### asbplayer can't connect to Anki. It shows an error message e.g. 'Failed to fetch.' {#anki-connection-failed}
+### asbplayerがAnkiに接続できず、「Failed to fetch.」などのエラーが表示される {#anki-connection-failed}
 
-This can happen due to ad blockers:
+広告ブロッカーが原因で発生することがあります。
 
-- If you're using Brave, make sure asbplayer isn't being blocked by Shield.
-- Check that your browser or an ad blocker isn't blocking the request. A good place to start is by opening your browser's developer console and looking for errors.
+- Braveを使用している場合、Shieldがasbplayerをブロックしていないことを確認してください。
+- ブラウザーや広告ブロッカーがリクエストをブロックしていないか確認してください。まずブラウザーの開発者コンソールを開き、エラーを探すとよいでしょう。
 
-Misconfiguration:
+設定に誤りがある場合:
 
-- If using the website, make sure that asbplayer is allowed by AnkiConnect, as described [here](./getting-started/mining-subtitles.md).
+- ウェブサイトを使用している場合は、[こちら](./getting-started/mining-subtitles.md)の説明に従い、AnkiConnectでasbplayerが許可されていることを確認してください。
 
-Or bugs:
+または、既知の不具合が原因の場合:
 
-- As of this writing enabling experimental web platform features is known to cause this issue. Try disabling this flag from `chrome://flags`.
-- On later versions of macOS, AnkiConnect will not respond when Anki is in the background ([Notes for MacOS Users](https://git.sr.ht/~foosoft/anki-connect#notes-for-macos-users)).
+- この記事の執筆時点では、Experimental Web Platform featuresを有効にするとこの問題が起こることが知られています。`chrome://flags`でこのフラグを無効にしてみてください。
+- 新しいバージョンのmacOSでは、AnkiがバックグラウンドにあるとAnkiConnectが応答しません（[macOSユーザー向けの注意](https://git.sr.ht/~foosoft/anki-connect#notes-for-macos-users)）。
 
-### When using the 'update last card' feature, the card does not update in Anki. {#card-not-updating}
+### 「最後のカードを更新」機能を使っても、Ankiのカードが更新されない {#card-not-updating}
 
-Make sure Anki's card browser is closed when using "update last card." There is a [known issue](https://github.com/FooSoft/anki-connect/issues/82) with AnkiConnect where cards will not appear to update when the card browser is open.
+「最後のカードを更新」を使うときは、Ankiのカードブラウザーが閉じていることを確認してください。カードブラウザーが開いているとカードが更新されたように見えないという[既知の問題](https://github.com/FooSoft/anki-connect/issues/82)がAnkiConnectにあります。
 
-### When loading a local file asbplayer either shows a black screen, or doesn't play audio. {#local-video-playback-issues}
+### ローカルファイルを読み込むと画面が真っ黒になる、または音声が再生されない {#local-video-playback-issues}
 
-Browsers have varying ability to decode certain video and audio formats. See the [compatibility section](./compatibility.md#browsers-and-media-formats).
+ブラウザーによって、特定の動画・音声形式をデコードできるかどうかが異なります。[互換性のセクション](./compatibility.md#browsers-and-media-formats)を参照してください。
 
-### My popup dictionary extension (e.g. Yomitan) doesn't work on the side panel {#popup-dictionary-in-side-panel}
+### ポップアップ辞書拡張機能（Yomitanなど）がサイドパネルで動作しない {#popup-dictionary-in-side-panel}
 
-For security reasons, browsers do not allow extension scripts to be injected into other extension pages, so there is no fix for this. If you want to scan text with other extensions then you will need to do it from the subtitles displayed inside the video element, or from the subtitle list on the asbplayer website.
+セキュリティ上の理由から、ブラウザーでは他の拡張機能のページへのスクリプト挿入が許可されていないため、この問題を解決する方法はありません。他の拡張機能でテキストを調べる場合は、動画要素内に表示される字幕か、asbplayerウェブサイトの字幕リストを使ってください。
 
-### asbplayer isn't detecting streaming video. {#asbplayer-isnt-detecting-streaming-video}
+### asbplayerがストリーミング動画を検出しない {#asbplayer-isnt-detecting-streaming-video}
 
-Make sure that in the extension details, the extension has access to all sites.
+拡張機能の詳細で、すべてのサイトへのアクセスが許可されていることを確認してください。
 
-### Keyboard shortcuts aren't working. {#keyboard-shortcuts-arent-working}
+### キーボードショートカットが動作しない {#keyboard-shortcuts-arent-working}
 
-Check the <a href={new URL('?view=settings#keyboard-shortcuts', project.urls.app).href}>keyboard shortcut settings</a> or the [keyboard shortcuts reference](./reference/settings.md#keyboard-shortcuts).
+<a href={new URL('?view=settings#keyboard-shortcuts', project.urls.app).href}>キーボードショートカットの設定</a>または[キーボードショートカットのリファレンス](./reference/settings.md#keyboard-shortcuts)を確認してください。
 
-Also, if using the extension:
+拡張機能を使用している場合は、次の点も確認してください。
 
-- Check `chrome://extensions/shortcuts` in Chrome, or `about:addons` → gear icon → `Manage Extension Shortcuts` in Firefox.
-- Try refreshing the page and loading subtitles again.
-- Try uninstalling and reinstalling the extension, and restarting your browser.
-- Make sure the extension isn't installed twice.
+- Chromeでは`chrome://extensions/shortcuts`、Firefoxでは`about:addons` → 歯車アイコン → `拡張機能のショートカットを管理`を確認してください。
+- ページを再読み込みし、字幕をもう一度読み込んでみてください。
+- 拡張機能をアンインストールして再インストールし、ブラウザーを再起動してみてください。
+- 拡張機能が二重にインストールされていないことを確認してください。
 
-### asbplayer isn't properly cropping screenshots from streaming video. {#screenshot-cropping-issues}
+### asbplayerがストリーミング動画のスクリーンショットを正しく切り抜かない {#screenshot-cropping-issues}
 
-Make sure the browser zoom setting is at 100%. Cropping can be disabled altogether from the <a href={new URL('?view=settings#misc-settings', project.urls.app).href}>extension settings</a>.
+ブラウザーのズーム設定が100%であることを確認してください。切り抜きは<a href={new URL('?view=settings#misc-settings', project.urls.app).href}>拡張機能の設定</a>で完全に無効にできます。
 
-### I'm having trouble creating cards using JP mining note. {#jp-mining-note-issues}
+### JP mining noteを使ったマイニングで問題が起きる {#jp-mining-note-issues}
 
-See this [issue](https://github.com/asbplayer/asbplayer/issues/220#issuecomment-1501124166).
+この[イシュー](https://github.com/asbplayer/asbplayer/issues/220#issuecomment-1501124166)を参照してください。
 
-### asbplayer keeps asking for permission to record audio {#repeated-audio-permission-prompts}
+### asbplayerが音声録音の許可を繰り返し求める {#repeated-audio-permission-prompts}
 
-asbplayer is not currently compatible with the Volume Master extension. So you'll need to disable it.
+現在、asbplayerはVolume Master拡張機能と互換性がありません。Volume Masterを無効にしてください。
 
-### Audio recordings are garbled, scratchy, or spotty {#garbled-audio-recordings}
+### 録音した音声にノイズが入る、音が割れる、または途切れる {#garbled-audio-recordings}
 
-This is usually due to insufficient CPU. If you are on a laptop, make sure it's connected to a power source. In general make sure your CPU is not being throttled by battery-saving mode, etc.
+通常はCPUの性能不足が原因です。ノートパソコンを使用している場合は、電源に接続されていることを確認してください。また、省電力モードなどでCPUの処理速度が制限されていないことを確認してください。
 
-### When I use a keyboard shortcut to open asbplayer for streaming video, nothing happens and the page becomes unresponsive. {#streaming-shortcut-unresponsive}
+### キーボードショートカットでストリーミング動画のasbplayerを開くと何も起きず、ページが応答しなくなる {#streaming-shortcut-unresponsive}
 
-This can happen because `Experimental Web Platform features` is enabled in `chrome://flags`. Make sure it's disabled and try again.
+`chrome://flags`で`Experimental Web Platform features`が有効になっていると発生することがあります。無効にして、もう一度試してください。
 
-## Annotation {#annotation}
+## アノテーション {#annotation}
 
-### Enable or disable annotation for a track {#enable-or-disable-annotation-for-a-track}
+### トラックのアノテーションを有効または無効にする {#enable-or-disable-annotation-for-a-track}
 
-Annotation is considered disabled if the following settings are set to these values:
+次の設定が以下の値になっている場合、アノテーションは無効とみなされます。
 
-- In [`Settings > Annotation`](./reference/settings.md#annotation):
-  - [`Colorize subtitles based on known words`](./reference/settings.md#colorize-subtitles-based-on-known-words): **Off**
-  - [`Generate statistics automatically`](./reference/settings.md#generate-statistics-automatically): **Off**
-  - [`Display word readings`](./reference/settings.md#display-word-readings): _Nothing selected_ (empty value)
-  - [`Display word frequency`](./reference/settings.md#display-word-frequency): _Nothing selected_ (empty value)
-  - [`Display pitch accent (Japanese)`](./reference/settings.md#display-pitch-accent-japanese): _Nothing selected_ (empty value)
-  - [`Display word definitions`](./reference/settings.md#display-word-definitions): _Nothing selected_ (empty value)
-- In [`Settings > Playback > Annotation`](./reference/settings.md#playback-annotation):
-  - [`Select first matching word on pause`](./reference/settings.md#select-first-matching-word-on-pause): Never
-  - [`Auto-pause subtitles containing these words`](./reference/settings.md#auto-pause-subtitles-containing-these-words): No word filter
-  - [`Play subtitles containing these words in condensed mode`](./reference/settings.md#play-subtitles-containing-these-words-in-condensed-mode): No word filter
-  - [`Play subtitles containing these words at normal speed in fast-forward mode`](./reference/settings.md#play-subtitles-containing-these-words-at-normal-speed-in-fast-forward-mode): No word filter
-  - [`Repeat subtitles containing these words`](./reference/settings.md#repeat-subtitles-containing-these-words): No word filter
-  - [`Show these words during playback`](./reference/settings.md#show-these-words-during-playback): No word filter
-  - [`Adjust fast-forward rate by comprehension`](./reference/settings.md#adjust-fast-forward-rate-by-comprehension): **Off**
+- [`設定 > アノテーション`](./reference/settings.md#annotation)で:
+  - [`既知単語に応じて字幕を色分け`](./reference/settings.md#colorize-subtitles-based-on-known-words): **オフ**
+  - [`統計を自動生成`](./reference/settings.md#generate-statistics-automatically): **オフ**
+  - [`単語の読みを表示`](./reference/settings.md#display-word-readings): _未選択_（空の値）
+  - [`単語の頻度を表示`](./reference/settings.md#display-word-frequency): _未選択_（空の値）
+  - [`ピッチアクセントを表示（日本語）`](./reference/settings.md#display-pitch-accent-japanese): _未選択_（空の値）
+  - [`単語の定義を表示`](./reference/settings.md#display-word-definitions): _未選択_（空の値）
+- [`設定 > プレイバック > アノテーション`](./reference/settings.md#playback-annotation)で:
+  - [`一時停止時に最初に一致した単語を選択`](./reference/settings.md#select-first-matching-word-on-pause): なし
+  - [`これらの単語を含む字幕で自動一時停止`](./reference/settings.md#auto-pause-subtitles-containing-these-words): 単語フィルターなし
+  - [`これらの単語を含む字幕を短縮モードで再生`](./reference/settings.md#play-subtitles-containing-these-words-in-condensed-mode): 単語フィルターなし
+  - [`早送りモードでこれらの単語を含む字幕を通常速度で再生`](./reference/settings.md#play-subtitles-containing-these-words-at-normal-speed-in-fast-forward-mode): 単語フィルターなし
+  - [`これらの単語を含む字幕をリピート`](./reference/settings.md#repeat-subtitles-containing-these-words): 単語フィルターなし
+  - [`再生中にこれらの単語を表示`](./reference/settings.md#show-these-words-during-playback): 単語フィルターなし
+  - [`理解度に応じて早送り速度を調整`](./reference/settings.md#adjust-fast-forward-rate-by-comprehension): **オフ**
 
-To enable annotation for a track, set at least one of the above settings to a value other than the disabled value. Certain annotations may only show on hover if they are [configured to do so](./reference/settings.md#only-display-word-color-on-hover).
+トラックのアノテーションを有効にするには、上記の設定のうち少なくとも1つを無効値以外に設定します。[設定](./reference/settings.md#only-display-word-color-on-hover)によっては、特定のアノテーションはカーソルを合わせたときのみ表示されます。
 
 :::tip
-The [`Re-build Anki word database`](./reference/settings.md#re-build-anki-word-database) and [`Re-build WaniKani word database`](./reference/settings.md#re-build-wanikani-word-database) buttons will be disabled unless the above settings have specific values that benefit from their integration.
+上記の設定が連携のメリットを得られる値になっていない場合、[`Anki単語データベースを再構築`](./reference/settings.md#re-build-anki-word-database)と[`WaniKani単語データベースを再構築`](./reference/settings.md#re-build-wanikani-word-database)のボタンは無効になります。
 :::
 
-### Clear Anki word database {#clear-anki-word-database}
+### Anki単語データベースを消去する {#clear-anki-word-database}
 
-To clear the Anki word database entries for a track, set the [`Anki word fields`](./reference/settings.md#anki-word-fields) and [`Anki sentence fields`](./reference/settings.md#anki-sentence-fields) to empty values and use the [`Re-build Anki word database`](./reference/settings.md#re-build-anki-word-database) button. If the button is disabled, [follow these steps](#enable-or-disable-annotation-for-a-track) to enable annotation for the track first.
+トラックのAnki単語データベースの項目を消去するには、[`Anki単語フィールド`](./reference/settings.md#anki-word-fields)と[`Anki文フィールド`](./reference/settings.md#anki-sentence-fields)を空にして、[`Anki単語データベースを再構築`](./reference/settings.md#re-build-anki-word-database)ボタンを使います。ボタンが無効の場合は、先に[この手順](#enable-or-disable-annotation-for-a-track)に従ってトラックのアノテーションを有効にしてください。
 
-### Clear WaniKani word database {#clear-wanikani-word-database}
+### WaniKani単語データベースを消去する {#clear-wanikani-word-database}
 
-To clear the WaniKani word database entries for a track, set the [WaniKani API token](./reference/settings.md#wanikani-api-token) to an empty value and use the [`Re-build WaniKani word database`](./reference/settings.md#re-build-wanikani-word-database) button. If the button is disabled, [follow these steps](#enable-or-disable-annotation-for-a-track) to enable annotation for the track first.
+トラックのWaniKani単語データベースの項目を消去するには、[WaniKani APIトークン](./reference/settings.md#wanikani-api-token)を空にして、[`WaniKani単語データベースを再構築`](./reference/settings.md#re-build-wanikani-word-database)ボタンを使います。ボタンが無効の場合は、先に[この手順](#enable-or-disable-annotation-for-a-track)に従ってトラックのアノテーションを有効にしてください。
 
-### Delete locally tracked words {#delete-locally-tracked-words}
+### ローカルで記録した単語を削除する {#delete-locally-tracked-words}
 
-You can delete a locally tracked word by hovering over it and using the [Annotation keyboard shortcuts](./reference/settings.md#annotation-keyboard-shortcuts) to set its status to **Uncollected** and toggle **Ignored** if it was set.
+ローカルで記録した単語を削除するには、その単語にカーソルを合わせ、[アノテーションのキーボードショートカット](./reference/settings.md#annotation-keyboard-shortcuts)で状態を**未収集**にし、**無視**が設定されている場合は切り替えます。
 
-To bulk delete locally tracked words, use the [`Word Browser`](./reference/settings.md#word-browser) to mark words as **Uncollected** and remove their states. You can also use the [`Import Words`](./reference/settings.md#import-words) feature.
+ローカルで記録した単語をまとめて削除するには、[`単語ブラウザー`](./reference/settings.md#word-browser)で単語を**未収集**にして状態を削除します。または、[`単語をインポート`](./reference/settings.md#import-words)機能を使います。
 
-### Everything is uncollected {#everything-is-uncollected}
+### すべての単語が未収集になる {#everything-is-uncollected}
 
-If you accidentally enabled annotation, [follow these steps](#enable-or-disable-annotation-for-a-track) to disable it.
+誤ってアノテーションを有効にした場合は、[この手順](#enable-or-disable-annotation-for-a-track)に従って無効にしてください。
 
-If word statuses never change from **Uncollected**:
+単語の状態が**未収集**から変わらない場合:
 
-- If you rely on local status, import words into the local word database or use the hover + [Annotation keyboard shortcuts](./reference/settings.md#annotation-keyboard-shortcuts) to set statuses.
-- If you rely on Anki for status, make sure Anki is running and your **AnkiConnect URL** is correct.
-    - Configure [`Anki word fields`](./reference/settings.md#anki-word-fields) (recommended) and/or [`Anki sentence fields`](./reference/settings.md#anki-sentence-fields).
-    - Run [`Re-build Anki word database`](./reference/settings.md#re-build-anki-word-database).
-    - You do not need to keep Anki running after the database is built but keeping Anki open during playback will keep asbplayer in sync.
-- If you rely on WaniKani for status, make sure your [`WaniKani API token`](./reference/settings.md#wanikani-api-token) is correct.
-    - Run [`Re-build WaniKani word database`](./reference/settings.md#re-build-wanikani-word-database).
-    - asbplayer will automatically sync with WaniKani during playback.
+- ローカルの状態を使う場合は、単語をローカル単語データベースにインポートするか、単語にカーソルを合わせて[アノテーションのキーボードショートカット](./reference/settings.md#annotation-keyboard-shortcuts)で状態を設定します。
+- Ankiの状態を使う場合は、Ankiが起動しており、**AnkiConnect URL**が正しいことを確認してください。
+    - [`Anki単語フィールド`](./reference/settings.md#anki-word-fields)（推奨）や[`Anki文フィールド`](./reference/settings.md#anki-sentence-fields)を設定します。
+    - [`Anki単語データベースを再構築`](./reference/settings.md#re-build-anki-word-database)を実行します。
+    - データベースの構築後はAnkiを起動したままにする必要はありません。ただし、再生中にAnkiを開いておくとasbplayerとの同期が保たれます。
+- WaniKaniの状態を使う場合は、[`WaniKani APIトークン`](./reference/settings.md#wanikani-api-token)が正しいことを確認してください。
+    - [`WaniKani単語データベースを再構築`](./reference/settings.md#re-build-wanikani-word-database)を実行します。
+    - asbplayerは再生中にWaniKaniと自動同期します。
 
-### Red strikethrough styling appears {#red-strikethrough-styling-appears}
+### 赤い取り消し線が表示される {#red-strikethrough-styling-appears}
 
-If you accidentally enabled annotation, [follow these steps](#enable-or-disable-annotation-for-a-track) to disable it.
+誤ってアノテーションを有効にした場合は、[この手順](#enable-or-disable-annotation-for-a-track)に従って無効にしてください。
 
-This indicates there was an error processing the subtitles, most likely due to an issue connecting to Yomitan. Check the browser console for error messages and seek support in the asbplayer Discord if you can’t resolve the issue.
+これは字幕の処理中にエラーが発生したことを示しています。多くの場合、Yomitanへの接続に問題があります。ブラウザーコンソールでエラーメッセージを確認してください。解決できない場合は、asbplayerのDiscordでサポートを求めてください。

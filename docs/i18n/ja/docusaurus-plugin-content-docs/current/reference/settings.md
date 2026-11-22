@@ -6,439 +6,439 @@ import project from '@site/src/project';
 
 import NoteAddIcon from '@site/src/components/NoteAddIcon';
 
-# Settings {#settings}
+# 設定 {#settings}
 
 ## <a href={new URL('?view=settings#anki-settings', project.urls.app).href}>Anki</a> {#anki}
 
 ### AnkiConnect URL {#ankiconnect-url}
 
-URL to the AnkiConnect server running as on addon inside Anki.
+Anki内でアドオンとして実行中のAnkiConnectサーバーのURLです。
 
-### AnkiConnect API Key {#ankiconnect-api-key}
+### AnkiConnect APIキー {#ankiconnect-api-key}
 
-API key configured in AnkiConnect when API key protection is enabled.
+APIキーによる保護が有効な場合に、AnkiConnectで設定したAPIキーです。
 
-### Refresh Anki Card Browser after updating cards {#refresh-anki-card-browser}
+### カード更新後にAnkiのカードブラウザーを更新 {#refresh-anki-card-browser}
 
-When enabled, refreshes the open Anki Card Browser after asbplayer updates a card so that its fields display their current values. This may bring the Card Browser window to the foreground. This setting is disabled by default.
+有効にすると、asbplayerがカードを更新した後、開いているAnkiのカードブラウザーを更新し、フィールドに現在の値を表示します。この操作でカードブラウザーのウィンドウが前面に表示されることがあります。初期状態では無効です。
 
-### Deck {#deck}
+### デッキ {#deck}
 
-Anki deck where cards are sent.
+カードの送信先となるAnkiデッキです。
 
-### Note Type {#note-type}
+### ノートタイプ {#note-type}
 
-Anki note type to use for cards. A note type defines a "model" and a "view" for the cards. More specifically, a set of card fields, and an HTML template that determines how to render those fields on the card's front and back.
+カードに使用するAnkiノートタイプです。ノートタイプはカードの「モデル」と「ビュー」を定義します。具体的にはカードのフィールド一式と、カードの表面・裏面にそれらのフィールドをどう表示するかを決めるHTMLテンプレートです。
 
-### Card Fields {#card-fields}
+### カードフィールド {#card-fields}
 
-Each card field setting determines what content gets mapped to which field of the configured note type. The **field label** - Sentence, Definition, Word, Image, Audio, or URL - is the **content** - and the **field value** is the **field inside the note type**.
+各カードフィールドの設定で、どのコンテンツを設定済みノートタイプのどのフィールドに割り当てるかを決めます。**フィールドラベル**（文、定義、単語、画像、音声、URL）は**コンテンツ**を表し、**フィールド値**は**ノートタイプ内のフィールド**を表します。
 
-Fields will appear in the **Anki Export Dialog** in the order that they appear in the settings. The order can be changed using the **⋮ menu** → **Move Down** or **Move Up**.
+フィールドは、設定に表示されている順に**Anki のエクスポートウィンドウ**に表示されます。順序は**⋮メニュー** → **下へ移動**または**上へ移動**で変更できます。
 
-| Field                 | Content                                            |
+| フィールド                 | 内容                                            |
 | --------------------- | -------------------------------------------------- |
-| Sentence (all tracks) | All subtitles at the mined timestamp               |
-| Definition            | The user-provided word definition                  |
-| Word                  | The user-provided word                             |
-| Audio                 | Audio recorded from video source                   |
-| Image                 | Screenshot of video source                         |
-| Source                | Subtitle file or video name and timestamp          |
-| URL                   | Current URL if card was mined from streaming video |
-| Subtitle Track 1      | Subtitles from track 1 at the mined timestamp      |
-| Subtitle Track 2      | Subtitles from track 2 at the mined timestamp      |
-| Subtitle Track 3      | Subtitles from track 3 at the mined timestamp      |
-| Custom Fields         | User-provided values                               |
+| 文（全トラック） | マイニング時点のすべての字幕               |
+| 定義            | ユーザーが入力した単語の定義                  |
+| 単語                  | ユーザーが入力した単語                             |
+| 音声                 | 動画ソースから録音した音声                   |
+| 画像                 | 動画ソースのスクリーンショット                         |
+| ソース                | 字幕ファイルまたは動画の名前とタイムスタンプ          |
+| URL                   | ストリーミング動画からカードをマイニングした場合の現在のURL |
+| 字幕トラック1      | マイニング時点のトラック1の字幕      |
+| 字幕トラック2      | マイニング時点のトラック2の字幕      |
+| 字幕トラック3      | マイニング時点のトラック3の字幕      |
+| カスタムフィールド         | ユーザーが入力した値                               |
 
-### Tags {#tags}
+### タグ {#tags}
 
-Default tags to supply with each card.
+各カードに付けるデフォルトのタグです。
 
-## <a href={new URL('?view=settings#mining-settings', project.urls.app).href}>Mining</a> {#mining}
+## <a href={new URL('?view=settings#mining-settings', project.urls.app).href}>マイニング</a> {#mining}
 
-### Mining button default action {#mining-button-default-action}
+### マイニングボタンのデフォルト動作 {#mining-button-default-action}
 
-"Mining button" <NoteAddIcon/> refers to the leftmost button that appears in the **Overlay UI**, and the button that appears next to subtitles in the **Subtitle List**. This setting configures what those buttons do.
+「マイニングボタン」<NoteAddIcon/>は、**オーバーレイUI**の一番左に表示されるボタンと、**字幕リスト**の字幕の横に表示されるボタンを指します。この設定で、それらのボタンの動作を指定します。
 
-| Setting                 | Behavior                                                                                                                                                                                               |
+| 設定                 | 動作                                                                                                                                                                                               |
 | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Show Anki dialog        | Record target subtitle in mining history and show **Anki Export Dialog**                                                                                                                               |
-| Update last card        | Record target subtitle in mining history and update the last card in the configured deck with all asbplayer-provided context - all fields except the user-provided definition, word, and custom fields |
-| Show update card dialog | Record target subtitle in mining history and show the dialog for updating the last card with asbplayer-provided context                                                                                |
-| Export card             | Record target subtitle in mining history and export a card _only_ with asbplayer-provided context - all fields except the user-provided definition, word, and custom fields                            |
-| None                    | Record target subtitle in mining history                                                                                                                                                               |
+| Anki のエクスポートウィンドウを開く        | 対象の字幕をマイニング履歴に記録し、**Anki のエクスポートウィンドウ**を表示                                                                                                                               |
+| 最後のカードを更新        | 対象の字幕をマイニング履歴に記録し、ユーザー入力の定義、単語、カスタムフィールドを除くasbplayer提供の情報で、設定したデッキの最後のカードを更新 |
+| カード更新ダイアログを表示 | 対象の字幕をマイニング履歴に記録し、asbplayer提供の情報で最後のカードを更新するダイアログを表示                                                                                |
+| カードをエクスポート             | 対象の字幕をマイニング履歴に記録し、ユーザー入力の定義、単語、カスタムフィールドを除くasbplayer提供の情報_のみ_でカードをエクスポート                            |
+| なし                    | 対象の字幕をマイニング履歴に記録                                                                                                                                                               |
 
-### Post-mining playback state {#post-mining-playback-state}
+### マイニング後の再生状態 {#post-mining-playback-state}
 
-Configures the desired playback state after triggering a mining action.
+マイニング操作を実行した後の再生状態を設定します。
 
-### Copy mined subtitles to clipboard {#copy-mined-subtitles-to-clipboard}
+### マイニング時に字幕をクリップボードへコピー {#copy-mined-subtitles-to-clipboard}
 
-If enabled, copies the target subtitle to clipboard anytime mining action is triggered.
+有効にすると、マイニング操作のたびに対象の字幕をクリップボードへコピーします。
 
-### Always use subtitle text for sentence field {#always-use-subtitle-text-for-sentence-field}
+### 文フィールドに常に字幕テキストを使う {#always-use-subtitle-text-for-sentence-field}
 
-When enabled, fills the Sentence field with the mined subtitle text from all tracks, even if an external application supplies different sentence text. This is useful when [mining with Yomitan](../guides/one-click-mining.md).
+有効にすると、外部アプリが別の文テキストを提供していても、すべてのトラックから取得したマイニング対象の字幕テキストを文フィールドに入力します。[Yomitanを使ったマイニング](../guides/one-click-mining.md)で便利です。
 
-### When updating last card, also update image/audio for cards that have the same subtitle text" {#update-all-cards-with-the-same-subtitle-text}
+### 最後のカードを更新するとき、同じ字幕テキストのカードの画像・音声も更新 {#update-all-cards-with-the-same-subtitle-text}
 
-When enabled, the **Update last card** mining action also updates the audio and image fields on consecutively created notes from the same subtitle line. Each preceding note keeps its sentence, word, definition, and custom fields. Matching ignores sentence markup and allows the sentence to be part of the mined subtitle context.
+有効にすると、**最後のカードを更新**する操作で、同じ字幕行から続けて作成されたノートの音声と画像フィールドも更新します。前のノートの文、単語、定義、カスタムフィールドは保持されます。一致判定では文のマークアップを無視し、マイニング時の字幕コンテキストの一部に文が含まれる場合も対象にします。
 
-The search includes notes added within the last two Anki days and stops at the first different or missing sentence. A sentence field must be configured. This setting is disabled by default and does not affect updates to a specifically selected card.
+検索対象は過去2 Anki日以内に追加されたノートで、最初に異なる文または文がないノートで終了します。文フィールドの設定が必要です。初期状態では無効で、明示的に選択したカードの更新には影響しません。
 
-### Play audio while recording from local video {#play-audio-while-recording-from-local-video}
+### ローカル動画から録音中に音声を再生 {#play-audio-while-recording-from-local-video}
 
-asbplayer uses the browser's built-in [MediaRecorder](https://developer.mozilla.org/ja/docs/Web/API/MediaRecorder) API to record audio from local video files. This setting configures whether sound should play during recording.
+asbplayerはブラウザー組み込みの[MediaRecorder](https://developer.mozilla.org/ja/docs/Web/API/MediaRecorder) APIを使って、ローカル動画ファイルから音声を録音します。この設定で録音中に音声を再生するかどうかを指定します。
 
-### Re-encode audio as mp3 {#re-encode-audio-as-mp3}
+### 音声をmp3に再エンコード {#re-encode-audio-as-mp3}
 
-Recorded audio is not encoded as an `mp3` by default. This setting will cause audio to be re-encoded as an `mp3`. In general there's no reason to turn this setting off, especially for users who want to review their cards on iOS.
+録音した音声は初期状態では`mp3`としてエンコードされません。この設定を有効にすると、音声を`mp3`に再エンコードします。特にiOSでカードを復習する場合、この設定を無効にする理由は通常ありません。
 
-### Audio padding start {#audio-padding-start}
+### 音声パディングの開始 {#audio-padding-start}
 
-How many milliseconds **before** the target subtitle to start recording audio.
+対象の字幕より**何ミリ秒前**から音声の録音を開始するかを指定します。
 
-### Audio padding end {#audio-padding-end}
+### 音声パディングの終了 {#audio-padding-end}
 
-How many milliseconds **after** the target subtitle to stop recording audio.
+対象の字幕より**何ミリ秒後**に音声の録音を終了するかを指定します。
 
-### Image capture format (website only) {#image-capture-format}
+### 画像キャプチャ形式（ウェブサイトのみ） {#image-capture-format}
 
-Specifies the image capture format for mined cards. Only available on the website for local video files where the only additional option is "video clip."
+マイニング時の画像キャプチャ形式を指定します。ウェブサイトでローカル動画ファイルを使用する場合のみ利用できます。追加の選択肢は「動画クリップ」だけです。
 
-### Max capture width/height {#max-capture-dimensions}
+### キャプチャの最大幅・高さ {#max-capture-dimensions}
 
-Max width/height in pixels of screenshots. `0` means "no limit."
+スクリーンショットの最大幅・高さをピクセル単位で指定します。`0`は「上限なし」を意味します。
 
-### Trim black bars from screenshots {#trim-black-bars-from-screenshots}
+### スクリーンショットから黒帯を切り取る {#trim-black-bars-from-screenshots}
 
-When enabled, trims black bars due to letterboxing from screenshots.
+有効にすると、スクリーンショットからレターボックスによる黒帯を切り取ります。
 
-### Clip trim start/end {#clip-trim-start-end}
+### クリップの開始・終了をトリミング {#clip-trim-start-end}
 
-Specifies how much time to trim off the start and end of a subtitle's time interval when determining the default time interval for the video clip. Only available when the video clip image capture format is selected.
+動画クリップのデフォルトの時間範囲を決める際に、字幕の時間範囲の開始と終了から切り取る長さを指定します。動画クリップの画像キャプチャ形式を選択している場合のみ利用できます。
 
-### Max clip length {#max-clip-length}
+### クリップの最大長 {#max-clip-length}
 
-Specifies the max video clip length. Only available when video clip image capture format is selected.
+動画クリップの最大長を指定します。動画クリップの画像キャプチャ形式を選択している場合のみ利用できます。
 
-### Screenshot capture delay {#screenshot-capture-delay}
+### スクリーンショットの撮影遅延 {#screenshot-capture-delay}
 
-How long to wait after the target subtitle appears before taking the screenshot.
+対象の字幕が表示されてから、スクリーンショットを撮るまでの待機時間を指定します。
 
-### Surrounding subtitles count radius {#surrounding-subtitles-count-radius}
+### 前後の字幕数の範囲 {#surrounding-subtitles-count-radius}
 
-At the bottom of **Anki Export Dialog** there's a slider which can be used to adjust the selected time interval. The slider includes surrounding subtitles as additional context. This setting controls limits the number of those surrounding subtitles.
+**Anki のエクスポートウィンドウ**の下部に、選択した時間範囲を調整するスライダーがあります。スライダーには追加の文脈として前後の字幕が含まれます。この設定で前後に含める字幕数の上限を指定します。
 
-### Surrounding subtitles time radius {#surrounding-subtitles-time-radius}
+### 前後の字幕の時間範囲 {#surrounding-subtitles-time-radius}
 
-At the bottom of **Anki Export Dialog** there's a slider which can be used to adjust the selected time interval. The slider includes surrounding subtitles as additional context. This setting controls the size of the allowed time interval around the target subtitle, for those surrounding subtitles.
+**Anki のエクスポートウィンドウ**の下部に、選択した時間範囲を調整するスライダーがあります。スライダーには追加の文脈として前後の字幕が含まれます。この設定で、対象の字幕の前後に含める字幕の時間範囲を指定します。
 
-## <a href={new URL('?view=settings#subtitle-appearance', project.urls.app).href}>Subtitle appearance</a> {#subtitle-appearance}
+## <a href={new URL('?view=settings#subtitle-appearance', project.urls.app).href}>字幕の外観</a> {#subtitle-appearance}
 
-### Subtitle track {#subtitle-appearance-track}
+### 字幕トラック {#subtitle-appearance-track}
 
-asbplayer can load multiple subtitle tracks simultaneously. This dropdown selects the track(s) to which the settings below will apply. The default selection is "All." Modifying any appearance setting with "All" selected, modifies that setting for all tracks simultaneously. When you configure a track-specific value for a setting, that setting disappears from the "All" page.
+asbplayerでは複数の字幕トラックを同時に読み込めます。このドロップダウンで、以下の設定を適用するトラックを選択します。初期選択は「すべて」です。「すべて」を選択した状態で外観設定を変更すると、すべてのトラックでその設定が変更されます。トラック固有の値を設定すると、その設定は「すべて」のページに表示されなくなります。
 
-### Subtitle preview {#subtitle-preview}
+### 字幕のプレビュー {#subtitle-preview}
 
-Preview and edit the subtitle text used to show the effect of the appearance settings.
+外観設定の効果を確認するための字幕テキストをプレビュー・編集します。
 
-### Styling {#styling}
+### スタイル {#styling}
 
-| Setting                           | Description                                                                          | CSS property                |
+| 設定                           | 説明                                                                          | CSSプロパティ                |
 | --------------------------------- | ------------------------------------------------------------------------------------ | --------------------------- |
-| Subtitle color                    | Color                                                                                | `color`                     |
-| Subtitle size                     | Size in `px`                                                                         | `font-size`                 |
-| Subtitle font thickness           | Font thickness                                                                       | `font-weight`               |
-| Subtitle outline color            | Color of the stroke                                                                  | `-webkit-text-stroke-color` |
-| Subtitle outline thickness        | Thickness of the stroke                                                              | `-webkit-text-stroke-width` |
-| Subtitle shadow color             | Color of the shadow                                                                  | `text-shadow`               |
-| Subtitle shadow thickness         | Thickness of the shadow                                                              | `text-shadow`               |
-| Subtitle background color         | Background color                                                                     | `background-color`          |
-| Subtitle background opacity       | Background opacity                                                                   | `background`                |
-| Subtitle font family              | Font. A dropdown of available fonts appears when local font access is granted.       | `font-family`               |
-| CSS:\<style key\>                 | String value of any custom CSS property added using the **Add Custom CSS** dropdown. | Custom property             |
-| Subtitle blur                     | Applies a blur effect to subtitles. Unblurs on hover.                                | `filter:blur(...)`          |
-| Image-based subtitle scale factor | Scales image-based subtitles.                                                        | —                           |
+| 字幕の色                    | 色                                                                                | `color`                     |
+| 字幕のサイズ                     | `px`単位のサイズ                                                                         | `font-size`                 |
+| 字幕のフォントの太さ           | フォントの太さ                                                                       | `font-weight`               |
+| 字幕の輪郭線の色            | 輪郭線の色                                                                  | `-webkit-text-stroke-color` |
+| 字幕の輪郭線の太さ        | 輪郭線の太さ                                                              | `-webkit-text-stroke-width` |
+| 字幕の影の色             | 影の色                                                                  | `text-shadow`               |
+| 字幕の影の太さ         | 影の太さ                                                              | `text-shadow`               |
+| 字幕の背景色         | 背景色                                                                     | `background-color`          |
+| 字幕の背景の不透明度       | 背景の不透明度                                                                   | `background`                |
+| 字幕のフォントファミリー              | フォント。ローカルフォントへのアクセスを許可すると、使用可能なフォントのドロップダウンが表示されます。       | `font-family`               |
+| CSS:\<style key\>                 | **カスタムCSSを追加**ドロップダウンで追加した任意のカスタムCSSプロパティの文字列値。 | カスタムプロパティ             |
+| 字幕のぼかし                     | 字幕にぼかし効果を適用します。カーソルを合わせるとぼかしが解除されます。                                | `filter:blur(...)`          |
+| 画像字幕の拡大率 | 画像字幕を拡大します。                                                        | —                           |
 
-### Layout {#layout}
+### レイアウト {#layout}
 
-| Setting                              | Description                                                                  |
+| 設定                              | 説明                                                                  |
 | ------------------------------------ | ---------------------------------------------------------------------------- |
-| Subtitle alignment                   | Whether to place subtitles at the top or bottom of the video element.        |
-| Subtitle position offset from bottom | Distance from the bottom of the video element of all bottom subtitle tracks. |
-| Subtitle position offset from top    | Distance from the top of the video element of all top subtitle tracks.       |
-| Subtitles width                      | Width of subtitle container, in `%` or pixels.                               |
+| 字幕の配置                   | 動画要素の上部と下部のどちらに字幕を配置するかを指定します。        |
+| 下端からの字幕位置オフセット | 下側に配置するすべての字幕トラックと動画要素の下端との距離です。 |
+| 上端からの字幕位置オフセット    | 上側に配置するすべての字幕トラックと動画要素の上端との距離です。       |
+| 字幕の幅                      | 字幕コンテナの幅を`%`またはピクセル単位で指定します。                               |
 
-## <a href={new URL('?view=settings#keyboard-shortcuts', project.urls.app).href}>Keyboard shortcuts</a> {#keyboard-shortcuts}
+## <a href={new URL('?view=settings#keyboard-shortcuts', project.urls.app).href}>キーボードショートカット</a> {#keyboard-shortcuts}
 
-Keyboard shortcuts can be used to access most of asbplayer's features.
+キーボードショートカットを使うと、asbplayerのほとんどの機能にアクセスできます。
 
-### <a href={new URL('?view=settings#subtitle-appearance', project.urls.app).href}>Subtitles</a> keyboard shortcuts {#subtitles-keyboard-shortcuts}
+### <a href={new URL('?view=settings#subtitle-appearance', project.urls.app).href}>字幕</a>のキーボードショートカット {#subtitles-keyboard-shortcuts}
 
-| Behavior                             | Default shortcut |
+| 動作                             | デフォルトのショートカット |
 | ------------------------------------ | ---------------- |
-| Select subtitle tracks to load.      | Ctrl + Shift + F |
-| Toggle subtitles                     | ↓                |
-| Toggle subtitle track 1 in video     | 1                |
-| Toggle subtitle track 2 in video     | 2                |
-| Toggle subtitle track 3 in video     | 3                |
-| Toggle subtitle track 1 in asbplayer | W + 1            |
-| Toggle subtitle track 2 in asbplayer | W + 2            |
-| Toggle subtitle track 3 in asbplayer | W + 3            |
-| Unblur subtitle track 1 in asbplayer | B + 1            |
-| Unblur subtitle track 2 in asbplayer | B + 2            |
-| Unblur subtitle track 3 in asbplayer | B + 3            |
-| Move bottom subtitles up             |                  |
-| Move bottom subtitles down           |                  |
-| Move top subtitles up                |                  |
-| Move top subtitles down              |                  |
+| 読み込む字幕トラックを選択      | Ctrl + Shift + F |
+| 字幕の表示を切り替え                     | ↓                |
+| 動画内の字幕トラック1を切り替え     | 1                |
+| 動画内の字幕トラック2を切り替え     | 2                |
+| 動画内の字幕トラック3を切り替え     | 3                |
+| asbplayer内の字幕トラック1を切り替え | W + 1            |
+| asbplayer内の字幕トラック2を切り替え | W + 2            |
+| asbplayer内の字幕トラック3を切り替え | W + 3            |
+| asbplayer内の字幕トラック1のぼかしを解除 | B + 1            |
+| asbplayer内の字幕トラック2のぼかしを解除 | B + 2            |
+| asbplayer内の字幕トラック3のぼかしを解除 | B + 3            |
+| 下側の字幕を上に移動             |                  |
+| 下側の字幕を下に移動           |                  |
+| 上側の字幕を上に移動                |                  |
+| 上側の字幕を下に移動              |                  |
 
-### <a href={new URL('?view=settings#mining-settings', project.urls.app).href}>Mining</a> keyboard shortcuts {#mining-keyboard-shortcuts}
+### <a href={new URL('?view=settings#mining-settings', project.urls.app).href}>マイニング</a>のキーボードショートカット {#mining-keyboard-shortcuts}
 
-| Behavior                                                                             | Default shortcut           |
+| 動作                                                                             | デフォルトのショートカット           |
 | ------------------------------------------------------------------------------------ | -------------------------- |
-| Mine current subtitle                                                                | Ctrl + Shift + Z (website) |
-| Mine current subtitle and open Anki dialog                                           | Ctrl + Shift + X           |
-| Update last-created Anki card with asbplayer-captured screenshot, audio, etc.        | Ctrl + Shift + U           |
-| Export card to Anki, bypassing dialog.                                               |                            |
-| Manually take screenshot, overriding the one that is automatically taken when mining | Ctrl + Shift + V (website) |
-| Manually start/stop audio recording, even when a subtitle file is loaded.            | Ctrl + Shift + R (website) |
+| 現在の字幕からカードをマイニング                                                                | Ctrl + Shift + Z（ウェブサイト） |
+| 現在の字幕からカードをマイニングしてAnki のエクスポートウィンドウを開く                                           | Ctrl + Shift + X           |
+| asbplayerで撮影したスクリーンショットや音声などで最後に作成したAnkiカードを更新        | Ctrl + Shift + U           |
+| ダイアログを介さずにカードをAnkiへエクスポート                                               |                            |
+| マイニング時に自動撮影される画像を上書きして、手動でスクリーンショットを撮影 | Ctrl + Shift + V（ウェブサイト） |
+| 字幕ファイルが読み込まれている場合も、手動で音声録音を開始／停止            | Ctrl + Shift + R（ウェブサイト） |
 
-### <a href={new URL('?view=settings#playback', project.urls.app).href}>Playback</a> keyboard shortcuts {#playback-keyboard-shortcuts}
+### <a href={new URL('?view=settings#playback', project.urls.app).href}>プレイバック</a>のキーボードショートカット {#playback-keyboard-shortcuts}
 
-| Behavior                        | Default shortcut |
+| 動作                        | デフォルトのショートカット |
 | ------------------------------- | ---------------- |
-| Toggle side panel               | \`               |
-| Play/pause                      | Space            |
-| Toggle auto-pause               | Shift + P        |
-| Toggle condensed playback       | Shift + O        |
-| Toggle fast forward playback    | Shift + F        |
-| Toggle repeat mode              | Shift + R        |
-| Toggle when subtitles are shown |                  |
-| Cycle auto-pause resume mode    |                  |
-| Cycle through recipes forward   |                  |
-| Cycle through recipes backward  |                  |
-| Toggle recipe 1                 |                  |
-| Toggle recipe 2                 |                  |
-| Toggle recipe 3                 |                  |
-| Toggle recipe 4                 |                  |
-| Toggle recipe 5                 |                  |
-| Toggle recipe 6                 |                  |
-| Toggle recipe 7                 |                  |
-| Toggle recipe 8                 |                  |
-| Toggle recipe 9                 |                  |
-| Toggle recipe 10                |                  |
+| サイドパネルの表示を切り替え               | \`               |
+| 再生／一時停止                      | Space            |
+| 自動一時停止の切り替え               | Shift + P        |
+| 短縮プレイバックの切り替え       | Shift + O        |
+| 早送り再生の切り替え    | Shift + F        |
+| リピートモードの切り替え              | Shift + R        |
+| 字幕の表示タイミングを切り替え |                  |
+| 自動一時停止の再開モードを切り替え    |                  |
+| レシピを順方向に切り替え   |                  |
+| レシピを逆方向に切り替え  |                  |
+| レシピ1を切り替え                 |                  |
+| レシピ2を切り替え                 |                  |
+| レシピ3を切り替え                 |                  |
+| レシピ4を切り替え                 |                  |
+| レシピ5を切り替え                 |                  |
+| レシピ6を切り替え                 |                  |
+| レシピ7を切り替え                 |                  |
+| レシピ8を切り替え                 |                  |
+| レシピ9を切り替え                 |                  |
+| レシピ10を切り替え                |                  |
 
-### <a href={new URL('?view=settings#playback', project.urls.app).href}>Seek</a> keyboard shortcuts {#seek-keyboard-shortcuts}
+### <a href={new URL('?view=settings#playback', project.urls.app).href}>シーク</a>のキーボードショートカット {#seek-keyboard-shortcuts}
 
-| Behavior                                                                  | Default shortcut |
+| 動作                                                                  | デフォルトのショートカット |
 | ------------------------------------------------------------------------- | ---------------- |
-| Seek backward (default 3 seconds, [configurable](#seek-interval-seconds)) | A                |
-| Seek forward (default 3 seconds, [configurable](#seek-interval-seconds))  | D                |
-| Seek to previous subtitle                                                 | ←                |
-| Seek to next subtitle                                                     | →                |
-| Seek to beginning of current/previous subtitle                            | ↑                |
+| 後方にシーク（デフォルト3秒、[変更可能](#seek-interval-seconds)） | A                |
+| 前方にシーク（デフォルト3秒、[変更可能](#seek-interval-seconds)）  | D                |
+| 前の字幕にシーク                                                 | ←                |
+| 次の字幕にシーク                                                     | →                |
+| 現在／前の字幕の先頭にシーク                            | ↑                |
 
-### <a href={new URL('?view=settings#playback', project.urls.app).href}>Playback rate</a> keyboard shortcuts {#playback-rate-keyboard-shortcuts}
+### <a href={new URL('?view=settings#playback', project.urls.app).href}>再生速度</a>のキーボードショートカット {#playback-rate-keyboard-shortcuts}
 
-| Behavior               | Default shortcut |
+| 動作               | デフォルトのショートカット |
 | ---------------------- | ---------------- |
-| Increase playback rate | Ctrl + Shift + ] |
-| Decrease playback rate | Ctrl + Shift + [ |
+| 再生速度を上げる | Ctrl + Shift + ] |
+| 再生速度を下げる | Ctrl + Shift + [ |
 
-### <a href={new URL('?view=settings#playback', project.urls.app).href}>Subtitle offset</a> keyboard shortcuts {#subtitle-offset-keyboard-shortcuts}
+### <a href={new URL('?view=settings#playback', project.urls.app).href}>字幕表示タイミング</a>のキーボードショートカット {#subtitle-offset-keyboard-shortcuts}
 
-| Behavior                                                                 | Default shortcut |
+| 動作                                                                 | デフォルトのショートカット |
 | ------------------------------------------------------------------------ | ---------------- |
-| Adjust subtitle offset so that previous subtitle is at current timestamp | Ctrl + ←         |
-| Adjust subtitle offset so that next subtitle is at current timestamp     | Ctrl + →         |
-| Adjust subtitle offset by +100ms                                         | Ctrl + Shift + ← |
-| Adjust subtitle offset by -100ms                                         | Ctrl + Shift + → |
-| Reset subtitle offset                                                    | Ctrl + Shift + ↓ |
+| 前の字幕が現在のタイムスタンプに合うように字幕表示タイミングを調整 | Ctrl + ←         |
+| 次の字幕が現在のタイムスタンプに合うように字幕表示タイミングを調整     | Ctrl + →         |
+| 字幕表示タイミングを+100ms調整                                         | Ctrl + Shift + ← |
+| 字幕表示タイミングを-100ms調整                                         | Ctrl + Shift + → |
+| 字幕表示タイミングをリセット                                                    | Ctrl + Shift + ↓ |
 
-### <a href={new URL('?view=settings#annotation', project.urls.app).href}>Annotation</a> keyboard shortcuts {#annotation-keyboard-shortcuts}
+### <a href={new URL('?view=settings#annotation', project.urls.app).href}>アノテーション</a>のキーボードショートカット {#annotation-keyboard-shortcuts}
 
-| Behavior                          | Default shortcut |
+| 動作                          | デフォルトのショートカット |
 | --------------------------------- | ---------------- |
-| Open statistics                   | Q + S            |
-| Jump to next word                 | Q + E            |
-| Jump to previous word             | Q + W            |
-| Mark hovered word as Mature       | Q + 5            |
-| Jump to next Mature word          |                  |
-| Jump to previous Mature word      |                  |
-| Mark hovered word as Young        | Q + 4            |
-| Jump to next Young word           |                  |
-| Jump to previous Young word       |                  |
-| Mark hovered word as Graduated    | Q + 3            |
-| Jump to next Graduated word       |                  |
-| Jump to previous Graduated word   |                  |
-| Mark hovered word as Learning     | Q + 2            |
-| Jump to next Learning word        |                  |
-| Jump to previous Learning word    |                  |
-| Mark hovered word as Unknown      | Q + 1            |
-| Jump to next Unknown word         |                  |
-| Jump to previous Unknown word     |                  |
-| Mark hovered word as Uncollected  | Q + 0            |
-| Jump to next Uncollected word     |                  |
-| Jump to previous Uncollected word |                  |
-| Toggle hovered word as Ignored    | Q + I            |
-| Jump to next Ignored word         |                  |
-| Jump to previous Ignored word     |                  |
+| 統計を開く                   | Q + S            |
+| 次の単語に移動                 | Q + E            |
+| 前の単語に移動             | Q + W            |
+| カーソルを合わせた単語をじゅくちに設定       | Q + 5            |
+| 次のじゅくち単語に移動          |                  |
+| 前のじゅくち単語に移動      |                  |
+| カーソルを合わせた単語を未熟に設定        | Q + 4            |
+| 次の未熟単語に移動           |                  |
+| 前の未熟単語に移動       |                  |
+| カーソルを合わせた単語を学習完了に設定    | Q + 3            |
+| 次の学習完了単語に移動       |                  |
+| 前の学習完了単語に移動   |                  |
+| カーソルを合わせた単語を学習中に設定     | Q + 2            |
+| 次の学習中の単語に移動        |                  |
+| 前の学習中の単語に移動    |                  |
+| カーソルを合わせた単語を新規に設定      | Q + 1            |
+| 次の新規単語に移動         |                  |
+| 前の新規単語に移動     |                  |
+| カーソルを合わせた単語を未収集に設定  | Q + 0            |
+| 次の未収集単語に移動     |                  |
+| 前の未収集単語に移動 |                  |
+| カーソルを合わせた単語の無視を切り替え    | Q + I            |
+| 次の無視された単語に移動         |                  |
+| 前の無視された単語に移動     |                  |
 
-### Seek interval (seconds) {#seek-interval-seconds}
+### シーク間隔（秒） {#seek-interval-seconds}
 
-Controls the interval used by the [Seek keyboard shortcuts](#seek-keyboard-shortcuts).
+[シークのキーボードショートカット](#seek-keyboard-shortcuts)で使う間隔を設定します。
 
-### Always play after invoking 'Seek to beginning of current/previous subtitle' {#always-play-on-subtitle-seek}
+### 「現在／前の字幕の先頭にシーク」の実行後は常に再生 {#always-play-on-subtitle-seek}
 
-Instead of retaining the current playback state, always play when using the [Seek keyboard shortcut](#seek-keyboard-shortcuts) that seeks to the beginning of the current/previous subtitle. Saves a keypress.
+現在の再生状態を維持する代わりに、現在／前の字幕の先頭にシークする[シークのキーボードショートカット](#seek-keyboard-shortcuts)を使うと常に再生します。キー操作を1回減らせます。
 
-### Playback speed adjust step {#playback-speed-adjust-step}
+### 再生速度の調整幅 {#playback-speed-adjust-step}
 
-Increment to use when using the "increase/decrease playback rate" [keyboard shortcuts](#playback-rate-keyboard-shortcuts).
+「再生速度を上げる／下げる」[キーボードショートカット](#playback-rate-keyboard-shortcuts)で使う増減幅です。
 
-### Extension shortcuts {#extension-shortcuts}
+### 拡張機能のショートカット {#extension-shortcuts}
 
-When the browser extension is installed, some mining shortcuts (e.g. mine current subtitle, mine current subtitle and open Anki dialog) are implemented as browser commands rather than vanilla key event listeners, and can only be edited in the browser's extension shortcuts editor.
+ブラウザー拡張機能をインストールすると、一部のマイニングショートカット（現在の字幕からカードをマイニング、現在の字幕からカードをマイニングしてAnki のエクスポートウィンドウを開くなど）は通常のキーイベントリスナーではなくブラウザーコマンドとして実装されます。これらはブラウザーの拡張機能ショートカットエディターでのみ編集できます。
 
 - Chrome: `chrome://extensions/shortcuts`
-- Firefox: `about:addons` → `Manage Extension Shortcuts`
+- Firefox: `about:addons` → `拡張機能のショートカットを管理`
 
-## <a href={new URL('?view=settings#annotation', project.urls.app).href}>Annotation</a> {#annotation}
+## <a href={new URL('?view=settings#annotation', project.urls.app).href}>アノテーション</a> {#annotation}
 
-### Word Browser {#word-browser}
+### 単語ブラウザー {#word-browser}
 
 :::info
-Only local words can be edited/deleted, external sources are read-only and can only update through [syncing](#re-build-anki-word-database).
+編集・削除できるのはローカルの単語のみです。外部ソースは読み取り専用で、[同期](#re-build-anki-word-database)によってのみ更新できます。
 :::
 
-Opens the Word Browser, where you can view and manage all words in your local word database and Anki-synced word database.
+単語ブラウザーを開き、ローカル単語データベースとAnki同期済み単語データベースのすべての単語を表示・管理します。
 
 :::tip
-You can lookup words in any script of the language (e.g romaji/hiragana/katakana/kanji for Japanese).
+その言語で使われるあらゆる文字表記（日本語の場合はローマ字、ひらがな、カタカナ、漢字など）で単語を検索できます。
 
-There are also some other common QOL substitutions, such as `e -> é` or `ss -> ß` done automatically.
+`e -> é`や`ss -> ß`など、使い勝手を高める一般的な置換も自動で行われます。
 :::
 
-### Import Words {#import-words}
+### 単語をインポート {#import-words}
 
-Imports words into asbplayer's **local word database**.
+単語をasbplayerの**ローカル単語データベース**にインポートします。
 
-Imported words are considered local and take priority over the external sources when determining word status.
+インポートした単語はローカル単語として扱われ、単語の状態を判定する際に外部ソースより優先されます。
 
-The import dialog supports pasting arbitrary text (asbplayer will tokenize it) and importing previously-exported files.
+インポートダイアログでは任意のテキストを貼り付けて（asbplayerが単語に分割します）、以前にエクスポートしたファイルをインポートできます。
 
 :::tip
-You can hover over words and use the [Annotation keyboard shortcuts](#annotation-keyboard-shortcuts) to change their status locally.
+単語にカーソルを合わせて[アノテーションのキーボードショートカット](#annotation-keyboard-shortcuts)を使うと、ローカルで状態を変更できます。
 :::
 
-### Export Words {#export-words}
+### 単語をエクスポート {#export-words}
 
-Exports your local word database so it can be backed up, moved to another device, or shared between the website and extension.
+ローカル単語データベースをエクスポートします。バックアップ、別の端末への移行、ウェブサイトと拡張機能間での共有に使えます。
 
-### Re-Build Anki word database {#re-build-anki-word-database}
+### Anki単語データベースを再構築 {#re-build-anki-word-database}
 
-Builds (or rebuilds) the local cache of word-status information sourced from Anki.
+Ankiから取得した単語状態情報のローカルキャッシュを構築または再構築します。
 
 :::tip
-The cache is also updated automatically during playback when a track is enabled and Anki is connectable.
+トラックが有効でAnkiに接続できる場合、再生中にもキャッシュは自動更新されます。
 
-This button is disabled unless your annotation settings [benefit from Anki integration](../common-issues.md#enable-or-disable-annotation-for-a-track).
+アノテーション設定が[Anki連携のメリットを得られる状態](../common-issues.md#enable-or-disable-annotation-for-a-track)でない場合、このボタンは無効になります。
 
-To clear the Anki word database entries for a track, [follow these steps](../common-issues.md#clear-anki-word-database).
+トラックのAnki単語データベースの項目を消去するには、[この手順](../common-issues.md#clear-anki-word-database)に従ってください。
 :::
 
-### Re-Build WaniKani word database {#re-build-wanikani-word-database}
+### WaniKani単語データベースを再構築 {#re-build-wanikani-word-database}
 
-Builds (or rebuilds) the local cache of vocabulary information sourced from WaniKani.
+WaniKaniから取得した語彙情報のローカルキャッシュを構築または再構築します。
 
 :::tip
-The cache is also updated automatically during playback when a track is enabled and a token is configured.
+トラックが有効でトークンが設定されている場合、再生中にもキャッシュは自動更新されます。
 
-This button is disabled unless your annotation settings [benefit from WaniKani integration](../common-issues.md#enable-or-disable-annotation-for-a-track).
+アノテーション設定が[WaniKani連携のメリットを得られる状態](../common-issues.md#enable-or-disable-annotation-for-a-track)でない場合、このボタンは無効になります。
 
-To clear the WaniKani word database entries for a track, [follow these steps](../common-issues.md#clear-wanikani-word-database).
+トラックのWaniKani単語データベースの項目を消去するには、[この手順](../common-issues.md#clear-wanikani-word-database)に従ってください。
 :::
 
-### Subtitle track {#annotation-track}
+### 字幕トラック {#annotation-track}
 
-Selects which subtitle track these annotation settings apply to.
+これらのアノテーション設定を適用する字幕トラックを選択します。
 
-### Colorize subtitles based on known words {#colorize-subtitles-based-on-known-words}
+### 既知単語に応じて字幕を色分け {#colorize-subtitles-based-on-known-words}
 
-Enables word-status styling (uncollected/unknown/learning/etc.). Styling uses the configured [**Word color style**](#word-color-style) and [**Word status colors**](#word-status-colors).
+単語の状態（未収集、新規、学習中など）に基づくスタイルを有効にします。スタイルには、設定した[**単語の色スタイル**](#word-color-style)と[**単語状態の色**](#word-status-colors)を使います。
 
-### Generate statistics automatically {#generate-statistics-automatically}
+### 統計を自動生成 {#generate-statistics-automatically}
 
-Automatically generate statistics for the current media upon load. This will also enable the statistics overlay. The [Open statistics keyboard shortcut](#annotation-keyboard-shortcuts) is in the Annotation group.
+現在のメディアを読み込んだときに統計を自動生成します。統計オーバーレイも有効になります。[統計を開くキーボードショートカット](#annotation-keyboard-shortcuts)はアノテーショングループにあります。
 
-### Display word readings {#display-word-readings}
+### 単語の読みを表示 {#display-word-readings}
 
-Shows readings (e.g. furigana) above words based on the word status and states.
+単語の状態や属性に応じて、読み（ふりがななど）を単語の上に表示します。
 
-### Display word frequency {#display-word-frequency}
+### 単語の頻度を表示 {#display-word-frequency}
 
-Shows a rank-based frequency value below words (when available) based on status and states. This is useful for prioritizing which words are worth spending time learning.
+状態や属性に応じて、順位ベースの頻度値がある場合は単語の下に表示します。どの単語の学習に時間をかけるかを決めるのに役立ちます。
 
 :::tip
-Frequency information requires at least one rank-based frequency dictionary to be available in your Yomitan instance. If a frequency dictionary doesn't declare its mode, asbplayer will try to infer whether it is rank-based and use it accordingly.
+頻度情報を使うには、Yomitanに順位ベースの頻度辞書が少なくとも1つ必要です。頻度辞書に方式が記載されていない場合、asbplayerは順位ベースかどうかを推測し、適切に使用します。
 
-If multiple frequency numbers are available for a word, the lowest (most frequent) number is used.
+単語に複数の頻度値がある場合、最も低い（最も高頻度を示す）値が使われます。
 :::
 
-### Display pitch accent (Japanese) {#display-pitch-accent-japanese}
+### ピッチアクセントを表示（日本語） {#display-pitch-accent-japanese}
 
 :::note
-Too see the pitch accent on furigana, it must be enabled via [**Display word readings**](#display-word-readings).
+ふりがなにピッチアクセントを表示するには、[**単語の読みを表示**](#display-word-readings)を有効にする必要があります。
 :::
 
-Shows pitch accent on furigana or the kana itself based on status and states.
+状態や属性に応じて、ふりがなまたはかな自体にピッチアクセントを表示します。
 
 :::info
-The attaching particle's pitch accent following a word is determined by the pitch accent of the word, if the data is available.
+単語に続く付属語のピッチアクセントは、データがある場合、その単語のピッチアクセントに基づいて決まります。
 
-Typically only kanji would receive furigana readings but with this feature enabled all characters in a word will receive furigana readings if at least one character is kanji. This makes it easier to reading the pitch accent for compound words.
+通常、ふりがなが付くのは漢字だけですが、この機能を有効にすると、単語に漢字が1文字以上含まれる場合、すべての文字にふりがなが付きます。これにより、複合語のピッチアクセントを読み取りやすくなります。
 :::
 
-### Display word definitions {#display-word-definitions}
+### 単語の定義を表示 {#display-word-definitions}
 
-Controls whether short definitions or explanations are displayed for each word based on the word status and states.
+単語の状態や属性に応じて、各単語の短い定義や説明を表示するかどうかを設定します。
 
-### Word field search strategy {#word-field-search-strategy}
+### 単語フィールドの検索方法 {#word-field-search-strategy}
 
-Controls how asbplayer matches a subtitle word against your known words.
+字幕中の単語を既知単語と照合する方法を設定します。
 
-- **Exact form collected**: the field must contain the exact surface form from the subtitle (running -> running).
-- **Lemma form collected**: you must have the lemma/base form collected (running -> run).
-- **Lemma or exact form collected**: treat the word as collected if either lemma or exact form matches (any of the above).
-- **Any form collected**: treat the word as collected if any related form matches (running -> run, ran, runs, etc.).
+- **表層形が登録済み**: フィールドに字幕の表層形と完全一致する語が含まれている必要があります（running -> running）。
+- **見出し語が登録済み**: 見出し語／基本形が登録されている必要があります（running -> run）。
+- **見出し語または表層形が登録済み**: 見出し語か表層形のいずれかが一致すれば、単語を登録済みとして扱います（上記のどちらか）。
+- **いずれかの形が登録済み**: 関連する形のいずれかが一致すれば、単語を登録済みとして扱います（running -> run、ran、runsなど）。
 
-When **Lemma form collected**, **Lemma or exact form collected**, or **Any form collected** is selected, [**Match across language scripts**](#match-across-language-scripts) controls whether lemma-based matching may cross between different scripts for a language (e.g Kanji, Hiragana, Katakana).
+**見出し語が登録済み**、**見出し語または表層形が登録済み**、または**いずれかの形が登録済み**を選択した場合、[**言語の文字種をまたいで照合**](#match-across-language-scripts)で、見出し語による照合を異なる文字種（漢字、ひらがな、カタカナなど）間で行うかを設定します。
 
-### Card choice priority {#card-choice-priority}
+### カード選択の優先順位 {#card-choice-priority}
 
-If multiple Anki cards match a word, this controls which card is used to determine the word's status:
+1つの単語に複数のAnkiカードが一致する場合、単語の状態を判定するカードを指定します。
 
-- **Field contains exact form** (fallback to best known card if multiple)
-- **Field contains lemma** (fallback to best known card if multiple)
-- **Best known card**
-- **Least known card**
+- **フィールドに表層形を含む**（複数ある場合は最も既知度が高いカードを使用）
+- **フィールドに見出し語を含む**（複数ある場合は最も既知度が高いカードを使用）
+- **最も既知度が高いカード**
+- **最も既知度が低いカード**
 
-### Sentence field search strategy {#sentence-field-search-strategy}
+### 文フィールドの検索方法 {#sentence-field-search-strategy}
 
-Controls how asbplayer searches your configured [**Anki sentence fields**](#anki-sentence-fields), it has the same options as [**Word field search strategy**](#word-field-search-strategy).
+設定済みの[**Anki文フィールド**](#anki-sentence-fields)をasbplayerが検索する方法を指定します。[**単語フィールドの検索方法**](#word-field-search-strategy)と同じ選択肢があります。
 
-When **Lemma form collected**, **Lemma or exact form collected**, or **Any form collected** is selected, [**Match across language scripts**](#match-across-language-scripts) controls whether lemma-based matching may cross between different scripts for a language (e.g Kanji, Hiragana, Katakana).
+**見出し語が登録済み**、**見出し語または表層形が登録済み**、または**いずれかの形が登録済み**を選択した場合、[**言語の文字種をまたいで照合**](#match-across-language-scripts)で、見出し語による照合を異なる文字種（漢字、ひらがな、カタカナなど）間で行うかを設定します。
 
 :::tip
-Since sentences will contain multiple words thus diluting the relevance of the card state to any individual word, it's best to keep this as **Exact form collected** unless you only have sentence cards.
+文には複数の単語が含まれるため、カードの状態と個々の単語との関連性は薄くなります。文カードしかない場合を除き、**表層形が登録済み**のままにするのがおすすめです。
 :::
 
-### Match across language scripts {#match-across-language-scripts}
+### 言語の文字種をまたいで照合 {#match-across-language-scripts}
 
-Controls whether lemma-based matching may cross between different scripts for a language (e.g Kanji, Hiragana, Katakana).
+見出し語による照合を、ある言語の異なる文字種（漢字、ひらがな、カタカナなど）間で行うかを設定します。
 
 ```
 if true:
@@ -451,522 +451,522 @@ if false:
 
 ### Yomitan API URL {#yomitan-api-url}
 
-The URL for the Yomitan API endpoint. If the URL is unreachable or invalid, asbplayer will show an error.
+Yomitan APIエンドポイントのURLです。URLが無効または到達不能の場合、asbplayerはエラーを表示します。
 
 :::tip
-You will need a configured [Yomitan](https://yomitan.wiki/) instance and the [yomitan-api](https://github.com/yomidevs/yomitan-api).
+設定済みの[Yomitan](https://yomitan.wiki/)と[yomitan-api](https://github.com/yomidevs/yomitan-api)が必要です。
 :::
 
-### Yomitan parser {#yomitan-parser}
+### Yomitanパーサー {#yomitan-parser}
 
-Selects which Yomitan parser to use for tokenizing subtitle text:
+字幕テキストの単語分割に使うYomitanパーサーを選択します。
 
-- **Scanning Parser (All languages)**: Yomitan's internal parser that matches the longest words from your dictionaries.
-- **MeCab (Japanese)**: Uses MeCab to parse Japanese text. Requires Yomitan to be configured with MeCab support, preferably with at least one UniDic dictionary.
+- **スキャンパーサー（すべての言語）**: 辞書から最長の単語を照合するYomitan内蔵パーサーです。
+- **MeCab（日本語）**: MeCabを使って日本語テキストを解析します。YomitanでMeCabサポートを設定する必要があります。少なくとも1つのUniDic辞書を設定することをおすすめします。
 
-### Max word length {#max-word-length}
+### 単語の最大長 {#max-word-length}
 
 :::info
-This setting only applies to the Scanning Parser.
+この設定はスキャンパーサーにのみ適用されます。
 :::
 
-Limits the maximum word length that asbplayer will try to scan/tokenize for annotation.
+アノテーション用にasbplayerがスキャン／分割する単語の最大長を設定します。
 
 :::tip
-Setting this too low will miss longer words, setting it too high may cause performance issues.
+低く設定しすぎると長い単語を見逃し、高く設定しすぎるとパフォーマンスに影響する場合があります。
 :::
 
-### Anki decks (optional) {#anki-decks}
+### Ankiデッキ（任意） {#anki-decks}
 
-Restricts Anki searches to the selected decks. If left empty, asbplayer searches across all decks.
+Ankiの検索対象を選択したデッキに限定します。空欄の場合、asbplayerはすべてのデッキを検索します。
 
-### Anki word fields {#anki-word-fields}
+### Anki単語フィールド {#anki-word-fields}
 
-Anki note fields that contain _only_ the target word. This is the recommended way to source known-status information from Anki.
+対象の単語_のみ_を含むAnkiノートのフィールドです。Ankiから既知状態の情報を取得する方法として、この設定をおすすめします。
 
-### Anki sentence fields {#anki-sentence-fields}
+### Anki文フィールド {#anki-sentence-fields}
 
-Anki note fields that contain a sentence (commonly used for sentence decks). This will be used as a fallback if there are no cards with the target word in [**Anki word fields**](#anki-word-fields).
+文を含むAnkiノートのフィールドです（文デッキでよく使われます）。[**Anki単語フィールド**](#anki-word-fields)に対象の単語があるカードがない場合、代替として使われます。
 
-### Mature Anki stability/interval (days) {#mature-anki-stability-interval}
+### 熟知とみなすAnkiの安定性／間隔（日数） {#mature-anki-stability-interval}
 
-Controls the cutoff (in days) for treating an Anki card as **Mature** versus lower maturity statuses.
+Ankiカードを**じゅくち**またはそれより低い成熟度として扱う境界値を日数で設定します。
 
-- **Uncollected**: not found in Anki.
-- **Unknown**: found in Anki with `is:new`.
-- **Learning**: found in Anki with `is:learn`.
-- **Graduated**: found in Anki with `-is:new -is:learn prop:s<{ceil(cutoff / 2)}`.
-- **Young**: found in Anki with `-is:new -is:learn prop:s>=${ceil(cutoff / 2)} prop:s<${cutoff}`.
-- **Mature**: found in Anki with `-is:new -is:learn prop:s>=${cutoff}`.
+- **未収集**: Ankiに見つかりません。
+- **新規**: Ankiで`is:new`に該当します。
+- **学習中**: Ankiで`is:learn`に該当します。
+- **学習完了**: Ankiで`-is:new -is:learn prop:s<{ceil(cutoff / 2)}`に該当します。
+- **未熟**: Ankiで`-is:new -is:learn prop:s>=${ceil(cutoff / 2)} prop:s<${cutoff}`に該当します。
+- **じゅくち**: Ankiで`-is:new -is:learn prop:s>=${cutoff}`に該当します。
 
 :::tip
-If a card has its FSRS stability available (last review of the card was with FSRS enabled), it will be used instead of the interval.
+カードのFSRS安定性が取得できる場合（最後の復習時にFSRSが有効だった場合）、間隔の代わりにFSRS安定性を使います。
 
-For more information on word statuses, see [**Word status colors**](#word-status-colors).
+単語の状態について詳しくは、[**単語状態の色**](#word-status-colors)を参照してください。
 :::
 
-### Treat suspended Anki cards as {#treat-suspended-anki-cards-as}
+### 停止中のAnkiカードの扱い {#treat-suspended-anki-cards-as}
 
-Controls how **suspended** cards are treated when building word status from Anki:
+Ankiから単語状態を構築するときに、**停止中**カードをどう扱うかを指定します。
 
-- **Normal**: use Anki status as-is.
-- Or choose a specific word status (e.g. **Mature**, **Unknown**, etc.) to force suspended cards to be treated as that status.
+- **通常**: Ankiの状態をそのまま使います。
+- または単語の状態（**じゅくち**、**新規**など）を選択し、停止中のカードをその状態として扱います。
 
 :::tip
-If only some of the cards for a word are suspended, the suspended cards will be filtered out and the word status will be based on the unsuspended cards.
+単語のカードの一部だけが停止中の場合、停止中のカードは除外され、停止されていないカードに基づいて単語の状態が決まります。
 
-For more information on word statuses, see [**Word status colors**](#word-status-colors).
+単語の状態について詳しくは、[**単語状態の色**](#word-status-colors)を参照してください。
 :::
 
-### WaniKani API token {#wanikani-api-token}
+### WaniKani APIトークン {#wanikani-api-token}
 
-Use the WaniKani API token to sync your known words from WaniKani. For setup, follow the instructions in the [annotations guide](../guides/annotation.md#setup).
+WaniKani APIトークンを使って、WaniKaniの既知単語を同期します。セットアップについては[アノテーションガイド](../guides/annotation.md#setup)の手順に従ってください。
 
-For asbplayer, we only use the `vocabulary` and `kana_vocabulary` subject types to determine known words. Statuses are determined based on the SRS stage based on the configured [spaced repetition system](https://docs.api.wanikani.com/20170710/#spaced-repetition-system) for that subject. WaniKani statuses are determined as follows:
+asbplayerは既知単語の判定に`vocabulary`と`kana_vocabulary`のアイテムタイプのみを使用します。状態は、そのアイテムに設定されている[間隔反復システム](https://docs.api.wanikani.com/20170710/#spaced-repetition-system)のSRS段階に基づいて判定します。WaniKaniの状態は次のとおりです。
 
-- **Uncollected**: not found in WaniKani.
-- **Unknown**: found in WaniKani with an SRS stage below `Starting stage`.
-- **Learning**: found in WaniKani with an SRS stage at or above `Starting stage` and below `Passing stage`.
-- **Graduated**: found in WaniKani with an SRS stage in the lower half of the stages between `Passing stage` and `Burning stage`.
-- **Young**: found in WaniKani with an SRS stage in the upper half of the stages between `Passing stage` and `Burning stage`.
-- **Mature**: found in WaniKani with an SRS stage at or above `Burning stage`.
+- **未収集**: WaniKaniに見つかりません。
+- **新規**: WaniKaniに見つかり、SRS段階が`Starting stage`未満です。
+- **学習中**: WaniKaniに見つかり、SRS段階が`Starting stage`以上かつ`Passing stage`未満です。
+- **学習完了**: WaniKaniに見つかり、`Passing stage`から`Burning stage`までの段階の下半分に該当します。
+- **未熟**: WaniKaniに見つかり、`Passing stage`から`Burning stage`までの段階の上半分に該当します。
+- **じゅくち**: WaniKaniに見つかり、SRS段階が`Burning stage`以上です。
 
 :::tip
-For more information on word statuses, see [**Word status colors**](#word-status-colors).
+単語の状態について詳しくは、[**単語状態の色**](#word-status-colors)を参照してください。
 :::
 
-### Word color style {#word-color-style}
+### 単語の色スタイル {#word-color-style}
 
-Controls how status colors are applied to words for [**Colorize subtitles based on known words**](#colorize-subtitles-based-on-known-words):
+単語に状態色を適用する方法を、[**既知単語に応じて字幕を色分け**](#colorize-subtitles-based-on-known-words)で設定します。
 
-- **Text**: color of the word is changed.
-- **Background**: color behind the word is changed.
-- **Underline**: underline the word with the status color.
-- **Overline**: overline the word with the status color.
-- **Outline**: outline the word with the status color.
+- **テキスト**: 単語の色を変更します。
+- **背景**: 単語の背景色を変更します。
+- **下線**: 状態色で単語に下線を引きます。
+- **上線**: 状態色で単語の上に線を引きます。
+- **輪郭線**: 状態色で単語を縁取ります。
 
 :::tip
-When using **Outline**, you may need to set [**Subtitle outline thickness**](#subtitle-appearance-track) to `0` for the best results.
+**輪郭線**を使う場合は、最適な結果を得るために[**字幕の輪郭線の太さ**](#subtitle-appearance-track)を`0`に設定する必要がある場合があります。
 :::
 
-### Thickness {#thickness}
+### 太さ {#thickness}
 
-Controls the thickness (in pixels) of **Underline**, **Overline**, and **Outline** styling.
+**下線**、**上線**、**輪郭線**スタイルの太さをピクセル単位で設定します。
 
-### Highlight words on hover {#highlight-words-on-hover}
+### カーソルを合わせた単語を強調表示 {#highlight-words-on-hover}
 
 :::info
-This highlight reflects the focus asbplayer has to register keyboard shortcuts. If the highlight does not appear, you may need to click on the player to focus it. Keyboard shortcuts only work for either the video or the subtitle list (but not both at the same time) depending on where the focus is.
+この強調表示は、キーボードショートカットを受け取るasbplayerのフォーカス状態を示します。強調表示されない場合は、プレーヤーをクリックしてフォーカスする必要があります。キーボードショートカットは、フォーカス位置に応じて動画または字幕リストのどちらか一方で動作します（同時には動作しません）。
 
-The highlight exists primarily to help you understand which word you're hovering over for collection. As such it requires that the hover target must be a word and that you have coloring enabled.
+この強調表示は主に、登録対象としてカーソルを合わせている単語を確認しやすくするためのものです。そのため、カーソルを合わせる対象が単語であり、色分けが有効になっている必要があります。
 :::
 
-If enabled, hovering a word will highlight it which helps you understand how yomitan has tokenized it.
+有効にすると、単語にカーソルを合わせたときに強調表示され、Yomitanがどのように単語分割したか確認しやすくなります。
 
-### Only display word color on hover {#only-display-word-color-on-hover}
+### カーソルを合わせたときのみ単語の色を表示 {#only-display-word-color-on-hover}
 
 :::note
-This setting only applies if [**Colorize subtitles based on known words**](#colorize-subtitles-based-on-known-words) is enabled.
+この設定は[**既知単語に応じて字幕を色分け**](#colorize-subtitles-based-on-known-words)が有効な場合のみ適用されます。
 :::
 
-If enabled for video or subtitle list, word colors are hidden by default and only appear when you hover over the subtitle text in the video or subtitle list respectively.
+動画または字幕リストで有効にすると、単語の色は初期状態で非表示になり、それぞれ動画または字幕リスト内の字幕テキストにカーソルを合わせたときのみ表示されます。
 
-### Only display word reading on hover {#only-display-word-reading-on-hover}
+### カーソルを合わせたときのみ単語の読みを表示 {#only-display-word-reading-on-hover}
 
 :::note
-This setting only applies if [**Display word readings**](#display-word-readings) is enabled.
+この設定は[**単語の読みを表示**](#display-word-readings)が有効な場合のみ適用されます。
 :::
 
-If enabled for video or subtitle list, word readings are hidden by default and only appear when you hover over the subtitle text in the video or subtitle list respectively.
+動画または字幕リストで有効にすると、単語の読みは初期状態で非表示になり、それぞれ動画または字幕リスト内の字幕テキストにカーソルを合わせたときのみ表示されます。
 
-### Only display word frequency on hover {#only-display-word-frequency-on-hover}
+### カーソルを合わせたときのみ単語の頻度を表示 {#only-display-word-frequency-on-hover}
 
 :::note
-This setting only applies if [**Display word frequency**](#display-word-frequency) is enabled.
+この設定は[**単語の頻度を表示**](#display-word-frequency)が有効な場合のみ適用されます。
 :::
 
-If enabled for video or subtitle list, word frequency is hidden by default and only appears when you hover over the subtitle text in the video or subtitle list respectively.
+動画または字幕リストで有効にすると、単語の頻度は初期状態で非表示になり、それぞれ動画または字幕リスト内の字幕テキストにカーソルを合わせたときのみ表示されます。
 
-### Only display word definitions on hover {#only-display-word-definitions-on-hover}
+### カーソルを合わせたときのみ単語の定義を表示 {#only-display-word-definitions-on-hover}
 
 :::note
-This setting only applies if [**Display word definitions**](#display-word-definitions) is enabled.
+この設定は[**単語の定義を表示**](#display-word-definitions)が有効な場合のみ適用されます。
 :::
 
-If enabled for video or subtitle list, word definitions are hidden by default and only appear when you hover over the subtitle text in the video or subtitle list respectively.
+動画または字幕リストで有効にすると、単語の定義は初期状態で非表示になり、それぞれ動画または字幕リスト内の字幕テキストにカーソルを合わせたときのみ表示されます。
 
-### Only display pitch accent on hover {#only-display-pitch-accent-on-hover}
+### カーソルを合わせたときのみピッチアクセントを表示 {#only-display-pitch-accent-on-hover}
 
 :::note
-This setting only applies if [**Display pitch accent (Japanese)**](#display-pitch-accent-japanese) is enabled.
+この設定は[**ピッチアクセントを表示（日本語）**](#display-pitch-accent-japanese)が有効な場合のみ適用されます。
 :::
 
-If enabled for video or subtitle list, pitch accent is hidden by default and only appears when you hover over the subtitle text in the video or subtitle list respectively.
+動画または字幕リストで有効にすると、ピッチアクセントは初期状態で非表示になり、それぞれ動画または字幕リスト内の字幕テキストにカーソルを合わせたときのみ表示されます。
 
-### Word reading size {#word-reading-size}
+### 単語の読みのサイズ {#word-reading-size}
 
-Controls the size of word readings (furigana) in em units (% of subtitle font size).
+単語の読み（ふりがな）のサイズをem単位（字幕フォントサイズに対する割合）で指定します。
 
-### Word frequency size {#word-frequency-size}
+### 単語の頻度のサイズ {#word-frequency-size}
 
-Controls the size of word frequency in em units (% of subtitle font size).
+単語の頻度のサイズをem単位（字幕フォントサイズに対する割合）で指定します。
 
-### Word definition size {#word-definition-size}
+### 単語の定義のサイズ {#word-definition-size}
 
-Controls the size of word definitions in em units (% of subtitle font size).
+単語の定義のサイズをem単位（字幕フォントサイズに対する割合）で指定します。
 
-### Pitch accent size {#pitch-accent-size}
+### ピッチアクセントのサイズ {#pitch-accent-size}
 
-Controls the size of pitch accent in em units (% of subtitle font size).
+ピッチアクセントのサイズをem単位（字幕フォントサイズに対する割合）で指定します。
 
-### Word status colors {#word-status-colors}
+### 単語状態の色 {#word-status-colors}
 
-Each status has a configurable color and transparency used by [**Word color style**](#word-color-style) which can be individually enabled or disabled.
+各状態には、[**単語の色スタイル**](#word-color-style)で使う色と不透明度を設定でき、状態ごとに有効・無効を切り替えられます。
 
-- **Uncollected**: Word is not present in your asbplayer database.
-- **Unknown**: Word is present but considered unknown.
-- **Learning**: Word is currently learning.
-- **Graduated**: Word has graduated from learning.
-- **Young**: Word is known, but not yet mature.
-- **Mature**: Word is fully known (mature).
+- **未収集**: asbplayerのデータベースに単語がありません。
+- **新規**: 単語はありますが、新規として扱われています。
+- **学習中**: 現在学習中の単語です。
+- **学習完了**: 学習段階を終えた単語です。
+- **未熟**: 既知ですが、まだじゅくちではない単語です。
+- **じゅくち**: 完全に習得した単語（じゅくち）です。
 
 :::tip
-You can disable status stylings per your liking, e.g. disabling **Mature** to reduce clutter.
+たとえば表示をすっきりさせるために**じゅくち**を無効にするなど、好みに応じて状態のスタイルを無効にできます。
 
-You can reuse colors (e.g. **Graduated** and **Young**) if you don't want to differentiate between certain statuses.
+特定の状態を区別する必要がなければ、たとえば**学習完了**と**未熟**に同じ色を使うこともできます。
 
-For how Anki Card statuses are determined, see [**Mature Anki stability/interval (days)**](#mature-anki-stability-interval).
-For how WaniKani statuses are determined, see [**WaniKani API token**](#wanikani-api-token).
+Ankiカードの状態の判定方法は、[**成熟とみなすAnkiの安定性／間隔（日数）**](#mature-anki-stability-interval)を参照してください。
+WaniKaniの状態の判定方法は、[**WaniKani APIトークン**](#wanikani-api-token)を参照してください。
 :::
 
-## <a href={new URL('?view=settings#playback', project.urls.app).href}>Playback</a> {#playback}
+## <a href={new URL('?view=settings#playback', project.urls.app).href}>プレイバック</a> {#playback}
 
-### Subtitle tracks affected by playback modes and keyboard shortcuts {#playback-subtitle-tracks}
+### プレイバックモードとキーボードショートカットの対象となる字幕トラック {#playback-subtitle-tracks}
 
-Specifies which tracks will be considered when using the [Subtitles](#subtitles-keyboard-shortcuts) and [Seek](#seek-keyboard-shortcuts) keyboard shortcuts, or when using playback modes. For example, when condensed mode is enabled, blank space to be automatically skipped, is considered to be any part of the timeline without subtitles in the tracks specified by this option.
+字幕やシークの[キーボードショートカット](#subtitles-keyboard-shortcuts)またはプレイバックモードを使うときに対象とするトラックを指定します。たとえば短縮モードが有効な場合、このオプションで指定したトラックに字幕がない時間軸上の区間が、自動スキップの対象になります。
 
-### Auto-pause when mousing over subtitles {#auto-pause-when-mousing-over-subtitles}
+### 字幕にカーソルを合わせたときの自動一時停止 {#auto-pause-when-mousing-over-subtitles}
 
-Auto-pause behavior when mousing over subtitles. "Enabled with auto-resume" means that playback will automatically resume when mousing off of subtitles.
+字幕にカーソルを合わせたときの自動一時停止の動作です。「自動再開あり」を選ぶと、字幕からカーソルを離したときに再生が自動的に再開します。
 
-### Playback modes {#playback-modes}
+### プレイバックモード {#playback-modes}
 
-Playback modes can be toggled with the [Playback keyboard shortcuts](#playback-keyboard-shortcuts).
+プレイバックモードは[再生のキーボードショートカット](#playback-keyboard-shortcuts)で切り替えられます。
 
-### Playback rate {#playback-rate}
+### 再生速度 {#playback-rate}
 
-Controls the normal media playback speed, including the speed used inside subtitles while fast-forward is enabled. New playback always starts at this rate. Use the [Playback rate keyboard shortcuts](#playback-rate-keyboard-shortcuts) to adjust it while watching.
+通常のメディア再生速度を設定します。早送りが有効なときに字幕内で使われる速度も含みます。再生は常にこの速度で始まります。視聴中に調整するには、[再生速度のキーボードショートカット](#playback-rate-keyboard-shortcuts)を使います。
 
-### Show playback rate notification {#show-playback-rate-notification}
+### 再生速度の通知を表示 {#show-playback-rate-notification}
 
-Shows a notification when the playback rate changes outside fast-forward playback.
+早送り再生以外で再生速度が変わったときに通知を表示します。
 
-### Auto-pause preference {#auto-pause-preference}
+### 自動一時停止の設定 {#auto-pause-preference}
 
-When auto-pause is enabled, whether to auto-pause at the start, end, or both edges of subtitles. When both edges and repeat are enabled, repeats pauses at the end before repeating, but the start pause is skipped to prevent double pausing.
+自動一時停止が有効な場合に、字幕の開始時、終了時、または両方で一時停止するかを指定します。開始時と終了時の両方、およびリピートが有効な場合は、リピート前に終了時の一時停止を行い、二重に一時停止しないよう開始時の一時停止は省略します。
 
-### Repeat count preference {#repeat-count-preference}
+### リピート回数の設定 {#repeat-count-preference}
 
-Controls how many times each subtitle repeats before playback continues. A value of `0` repeats indefinitely.
+再生が続行するまでに各字幕を繰り返す回数を指定します。`0`は無限に繰り返します。
 
-### Repeats before showing subtitles {#repeats-before-showing-subtitles}
+字幕を表示するまでのリピート回数 {#repeats-before-showing-subtitles}
 
-Suppress subtitles in a repeating segment until it has repeated this many times. `0` adds no suppression, `1` removes suppression from the first repeat.
+リピート中の区間で、指定回数繰り返すまで字幕を非表示にします。`0`では非表示にせず、`1`では最初のリピートから表示します。
 
-### Subtitle trigger start and end offsets {#subtitle-trigger-start-and-end-offsets}
+字幕トリガーの開始・終了オフセット {#subtitle-trigger-start-and-end-offsets}
 
-Offsets the subtitle start and end triggers used by auto-pause and repeat in milliseconds. These offsets are applied after the global subtitle offset. Start and end offsets can be configured independently; positive values trigger playback effects later, while negative values trigger them earlier. Each shifted edge is limited by the media and neighboring subtitle-event boundaries. If the shifted start and end cross, their chronological roles are swapped.
+自動一時停止とリピートに使う字幕の開始・終了トリガーをミリ秒単位でずらします。このオフセットは全体の字幕表示タイミングの後に適用されます。開始と終了のオフセットは個別に設定でき、正の値では再生効果が遅く、負の値では早く発生します。ずらした境界は、メディアと前後の字幕イベントの境界を越えません。ずらした開始と終了が交差した場合は、時系列上の役割が入れ替わります。
 
-### Fast-forward minimum skip interval {#fast-forward-minimum-skip-interval}
+早送りの最小スキップ間隔 {#fast-forward-minimum-skip-interval}
 
-Fast-forward for the full gap between subtitles when the gap is at least this long. Shorter gaps stay at the normal playback rate.
+字幕間の間隔がこの長さ以上の場合、間隔全体を早送りします。短い間隔は通常の再生速度のままです。
 
-### Fast-forward playback rate {#fast-forward-playback-rate}
+早送り再生速度 {#fast-forward-playback-rate}
 
-How fast to fast-forward when fast-forward mode is enabled.
+早送りモードが有効なときの再生速度です。
 
-### Condensed playback minimum skip interval {#condensed-playback-minimum-skip-interval}
+短縮プレイバックの最小スキップ間隔 {#condensed-playback-minimum-skip-interval}
 
-When condensed playback is enabled, skip to the next subtitle only if the next subtitle is at least this amount of time away.
+短縮プレイバックが有効な場合、次の字幕までの時間がこの値以上のときにのみ次の字幕へスキップします。
 
-### Subtitle gap trigger start and end offsets {#subtitle-gap-trigger-start-and-end-offsets}
+字幕間隔トリガーの開始・終了オフセット {#subtitle-gap-trigger-start-and-end-offsets}
 
-Offsets the subtitle gap triggers used by fast-forward and condensed playback. The gap start offset is non-negative and moves the trigger later from the moment the subtitle ends; the gap end offset is non-positive and moves the trigger earlier from the moment before the next subtitle. Each gap is limited by the media and neighboring subtitle-event boundaries.
+早送り再生と短縮プレイバックに使う字幕間隔のトリガーをずらします。間隔開始オフセットは0以上で、字幕終了時点から後ろにトリガーを移動します。間隔終了オフセットは0以下で、次の字幕が始まる時点から前にトリガーを移動します。各間隔はメディアと前後の字幕イベントの境界を越えません。
 
-### Auto-pause resume mode {#auto-pause-resume-mode}
+### 自動一時停止の再開モード {#auto-pause-resume-mode}
 
-Controls how an automatic pause finishes.
+自動一時停止をどのように終了するかを設定します。
 
-- **Manual**: Playback stays paused until you resume it.
+- **手動**: 再開するまで一時停止したままになります。
 
-- **Fixed**: Every automatic pause lasts for the same configured time.
-  - Controls [Fixed pause duration](#fixed-pause-duration) and [Resume delay after auto-pause](#resume-delay-after-auto-pause).
+- **固定**: すべての自動一時停止が、設定した同じ長さになります。
+  - [固定の一時停止時間](#fixed-pause-duration)と[自動一時停止後の再開遅延](#resume-delay-after-auto-pause)を設定します。
 
-- **Subtitle length**: The pause duration is calculated from the subtitle's character count. Only subtitles on seekable tracks are counted, so a translation track loaded alongside the target language does not inflate the pause.
-  - Controls [Minimum pause duration](#minimum-pause-duration), [Maximum pause duration](#maximum-pause-duration), [Pause time per character](#pause-time-per-character), and [Resume delay after auto-pause](#resume-delay-after-auto-pause).
+- **字幕の長さ**: 字幕の文字数から一時停止時間を計算します。シーク可能なトラックの字幕のみを数えるため、学習対象言語と一緒に読み込んだ翻訳トラックによって一時停止時間が長くなることはありません。
+  - [一時停止の最短時間](#minimum-pause-duration)、[一時停止の最長時間](#maximum-pause-duration)、[1文字あたりの一時停止時間](#pause-time-per-character)、[自動一時停止後の再開遅延](#resume-delay-after-auto-pause)を設定します。
 
-### Fixed pause duration {#fixed-pause-duration}
+### 固定の一時停止時間 {#fixed-pause-duration}
 
-The amount of time an automatic pause lasts in **Fixed** mode.
+**固定**モードで自動一時停止を続ける時間です。
 
-### Minimum pause duration {#minimum-pause-duration}
+### 一時停止の最短時間 {#minimum-pause-duration}
 
-The shortest pause allowed in **Subtitle length** mode, regardless of the subtitle's character count.
+**字幕の長さ**モードで許可する最短の一時停止時間です。字幕の文字数にかかわらず適用されます。
 
-### Maximum pause duration {#maximum-pause-duration}
+### 一時停止の最長時間 {#maximum-pause-duration}
 
-The longest pause allowed in **Subtitle length** mode. A value of `0` means there is no upper limit. A nonzero maximum cannot be lower than the minimum pause duration.
+**字幕の長さ**モードで許可する最長の一時停止時間です。`0`は上限なしを意味します。0以外の値は、最短一時停止時間より短くできません。
 
-### Pause time per character {#pause-time-per-character}
+### 1文字あたりの一時停止時間 {#pause-time-per-character}
 
-The number of milliseconds assigned to each character in **Subtitle length** mode. The character count multiplied by this value is clamped between the minimum and maximum pause durations.
+**字幕の長さ**モードで各文字に割り当てるミリ秒数です。文字数にこの値を掛けた時間は、最短時間と最長時間の範囲に収まります。
 
-### Resume delay after auto-pause {#resume-delay-after-auto-pause}
+### 自動一時停止後の再開遅延 {#resume-delay-after-auto-pause}
 
-In **Fixed** and **Subtitle length** modes, an automatic pause runs in two phases: the subtitle is shown for the configured pause duration, then hidden while playback stays paused for the resume delay. This setting controls the length of that second phase.
+**固定**と**字幕の長さ**のモードでは、自動一時停止は2段階で行われます。設定した一時停止時間は字幕を表示し、その後、字幕を非表示にして再生を一時停止したまま再開遅延を待ちます。この設定では2段階目の長さを指定します。
 
-### Show subtitles {#show-subtitles}
+### 字幕を表示 {#show-subtitles}
 
-- **When due**: Subtitles appear while their timing is active.
+- **表示時間中**: 字幕の表示時間中に字幕を表示します。
 
-- **While paused**: Subtitles appear only when they are due and playback is paused.
+- **一時停止中**: 字幕の表示時間中かつ再生が一時停止中の場合のみ字幕を表示します。
 
-- **While manually paused**: Subtitles appear only when they are due and playback is manually paused.
+- **手動一時停止中**: 字幕の表示時間中かつ手動で再生を一時停止した場合のみ字幕を表示します。
 
-## <a href={new URL('?view=settings#playback', project.urls.app).href}>Playback > Annotation</a> {#playback-annotation}
+## <a href={new URL('?view=settings#playback', project.urls.app).href}>プレイバック > アノテーション</a> {#playback-annotation}
 
-These settings use the word statuses, states, and frequencies from [Annotation](#annotation) for the selected subtitle track. The auto-pause, condensed, fast-forward, and repeat rules take effect while their playback modes are on. **No word filter** means no statuses or states are selected for that track. Rules apply per track: a seekable track without statuses or states selected for one of those modes keeps that mode's usual behavior, even when it plays alongside a track that has rules.
+これらの設定では、選択した字幕トラックの[アノテーション](#annotation)にある単語の状態、属性、頻度を使います。自動一時停止、短縮、早送り、リピートのルールは、それぞれのプレイバックモードが有効な間に適用されます。**単語フィルターなし**は、そのトラックで状態や属性が選択されていないことを意味します。ルールはトラックごとに適用されます。対象モードで状態や属性が選択されていないシーク可能なトラックは、ルールが設定されたトラックと一緒に再生されても、そのモードの通常の動作を維持します。
 
-### Subtitle track {#playback-annotation-track}
+### 字幕トラック {#playback-annotation-track}
 
-Selects the subtitle track whose annotation playback settings you are editing. The selected track is shared with the Annotation tab.
+アノテーションの再生設定を編集する字幕トラックを選択します。選択したトラックはアノテーションタブと共有されます。
 
-### Select first matching word on pause {#select-first-matching-word-on-pause}
+### 一時停止時に最初に一致した単語を選択 {#select-first-matching-word-on-pause}
 
-Selects the first word matching any chosen status or state whenever playback pauses, including manual pauses, and after seeking while paused. Leave the selection empty to disable this behavior. Selection happens in the video player, or in the subtitle player when no video is loaded or connected.
+手動での一時停止や、一時停止中のシーク後を含め、再生が一時停止するたびに選択した状態または属性に一致する最初の単語を選択します。この動作を無効にするには、選択を空にします。動画が読み込まれているか接続されている場合は動画プレーヤーで、そうでない場合は字幕プレーヤーで選択されます。
 
-When an [annotation-based auto-pause rule](#auto-pause-subtitles-containing-these-words) causes the pause, its matching word is selected instead. This dropdown continues to control selection on manual pauses.
+一時停止の原因が[アノテーションに基づく自動一時停止ルール](#auto-pause-subtitles-containing-these-words)の場合は、そのルールに一致した単語が選択されます。このドロップダウンは手動一時停止時の選択を引き続き制御します。
 
-Each of the word rules below has its own status and state selection, word-count limit, and frequency limit. A word must have a selected status or state and satisfy both limits.
+以下の各単語ルールには、状態と属性の選択、単語数の上限・下限、頻度の上限・下限があります。単語は選択された状態または属性を持ち、両方の上限・下限を満たす必要があります。
 
-### Auto-pause subtitles containing these words {#auto-pause-subtitles-containing-these-words}
+### これらの単語を含む字幕で自動一時停止 {#auto-pause-subtitles-containing-these-words}
 
-When auto-pause mode is on, pause only on subtitles containing a matching word and select the first matching word. This takes precedence over [**Select first matching word on pause**](#select-first-matching-word-on-pause) for automatic pauses; that dropdown still applies on manual pauses.
+自動一時停止モードが有効なとき、一致する単語を含む字幕でのみ一時停止し、最初に一致した単語を選択します。自動一時停止では[**一時停止時に最初に一致した単語を選択**](#select-first-matching-word-on-pause)より優先されます。このドロップダウンの設定は手動一時停止時に引き続き適用されます。
 
-### Repeat subtitles containing these words {#repeat-subtitles-containing-these-words}
+これらの単語を含む字幕をリピート {#repeat-subtitles-containing-these-words}
 
-When repeat mode is on, repeat only subtitles containing a matching word.
+リピートモードが有効なとき、一致する単語を含む字幕のみをリピートします。
 
-### Play subtitles containing these words in condensed mode {#play-subtitles-containing-these-words-in-condensed-mode}
+短縮モードでこれらの単語を含む字幕を再生 {#play-subtitles-containing-these-words-in-condensed-mode}
 
-When condensed mode is on, keep subtitles containing a matching word in the condensed timeline. Skip through other subtitles.
+短縮モードが有効なとき、一致する単語を含む字幕を短縮タイムラインに残します。それ以外の字幕はスキップします。
 
-### Play subtitles containing these words at normal speed in fast-forward mode {#play-subtitles-containing-these-words-at-normal-speed-in-fast-forward-mode}
+早送りモードでこれらの単語を含む字幕を通常速度で再生 {#play-subtitles-containing-these-words-at-normal-speed-in-fast-forward-mode}
 
-When fast-forward mode is on, play subtitles containing a matching word at the normal playback rate. Fast-forward through other subtitles.
+早送りモードが有効なとき、一致する単語を含む字幕を通常の再生速度で再生します。それ以外の字幕は早送りします。
 
-### Adjust fast-forward rate by comprehension {#adjust-fast-forward-rate-by-comprehension}
+理解度に応じて早送り速度を調整 {#adjust-fast-forward-rate-by-comprehension}
 
-While fast-forward mode is on, use the sentence comprehension score to choose the rate within a subtitle.
+早送りモードが有効なとき、文の理解度スコアを使って字幕内の再生速度を決定します。
 
-At or below [**Minimum comprehension**](#minimum-comprehension), use the normal playback rate; at 100%, use the configured fast-forward rate. Rates between those points are interpolated.
+[**最小理解度**](#minimum-comprehension)以下では通常の再生速度を使い、理解度100%では設定した早送り速度を使います。その間の速度は線形補間されます。
 
-Changing the speed in a comprehension-controlled subtitle changes the configured fast-forward rate, then recalculates the applied rate from comprehension. This also applies when comprehension keeps the subtitle at normal speed. Keyboard shortcuts and player speed controls use the same behavior; the normal rate is unchanged.
+理解度で制御される字幕の速度を変更すると、設定済みの早送り速度を変更し、理解度に基づいて適用速度を再計算します。理解度によって字幕が通常速度に保たれている場合も同様です。キーボードショートカットとプレーヤーの速度コントロールも同じ動作をします。通常速度は変更されません。
 
-### Minimum comprehension {#minimum-comprehension}
+### 最小理解度 {#minimum-comprehension}
 
-Sets the percentage where acceleration starts (0–99%, default 60%).
+加速を開始する理解度を設定します（0～99%、デフォルトは60%）。
 
-### Show these words during playback {#show-these-words-during-playback}
+再生中にこれらの単語を表示 {#show-these-words-during-playback}
 
-Select the statuses and states whose words should remain visible.
+単語を表示したままにする状態と属性を選択します。
 
-### Hide the entire subtitle when at least this percentage of words would be hidden {#whole-subtitle-hidden-percentage}
+単語が指定割合以上非表示になる場合、字幕全体を隠す {#whole-subtitle-hidden-percentage}
 
-Hide the whole subtitle when at least this percentage of its words would be hidden by the show rule. For example, at **80%**, if four words in a five-word subtitle would be hidden, the entire subtitle is hidden, including the one word selected to show. Punctuation and other non-letter characters do not count.
+表示ルールによって字幕内の単語が指定割合以上隠れる場合、字幕全体を非表示にします。たとえば**80%**に設定した場合、5語の字幕のうち4語が隠れると、表示対象に選択された1語も含めて字幕全体が非表示になります。句読点などの文字以外の記号は数えません。
 
-### Hide non-matching words individually {#hide-non-matching-words-individually}
+一致しない単語を個別に隠す {#hide-non-matching-words-individually}
 
-When enabled, words that do not meet the show rule are hidden individually while the subtitle is below the whole-subtitle threshold. When disabled, the subtitle stays fully visible until the threshold is reached.
+有効にすると、字幕が全体非表示のしきい値を下回っている間、表示ルールを満たさない単語が個別に隠されます。無効にすると、しきい値に達するまで字幕全体が表示されます。
 
-### Minimum words per selected category {#minimum-words-per-selected-category}
+選択したカテゴリごとの最小単語数 {#minimum-words-per-selected-category}
 
-Each selected category (such as **Uncollected** or **Ignored**) is counted separately within a subtitle. If its count is below this limit, words in that category do not trigger the rule. `0` disables the limit.
+字幕内では、選択したカテゴリ（**未収集**や**無視**など）をそれぞれ個別に数えます。個数がこの下限を下回る場合、そのカテゴリの単語はルールを発動しません。`0`は下限なしを意味します。
 
-### Maximum words per selected category {#maximum-words-per-selected-category}
+選択したカテゴリごとの最大単語数 {#maximum-words-per-selected-category}
 
-Each selected category (such as **Uncollected** or **Ignored**) is counted separately within a subtitle. If its count exceeds this limit, words in that category do not trigger the rule. `0` disables the limit.
+字幕内では、選択したカテゴリ（**未収集**や**無視**など）をそれぞれ個別に数えます。個数がこの上限を超える場合、そのカテゴリの単語はルールを発動しません。`0`は上限なしを意味します。
 
-### Only when word frequency is at least {#only-when-word-frequency-is-at-least}
+単語の頻度がこの値以上の場合のみ {#only-when-word-frequency-is-at-least}
 
-A matching word must have a frequency at or above this value. Missing frequency counts as `1`. `0` disables the limit.
+一致する単語の頻度がこの値以上である必要があります。頻度がない場合は`1`として扱います。`0`は下限なしを意味します。
 
-### Only when word frequency is at most {#only-when-word-frequency-is-at-most}
+単語の頻度がこの値以下の場合のみ {#only-when-word-frequency-is-at-most}
 
-A matching word must have a frequency at or below this value. Missing frequency counts as `1`. `0` disables the limit.
+一致する単語の頻度がこの値以下である必要があります。頻度がない場合は`1`として扱います。`0`は上限なしを意味します。
 
-## <a href={new URL('?view=settings#streaming-video', project.urls.app).href}>Streaming video</a> (extension only) {#streaming-video}
+## <a href={new URL('?view=settings#streaming-video', project.urls.app).href}>ストリーミング動画</a>（拡張機能のみ） {#streaming-video}
 
-Streaming video settings are available only when the browser extension is installed.
+ストリーミング動画の設定は、ブラウザー拡張機能がインストールされている場合のみ利用できます。
 
-### When loading subtitles, also open subtitle list via the app in a separate tab {#open-subtitle-list-in-tab}
+### 字幕読み込み時に別タブでアプリから字幕リストも開く {#open-subtitle-list-in-tab}
 
-Anytime subtitles are loaded into a video element, opens the website, and syncs the loaded subtitles with the website in a separate tab.
+動画要素に字幕が読み込まれるたびにウェブサイトを開き、別タブで読み込んだ字幕をウェブサイトと同期します。
 
-### App URL {#app-url}
+### アプリのURL {#app-url}
 
-Determines where the extension fetches some configuration, and what URL to open when syncing subtitles to the website running in a separate tab. Essentially the website URL.
+拡張機能が一部の設定を取得する場所と、別タブで実行中のウェブサイトに字幕を同期するときに開くURLを指定します。基本的にはウェブサイトのURLです。
 
-### Enable controls overlay {#enable-controls-overlay}
+### コントロールオーバーレイを有効にする {#enable-controls-overlay}
 
-Display the overlay UI on video elements with loaded subtitles.
+字幕が読み込まれた動画要素にオーバーレイUIを表示します。
 
-### Display subtitles {#display-subtitles}
+### 字幕を表示 {#display-subtitles}
 
-Display loaded subtitles on video elements.
+読み込んだ字幕を動画要素に表示します。
 
-### Record audio when mining {#record-audio-when-mining}
+### マイニング時に音声を録音 {#record-audio-when-mining}
 
-When mining a subtitle, record the audio covered by the subtitle for inclusion in the flashcard.
+字幕からカードをマイニングするとき、字幕の範囲の音声を録音してフラッシュカードに含めます。
 
-### Take screenshot when mining {#take-screenshot-when-mining}
+### マイニング時にスクリーンショットを撮影 {#take-screenshot-when-mining}
 
-When mining a subtitle, take a screenshot for inclusion in the flashcard.
+字幕からカードをマイニングするとき、スクリーンショットを撮影してフラッシュカードに含めます。
 
-### Clean screenshot when mining {#clean-screenshot-when-mining}
+### マイニング時にスクリーンショットを整える {#clean-screenshot-when-mining}
 
-When mining a subtitle and screenshots are enabled, keep the screenshot "clean" by removing any HTML elements on top of the video element before taking the screenshot.
+字幕からカードをマイニングし、スクリーンショットが有効な場合、撮影前に動画要素の上に重なったHTML要素を取り除き、スクリーンショットを「クリーン」にします。
 
-### Crop screenshot when mining {#crop-screenshot-when-mining}
+### マイニング時にスクリーンショットを切り抜く {#crop-screenshot-when-mining}
 
-When mining a subtitle, crop the screenshot to the video element.
+字幕からカードをマイニングするとき、スクリーンショットを動画要素の範囲に切り抜きます。
 
-### Image capture format {#streaming-image-capture-format}
+### 画像キャプチャ形式 {#streaming-image-capture-format}
 
-Specifies the image capture format for cards mined from streaming video. The additional option is "Animated WebP," which captures the video playing in the tab for the subtitle's time interval - including the audio padding - and saves it as an animated image, instead of a single screenshot.
+ストリーミング動画から作成したカードの画像キャプチャ形式を指定します。追加の選択肢は「アニメーションWebP」です。字幕の時間範囲（音声パディングを含む）の動画をキャプチャし、単一のスクリーンショットではなくアニメーション画像として保存します。
 
-Animated WebP is only used while [recording audio when mining](#record-audio-when-mining) is enabled, and otherwise a screenshot is taken as usual. It applies to every way of mining that records media, including manual recording started and stopped with the record keyboard shortcut, which captures everything up to the moment recording is stopped (up to 30 seconds). Only one recording can run at a time. Animated WebP is not available in Firefox, and videos protected by DRM can't be captured. The tab has to stay visible while the clip is being captured, since Chrome stops rendering hidden tabs.
+アニメーションWebPは[マイニング時の音声録音](#record-audio-when-mining)が有効な場合のみ使われ、それ以外では通常どおりスクリーンショットを撮影します。録音キーボードショートカットで開始・停止する手動録音を含め、メディアを録音するすべてのマイニング方法に適用されます。手動録音では停止するまで（最大30秒）の映像がキャプチャされます。同時に実行できる録音は1つだけです。アニメーションWebPはFirefoxでは利用できず、DRM保護された動画もキャプチャできません。Chromeは非表示タブの描画を停止するため、クリップのキャプチャ中はタブを表示しておく必要があります。
 
-### Animated image FPS {#animated-image-fps}
+### アニメーション画像のFPS {#animated-image-fps}
 
-How many frames per second to capture for animated WebP images. Longer clips automatically use fewer frames to keep the card small. Only available when the Animated WebP image capture format is selected.
+アニメーションWebP画像で1秒あたりにキャプチャするフレーム数です。カードのファイルサイズを小さく保つため、クリップが長い場合は自動的にフレーム数が減ります。アニメーションWebPの画像キャプチャ形式を選択した場合のみ利用できます。
 
-### Animated image quality {#animated-image-quality}
+### アニメーション画像の品質 {#animated-image-quality}
 
-Quality of each frame of animated WebP images, from `0.1` to `1`. Higher is better looking but results in a larger file. Only available when the Animated WebP image capture format is selected.
+アニメーションWebP画像の各フレームの品質を`0.1`から`1`で指定します。値が大きいほど画質は上がりますが、ファイルサイズも大きくなります。アニメーションWebPの画像キャプチャ形式を選択した場合のみ利用できます。
 
-### Allow subtitle file drag-and-drop {#allow-subtitle-file-drag-and-drop}
+### 字幕ファイルのドラッグ＆ドロップを許可 {#allow-subtitle-file-drag-and-drop}
 
-Allow subtitle files to be drag-and-dropped into video elements.
+字幕ファイルを動画要素にドラッグ＆ドロップできるようにします。
 
-### Auto-load detected subtitles {#auto-load-detected-subtitles}
+### 検出した字幕を自動で読み込む {#auto-load-detected-subtitles}
 
-If subtitle auto-detection is supported on the current website, load them automatically. If multiple tracks are detected, load the track for the preferred language. The preferred language is the one that was last loaded with the "remember these track choices" box checked.
+現在のウェブサイトが字幕の自動検出に対応している場合、字幕を自動で読み込みます。複数のトラックが検出された場合は、優先言語のトラックを読み込みます。優先言語は、「これらのトラック選択を記憶する」にチェックを付けて最後に読み込んだ言語です。
 
-### Prompt when auto-loading detected subtitles fails {#prompt-on-subtitle-autoload-failure}
+### 検出字幕の自動読み込みに失敗したとき確認する {#prompt-on-subtitle-autoload-failure}
 
-When automatic subtitle loading fails, prompt before trying to load detected subtitles.
+字幕の自動読み込みに失敗したとき、検出した字幕の読み込みを試す前に確認します。
 
-## <a href={new URL('?view=settings#streaming-video', project.urls.app).href}>Streaming video > Pages</a> {#pages}
+## <a href={new URL('?view=settings#streaming-video', project.urls.app).href}>ストリーミング動画 > ページ</a> {#pages}
 
-Settings for page-specific integrations like YouTube, Netflix, etc. asbplayer has pre-configured default settings for each page. The pages section allows those defaults to be modified.
+YouTubeやNetflixなど、ページごとの連携設定です。asbplayerには各ページのデフォルト設定があらかじめ用意されています。このページセクションではデフォルト設定を変更できます。
 
-### Target language codes for machine translation (YouTube only) {#youtube-translation-languages}
+### 機械翻訳の対象言語コード（YouTubeのみ） {#youtube-translation-languages}
 
-Specifies which target languages to use for YouTube's machine translation. When languages are specified here, additional tracks for each target language appear in the subtitle track selector.
+YouTubeの機械翻訳に使用する対象言語を指定します。ここで言語を指定すると、字幕トラックセレクターに各対象言語のトラックが追加表示されます。
 
-## <a href={new URL('?view=settings#misc-settings', project.urls.app).href}>Misc</a> {#misc}
+## <a href={new URL('?view=settings#misc-settings', project.urls.app).href}>その他</a> {#misc}
 
-### Import/export settings {#import-export-settings}
+### 設定のインポート／エクスポート {#import-export-settings}
 
-Imports or exports settings as a `json` file.
+設定を`json`ファイルとしてインポートまたはエクスポートします。
 
-### Theme {#theme}
+### テーマ {#theme}
 
-Display all asbplayer in a light or dark theme.
+asbplayer全体をライトテーマまたはダークテーマで表示します。
 
-### Language {#language}
+### 言語 {#language}
 
-Language to display UI in.
+UIの表示言語です。
 
-Note: not all strings have been localized in every language that asbplayer supports. Unlocalized will be displayed in English. Feel free to help out with localization at the [Crowdin project](https://crowdin.com/project/asbplayer).
+注: asbplayerが対応するすべての言語で、すべての文字列が翻訳されているわけではありません。未翻訳の文字列は英語で表示されます。[Crowdinプロジェクト](https://crowdin.com/project/asbplayer)で翻訳にご協力ください。
 
-### Auto-maximize local video {#auto-maximize-local-video}
+### ローカル動画を自動で最大化 {#auto-maximize-local-video}
 
-Automatically maximize the local video when the subtitle panel is opened.
+字幕パネルを開いたときに、ローカル動画を自動で最大化します。
 
-### Show mining button in subtitle list {#show-mining-button-in-subtitle-list}
+### 字幕リストにマイニングボタンを表示 {#show-mining-button-in-subtitle-list}
 
-When enabled, shows a mining button next to each subtitle in the subtitle list.
+有効にすると、字幕リストの各字幕の横にマイニングボタンを表示します。
 
-### Subtitle list timestamps {#subtitle-list-timestamps}
+### 字幕リストのタイムスタンプ {#subtitle-list-timestamps}
 
-Controls how timestamps are displayed in the subtitle list.
+字幕リストでのタイムスタンプの表示方法を設定します。
 
-- **Hidden**: Not shown.
-- **Start**: Shows subtitle's start timestamp only.
-- **Start and end**: Shows both start and end timestamps of the subtitle.
+- **非表示**: 表示しません。
+- **開始**: 字幕の開始タイムスタンプのみを表示します。
+- **開始と終了**: 字幕の開始と終了のタイムスタンプを表示します。
 
-### Remember subtitle offset {#remember-subtitle-offset}
+### 字幕表示タイミングを記憶 {#remember-subtitle-offset}
 
-When enabled, timing offset is "sticky." Subtitles are loaded with the last-used offset.
+有効にすると、タイミングオフセットが保持されます。最後に使ったオフセットで字幕が読み込まれます。
 
-### Remember last playback rate {#remember-last-playback-rate}
+### 最後の再生速度を記憶 {#remember-last-playback-rate}
 
-Updates the playback rate setting when the rate is changed on a video. When disabled, playback still starts at the configured playback rate, but changes made while watching remain temporary.
+動画の再生速度を変更すると、再生速度の設定も更新します。無効の場合も設定済みの再生速度で再生が始まりますが、視聴中の変更は一時的なものになります。
 
-### Remember last playback modes {#remember-last-playback-modes}
+### 最後のプレイバックモードを記憶 {#remember-last-playback-modes}
 
-Restores the last enabled playback modes when loading playback again. When disabled, playback starts in normal mode.
+再生を再度読み込むとき、最後に有効だったプレイバックモードを復元します。無効の場合、通常モードで再生が始まります。
 
-### Auto-copy current subtitle to clipboard {#auto-copy-current-subtitle-to-clipboard}
+### 現在の字幕を自動でクリップボードにコピー {#auto-copy-current-subtitle-to-clipboard}
 
-Automatically copies subtitle to clipboard when it appears on screen. Useful for sending subtitles to apps that can monitor the clipboard.
+字幕が画面に表示されたとき、自動的にクリップボードへコピーします。クリップボードを監視するアプリに字幕を送るときに便利です。
 
-### Subtitle tracks eligible for auto-copy {#subtitle-tracks-eligible-for-auto-copy}
+### 自動コピーの対象となる字幕トラック {#subtitle-tracks-eligible-for-auto-copy}
 
-Specifies which tracks will be auto-copied when the [Auto-copy current subtitle to clipboard](#auto-copy-current-subtitle-to-clipboard) setting is enabled.
+[現在の字幕を自動でクリップボードにコピー](#auto-copy-current-subtitle-to-clipboard)が有効な場合に、自動コピーするトラックを指定します。
 
-### Show preview thumbnails {#show-preview-thumbnails}
+### プレビューサムネイルを表示 {#show-preview-thumbnails}
 
-Shows preview thumbnails in the subtitle list.
+字幕リストにプレビューサムネイルを表示します。
 
-### Subtitle above thumbnail {#subtitle-above-thumbnail}
+### サムネイルの上に字幕を表示 {#subtitle-above-thumbnail}
 
-Shows the subtitle above the preview thumbnail in the subtitle list.
+字幕リストでプレビューサムネイルの上に字幕を表示します。
 
-### Subtitle regex filter {#subtitle-regex-filter}
+### 字幕の正規表現フィルター {#subtitle-regex-filter}
 
-Substrings matched by this regex will be replaced by the value of [Subtitle regex filter text replacement](#subtitle-regex-filter-text-replacement)
+この正規表現に一致する部分文字列を、[字幕の正規表現フィルターによるテキスト置換](#subtitle-regex-filter-text-replacement)の値に置き換えます。
 
-### Subtitle regex filter text replacement {#subtitle-regex-filter-text-replacement}
+### 字幕の正規表現フィルターによるテキスト置換 {#subtitle-regex-filter-text-replacement}
 
-Substrings matched by the regex above are replaced with the value of this setting. If left empty, matched substrings are simply removed.
+上記の正規表現に一致する部分文字列を、この設定の値に置き換えます。空欄の場合、一致した部分文字列は削除されます。
 
-### Subtitle HTML {#subtitle-html}
+### 字幕のHTML {#subtitle-html}
 
-How to handle HTML that appears in subtitle files.
+字幕ファイルに含まれるHTMLの処理方法を指定します。
 
-### Detect and Display Ruby {#detect-and-display-ruby}
+### ルビを検出して表示 {#detect-and-display-ruby}
 
-When enabled, asbplayer will automatically detect Netflix-style word readings and display them stylistically using `ruby` tags. Netflix-style readings frequently appear in Japanese subtitles and look like `花子（はなこ）` where a reading in parentheses follows a word.
+有効にすると、asbplayerはNetflix形式の単語の読みを自動検出し、`ruby`タグを使って見やすく表示します。Netflix形式の読みは日本語字幕によくあり、単語の後に括弧で読みを付けた`花子（はなこ）`のような形式です。
 
-### Enable WebSocket client {#enable-websocket-client}
+### WebSocketクライアントを有効にする {#enable-websocket-client}
 
-Enables the WebSocket client. Allows asbplayer to be controlled using the WebSocket interface.
+WebSocketクライアントを有効にし、WebSocketインターフェースを使ってasbplayerを操作できるようにします。
 
-### WebSocket Server URL {#websocket-server-url}
+### WebSocketサーバーURL {#websocket-server-url}
 
-The URL of the WebSocket server to connect to when enabling the WebSocket client. Usually this would be a locally-running instance of the [pre-packaged WebSocket server](../guides/web-socket-server.md).
+WebSocketクライアントを有効にしたときに接続するWebSocketサーバーのURLです。通常は、ローカルで実行する[パッケージ付属のWebSocketサーバー](../guides/web-socket-server.md)を指定します。
 
-### Mining history storage limit {#mining-history-storage-limit}
+### マイニング履歴の保存上限 {#mining-history-storage-limit}
 
-Limits the number of cards that can be saved in the mining history.
+マイニング履歴に保存できるカード数を制限します。
 
-### Name of the tab {#name-of-the-tab}
+### タブの名前 {#name-of-the-tab}
 
-The name to use for the app tab.
+アプリのタブに使用する名前です。
 
-## Profiles {#profiles}
+## プロファイル {#profiles}
 
-A settings profile is a completely different set of settings values. The active settings profile can be changed from the settings UI or from the **Load Subtitles** and **Anki Export** dialogs.
+設定プロファイルは、他のプロファイルとは完全に異なる設定値のセットです。アクティブな設定プロファイルは、設定UI、**字幕を読み込む**ダイアログ、**Ankiエクスポート**ダイアログから変更できます。

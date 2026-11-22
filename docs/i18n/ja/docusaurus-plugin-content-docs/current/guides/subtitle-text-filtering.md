@@ -6,21 +6,21 @@ import project from '@site/src/project';
 
 import CodeBlock from '@theme/CodeBlock'; // Empty fenced code blocks lose their title and copy button; CodeBlock preserves both.
 
-# Subtitle text filtering {#subtitle-text-filtering}
+# 字幕テキストのフィルタリング {#subtitle-text-filtering}
 
-If you'd like to filter out specific instances subtitle text, one way to do so is by using a regular expression (regex). asbplayer can match any sequence following a specified regex pattern and remove the matches.
+字幕テキスト内の特定の文字列を除外するには、正規表現（regex）を使う方法があります。asbplayerは指定した正規表現パターンに一致する文字列を見つけ、削除できます。
 
-## Configure the regex filter {#configure-the-regex-filter}
+## 正規表現フィルターの設定 {#configure-the-regex-filter}
 
-Under the <a href={new URL('?view=settings#misc-settings', project.urls.app).href}>misc</a> section in asbplayer settings, locate the "Subtitle regex filter" textbox. Enter an appropriate regex to filter desired content.
-You can replace filtered content similarly by entering a string into the "Subtitle regex filter text replacement" textbox. Leaving this blank will simply remove the content.
+asbplayerの設定にある<a href={new URL('?view=settings#misc-settings', project.urls.app).href}>その他</a>セクションで、「字幕の正規表現フィルター」テキストボックスを見つけます。除外する内容に合った正規表現を入力します。
+「字幕の正規表現フィルターによるテキスト置換」テキストボックスに文字列を入力すると、フィルターに一致した内容を置き換えることもできます。空欄の場合は内容が削除されます。
 
-### Remove speaker names {#remove-speaker-names}
+### 話者名を削除 {#remove-speaker-names}
 
-Remove names enclosed by parenthesis to indicate speakers (e.g. "**（山田）**　元気ですか？")
+話者を示す括弧で囲まれた名前を削除します（例: 「**（山田）**　元気ですか？」）。
 
 <details>
-<summary>Use this filter</summary>
+<summary>このフィルターを使う</summary>
 
 ```text title="Subtitle regex filter"
 ([\(（]([^\(\)（）]|(([\(（][^\(\)（）]+[\)）])))+[\)）])
@@ -32,14 +32,14 @@ Remove names enclosed by parenthesis to indicate speakers (e.g. "**（山田）*
 
 </details>
 
-### Preserve Japanese readings {#preserve-japanese-readings}
+### 日本語の読みを保持 {#preserve-japanese-readings}
 
-Remove parenthesized names or descriptions while keeping Japanese readings immediately after Japanese text. For example, `（山田）漢字(かんじ)を読む。` becomes `漢字(かんじ)を読む。`. Both `(かんじ)` and `（かんじ）` are preserved when immediately preceded by a character in the kanji, hiragana, or katakana ranges shown in the regex.
+日本語テキストの直後にある読みは残し、括弧で囲まれた名前や説明を削除します。たとえば、`（山田）漢字(かんじ)を読む。`は`漢字(かんじ)を読む。`になります。正規表現に示した漢字、ひらがな、カタカナの範囲にある文字が直前にある場合、`(かんじ)`と`（かんじ）`のどちらも残ります。
 
-This is a heuristic: it also keeps descriptions immediately after Japanese text, such as `こんにちは（笑）`, and removes readings separated from their base text by a space. It does not handle nested parentheses. Leave "Subtitle regex filter text replacement" blank.
+これは経験則による処理です。`こんにちは（笑）`のように日本語テキストの直後にある説明も残し、基本形との間に空白がある読みは削除します。括弧の入れ子には対応していません。「字幕の正規表現フィルターによるテキスト置換」は空欄にしてください。
 
 <details>
-<summary>Use this filter</summary>
+<summary>このフィルターを使う</summary>
 
 ```text title="Subtitle regex filter"
 (?<![一-龯ぁ-ゟ゠-ヿ])[\(（][^\)）]*[\)）]
@@ -51,14 +51,14 @@ This is a heuristic: it also keeps descriptions immediately after Japanese text,
 
 </details>
 
-### Merge subtitle lines {#merge-subtitle-lines}
+### 字幕行を結合 {#merge-subtitle-lines}
 
-Some subtitles are split in several lines and this regex forces them into a single line. For this filter to work, you must also put `$1 $2` in the "Subtitle regex filter text replacement" field.
+字幕によっては複数行に分割されています。この正規表現で1行にまとめられます。このフィルターを動作させるには、「字幕の正規表現フィルターによるテキスト置換」欄に`$1 $2`も入力してください。
 
-When combining this pattern with others, keep it last so a more specific alternative can match first at the same position. Alternatives do not run as separate filtering passes. Every match uses the same replacement text, and adding capturing groups in other alternatives changes the numbers needed in `$1 $2`.
+このパターンを他のパターンと組み合わせる場合、より具体的な選択肢が同じ位置で先に一致するよう、最後に置いてください。選択肢ごとに個別のフィルタリング処理が実行されるわけではありません。すべての一致に同じ置換テキストが使われます。また、他の選択肢にキャプチャグループを追加すると、`$1 $2`に必要な番号が変わります。
 
 <details>
-<summary>Use this filter</summary>
+<summary>このフィルターを使う</summary>
 
 ```text title="Subtitle regex filter"
 (.*)\n+(?!-)(.*)
@@ -70,12 +70,12 @@ $1 $2
 
 </details>
 
-### Remove newlines {#remove-newlines}
+### 改行を削除 {#remove-newlines}
 
-Remove all newline characters without inserting spaces. For example, two lines containing `こんにちは` and `世界` become `こんにちは世界`. Leave "Subtitle regex filter text replacement" blank. To insert a space between lines instead, use the [merge subtitle lines example](#merge-subtitle-lines).
+スペースを挿入せず、すべての改行文字を削除します。たとえば、`こんにちは`と`世界`を含む2行は`こんにちは世界`になります。「字幕の正規表現フィルターによるテキスト置換」は空欄にしてください。行間にスペースを挿入する場合は、[字幕行の結合例](#merge-subtitle-lines)を使ってください。
 
 <details>
-<summary>Use this filter</summary>
+<summary>このフィルターを使う</summary>
 
 ```text title="Subtitle regex filter"
 \n
@@ -87,12 +87,12 @@ Remove all newline characters without inserting spaces. For example, two lines c
 
 </details>
 
-### Remove bracketed descriptions {#remove-bracketed-descriptions}
+### 角括弧で囲まれた説明を削除 {#remove-bracketed-descriptions}
 
-Remove indications enclosed by square brackets that sound or music that is playing (e.g. "**\[PLAYFUL MUSIC]**" or "**\-[GASPS]**")
+再生中の音や音楽を示す角括弧で囲まれた表記を削除します（例: 「**\[PLAYFUL MUSIC]**」、「**\-[GASPS]**」）。
 
 <details>
-<summary>Use this filter</summary>
+<summary>このフィルターを使う</summary>
 
 ```text title="Subtitle regex filter"
 -?\[.*\]
@@ -104,12 +104,12 @@ Remove indications enclosed by square brackets that sound or music that is playi
 
 </details>
 
-### Remove uppercase descriptions {#remove-uppercase-descriptions}
+### 大文字の説明を削除 {#remove-uppercase-descriptions}
 
-As an alternative to the above, filter out descriptions written in capital letters, but without the square brackets (e.g. "**PLAYFUL MUSIC**"). If your language has additional letters with diacritics, you feel free to add them to this list.
+上記の代わりに、角括弧のない大文字で書かれた説明（例: 「**PLAYFUL MUSIC**」）を除外します。お使いの言語に追加のダイアクリティカルマーク付き文字がある場合は、リストに追加してください。
 
 <details>
-<summary>Use this filter</summary>
+<summary>このフィルターを使う</summary>
 
 ```text title="Subtitle regex filter"
 ^[\-\(\)\.\s\p{Lu}]+$
@@ -121,12 +121,12 @@ As an alternative to the above, filter out descriptions written in capital lette
 
 </details>
 
-### Remove music symbols {#remove-music-symbols}
+### 音楽記号を削除 {#remove-music-symbols}
 
-Any combination of symbols on their own that represent playing music (e.g. `♪♬♪`)
+音楽の再生を表す記号だけの組み合わせ（例: `♪♬♪`）を削除します。
 
 <details>
-<summary>Use this filter</summary>
+<summary>このフィルターを使う</summary>
 
 ```text title="Subtitle regex filter"
 [♪♬#～〜]+
@@ -138,12 +138,12 @@ Any combination of symbols on their own that represent playing music (e.g. `♪�
 
 </details>
 
-### Remove sound effect cues {#remove-sound-effect-cues}
+### 効果音の字幕を削除 {#remove-sound-effect-cues}
 
-Remove subtitle cues consisting entirely of a bracketed description or music symbols, such as `[THUNDER RUMBLING]`, `-[GASPS]`, or `♪♬♪`. The `^` and `$` anchors require the entire subtitle text to match, so dialogue such as `Hello [GASPS]` or `♪ Hello ♪` is kept. Leave "Subtitle regex filter text replacement" blank.
+`[THUNDER RUMBLING]`、`-[GASPS]`、`♪♬♪`のように、角括弧の説明や音楽記号だけで構成された字幕を削除します。`^`と`$`のアンカーは字幕テキスト全体の一致を必要とするため、`Hello [GASPS]`や`♪ Hello ♪`のような会話は残ります。「字幕の正規表現フィルターによるテキスト置換」は空欄にしてください。
 
 <details>
-<summary>Use this filter</summary>
+<summary>このフィルターを使う</summary>
 
 ```text title="Subtitle regex filter"
 ^-?\[.+\]$|^[♪♬#～〜]+$
@@ -155,12 +155,12 @@ Remove subtitle cues consisting entirely of a bracketed description or music sym
 
 </details>
 
-### Remove left-to-right marks {#remove-left-to-right-marks}
+### 左から右へのマークを削除 {#remove-left-to-right-marks}
 
-Remove U+200E, the invisible left-to-right mark (LRM). For example, text containing `Hello`, an LRM, and `world` becomes `Helloworld`. Enter the literal escape `\u200E` in the regex field and leave "Subtitle regex filter text replacement" blank.
+不可視の左から右へのマーク（LRM）であるU+200Eを削除します。たとえば、`Hello`、LRM、`world`を含むテキストは`Helloworld`になります。正規表現欄にエスケープ文字列`\u200E`をそのまま入力し、「字幕の正規表現フィルターによるテキスト置換」は空欄にしてください。
 
 <details>
-<summary>Use this filter</summary>
+<summary>このフィルターを使う</summary>
 
 ```text title="Subtitle regex filter"
 \u200E
@@ -172,12 +172,12 @@ Remove U+200E, the invisible left-to-right mark (LRM). For example, text contain
 
 </details>
 
-### Remove bidirectional controls {#remove-bidi-controls}
+### 双方向制御文字を削除 {#remove-bidi-controls}
 
-Remove all Unicode bidirectional control characters, including the left-to-right mark (U+200E), right-to-left mark (U+200F), and embedding, override, and isolate controls. Leave "Subtitle regex filter text replacement" blank. These characters can affect the display order of right-to-left or mixed-direction text, so use this filter only when you want to remove them.
+左から右へのマーク（U+200E）、右から左へのマーク（U+200F）、埋め込み、オーバーライド、分離制御文字など、Unicodeの双方向制御文字をすべて削除します。「字幕の正規表現フィルターによるテキスト置換」は空欄にしてください。これらの文字は右から左に読むテキストや混在方向のテキストの表示順に影響することがあるため、削除したい場合にのみこのフィルターを使ってください。
 
 <details>
-<summary>Use this filter</summary>
+<summary>このフィルターを使う</summary>
 
 ```text title="Subtitle regex filter"
 \p{Bidi_Control}
@@ -189,18 +189,18 @@ Remove all Unicode bidirectional control characters, including the left-to-right
 
 </details>
 
-### Combining regexes {#combining-regexes}
+### 正規表現の組み合わせ {#combining-regexes}
 
-Regular expressions can be combined with the character `|` (no spaces needed inbetween). E.g., if you want to use the two regexes from the list above, you can use `-?\[.*\]|[♪♬#～〜]+`. You can combine as many regexes as you wish this way.
+正規表現は`|`記号で組み合わせられます（間にスペースは不要です）。たとえば、上のリストにある2つの正規表現を使う場合は、`-?\[.*\]|[♪♬#～〜]+`とします。この方法で任意の数の正規表現を組み合わせられます。
 
-### Remove parenthesized text and newlines {#remove-parenthesized-text-and-newlines}
+### 括弧内のテキストと改行を削除 {#remove-parenthesized-text-and-newlines}
 
-To remove parenthesized text and all newlines together, use:
+括弧内のテキストとすべての改行を一緒に削除するには、次を使います。
 
-Leave "Subtitle regex filter text replacement" blank. For example, `（山田）こんにちは` followed by a newline and `世界` becomes `こんにちは世界`. This removes both ASCII and full-width parentheses and their contents, including Japanese readings, and joins lines without adding spaces. It does not handle nested parentheses; use the [speaker names example](#remove-speaker-names) for those.
+「字幕の正規表現フィルターによるテキスト置換」は空欄にしてください。たとえば、改行を挟んだ`（山田）こんにちは`と`世界`は`こんにちは世界`になります。半角と全角の括弧、およびその中身（日本語の読みを含む）を削除し、スペースを追加せず行を結合します。括弧の入れ子には対応していません。入れ子の場合は[話者名の例](#remove-speaker-names)を使ってください。
 
 <details>
-<summary>Use this filter</summary>
+<summary>このフィルターを使う</summary>
 
 ```text title="Subtitle regex filter"
 [\(（][^\)）]*[\)）]|\n
@@ -212,14 +212,14 @@ Leave "Subtitle regex filter text replacement" blank. For example, `（山田）
 
 </details>
 
-### Combine all removal filters {#combine-all-removal-filters}
+### すべての削除フィルターを組み合わせる {#combine-all-removal-filters}
 
-To also remove bidi controls, parenthesized speaker names (including nested parentheses), bracketed descriptions, and music symbols, use:
+双方向制御文字、括弧で囲まれた話者名（括弧の入れ子を含む）、角括弧で囲まれた説明、音楽記号も削除するには、次を使います。
 
-Leave "Subtitle regex filter text replacement" blank. This combines the removal examples above and joins lines without adding spaces. It removes Japanese readings too; use the [reading-preserving example](#preserve-japanese-readings) if you want to keep them.
+「字幕の正規表現フィルターによるテキスト置換」は空欄にしてください。上記の削除例を組み合わせ、スペースを追加せずに行を結合します。日本語の読みも削除されるため、読みを残す場合は[読みを保持する例](#preserve-japanese-readings)を使ってください。
 
 <details>
-<summary>Use this filter</summary>
+<summary>このフィルターを使う</summary>
 
 ```text title="Subtitle regex filter"
 \p{Bidi_Control}|([\(（]([^\(\)（）]|(([\(（][^\(\)（）]+[\)）])))+[\)）])|-?\[.*\]|[♪♬#～〜]+|\n
@@ -231,14 +231,14 @@ Leave "Subtitle regex filter text replacement" blank. This combines the removal 
 
 </details>
 
-## Invisible characters and blank subtitles {#invisible-characters}
+## 不可視文字と空の字幕 {#invisible-characters}
 
-An apparently empty subtitle can contain invisible characters such as an LRM. asbplayer drops text cues containing only whitespace, control characters, or default-ignorable Unicode characters after parsing and filtering. Direction marks within meaningful text are preserved unless your regex explicitly removes them.
+空に見える字幕にLRMなどの不可視文字が含まれていることがあります。asbplayerは解析とフィルタリングの後、空白文字、制御文字、またはUnicodeの既定で無視可能な文字だけを含むテキストキューを破棄します。意味のあるテキスト内の方向マークは、正規表現で明示的に削除しない限り保持されます。
 
-Invisible characters at the beginning or end of a cue can prevent an anchored pattern such as `^\[.+\]$` from matching. If the pattern does not match, asbplayer retries it without surrounding whitespace and invisible controls, but only drops the cue if that retry leaves no meaningful text. For example, `[THUNDER]` followed by an LRM is removed with this pattern and an empty replacement. The retry preserves the original cue when its replacement would contain meaningful text.
+キューの先頭または末尾に不可視文字があると、`^\[.+\]$`のようなアンカー付きパターンが一致しないことがあります。パターンが一致しない場合、asbplayerは前後の空白文字と不可視制御文字を除いて再試行します。ただし、その再試行後に意味のあるテキストが残らない場合のみキューを破棄します。たとえば、`[THUNDER]`の後にLRMがある場合、このパターンと空の置換で削除されます。置換後に意味のあるテキストが残る場合、再試行では元のキューが保持されます。
 
-When combining an anchored pattern with a bidi-removal alternative, remember that replacements happen in one pass. For example, `^\[.+\]$|\u200E` applied to `[THUNDER]` followed by an LRM removes the LRM, but does not retry the bracketed description afterward. To remove both in the same pass, use the unanchored `\[.+\]|\p{Bidi_Control}` with an empty replacement. This also removes bracketed descriptions within dialogue.
+アンカー付きパターンと双方向制御文字を削除する選択肢を組み合わせる場合、置換は1回の処理で行われることに注意してください。たとえば、LRMの後に続く`[THUNDER]`に`^\[.+\]$|\u200E`を適用すると、LRMは削除されますが、角括弧の説明は再試行されません。同じ処理で両方を削除するには、空の置換とアンカーなしの`\[.+\]|\p{Bidi_Control}`を使います。この正規表現では会話内の角括弧で囲まれた説明も削除されます。
 
-## Learn {#learn}
+## 学習 {#learn}
 
-Learn how to write and test custom regular expressions at [Regex Learn - Playground](https://regexlearn.com/playground).
+[Regex Learn - Playground](https://regexlearn.com/playground)でカスタム正規表現の作成とテスト方法を学べます。

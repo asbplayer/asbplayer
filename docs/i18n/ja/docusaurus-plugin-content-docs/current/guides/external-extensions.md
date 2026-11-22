@@ -4,15 +4,15 @@ sidebar_position: 9.5
 
 import project from '@site/src/project';
 
-# External extensions {#external-extensions}
+# 外部拡張機能 {#external-extensions}
 
-As of v1.23, asbplayer exposes a way for other browser extensions to communicate with it. Any extension that connects to asbplayer via [browser.runtime.connect](https://developer.chrome.com/docs/extensions/reference/api/runtime#method-connect), and receives user approval, can issue [commands](../reference/external-api.md) through the connection.
+v1.23以降、asbplayerは他のブラウザー拡張機能と通信する方法を提供しています。[browser.runtime.connect](https://developer.chrome.com/docs/extensions/reference/api/runtime#method-connect)を使ってasbplayerに接続し、ユーザーの承認を得た拡張機能は、その接続を通じて[コマンド](../reference/external-api.md)を実行できます。
 
-A template implementation of an extension that integrates with asbplayer in this way is provided <a href={`${project.urls.externalExtensionTemplateRepo}`}>here</a>.
+この方法でasbplayerと連携する拡張機能のテンプレート実装は<a href={`${project.urls.externalExtensionTemplateRepo}`}>こちら</a>で公開されています。
 
-## Connecting and obtaining user approval
+## 接続とユーザー承認の取得
 
-Any extension wishing to communicate with asbplayer must first connect using code like below. asbplayer's extension ID can be obtained from the browser's extension manager (on Chrome `chrome://extensions`, on Firefox `about:addons`).
+asbplayerとの通信を希望する拡張機能は、まず以下のようなコードで接続する必要があります。asbplayerの拡張機能IDは、ブラウザーの拡張機能マネージャー（Chromeでは`chrome://extensions`、Firefoxでは`about:addons`）で確認できます。
 
 ```typescript
 const port = browser.runtime.connect(<asbplayer extension ID>, {
@@ -20,7 +20,7 @@ const port = browser.runtime.connect(<asbplayer extension ID>, {
 });
 ```
 
-Request approval with `initialize`, which answers immediately with the current state.
+`initialize`で承認を要求すると、現在の状態がすぐに返されます。
 
 ```typescript
 port.postMessage({
@@ -34,7 +34,7 @@ port.postMessage({
 });
 ```
 
-If the extension is not approved, asbplayer registers the connection as pending, prompts the user, and responds:
+拡張機能がまだ承認されていない場合、asbplayerは接続を保留中として登録し、ユーザーに確認を求めて、次のように応答します。
 
 ```json
 {
@@ -44,7 +44,7 @@ If the extension is not approved, asbplayer registers the connection as pending,
 }
 ```
 
-Poll `approval-state` to see if the user has approved the connection request.
+`approval-state`をポーリングして、ユーザーが接続要求を承認したか確認します。
 
 ```json
 {
@@ -55,9 +55,9 @@ Poll `approval-state` to see if the user has approved the connection request.
 }
 ```
 
-Once approved, `approval-state` will return `{ "state": "approved" }` and the connection can issue commands. If denied, `approval-state` returns `{ "state": "denied" }` once. asbplayer then closes the port. Once denied, the requesting extension cannot request approval for 24 hours.
+承認されると、`approval-state`は`{ "state": "approved" }`を返し、接続からコマンドを実行できるようになります。拒否された場合は、`approval-state`が一度だけ`{ "state": "denied" }`を返し、その後asbplayerはポートを閉じます。拒否後24時間は、要求元の拡張機能から再度承認を要求できません。
 
-Commands can be issued as [documented](../reference/external-api.md). For example:
+[ドキュメント](../reference/external-api.md)に記載されているコマンドを実行できます。例:
 
 ```typescript
 port.postMessage({
@@ -68,4 +68,4 @@ port.postMessage({
 });
 ```
 
-asbplayer answers with `{ jsonrpc, id, result }` on success or `{ jsonrpc, id, error }` on failure.
+成功時は`{ jsonrpc, id, result }`、失敗時は`{ jsonrpc, id, error }`を返します。

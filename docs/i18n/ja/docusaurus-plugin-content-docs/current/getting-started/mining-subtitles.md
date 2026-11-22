@@ -7,15 +7,15 @@ import CodeBlock from '@theme/CodeBlock';
 
 import NoteAddIcon from '@site/src/components/NoteAddIcon';
 
-# Mining subtitles {#mining-subtitles}
+# 字幕をマイニングする {#mining-subtitles}
 
-**Sentence mining** is the act of creating flashcards out of sentences. asbplayer allows you to create high-quality sentence flashcards by combining video, audio, and subtitles into a single card. asbplayer integrates with **Anki**, a popular flashcard application.
+**センテンスマイニング**とは、文からフラッシュカードを作成することです。asbplayerでは動画、音声、字幕を1枚のカードにまとめ、高品質なセンテンスカードを作成できます。asbplayerは人気のフラッシュカードアプリ**Anki**と連携します。
 
-## Setup Anki {#setup-anki}
+## Ankiのセットアップ {#setup-anki}
 
-1. Install [Anki](https://apps.ankiweb.net/).
-2. Add [AnkiConnect](https://ankiweb.net/shared/info/2055492159) to Anki.
-3. If mining from video files, add <code>{appOrigin}</code> to the `webCorsOriginList` in AnkiConnect's settings:
+1. [Anki](https://apps.ankiweb.net/)をインストールします。
+2. Ankiに[AnkiConnect](https://ankiweb.net/shared/info/2055492159)を追加します。
+3. 動画ファイルからカードをマイニングする場合は、AnkiConnectの設定で`webCorsOriginList`に<code>{appOrigin}</code>を追加します。
 
    <CodeBlock language="json">{JSON.stringify({
      apiKey: null,
@@ -26,12 +26,12 @@ import NoteAddIcon from '@site/src/components/NoteAddIcon';
      webCorsOriginList: [appOrigin],
    }, null, 2)}</CodeBlock>
 
-4. Add a **Deck**.
-5. Add a **Note Type**.
-   We encourage you to create your own note type or use a pre-made one. But if you'd like to just get started follow the steps below to create a basic note type:
-   1. Click Tools → Manage Note Types.
-   2. Add a "Basic" note type.
-   3. Configure **Fields**:
+4. **デッキ**を追加します。
+5. **ノートタイプ**を追加します。
+   独自のノートタイプを作成するか、既成のものを使うことをおすすめします。まず使い始めたい場合は、以下の手順で基本的なノートタイプを作成してください。
+   1. ツール → ノートタイプを管理をクリックします。
+   2. 「基本」ノートタイプを追加します。
+   3. **フィールド**を設定します。
       - Sentence
       - Word
       - Definition
@@ -39,12 +39,12 @@ import NoteAddIcon from '@site/src/components/NoteAddIcon';
       - Audio
       - Source
       - URL
-   4. Configure **Card**:
-      - Front:
+   4. **カード**を設定します。
+      - 表面:
         ```
         {{Sentence}}
         ```
-      - Back:
+      - 裏面:
         ```
         {{FrontSide}}
         <hr id=answer>
@@ -61,21 +61,21 @@ import NoteAddIcon from '@site/src/components/NoteAddIcon';
         {{URL}}
         ```
 
-## Configure asbplayer {#configure-asbplayer}
+## asbplayerの設定 {#configure-asbplayer}
 
-1. Open <a href={new URL('?view=settings', project.urls.app).href}>asbplayer's settings</a>.
-2. Select the **Deck** and **Note Type** you just created.
-3. For each of the **Sentence**, **Definition**, **Word**, **Audio**, **Image**, **Source**, and **URL** fields, select the corresponding field in the note type.
+1. <a href={new URL('?view=settings', project.urls.app).href}>asbplayerの設定</a>を開きます。
+2. 先ほど作成した**デッキ**と**ノートタイプ**を選択します。
+3. **文**、**定義**、**単語**、**音声**、**画像**、**ソース**、**URL**の各フィールドに、ノートタイプの対応するフィールドを選択します。
 
-## Install a dictionary app {#install-a-dictionary-app}
+## 辞書アプリのインストール {#install-a-dictionary-app}
 
-asbplayer does not have a built-in dictionary. We recommend installing a dictionary app to make it easy to fill out the **Definition** field of cards. Below are a couple popular ones:
+asbplayerには辞書が組み込まれていません。カードの**定義**フィールドを簡単に入力できるよう、辞書アプリのインストールをおすすめします。人気のアプリを以下に紹介します。
 
-- [Yomitan](https://yomitan.wiki/) is a browser extension that allows you to lookup words by hovering over them. It was originally made for Japanese, but is beginning to support other languages as well.
-- [VocabSieve](https://docs.freelanguagetools.org/) is a standalone language-learning app with support for European languages.
+- [Yomitan](https://yomitan.wiki/)は、単語にカーソルを合わせて検索できるブラウザー拡張機能です。もともとは日本語向けに作られましたが、他の言語にも対応し始めています。
+- [VocabSieve](https://docs.freelanguagetools.org/)は、ヨーロッパ言語に対応した独立型の語学学習アプリです。
 
-## Mine subtitles {#mine-subtitles}
+## 字幕をマイニングする {#mine-subtitles}
 
-1. [Load subtitles](./loading-subtitles.md) onto any video source.
-2. Click the **Mine Subtitle** <NoteAddIcon /> button .
-3. Fill out the dialog that appears and click **Export**.
+1. 任意の動画ソースに[字幕を読み込みます](./loading-subtitles.md)。
+2. **字幕をマイニングする** <NoteAddIcon /> ボタンをクリックします。
+3. 表示されたダイアログに入力し、**エクスポート**をクリックします。

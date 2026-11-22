@@ -1,6 +1,6 @@
 ---
 sidebar_position: 1.5
-title: Recipes
+title: レシピ
 ---
 
 import project from '@site/src/project';
@@ -67,41 +67,41 @@ export const unfamiliarWordRepeatSettings = {
   subtitleTriggerEndOffset: 0,
 };
 
-# Recipes
+# レシピ
 
-Recipes combine playback modes and playback settings so you can switch between learning activities. Choose a recipe in **Settings > Playback**, beside the playback modes in the player controls, or in the mobile overlay. Choose **Disabled** to return to your underlying settings. Your saved playback settings, remembered playback rate, and remembered modes are preserved while a recipe is active.
+レシピはプレイバックモードと再生設定を組み合わせ、学習活動を切り替えられるようにします。**設定 > プレイバック**、プレーヤーコントロールのプレイバックモードの横、またはモバイルオーバーレイからレシピを選択します。元の設定に戻すには**無効**を選択します。レシピが有効な間も、保存した再生設定、記憶した再生速度、プレイバックモードは保持されます。
 
-## Create and edit a recipe
+## レシピの作成と編集
 
-Select **Edit Recipe** in the Playback tab. If a recipe is selected, you start with that recipe; otherwise you start with your current playback settings. Choose the playback modes and change the settings you want to include. These changes stay in a draft and do not affect playback until saved.
+プレイバックタブで**レシピを編集**を選択します。レシピが選択されている場合はそのレシピから、そうでない場合は現在の再生設定から始めます。プレイバックモードを選び、含めたい設定を変更します。変更は下書きに保存され、保存するまで再生には反映されません。
 
-Select **Save Recipe** to review the settings and enter a name of up to 100 characters. You can remove individual settings from the preview; omitted settings use your underlying settings. Playback modes are always specified as a complete combination.
+**レシピを保存**を選択して設定を確認し、100文字以内の名前を入力します。プレビューから個々の設定を削除できます。省略した設定には元の設定が使われます。プレイバックモードは常に組み合わせ全体を指定します。
 
-When editing an existing recipe, leaving its name untouched updates it. Typing in the name field creates a new recipe, even if you return to the original name. Select **Cancel** to discard the draft.
+既存のレシピを編集するとき、名前を変更しなければそのレシピが更新されます。名前欄に入力すると、元の名前に戻した場合でも新しいレシピが作成されます。下書きを破棄するには**キャンセル**を選択します。
 
-## Import and share
+## インポートと共有
 
-Select **Import Recipe**, paste the recipe's JSON, review its settings, and confirm. You can change its name and remove settings before importing. Imported recipes are appended to your list and selected. Unknown settings and invalid setting values are ignored. The name and playback modes must be valid.
+**レシピをインポート**を選択し、レシピのJSONを貼り付け、設定を確認して確定します。インポート前に名前を変更したり、設定を削除したりできます。インポートしたレシピはリストの末尾に追加され、選択されます。不明な設定と無効な設定値は無視されます。名前とプレイバックモードは有効である必要があります。
 
-You can also open an import link. It opens the web app with the Playback tab and import preview ready; the recipe takes effect after you confirm the import.
+インポートリンクを開くこともできます。ウェブアプリがプレイバックタブとインポートプレビューを表示した状態で開き、インポートを確定するとレシピが反映されます。
 
-Open a recipe's preview icon in the dropdown to copy its JSON or share its import URL. The same preview lets you delete the recipe with confirmation. Move recipes with the up/down buttons or drag them in the dropdown. Selection follows a recipe when it moves; deleting the selected recipe disables recipes.
+ドロップダウンでレシピのプレビューアイコンを開くと、JSONをコピーしたりインポートURLを共有したりできます。同じプレビューから、確認後にレシピを削除できます。上下ボタンまたはドロップダウン内のドラッグでレシピを並べ替えます。レシピを移動すると選択状態もそのレシピに追従します。選択中のレシピを削除するとレシピが無効になります。
 
-## Keyboard shortcuts
+## キーボードショートカット
 
-Configure **Cycle through recipes forward**, **Cycle through recipes backwards**, and **Toggle recipe #1** through **#10** under **Keyboard Shortcuts > Playback**. Toggling the active recipe disables recipes. Cycling follows the list order and includes **Disabled**. Playback setting and mode shortcuts show a notification while a recipe is active; edit or disable the recipe to change those settings.
+**キーボードショートカット > プレイバック**で、**レシピを順方向に切り替え**、**レシピを逆方向に切り替え**、**レシピ1を切り替え**から**レシピ10を切り替え**までを設定します。有効なレシピを切り替えると、レシピが無効になります。切り替えはリスト順で、**無効**も含みます。レシピが有効な間に再生設定やモードのショートカットを使うと通知が表示されます。これらの設定を変更するには、レシピを編集するか無効にしてください。
 
-## Common recipes
+## よく使うレシピ
 
-These contain some useful preset recipes for common learning activities. If you have any that you want to share or need a missing feature to create the perfect recipe, you can request them on <a href={project.urls.discord}>Discord</a> or on <a href={`${project.urls.repo}/issues/new/choose`}>GitHub</a>.
+以下に、よくある学習活動に役立つプリセットレシピをいくつか紹介します。共有したいレシピがある場合や、理想のレシピに必要な機能がない場合は、<a href={project.urls.discord}>Discord</a>または<a href={`${project.urls.repo}/issues/new/choose`}>GitHub</a>でリクエストしてください。
 
-### Normal mode
+### 通常モード
 
-Use your usual playback settings without an automatic learning mode. We recommend keeping your non-recipe settings as plain as possible so that `Disabled` maps to normal playback behavior.
+自動学習モードを使わず、通常の再生設定を使います。**無効**が通常の再生動作になるように、レシピ以外の設定はできるだけ標準的な状態にすることをおすすめします。
 
-### Dialogue focus
+### 会話に集中
 
-Focus on dialogue by combining condensed playback with fast-forward. Skip gaps using a 5-second minimum skip interval and fast-forward remaining qualifying gaps at 3× with a 1-second minimum interval. Keep 150 ms of context on either side of each gap, with dialogue at your underlying playback speed.
+短縮プレイバックと早送りを組み合わせて会話に集中します。最小スキップ間隔を5秒にして区間をスキップし、条件を満たす残りの間隔は最小間隔1秒で3倍速にします。各間隔の前後に150msの文脈を残し、会話は元の再生速度で再生します。
 
 <RecipePreset
   recipe={{
@@ -113,9 +113,9 @@ Focus on dialogue by combining condensed playback with fast-forward. Skip gaps u
   }}
 />
 
-### Gap fast-forward
+### 無音区間を早送り
 
-Watch the entire video while fast-forwarding qualifying gaps at 3× with a 1-second minimum interval. Keep 150 ms of context on either side of each gap, with dialogue at your underlying playback speed.
+動画全体を見ながら、条件を満たす間隔を最小間隔1秒で3倍速にします。各間隔の前後に150msの文脈を残し、会話は元の再生速度で再生します。
 
 <RecipePreset
   recipe={{
@@ -127,9 +127,9 @@ Watch the entire video while fast-forwarding qualifying gaps at 3× with a 1-sec
   }}
 />
 
-### Reading mode
+### 読書モード
 
-Pause at the start of each subtitle to read and look up words, then resume manually to hear the audio with subtitles visible. Hovering over subtitles during playback also pauses the video; moving away resumes it.
+各字幕の開始時に一時停止して読み、単語を調べます。その後、手動で再開して字幕を表示したまま音声を聞きます。再生中に字幕にカーソルを合わせても動画が一時停止し、カーソルを離すと再開します。
 
 <RecipePreset
   gapVariants
@@ -148,9 +148,9 @@ Pause at the start of each subtitle to read and look up words, then resume manua
   }}
 />
 
-### Listening mode
+### リスニングモード
 
-Listen without subtitles, then pause automatically at the end of each subtitle to reveal the text and check your understanding. Resume manually when ready.
+字幕なしで聞き、各字幕の終了時に自動一時停止してテキストを表示し、理解度を確認します。準備ができたら手動で再開します。
 
 <RecipePreset
   gapVariants
@@ -168,9 +168,9 @@ Listen without subtitles, then pause automatically at the end of each subtitle t
   }}
 />
 
-### Audio only
+### 音声のみ
 
-Listen continuously with subtitles hidden during playback. Manually pause to reveal the current subtitle when you need help.
+再生中は字幕を隠して、音声を続けて聞きます。字幕を確認したいときは手動で一時停止すると、現在の字幕が表示されます。
 
 <RecipePreset
   gapVariants
@@ -184,9 +184,9 @@ Listen continuously with subtitles hidden during playback. Manually pause to rev
   }}
 />
 
-### Intensive listening
+### 集中的なリスニング
 
-Listen to each subtitle three times, with a 1-second pause after each pass. Subtitles stay hidden for the first two passes and appear on the final replay to check your understanding. Playback resumes automatically after each pause, customize the 1s pause duration as needed.
+各字幕を3回聞き、再生のたびに1秒間一時停止します。最初の2回は字幕を隠し、最後のリプレイで字幕を表示して理解度を確認します。一時停止後、再生は自動的に再開されます。必要に応じて1秒の一時停止時間を調整してください。
 
 <RecipePreset
   gapVariants
@@ -208,11 +208,11 @@ Listen to each subtitle three times, with a 1-second pause after each pass. Subt
   }}
 />
 
-### Primed listening
+### 予習リスニング
 
-Pause at the start of each subtitle to read it in your native language, let it disappear, then listen to the audio without subtitles. Reading time is 80 ms per character, with a minimum of 1 second and a maximum of 6 seconds. After the text disappears, playback stays paused for another 500 ms before resuming automatically. You can adjust these timings when editing the recipe.
+各字幕の開始時に一時停止し、母語で読んで字幕が消えるのを待ってから、字幕なしで音声を聞きます。読む時間は1文字あたり80msで、最短1秒、最長6秒です。字幕が消えた後、さらに500ms一時停止してから自動的に再開します。レシピの編集時にこれらの時間を調整できます。
 
-Choose the tracks used to calculate reading time under **Subtitle tracks affected by playback modes and keyboard shortcuts**.
+読む時間の計算に使うトラックは、**プレイバックモードとキーボードショートカットの対象となる字幕トラック**で選択してください。
 
 <RecipePreset
   gapVariants
@@ -234,9 +234,9 @@ Choose the tracks used to calculate reading time under **Subtitle tracks affecte
   }}
 />
 
-### Read aloud
+### 音読
 
-Read each subtitle aloud before hearing the original audio, then compare your pronunciation and rhythm. Playback pauses at the start with subtitles visible and resumes automatically after 80 ms per character, bounded to 1–6 seconds. Each subtitle repeats once. Adjust the pause timings to give yourself enough speaking time.
+元の音声を聞く前に各字幕を声に出して読み、発音やリズムを比べます。字幕を表示した状態で開始時に一時停止し、1文字あたり80ms、最短1秒から最長6秒の範囲で自動的に再開します。各字幕を1回リピートします。十分に話す時間が取れるよう、一時停止時間を調整してください。
 
 <RecipePreset
   gapVariants
@@ -260,9 +260,9 @@ Read each subtitle aloud before hearing the original audio, then compare your pr
   }}
 />
 
-### Shadowing
+### シャドーイング
 
-Speak alongside or slightly behind the original audio, matching its rhythm and pronunciation with subtitles visible. Each subtitle repeats once, with a 1-second pause at the end of each pass before playback resumes automatically.
+字幕を表示した状態で、元の音声に合わせるか少し遅れて発話し、リズムと発音をまねます。各字幕を1回リピートし、再生ごとに終了時点で1秒一時停止してから自動的に再開します。
 
 <RecipePreset
   gapVariants
@@ -284,9 +284,9 @@ Speak alongside or slightly behind the original audio, matching its rhythm and p
   }}
 />
 
-### Recall
+### 想起
 
-Listen to the audio, then reproduce the line aloud from memory during the automatic pause at its end. Subtitles stay hidden during playback and automatic pauses. Speaking time is 80 ms per character, bounded to 1–6 seconds, and each subtitle repeats once. Adjust the pause timings as needed; manually pause during a replay to reveal the text when you need help.
+音声を聞き、終了時の自動一時停止中に記憶を頼りに文を声に出して再現します。再生中と自動一時停止中は字幕が隠れます。発話時間は1文字あたり80msで、最短1秒から最長6秒です。各字幕を1回リピートします。必要に応じて一時停止時間を調整してください。再生中に助けが必要な場合は、手動で一時停止すると字幕が表示されます。
 
 <RecipePreset
   gapVariants
@@ -309,15 +309,15 @@ Listen to the audio, then reproduce the line aloud from memory during the automa
   }}
 />
 
-## Annotation Recipes
+## アノテーションレシピ
 
-These presets require [Annotation](./annotation.md) to be enabled as they use its data. If you have any that you want to share or need a missing feature to create the perfect recipe, you can request them on <a href={project.urls.discord}>Discord</a> or on <a href={`${project.urls.repo}/issues/new/choose`}>GitHub</a>.
+これらのプリセットはアノテーションのデータを使うため、[アノテーション](./annotation.md)を有効にする必要があります。共有したいものがある場合や、理想のレシピに必要な機能がない場合は、<a href={project.urls.discord}>Discord</a>または<a href={`${project.urls.repo}/issues/new/choose`}>GitHub</a>でリクエストしてください。
 
-Load your target-language subtitles as **Track 1**. These presets use that track for playback and word selection. **Unfamiliar** means **Uncollected** or **Unknown**. Other annotation display preferences, such as readings and colors, use your underlying settings.
+学習対象言語の字幕を**字幕トラック1**として読み込みます。これらのプリセットは、そのトラックを再生と単語選択に使います。**未習得**は**未収集**または**新規**を意味します。読みや色など、その他のアノテーション表示設定には元の設定が使われます。
 
-### Unfamiliar-word rescue
+### 未習得単語を救済
 
-Watch with subtitles visible. When a line contains an unfamiliar word, pause for 1 second at its end, then replay it once. Other lines continue uninterrupted. The first unfamiliar word is selected during the pause for lookup. Adjust the pause duration if you need more time.
+字幕を表示して視聴します。文に未習得単語が含まれている場合、文の終わりで1秒一時停止してから1回リプレイします。それ以外の文は止まらずに再生されます。一時停止中に最初の未習得単語が選択され、検索できます。時間が必要な場合は一時停止時間を調整してください。
 
 <RecipePreset
   gapVariants
@@ -334,11 +334,11 @@ Watch with subtitles visible. When a line contains an unfamiliar word, pause for
   }}
 />
 
-### i+1 mining
+### i+1マイニング
 
-Focus on subtitles containing exactly one Uncollected token. Condensed playback skips between qualifying lines, and playback pauses at each line's end until you resume manually, selecting the Uncollected token for inspection or mining.
+未収集トークンをちょうど1つ含む字幕に集中します。短縮プレイバックで条件に合う文の間をスキップし、各文の終わりで手動で再開するまで一時停止します。一時停止中は未収集トークンが選択され、確認やマイニングに使えます。
 
-This finds i+1 candidates rather than guaranteeing that every other word is known: a line can also contain Unknown words, and repeated occurrences of the same Uncollected word count separately. Mining remains a manual action.
+i+1の候補を見つけますが、他のすべての単語が既知だと保証するわけではありません。文に新規の単語が含まれる場合があり、同じ未収集単語が繰り返し出現する場合は別々に数えます。マイニングは引き続き手動で行います。
 
 <RecipePreset
   recipe={{
@@ -362,9 +362,9 @@ This finds i+1 candidates rather than guaranteeing that every other word is know
   }}
 />
 
-### Unfamiliar-word hints
+### 未習得単語のヒント
 
-Listen with unfamiliar words visible and familiar words hidden. Lines containing unfamiliar words pause for 1 second at their end, revealing the full text, then replay once with the hints restored. The first unfamiliar word is selected during the pause for lookup. Lines with no unfamiliar words have no caption when fully tokenized.
+未習得単語を表示し、既知の単語を隠して聞きます。未習得単語を含む文は終了時に1秒一時停止し、全文を表示してからヒントを元に戻して1回リプレイします。一時停止中に最初の未習得単語が選択され、検索できます。単語分割が完全にできている場合、未習得単語のない文には字幕が表示されません。
 
 <RecipePreset
   gapVariants
@@ -386,9 +386,9 @@ Listen with unfamiliar words visible and familiar words hidden. Lines containing
   }}
 />
 
-### Unfamiliar-word cloze
+### 未習得単語の穴埋め
 
-Read the familiar parts of each subtitle while unfamiliar words remain hidden, and try supplying the missing words from the audio and context. Lines containing unfamiliar words pause for 1 second at their end to reveal the full text, then replay once with the gaps restored. Ignored words remain visible.
+未習得単語を隠したまま字幕の既知部分を読み、音声や文脈から隠れた単語を補ってみます。未習得単語を含む文は終了時に1秒一時停止して全文を表示し、穴を戻して1回リプレイします。無視された単語は表示されます。
 
 <RecipePreset
   gapVariants
@@ -410,11 +410,11 @@ Read the familiar parts of each subtitle while unfamiliar words remain hidden, a
   }}
 />
 
-### Adaptive listening pace
+### 適応型リスニング速度
 
-Play dialogue at 1× when its estimated comprehension is 60% or lower, increasing gradually to 1.8× at 100%. Condensed playback skips gaps using a 1-second minimum interval, keeping 150 ms of context on either side. Qualifying gaps that remain play at 1.8×.
+推定理解度が60%以下の会話は1倍速で再生し、100%では1.8倍速になるよう徐々に速度を上げます。短縮プレイバックは最小間隔を1秒にして区間をスキップし、前後に150msの文脈を残します。条件を満たして残った間隔は1.8倍速で再生されます。
 
-Adjust the base and fast-forward speeds when editing the recipe, keeping the fast-forward speed higher than the base speed.
+レシピを編集するときに基本速度と早送り速度を調整してください。早送り速度は基本速度より高く設定します。
 
 <RecipePreset
   recipe={{

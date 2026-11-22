@@ -4,33 +4,33 @@ sidebar_position: 1
 
 import project from '@site/src/project';
 
-# Loading subtitles {#loading-subtitles}
+# 字幕の読み込み {#loading-subtitles}
 
-The first step to using asbplayer is to load subtitles onto a video source.
+asbplayerを使うには、まず動画ソースに字幕を読み込みます。
 
-## Streaming video {#streaming-video}
+## ストリーミング動画 {#streaming-video}
 
-### Chrome (or other Chromium-based browsers) {#chromium}
+### Chrome（またはChromiumベースのブラウザー） {#chromium}
 
-1. Install the Chrome extension from Google's <a href={project.extension.chrome.storeUrl}>web store</a> or from the <a href={`${project.urls.repo}/releases/latest`}>GitHub release</a>.
-2. Click 🧩 icon in browser toolbar → asbplayer → **Open Side Panel**
-3. Click **Load Subtitles** to load subtitles onto any video on the current page.
+1. Googleの<a href={project.extension.chrome.storeUrl}>ウェブストア</a>または<a href={`${project.urls.repo}/releases/latest`}>GitHubリリース</a>からChrome拡張機能をインストールします。
+2. ブラウザーのツールバーにある🧩アイコンをクリックし、asbplayer → **サイドパネルを開く**を選択します。
+3. **字幕を読み込む**をクリックすると、現在のページにある動画に字幕が読み込まれます。
 
 ### Firefox {#firefox}
 
 :::warning
-asbplayer is missing some features on Firefox. See the [Compatibility](../compatibility.md#extension) section.  
+Firefoxでは一部の機能を利用できません。[互換性](../compatibility.md#extension)のセクションを参照してください。
 :::
 
-1. Install the the Firefox addon from the Mozilla <a href={project.extension.firefox.storeUrl}>addon store</a> or from the <a href={`${project.urls.repo}/releases/latest`}>GitHub release</a>.
-2. Click 🧩 icon in browser toolbar → asbplayer → **Open Side Panel**
-3. Click **Load Subtitles** to load subtitles onto any video on the current page.
+1. Mozillaの<a href={project.extension.firefox.storeUrl}>アドオンストア</a>または<a href={`${project.urls.repo}/releases/latest`}>GitHubリリース</a>からFirefoxアドオンをインストールします。
+2. ブラウザーのツールバーにある🧩アイコンをクリックし、asbplayer → **サイドパネルを開く**を選択します。
+3. **字幕を読み込む**をクリックすると、現在のページにある動画に字幕が読み込まれます。
 
 ### Android {#android}
 
-See the [Android guide](../guides/android.md).
+[Androidガイド](../guides/android.md)を参照してください。
 
-## Video files {#video-files}
+## 動画ファイル {#video-files}
 
-1. Open the <a href={project.urls.app}>website</a>.
-2. Drag-and-drop video and subtitle files into the website.
+1. <a href={project.urls.app}>ウェブサイト</a>を開きます。
+2. 動画ファイルと字幕ファイルをウェブサイトにドラッグ＆ドロップします。
