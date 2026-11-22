@@ -2,16 +2,16 @@
 sidebar_position: 6
 ---
 
-# Community guides {#community-guides}
+# Guias da comunidade {#community-guides}
 
-Below are guides from the community demonstrating a variety of ways to use asbplayer.
+Abaixo estão guias da comunidade que mostram várias formas de usar o asbplayer.
 
-## Text guides {#text-guides}
+## Guias em texto {#text-guides}
 
 - [Shiki's Lazy Sentence Mining Workflow (Japanese)](https://docs.google.com/document/d/e/2PACX-1vQuEAoZFoJbULZzCJ3_tW7ayT_DcQl9eDlrXMnuPGTwDk62r5fQrXak3ayxBsEgkL85_Z-YY5W4yUom/pub)
 - [Sentence mining from Netflix and YouTube with asbplayer (Japanese)](https://soyuz18.notion.site/Sentence-mining-from-Netflix-and-YouTube-with-asbplayer-83a03590cd8349ba81ca10340645b565)
 
-## Video guides {#video-guides}
+## Guias em vídeo {#video-guides}
 
 - [Refold's installation and basic usage guide](https://www.youtube.com/watch?v=GYsf-NOVoYc)
 - [Refold's sentence mining guide (European languages)](https://youtu.be/jXO4gmCmcNE?si=u-8F7L7PWgdsXK5t&t=678)
