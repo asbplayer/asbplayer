@@ -83,6 +83,42 @@ test('flags sidebar labels while any category value equals its English label', (
     assert.deepEqual(computeWorklist(root, ['de']).sidebar, []);
 });
 
+test('lists page components for locales without a translated copy, and again when the source moves', (t) => {
+    const { root, write, commit } = repo(t);
+    write('docs/docs/page.md', 'English source.\n');
+    write(`${localeTreeDir('de')}/page.md`, 'Deutsche Übersetzung.\n');
+    write('docs/src/pages/index.tsx', '<div>English</div>\n');
+    commit('source');
+    assert.deepEqual(computeWorklist(root, ['de']).pages, [{ locale: 'de', files: ['index.tsx'] }]);
+
+    write('docs/i18n/de/docusaurus-plugin-content-pages/index.tsx', '<div>Deutsch</div>\n');
+    commit('translate page');
+    assert.deepEqual(computeWorklist(root, ['de']).pages, []);
+
+    write('docs/src/pages/index.tsx', '<div>English v2</div>\n');
+    commit('edit page');
+    assert.deepEqual(computeWorklist(root, ['de']).pages, [{ locale: 'de', files: ['index.tsx'] }]);
+});
+
+test('theme strings are pending until committed clean, and again when dirtied', (t) => {
+    const { root, write, commit } = repo(t);
+    write('docs/docs/page.md', 'English source.\n');
+    write(`${localeTreeDir('de')}/page.md`, 'Deutsche Übersetzung.\n');
+    commit('translated docs');
+    assert.deepEqual(computeWorklist(root, ['de']).theme, ['de']);
+
+    write('docs/i18n/de/code.json', '{"a.message": {"message": "A"}}\n');
+    write('docs/i18n/de/docusaurus-theme-classic/navbar.json', '{}\n');
+    write('docs/i18n/de/docusaurus-theme-classic/footer.json', '{}\n');
+    commit('theme');
+    assert.deepEqual(computeWorklist(root, ['de']).theme, []);
+
+    // A regenerated skeleton with new keys shows up as a working-tree change,
+    // the same way write-translations dirties committed files after a config edit.
+    write('docs/i18n/de/code.json', '{"a.message": {"message": "A"}, "b.message": {"message": "B"}}\n');
+    assert.deepEqual(computeWorklist(root, ['de']).theme, ['de']);
+});
+
 test('a fully translated, in-sync tree produces an empty worklist', (t) => {
     const { root, write, commit } = repo(t);
     write('docs/docs/page.md', 'English source.\n');
@@ -92,6 +128,11 @@ test('a fully translated, in-sync tree produces an empty worklist', (t) => {
         'docs/i18n/de/docusaurus-plugin-content-docs/current.json',
         '{"sidebar.tutorialSidebar.category.Guides": {"message": "Anleitungen"}}\n'
     );
+    write('docs/src/pages/index.tsx', '<div>English</div>\n');
+    write('docs/i18n/de/docusaurus-plugin-content-pages/index.tsx', '<div>Deutsch</div>\n');
+    write('docs/i18n/de/code.json', '{}\n');
+    write('docs/i18n/de/docusaurus-theme-classic/navbar.json', '{}\n');
+    write('docs/i18n/de/docusaurus-theme-classic/footer.json', '{}\n');
     commit('translated');
     assert.equal(worklistIsEmpty(computeWorklist(root, ['de'])), true);
 });
