@@ -10,6 +10,7 @@
     },
     "scripts": {
         "push": "./push-new-source-strings",
-        "pull": "./pull"
+        "pull": "./pull",
+        "push-glossary": "./push-glossary"
     }
 }

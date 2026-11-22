@@ -1,4 +1,4 @@
-'project_id': '674706'
+'project_id_env': 'CROWDIN_PROJECT_ID'
 'base_path': '.'
 'base_url': 'https://api.crowdin.com'
 'preserve_hierarchy': true
