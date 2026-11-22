@@ -49,6 +49,7 @@ export const defaultFileSessionStore = (): FileSessionStore | undefined => {
 export class FileSession {
     private initController: AbortController | undefined;
     private selectionWrite = Promise.resolve();
+    private failedSelectionWrite = false;
     private canRestore = false;
     private disposed = false;
 
@@ -86,12 +87,17 @@ export class FileSession {
         this.initController = undefined;
     }
 
+    get selectionSaveFailed(): boolean {
+        return this.failedSelectionWrite;
+    }
+
     retainSources(sources: MediaSources): void {
         if (!this.store) return;
         void this.store
             .retain({
                 subtitleTrackIds: sources.subtitleTracks.map(({ fileParts }) => fileParts.map(({ id }) => id)),
                 videoId: sources.videoFile?.id,
+                audioTrackIndex: sources.audioTrackIndex,
             })
             .then(() => this.store?.fetch())
             .then((record) => this.setCanRestore(canRestoreSession(record)))
@@ -175,9 +181,13 @@ export class FileSession {
             .then(async () => {
                 if (!signal.aborted && this.selectionWrite === write) {
                     await this.saveSubtitleSelection(selectedTracks, pendingIds);
+                    if (this.selectionWrite === write) this.failedSelectionWrite = false;
                 }
             })
-            .catch((error) => this.reportError(error));
+            .catch((error) => {
+                if (this.selectionWrite === write) this.failedSelectionWrite = true;
+                this.reportError(error);
+            });
         this.selectionWrite = write;
     }
 
@@ -239,6 +249,7 @@ export class FileSession {
         let sources: MediaSources;
         try {
             sources = MediaSources.fromFiles(files, { pendingEmbedded: missingEmbeddedSubtitles.length > 0 });
+            if (sources.videoFile) sources = sources.withAudioTrackIndex(record.audioTrackIndex);
         } catch (error) {
             await this.clearSession();
             throw error;

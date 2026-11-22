@@ -74,6 +74,7 @@ function Harness({ onError }: { onError: (error: unknown) => void }) {
         subtitleHost: host,
         subtitleReader: reader,
         onSourcesApplied: () => {},
+        getSubtitleSourceStatus: () => 'complete',
         onError,
     });
     return null;

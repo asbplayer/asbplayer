@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { VideoDataSubtitleTrack } from '@project/common';
 import type { SubtitleReader } from '@project/common/subtitle-reader';
+import type { SubtitleSourceStatus } from '@project/common/subtitle-reader/subtitle-stream';
 import type { SubtitleHost } from '@project/common/embedded-subtitles/subtitle-source';
 import { embeddedDescriptor, embeddedSubtitleId } from '@project/common/embedded-subtitles/subtitle-source';
 import { genericSubtitleDisplayLabel } from '@project/common/util/subtitle-language';
@@ -17,21 +18,25 @@ export const useMediaSources = ({
     subtitleHost,
     subtitleReader,
     onSourcesApplied,
+    getSubtitleSourceStatus,
     onError,
 }: {
     subtitleHost: SubtitleHost;
     subtitleReader: SubtitleReader;
     onSourcesApplied: (event: SourcesAppliedEvent) => void;
+    getSubtitleSourceStatus: () => SubtitleSourceStatus;
     onError: (error: unknown) => void;
 }) => {
     const { t } = useTranslation();
     const callbacksRef = useRef({
         onSourcesApplied,
+        getSubtitleSourceStatus,
         onError,
         embeddedErrorMessage: t('error.embeddedSubtitlesLoadFailed'),
     });
     callbacksRef.current = {
         onSourcesApplied,
+        getSubtitleSourceStatus,
         onError,
         embeddedErrorMessage: t('error.embeddedSubtitlesLoadFailed'),
     };
@@ -42,6 +47,7 @@ export const useMediaSources = ({
                 subtitleHost,
                 sessionStore: defaultFileSessionStore(),
                 onSourcesApplied: (event) => callbacksRef.current.onSourcesApplied(event),
+                getSubtitleSourceStatus: () => callbacksRef.current.getSubtitleSourceStatus(),
                 onError: (error) => callbacksRef.current.onError(error),
             }),
         [subtitleHost]
@@ -112,6 +118,7 @@ export const useMediaSources = ({
         picker: {
             open: state.picker.open,
             tracks: pickerTracks,
+            audioTracks: state.picker.audioTracks,
             selectedTrackIds: state.picker.selectedTrackIds,
             discovering: state.picker.discovering,
             confirming: state.picker.confirming,

@@ -21,7 +21,7 @@ const webVttCodecs = ['D_WEBVTT/SUBTITLES', 'D_WEBVTT/CAPTIONS', 'D_WEBVTT/DESCR
 export const isMatroskaWebVttCodec = (codecId: string) =>
     codecId === 'S_TEXT/WEBVTT' || webVttCodecs.some((codec) => codecId.startsWith(codec));
 
-interface MatroskaSubtitleTrack {
+interface MatroskaTrack {
     codecId: string;
     language?: string;
     title?: string;
@@ -39,19 +39,29 @@ const children = async (reader: ByteReader, parent: EbmlElement) => {
     return elements;
 };
 
-const readSubtitleTrack = async (
+const readTrack = async (
     reader: ByteReader,
-    entry: EbmlElement
-): Promise<MatroskaSubtitleTrack | undefined> => {
+    entry: EbmlElement,
+    kind: 'audio' | 'subtitle'
+): Promise<MatroskaTrack | undefined> => {
     const fields = await children(reader, entry);
     const typeField = fields.find(({ id }) => id === idTrackType);
     const type = typeField && (await reader.unsignedInt(typeField.dataOffset, typeField.dataSize));
-    if (type === undefined) throw new Error('Incomplete Matroska track metadata');
-    if (type !== trackTypeSubtitle && type !== trackTypeMetadata) return;
+    if (kind === 'audio') {
+        if (type !== trackTypeAudio) return;
+    } else {
+        if (type === undefined) throw new Error('Incomplete Matroska track metadata');
+        if (type !== trackTypeSubtitle && type !== trackTypeMetadata) return;
+    }
     const codecField = fields.find(({ id }) => id === idCodecId);
     const codecId = codecField && (await reader.utf8(codecField.dataOffset, codecField.dataSize));
-    if (!codecId) throw new Error('Incomplete Matroska track metadata');
-    if (type === trackTypeMetadata && !isMatroskaWebVttCodec(codecId)) return; // FFmpeg treats recognized WebVTT metadata tracks as subtitle streams
+    if (kind === 'audio') {
+        if (!codecId?.startsWith(audioCodecPrefix)) return;
+    } else {
+        if (!codecId) throw new Error('Incomplete Matroska track metadata');
+        // FFmpeg treats recognized WebVTT metadata tracks as subtitle streams.
+        if (type === trackTypeMetadata && !isMatroskaWebVttCodec(codecId)) return;
+    }
 
     let language = 'eng'; // Matroska's default when Language is absent.
     let languageIetf: string | undefined;
@@ -89,32 +99,19 @@ const trackEntries = async (reader: ByteReader): Promise<EbmlElement[] | undefin
     }
 };
 
-/** Subtitle track entries in demuxer order. */
-export const matroskaSubtitleTracks = async (reader: ByteReader): Promise<MatroskaSubtitleTrack[] | undefined> => {
+const readTracks = async (reader: ByteReader, kind: 'audio' | 'subtitle'): Promise<MatroskaTrack[] | undefined> => {
     const entries = await trackEntries(reader);
     if (!entries) return;
-    const tracks: MatroskaSubtitleTrack[] = [];
+    const tracks: MatroskaTrack[] = [];
     for (const entry of entries) {
-        const track = await readSubtitleTrack(reader, entry);
+        const track = await readTrack(reader, entry, kind);
         if (track) tracks.push(track);
     }
     return tracks;
 };
 
-export const matroskaAudioCodecIds = async (reader: ByteReader): Promise<string[] | undefined> => {
-    const entries = await trackEntries(reader);
-    if (!entries) return;
-    const codecs: string[] = [];
-    for (const entry of entries) {
-        const fields = await children(reader, entry);
-        const typeField = fields.find(({ id }) => id === idTrackType);
-        if (!typeField || (await reader.unsignedInt(typeField.dataOffset, typeField.dataSize)) !== trackTypeAudio) {
-            continue;
-        }
-        const codecField = fields.find(({ id }) => id === idCodecId);
-        if (!codecField) continue;
-        const codecId = await reader.utf8(codecField.dataOffset, codecField.dataSize);
-        if (codecId.startsWith(audioCodecPrefix)) codecs.push(codecId);
-    }
-    return codecs;
-};
+/** Subtitle track entries in demuxer order. */
+export const matroskaSubtitleTracks = (reader: ByteReader) => readTracks(reader, 'subtitle');
+
+/** Audio track entries in demuxer order. */
+export const matroskaAudioTracks = (reader: ByteReader) => readTracks(reader, 'audio');

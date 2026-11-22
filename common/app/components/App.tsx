@@ -344,6 +344,7 @@ function App({
     const keyBinder = useAppKeyBinder(settings.keyBindSet, extension);
     const videoFrameRef = useRef<HTMLIFrameElement>(null);
     const videoChannelRef = useRef<VideoChannel>(null);
+    const playerRef = useRef<PlayerRef>(null);
     const [videoPlayerSeekRequest, setVideoPlayerSeekRequest] = useState<SeekRequest>();
     const [width] = useWindowSize(!inVideoPlayer);
     const drawerRatio = videoFrameRef.current ? 0.2 : 0.3;
@@ -417,6 +418,7 @@ function App({
         subtitleHost,
         subtitleReader,
         onSourcesApplied: handleSourcesApplied,
+        getSubtitleSourceStatus: () => playerRef.current?.getSubtitleSourceStatus() ?? 'complete',
         onError: handleError,
     });
     const { subtitleFileNames } = sources;
@@ -437,12 +439,6 @@ function App({
             window.removeEventListener('beforeunload', handleBeforeUnload);
         };
     }, [sources.videoFile]);
-    useEffect(() => {
-        if (subtitlePicker.open) videoChannelRef.current?.pause();
-    }, [subtitlePicker.open]);
-    const handleMediaReady = useCallback(() => {
-        if (subtitlePicker.open) videoChannelRef.current?.pause();
-    }, [subtitlePicker.open]);
     const [dragging, setDragging] = useState<boolean>(false);
     const dragEnterRef = useRef<Element | null>(null);
     const [ankiDialogOpen, setAnkiDialogOpen] = useState<boolean>(false);
@@ -463,7 +459,6 @@ function App({
     const [isSidePanelOpen, setIsSidePanelOpen] = useState<boolean>(false);
     const [statisticsOverlayOpen, setStatisticsOverlayOpen] = useState<boolean>(false);
     const [statisticsOverlayDismissed, setStatisticsOverlayDismissed] = useState<boolean>(false);
-    const playerRef = useRef<PlayerRef>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const draftFileInputRef = useRef<HTMLInputElement>(null);
 
@@ -1555,7 +1550,8 @@ function App({
         [mediaSourcesController]
     );
     const handleConfirmSubtitleTrackSelection = useCallback(
-        (tracks: ConfirmedVideoDataSubtitleTrack[]) => mediaSourcesController.confirm(tracks),
+        (tracks: ConfirmedVideoDataSubtitleTrack[], _remember: boolean, audioTrackIndex?: number) =>
+            mediaSourcesController.confirm(tracks, audioTrackIndex),
         [mediaSourcesController]
     );
     const handleOpenSubtitleTrackSelection = useCallback(
@@ -1715,6 +1711,8 @@ function App({
                                     isLoading={subtitlePicker.confirming}
                                     discovering={subtitlePicker.discovering}
                                     suggestedName={sources.videoFile?.file.name ?? ''}
+                                    audioTracks={subtitlePicker.audioTracks}
+                                    audioTrackIndex={sources.audioTrackIndex}
                                     subtitleTracks={subtitlePicker.tracks}
                                     selectedSubtitleTrackIds={subtitlePicker.selectedTrackIds}
                                     onSelectedSubtitleTrackIds={handleSelectedSubtitleTrackIds}
@@ -1810,7 +1808,7 @@ function App({
                                 <Player
                                     supportsDictionaryPlayback={supportsDictionaryPlayback}
                                     audioTranscodeHost={audioTranscodeHost}
-                                    onMediaReady={handleMediaReady}
+                                    subtitlePickerOpen={subtitlePicker.open}
                                     ref={playerRef}
                                     origin={origin}
                                     subtitleReader={subtitleReader}
