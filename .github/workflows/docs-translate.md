@@ -125,11 +125,16 @@ extension strings.
      phrasing the source does not have.
    - The source is already reviewed human writing; when in doubt, mirror it
      rather than improving it.
+4. Reread each finished translation as a native reader of the target
+   locale would, and fix literal-translation artifacts before committing:
+   wrong or calqued particles in Japanese, article and case slips in German
+   and Russian, English attribution formulas rendered word-for-word, and
+   English word order kept anywhere the target language would reorder.
 
 ## Work
 
-Read `translation-worklist.json`. If `translate`, `pages`, `theme`, `deleted`,
-and `sidebar` are all empty, there is no work: report "No docs translation
+Read `translation-worklist.json`. If `translate`, `theme`, `deleted`, and
+`sidebar` are all empty, there is no work: report "No docs translation
 work." and stop without creating a PR.
 
 ### 1. Translate prose files
@@ -153,30 +158,21 @@ For each locale in `sidebar`, translate the category-label values in
 
 For each entry in `deleted`, delete the listed files from the locale tree.
 
-### 4. Home page
-
-For each entry in `pages`, copy `docs/src/pages/<file>` to
-`docs/i18n/<locale>/docusaurus-plugin-content-pages/<file>` and translate
-its user-facing prose: the screen-reader-only title and tagline, the links
-hint, every feature heading and paragraph, and the CTA section. Then fix
-the relative imports for the new location:
-
-- `../../../project.json` becomes `../../../../project.json`.
-- `../components/…` becomes `../../../../src/components/…`.
-- `./index.module.css` becomes `../../../../src/pages/index.module.css`.
-- `@docusaurus/…`, `@theme/…`, and package imports are aliased and stay
-  unchanged.
-
-Everything else in the file must stay byte-identical to the source: JSX
-structure, links, video sources, icons. The translated file may differ only
-in prose strings and the import paths above.
-
-### 5. Theme strings
+### 4. Theme strings
 
 For each locale in `theme`, translate the `message` values (never the
 keys) in that locale's `code.json`, `docusaurus-theme-classic/navbar.json`,
-and `docusaurus-theme-classic/footer.json`; the skeleton files are already
-generated in the workspace. Apply the same terminology rules as above.
+`docusaurus-theme-classic/footer.json`, and
+`docusaurus-plugin-content-blog/options.json`; the skeleton files are
+already generated in the workspace. `code.json` also carries the home
+page's strings (`homepage.*` keys): translate those values too. The
+blog's posts stay untranslated; only the plugin label strings above
+localize. Some values may already be translated (a locale can be
+partially done): leave translated values untouched and translate only
+those still in English. Edit the values in place and keep each file's
+existing formatting and key order; reformatting the file creates diff
+churn and re-dirties the locale. Apply the same terminology rules as
+above.
 
 ## Verification
 
@@ -191,18 +187,6 @@ Re-run until it passes. Node is available in the sandbox; no package
 installation is needed for this check. If a failure looks like a check bug
 rather than a translation error, stop and report it rather than editing
 files to satisfy the check.
-
-If you translated any page component (`pages` entries), also build each
-affected locale; a translated component can fail the docusaurus build in
-ways `check-docs-i18n` cannot see. The docs dependencies are already
-installed in the sandbox:
-
-```sh
-cd docs && ./node_modules/.bin/docusaurus build --locale <locale>
-```
-
-Fix any build error in your translation before continuing. For prose-only
-locales, skip the build: the CI per-locale build covers them.
 
 ## Emit PR
 
@@ -239,7 +223,6 @@ for local staging works and is expected:
 
    - Translate: <"all supported locales, N files each" when no locale filter
      was specified; otherwise each locale with its file count>
-   - Home page: <locales or "none">
    - Theme strings: <locales or "none">
    - Delete: <files or "none">
    - Sidebar labels: <locales or "none">

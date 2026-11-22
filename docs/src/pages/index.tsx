@@ -2,6 +2,7 @@ import project from '../../../project.json';
 import type { ReactNode } from 'react';
 import clsx from 'clsx';
 import Link from '@docusaurus/Link';
+import Translate from '@docusaurus/Translate';
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import Layout from '@theme/Layout';
 import Heading from '@theme/Heading';
@@ -48,13 +49,17 @@ function HomepageHeader() {
                 <Heading as="h1" className={styles.srOnly}>
                     {siteConfig.title}
                 </Heading>
-                <p className={styles.srOnly}>{siteConfig.tagline}</p>
+                <p className={styles.srOnly}>
+                    <Translate id="homepage.tagline">Learn languages with subtitles</Translate>
+                </p>
                 <HeroLogo />
                 <HeroSubtitleStream />
 
                 <div className={styles.linksSection}>
                     <p className={styles.linksHint}>
-                        Install the extension for streaming video, or use the web app for video files.
+                        <Translate id="homepage.linksHint">
+                            Install the extension for streaming video, or use the web app for video files.
+                        </Translate>
                     </p>
                     <div className={styles.pillRow}>
                         <a
@@ -75,11 +80,11 @@ function HomepageHeader() {
                         </a>
                         <a className={styles.pillButton} href={project.urls.app} target="_blank">
                             <WebAppIcon />
-                            Web App
+                            <Translate id="homepage.pill.webApp">Web App</Translate>
                         </a>
                         <Link className={styles.pillButton} to="/docs/intro">
                             <GuideIcon />
-                            User Guide
+                            <Translate id="homepage.pill.userGuide">User Guide</Translate>
                         </Link>
                     </div>
                 </div>
@@ -97,13 +102,31 @@ export default function Home(): ReactNode {
                 <div className={clsx('row', styles.featureSection)}>
                     <div className="col col--7">
                         <h1>
-                            Add <span className={styles.textSelectable}>text-selectable</span> subtitles to almost all
-                            video sources
+                            {/* The chip is an interpolation token, so
+                                translators place {selectable} wherever it
+                                belongs in their word order; the chip's own
+                                text is a nested translation. */}
+                            <Translate
+                                id="homepage.features.subtitles.heading"
+                                values={{
+                                    selectable: (
+                                        <span className={styles.textSelectable}>
+                                            <Translate id="homepage.features.subtitles.selectable">
+                                                text-selectable
+                                            </Translate>
+                                        </span>
+                                    ),
+                                }}>
+                                {'Add {selectable} subtitles to almost all video sources'}
+                            </Translate>
                         </h1>
                         <p>
-                            Add text-selectable subtitles to almost all video sources, including streaming video. Bring
-                            your own subtitles, use auto-detected subtitles on 25+ supported websites, or try
-                            best-effort generic subtitle detection which works on ~85% of websites.
+                            <Translate id="homepage.features.subtitles.paragraph">
+                                Add text-selectable subtitles to almost all video sources, including
+                                streaming video. Bring your own subtitles, use auto-detected subtitles on
+                                25+ supported websites, or try best-effort generic subtitle detection which
+                                works on ~85% of websites.
+                            </Translate>
                         </p>
                     </div>
                     <div className="col col--5">
@@ -115,23 +138,40 @@ export default function Home(): ReactNode {
                         <video autoPlay loop muted playsInline className={styles.video} src="/video/asbplayer-2.mp4" />
                     </div>
                     <div className="col col--7">
-                        <h1>Create multimedia Anki flashcards</h1>
+                        <h1>
+                            <Translate id="homepage.features.anki.heading">
+                                Create multimedia Anki flashcards
+                            </Translate>
+                        </h1>
                         <p>
-                            Combine subtitles with video sources to create high-quality, multimedia vocabulary
-                            flashcards with image and audio.
+                            <Translate id="homepage.features.anki.paragraph">
+                                Combine subtitles with video sources to create high-quality, multimedia
+                                vocabulary flashcards with image and audio.
+                            </Translate>
                         </p>
                     </div>
                 </div>
                 <div className={clsx('row', styles.featureSection)}>
                     <div className="col col--7">
-                        <h1>Analyze and track your language-learning progress</h1>
+                        <h1>
+                            <Translate id="homepage.features.progress.heading">
+                                Analyze and track your language-learning progress
+                            </Translate>
+                        </h1>
                         <p>
-                            Combine asbplayer with{' '}
-                            <a href="https://yomitan.wiki/" target="_blank">
-                                Yomitan
-                            </a>{' '}
-                            to unlock powerful word annotation features that analyze subtitles and keep track of your
-                            known vocabulary.
+                            {/* The link is an interpolation token, not a
+                                fragment boundary: translators place {yomitan}
+                                wherever the sentence wants it in their
+                                language. */}
+                            <Translate
+                                id="homepage.features.progress.paragraph"
+                                values={{
+                                    yomitan: <a href="https://yomitan.wiki/" target="_blank">Yomitan</a>,
+                                }}>
+                                {
+                                    'Combine asbplayer with {yomitan} to unlock powerful word annotation features that analyze subtitles and keep track of your known vocabulary.'
+                                }
+                            </Translate>
                         </p>
                     </div>
                     <div className="col col--5">
@@ -140,18 +180,22 @@ export default function Home(): ReactNode {
                 </div>
                 <div className={clsx('row', styles.ctaSection)}>
                     <div className="col col--12 text--center">
-                        <h1>By language learners, for language learners</h1>
+                        <h1>
+                            <Translate id="homepage.cta.heading">By language learners, for language learners</Translate>
+                        </h1>
                         <p>
-                            asbplayer is a free, open source, community-driven project, used by thousands of language
-                            learners.
+                            <Translate id="homepage.cta.paragraph">
+                                asbplayer is a free, open source, community-driven project, used by thousands
+                                of language learners.
+                            </Translate>
                         </p>
                         <div className={styles.ctaButtons}>
                             <Link className="button button--secondary button--lg" to="/docs/intro">
-                                Learn more
+                                <Translate id="homepage.cta.learnMore">Learn more</Translate>
                             </Link>
                             <Link className={clsx('button', 'button--lg', styles.discordButton)} to={project.urls.discord}>
                                 <span className={styles.discordIcon} aria-hidden="true" />
-                                Join Discord
+                                <Translate id="homepage.cta.joinDiscord">Join Discord</Translate>
                             </Link>
                         </div>
                     </div>
