@@ -5,80 +5,80 @@ sidebar_position: 3
 import NoteAddIcon from '@site/src/components/NoteAddIcon';
 import ImageIcon from '@site/src/components/ImageIcon';
 
-# Mining in-depth {#mining-in-depth}
+# Le mining en détail {#mining-in-depth}
 
-Sentence mining can be accomplished in a variety of ways, according to your needs and preferences, using asbplayer.
+Avec asbplayer, vous pouvez faire du sentence mining de différentes manières, selon vos besoins et vos préférences.
 
-## Opening the Anki Export Dialog {#opening-the-anki-export-dialog}
+## Ouvrir la boîte de dialogue d’export Anki {#opening-the-anki-export-dialog}
 
-There are multiple ways to open the **Anki Export Dialog**:
+Vous pouvez ouvrir la **boîte de dialogue d’export Anki** de plusieurs façons :
 
-1. **Mine Subtitle** <NoteAddIcon /> button that can be found in the **Subtitle List** of the **Side Panel** or on the website.
-2. **Mine Subtitle** <NoteAddIcon /> button in the **Overlay UI** on streaming videos or on the mobile website.
-3. The **mine current subtitle and open Anki dialog** [Mining keyboard shortcut](../reference/settings.md#mining-keyboard-shortcuts) - `Ctrl + Shift + X` by default.
-4. Right-click → asbplayer → **Mine Subtitle** on streaming video.
+1. Le bouton **Extraire le sous-titre** <NoteAddIcon /> dans la **liste des sous-titres** du **panneau latéral** ou sur le site web.
+2. Le bouton **Extraire le sous-titre** <NoteAddIcon /> dans l’**interface superposée** des vidéos en streaming ou du site web mobile.
+3. Le [raccourci clavier de mining](../reference/settings.md#mining-keyboard-shortcuts) **Extraire le sous-titre actuel et ouvrir la boîte de dialogue Anki** — `Ctrl + Shift + X` par défaut.
+4. Sur une vidéo en streaming, faites un clic droit → asbplayer → **Extraire le sous-titre**.
 
 :::info
-Methods #1 and #2 will open the dialog only if the [mining button default action](../reference/settings#mining-button-default-action) is set to "Show Anki dialog."  
+Les méthodes 1 et 2 n’ouvrent la boîte de dialogue que si [l’action par défaut du bouton de mining](../reference/settings#mining-button-default-action) est réglée sur « Afficher la boîte de dialogue Anki ».  
 :::
 
 :::info
-When an _empty_ subtitle track is loaded, and audio recording is enabled, all of the above actions will start recording audio the first time they are triggered, and open the Anki dialog the second time they are triggered.
+Lorsqu’une piste de sous-titres _vide_ est chargée et que l’enregistrement audio est activé, les actions ci-dessus démarrent l’enregistrement audio au premier déclenchement et ouvrent la boîte de dialogue Anki au deuxième.
 :::
 
-## Adjusting cards {#adjusting-cards}
+## Modifier les cartes {#adjusting-cards}
 
-Prior to being exported, cards can be adjusted from the dialog.
+Vous pouvez modifier les cartes dans la boîte de dialogue avant de les exporter.
 
-### Selected time range {#selected-time-range}
+### Plage de temps sélectionnée {#selected-time-range}
 
-A **slider** at the bottom of the dialog can be used to change the selected time range.
+Le **curseur** en bas de la boîte de dialogue permet de modifier la plage de temps sélectionnée.
 
-- The **Sentence Field** will be automatically updated to match the selected time range, if it has not been manually edited already.
-- For local files, the audio clip will also be automatically updated.
-- For streaming video, the audio clip can be re-recorded with the selected time range.
+- Le **champ Sentence** est automatiquement mis à jour en fonction de la plage de temps sélectionnée, sauf s’il a déjà été modifié manuellement.
+- Pour les fichiers locaux, l’extrait audio est également mis à jour automatiquement.
+- Pour les vidéos en streaming, l’extrait audio peut être réenregistré selon la plage de temps sélectionnée.
 
-### Audio field {#audio-field}
+### Champ audio {#audio-field}
 
-The **Audio Field** displays the recorded audio clip and provides three action buttons:
+Le **champ Audio** affiche l’extrait audio enregistré et propose trois boutons :
 
-- **Play/Pause** — preview the audio clip directly in the dialog.
-- **Re-record** — re-record the audio using the currently selected time range (streaming video only; shown when a re-record callback is available).
-- **Download** — download the audio clip as a file to your device.
+- **Lire/Mettre en pause** — écouter l’extrait audio directement dans la boîte de dialogue.
+- **Réenregistrer** — enregistrer à nouveau l’audio selon la plage de temps sélectionnée (vidéos en streaming uniquement ; le bouton s’affiche si le réenregistrement est disponible).
+- **Télécharger** — télécharger l’extrait audio sur votre appareil.
 
-### Text fields {#text-fields}
+### Champs de texte {#text-fields}
 
-Any of the text fields - sentence, definition, word, custom fields, source, URL, tags - can be edited. Typically, a separate dictionary app is used to fill out the definition field.
+Vous pouvez modifier tous les champs de texte : phrase, définition, mot, champs personnalisés, source, URL et tags. En général, une application de dictionnaire distincte sert à remplir le champ de définition.
 
-### Image field {#image-field}
+### Champ image {#image-field}
 
-For local files, clicking the **Preview Button** <ImageIcon /> on the **Image Field** can be used to change the video timestamp from which the screenshot is extracted.
+Pour les fichiers locaux, cliquez sur le **bouton d’aperçu** <ImageIcon /> du **champ Image** pour modifier l’horodatage vidéo auquel la capture d’écran est prise.
 
-## Exporting cards {#exporting-cards}
+## Exporter des cartes {#exporting-cards}
 
-Use the buttons at the bottom of the dialog to finally export the card. There are three types of export:
+Utilisez les boutons au bas de la boîte de dialogue pour exporter la carte. Trois options sont disponibles :
 
-1. **Export**: simply export a card with the dialog content.
-2. **Update last card**: update the last card in your Anki deck with the dialog content.
-3. **Open in Anki**: opens Anki's card creator prefilled with the dialog content.
+1. **Exporter** : exporter une carte avec le contenu de la boîte de dialogue.
+2. **Mettre à jour la dernière carte** : mettre à jour la dernière carte de votre paquet Anki avec le contenu de la boîte de dialogue.
+3. **Ouvrir dans Anki** : ouvrir le créateur de cartes d’Anki prérempli avec le contenu de la boîte de dialogue.
 
-## Dialog-less mining flows {#dialog-less-mining-flows}
+## Mining sans boîte de dialogue {#dialog-less-mining-flows}
 
-Dialog-less mining flows that both include a word definition and skip the Anki dialog entirely can be achieved when asbplayer is used in combination with a dictionary app that also integrates with Anki. Currently, the most popular dictionary app that does this is [Yomitan](https://yomitan.wiki/).
+Vous pouvez faire du mining sans boîte de dialogue, avec une définition du mot, en associant asbplayer à une application de dictionnaire qui s’intègre également à Anki. L’application la plus populaire qui le permet est actuellement [Yomitan](https://yomitan.wiki/).
 
-### Update last card {#update-last-card}
+### Mettre à jour la dernière carte {#update-last-card}
 
-A dialog-less mining flow with Yomitan looks like this:
+Voici comment faire du mining sans boîte de dialogue avec Yomitan :
 
-1. Using Yomitan, highlight the word inside the subtitles that you would like to mine.
-2. Use Yomitan's card-creation button to create a card.
-3. Immediately use asbplayer's **update last card** [Mining keyboard shortcut](../reference/settings.md#mining-keyboard-shortcuts) - `Ctrl + Shift + U` - to update the card with asbplayer-supplied content.
+1. Avec Yomitan, sélectionnez le mot que vous voulez extraire dans les sous-titres.
+2. Utilisez le bouton de création de cartes de Yomitan pour créer une carte.
+3. Utilisez immédiatement le [raccourci clavier de mining](../reference/settings.md#mining-keyboard-shortcuts) **Mettre à jour la dernière carte** d’asbplayer — `Ctrl + Shift + U` — pour ajouter à la carte les médias fournis par asbplayer.
 
-The disadvantage of this flow is that skipping the dialog means skipping the opportunity to modify the card. However, there are ways to work around this:
+Cette méthode ne permet pas de modifier la carte dans la boîte de dialogue. Vous pouvez toutefois contourner cette limite :
 
-- Instead of directly updating the last card at the final step, you can always use `Ctrl + Shift + X` instead to open the dialog, adjust the card, and finally **update last card** using the dialog GUI. With this method you still go through the dialog, but retain the benefit of Yomitan's automatically-supplied word definition.
-- The **Anki Export Dialog** can always be opened _after_ card creation with the **manually take screenshot** [Mining keyboard shortcut](../reference/settings.md#mining-keyboard-shortcuts) - `Ctrl + Shift + V` by default.
+- À la dernière étape, au lieu de mettre directement à jour la dernière carte, utilisez `Ctrl + Shift + X` pour ouvrir la boîte de dialogue, modifier la carte, puis **mettre à jour la dernière carte** depuis l’interface. Vous passez ainsi par la boîte de dialogue tout en conservant la définition fournie automatiquement par Yomitan.
+- Vous pouvez toujours ouvrir la **boîte de dialogue d’export Anki** _après_ la création de la carte avec le [raccourci clavier de mining](../reference/settings.md#mining-keyboard-shortcuts) **Prendre une capture d’écran manuellement** — `Ctrl + Shift + V` par défaut.
 
-### One click {#one-click}
+### En un clic {#one-click}
 
-See the [one-click mining](./one-click-mining.md) guide.
+Consultez le guide du [mining en un clic](./one-click-mining.md).

@@ -4,15 +4,15 @@ sidebar_position: 9.5
 
 import project from '@site/src/project';
 
-# External extensions {#external-extensions}
+# Extensions externes {#external-extensions}
 
-As of v1.23, asbplayer exposes a way for other browser extensions to communicate with it. Any extension that connects to asbplayer via [browser.runtime.connect](https://developer.chrome.com/docs/extensions/reference/api/runtime#method-connect), and receives user approval, can issue [commands](../reference/external-api.md) through the connection.
+Depuis la version 1.23, asbplayer permet à d’autres extensions de navigateur de communiquer avec lui. Toute extension qui se connecte à asbplayer via [browser.runtime.connect](https://developer.chrome.com/docs/extensions/reference/api/runtime#method-connect) et reçoit l’autorisation de l’utilisateur peut envoyer des [commandes](../reference/external-api.md) par cette connexion.
 
-A template implementation of an extension that integrates with asbplayer in this way is provided <a href={`${project.urls.externalExtensionTemplateRepo}`}>here</a>.
+Un modèle d’extension intégrée à asbplayer de cette manière est disponible <a href={`${project.urls.externalExtensionTemplateRepo}`}>ici</a>.
 
-## Connecting and obtaining user approval
+## Se connecter et obtenir l’autorisation de l’utilisateur
 
-Any extension wishing to communicate with asbplayer must first connect using code like below. asbplayer's extension ID can be obtained from the browser's extension manager (on Chrome `chrome://extensions`, on Firefox `about:addons`).
+Toute extension qui souhaite communiquer avec asbplayer doit d’abord se connecter à l’aide d’un code semblable à celui ci-dessous. Vous trouverez l’identifiant de l’extension asbplayer dans le gestionnaire d’extensions du navigateur (dans Chrome, `chrome://extensions` ; dans Firefox, `about:addons`).
 
 ```typescript
 const port = browser.runtime.connect(<asbplayer extension ID>, {
@@ -20,7 +20,7 @@ const port = browser.runtime.connect(<asbplayer extension ID>, {
 });
 ```
 
-Request approval with `initialize`, which answers immediately with the current state.
+Demandez l’autorisation avec `initialize`. La réponse indique immédiatement l’état actuel.
 
 ```typescript
 port.postMessage({
@@ -34,7 +34,7 @@ port.postMessage({
 });
 ```
 
-If the extension is not approved, asbplayer registers the connection as pending, prompts the user, and responds:
+Si l’extension n’est pas encore autorisée, asbplayer enregistre la connexion comme étant en attente, demande l’approbation de l’utilisateur, puis répond :
 
 ```json
 {
@@ -44,7 +44,7 @@ If the extension is not approved, asbplayer registers the connection as pending,
 }
 ```
 
-Poll `approval-state` to see if the user has approved the connection request.
+Interrogez `approval-state` pour savoir si l’utilisateur a approuvé la demande de connexion.
 
 ```json
 {
@@ -55,9 +55,9 @@ Poll `approval-state` to see if the user has approved the connection request.
 }
 ```
 
-Once approved, `approval-state` will return `{ "state": "approved" }` and the connection can issue commands. If denied, `approval-state` returns `{ "state": "denied" }` once. asbplayer then closes the port. Once denied, the requesting extension cannot request approval for 24 hours.
+Une fois la connexion autorisée, `approval-state` renvoie `{ "state": "approved" }` et la connexion peut envoyer des commandes. En cas de refus, `approval-state` renvoie une fois `{ "state": "denied"}`, puis asbplayer ferme le port. Après un refus, l’extension ne peut pas redemander l’autorisation pendant 24 heures.
 
-Commands can be issued as [documented](../reference/external-api.md). For example:
+Les commandes peuvent être envoyées comme [décrit dans la documentation](../reference/external-api.md). Par exemple :
 
 ```typescript
 port.postMessage({
@@ -68,4 +68,4 @@ port.postMessage({
 });
 ```
 
-asbplayer answers with `{ jsonrpc, id, result }` on success or `{ jsonrpc, id, error }` on failure.
+En cas de réussite, asbplayer répond avec `{ jsonrpc, id, result }` ; en cas d’échec, il répond avec `{ jsonrpc, id, error }`.
