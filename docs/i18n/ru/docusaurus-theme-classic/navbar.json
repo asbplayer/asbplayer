@@ -1,0 +1,18 @@
+{
+  "title": {
+    "message": "asbplayer",
+    "description": "The title in the navbar"
+  },
+  "logo.alt": {
+    "message": "Логотип asbplayer",
+    "description": "The alt text of navbar logo"
+  },
+  "item.label.User Guide": {
+    "message": "Руководство пользователя",
+    "description": "Navbar item with label User Guide"
+  },
+  "item.label.Blog": {
+    "message": "Блог",
+    "description": "Navbar item with label Blog"
+  }
+}

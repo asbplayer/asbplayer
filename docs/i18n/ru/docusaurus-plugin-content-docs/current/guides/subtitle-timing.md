@@ -2,27 +2,27 @@
 sidebar_position: 2
 ---
 
-# Subtitle timing {#subtitle-timing}
+# Синхронизация субтитров {#subtitle-timing}
 
-Subtitle files will very often not be aligned to the video source you load them into. To work around this, asbplayer provides ways to manually adjust subtitle timing.
+Файлы субтитров часто не совпадают по времени с загруженным видео. Для этого asbplayer позволяет вручную сдвигать время субтитров.
 
-## Keyboard shortcuts {#keyboard-shortcuts}
+## Сочетания клавиш {#keyboard-shortcuts}
 
-The fastest way to fix subtitle timing is with the [Subtitle offset keyboard shortcuts](../reference/settings.md#subtitle-offset-keyboard-shortcuts). There are two sets of shortcuts for adjusting subtitle offset:
+Быстрее всего синхронизировать субтитры можно с помощью [сочетаний клавиш для сдвига субтитров](../reference/settings.md#subtitle-offset-keyboard-shortcuts). Сдвиг можно настроить двумя наборами сочетаний:
 
-- `Ctrl + Left/Right` or `Shift + Left/Right`: Align the current timestamp to the left or right subtitle.
-- `Ctrl + Shift + Left/Right`: Move the current timestamp `100ms` to the left or right.
+- `Ctrl + Left/Right` или `Shift + Left/Right`: совместить текущую временную метку с предыдущим или следующим субтитром.
+- `Ctrl + Shift + Left/Right`: сдвинуть текущую временную метку на `100ms` назад или вперёд.
 
-Most often, finding the correct offset will look like this:
+Обычно правильный сдвиг можно подобрать так:
 
-1. Wait for a character to start talking.
-2. `Ctrl + Left/Right` until the subtitle matching the character's dialog appears on screen.
-3. `Ctrl + Shift + Right/Left` until the subtitle timing precisely matches the dialog.
+1. Дождитесь, когда персонаж начнёт говорить.
+2. Нажимайте `Ctrl + Left/Right`, пока на экране не появится субтитр с репликой персонажа.
+3. Нажимайте `Ctrl + Shift + Right/Left`, пока время субтитров точно не совпадёт с репликой.
 
-## Overlay UI {#overlay-ui}
+## Элементы управления поверх видео {#overlay-ui}
 
-The overlay UI provides buttons that perform the same functions as the keyboard shortcuts above.
+Элементы управления поверх видео позволяют выполнять те же действия, что и сочетания клавиш выше.
 
-1. Scroll the rightmost section to the **middle** control.
-2. Click the left or right button to align the left or right subtitle to the current timestamp.
-3. Click and **hold** the left or right button to move the current timestamp `100ms` to the left or right.
+1. Прокрутите крайний правый раздел до **среднего** элемента управления.
+2. Нажмите левую или правую кнопку, чтобы совместить предыдущий или следующий субтитр с текущей временной меткой.
+3. Нажмите и **удерживайте** левую или правую кнопку, чтобы сдвинуть текущую временную метку на `100ms` назад или вперёд.

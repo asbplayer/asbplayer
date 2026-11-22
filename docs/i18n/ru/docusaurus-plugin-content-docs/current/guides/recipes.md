@@ -1,6 +1,6 @@
 ---
 sidebar_position: 1.5
-title: Recipes
+title: Рецепты
 ---
 
 import project from '@site/src/project';
@@ -67,41 +67,41 @@ export const unfamiliarWordRepeatSettings = {
   subtitleTriggerEndOffset: 0,
 };
 
-# Recipes
+# Рецепты
 
-Recipes combine playback modes and playback settings so you can switch between learning activities. Choose a recipe in **Settings > Playback**, beside the playback modes in the player controls, or in the mobile overlay. Choose **Disabled** to return to your underlying settings. Your saved playback settings, remembered playback rate, and remembered modes are preserved while a recipe is active.
+Рецепты объединяют режимы и настройки воспроизведения, чтобы переключаться между занятиями. Выберите рецепт в разделе **Настройки > Воспроизведение**, рядом с режимами воспроизведения в элементах управления проигрывателя или в мобильном наложении. Выберите **Отключено**, чтобы вернуться к основным настройкам. Пока рецепт активен, сохранённые настройки воспроизведения, скорость и режимы остаются прежними.
 
-## Create and edit a recipe
+## Создание и изменение рецепта
 
-Select **Edit Recipe** in the Playback tab. If a recipe is selected, you start with that recipe; otherwise you start with your current playback settings. Choose the playback modes and change the settings you want to include. These changes stay in a draft and do not affect playback until saved.
+На вкладке «Воспроизведение» выберите **Изменить рецепт**. Если рецепт выбран, редактирование начнётся с него; в противном случае — с текущих настроек воспроизведения. Выберите режимы воспроизведения и измените нужные настройки. До сохранения изменения остаются в черновике и не влияют на воспроизведение.
 
-Select **Save Recipe** to review the settings and enter a name of up to 100 characters. You can remove individual settings from the preview; omitted settings use your underlying settings. Playback modes are always specified as a complete combination.
+Выберите **Сохранить рецепт**, проверьте настройки и введите название длиной до 100 символов. В окне предварительного просмотра можно убрать отдельные настройки; для отсутствующих в рецепте настроек используются основные значения. Режимы воспроизведения всегда задаются полным набором.
 
-When editing an existing recipe, leaving its name untouched updates it. Typing in the name field creates a new recipe, even if you return to the original name. Select **Cancel** to discard the draft.
+При изменении существующего рецепта оставьте его название без изменений, чтобы обновить его. Ввод в поле названия создаёт новый рецепт, даже если в итоге вы вернётесь к прежнему названию. Выберите **Отмена**, чтобы удалить черновик.
 
-## Import and share
+## Импорт и обмен
 
-Select **Import Recipe**, paste the recipe's JSON, review its settings, and confirm. You can change its name and remove settings before importing. Imported recipes are appended to your list and selected. Unknown settings and invalid setting values are ignored. The name and playback modes must be valid.
+Выберите **Импортировать рецепт**, вставьте JSON рецепта, проверьте настройки и подтвердите импорт. Перед импортом можно изменить название и удалить настройки. Импортированные рецепты добавляются в конец списка и выбираются. Неизвестные настройки и недопустимые значения игнорируются. Название и режимы воспроизведения должны быть допустимыми.
 
-You can also open an import link. It opens the web app with the Playback tab and import preview ready; the recipe takes effect after you confirm the import.
+Можно также открыть ссылку для импорта. Веб-приложение откроется на вкладке «Воспроизведение» с подготовленным окном предварительного просмотра; рецепт вступит в силу после подтверждения импорта.
 
-Open a recipe's preview icon in the dropdown to copy its JSON or share its import URL. The same preview lets you delete the recipe with confirmation. Move recipes with the up/down buttons or drag them in the dropdown. Selection follows a recipe when it moves; deleting the selected recipe disables recipes.
+Откройте предварительный просмотр рецепта из выпадающего списка, чтобы скопировать его JSON или поделиться ссылкой для импорта. Там же можно удалить рецепт после подтверждения. Перемещайте рецепты кнопками вверх/вниз или перетаскивайте их в списке. При перемещении выбранным остаётся тот же рецепт; удаление выбранного рецепта отключает рецепты.
 
-## Keyboard shortcuts
+## Сочетания клавиш
 
-Configure **Cycle through recipes forward**, **Cycle through recipes backwards**, and **Toggle recipe #1** through **#10** under **Keyboard Shortcuts > Playback**. Toggling the active recipe disables recipes. Cycling follows the list order and includes **Disabled**. Playback setting and mode shortcuts show a notification while a recipe is active; edit or disable the recipe to change those settings.
+В разделе **Сочетания клавиш > Воспроизведение** настройте команды **Переключить на следующий рецепт**, **Переключить на предыдущий рецепт** и **Включить/выключить рецепт № 1–10**. Повторное включение активного рецепта отключает рецепты. Переключение следует порядку списка и включает пункт **Отключено**. Пока активен рецепт, сочетания клавиш для настроек и режимов воспроизведения показывают уведомление; чтобы изменить настройки, отредактируйте или отключите рецепт.
 
-## Common recipes
+## Примеры рецептов
 
-These contain some useful preset recipes for common learning activities. If you have any that you want to share or need a missing feature to create the perfect recipe, you can request them on <a href={project.urls.discord}>Discord</a> or on <a href={`${project.urls.repo}/issues/new/choose`}>GitHub</a>.
+Ниже приведены полезные рецепты для распространённых занятий. Если вы хотите поделиться своим рецептом или вам не хватает функции для создания подходящего рецепта, напишите нам в <a href={project.urls.discord}>Discord</a> или на <a href={`${project.urls.repo}/issues/new/choose`}>GitHub</a>.
 
-### Normal mode
+### Обычный режим
 
-Use your usual playback settings without an automatic learning mode. We recommend keeping your non-recipe settings as plain as possible so that `Disabled` maps to normal playback behavior.
+Используйте обычные настройки воспроизведения без автоматического учебного режима. Рекомендуем оставить основные настройки как можно проще, чтобы пункт `Отключено` соответствовал обычному воспроизведению.
 
-### Dialogue focus
+### Внимание на диалоги
 
-Focus on dialogue by combining condensed playback with fast-forward. Skip gaps using a 5-second minimum skip interval and fast-forward remaining qualifying gaps at 3× with a 1-second minimum interval. Keep 150 ms of context on either side of each gap, with dialogue at your underlying playback speed.
+Сосредоточьтесь на диалогах, сочетая сжатое и ускоренное воспроизведение. Пропускайте паузы длительностью не менее 5 секунд, а остальные подходящие паузы ускоряйте в 3 раза при минимальном интервале 1 секунда. Сохраняйте контекст по 150 мс с каждой стороны паузы; диалоги воспроизводятся с основной скоростью.
 
 <RecipePreset
   recipe={{
@@ -113,9 +113,9 @@ Focus on dialogue by combining condensed playback with fast-forward. Skip gaps u
   }}
 />
 
-### Gap fast-forward
+### Ускорение пауз
 
-Watch the entire video while fast-forwarding qualifying gaps at 3× with a 1-second minimum interval. Keep 150 ms of context on either side of each gap, with dialogue at your underlying playback speed.
+Смотрите видео целиком, ускоряя подходящие паузы в 3 раза при минимальном интервале 1 секунда. Сохраняйте контекст по 150 мс с каждой стороны паузы; диалоги воспроизводятся с основной скоростью.
 
 <RecipePreset
   recipe={{
@@ -127,14 +127,14 @@ Watch the entire video while fast-forwarding qualifying gaps at 3× with a 1-sec
   }}
 />
 
-### Reading mode
+### Режим чтения
 
-Pause at the start of each subtitle to read and look up words, then resume manually to hear the audio with subtitles visible. Hovering over subtitles during playback also pauses the video; moving away resumes it.
+Останавливайтесь в начале каждого субтитра, чтобы прочитать его и посмотреть слова в словаре, а затем вручную продолжайте воспроизведение и слушайте аудио с видимыми субтитрами. Если во время воспроизведения навести указатель на субтитры, видео также приостановится; когда указатель убран, воспроизведение продолжится.
 
 <RecipePreset
   gapVariants
   recipe={{
-    name: 'Reading mode',
+    name: 'Режим чтения',
     playbackModes: [3],
     settings: {
       ...nonAnnotationPlaybackSettings,
@@ -148,14 +148,14 @@ Pause at the start of each subtitle to read and look up words, then resume manua
   }}
 />
 
-### Listening mode
+### Режим аудирования
 
-Listen without subtitles, then pause automatically at the end of each subtitle to reveal the text and check your understanding. Resume manually when ready.
+Слушайте без субтитров. В конце каждого субтитра воспроизведение автоматически приостанавливается, текст появляется на экране, и вы можете проверить, насколько хорошо поняли услышанное. Продолжайте вручную, когда будете готовы.
 
 <RecipePreset
   gapVariants
   recipe={{
-    name: 'Listening mode',
+    name: 'Режим аудирования',
     playbackModes: [3],
     settings: {
       ...nonAnnotationPlaybackSettings,
@@ -168,14 +168,14 @@ Listen without subtitles, then pause automatically at the end of each subtitle t
   }}
 />
 
-### Audio only
+### Только аудио
 
-Listen continuously with subtitles hidden during playback. Manually pause to reveal the current subtitle when you need help.
+Слушайте непрерывно, скрыв субтитры во время воспроизведения. Если нужна подсказка, вручную поставьте видео на паузу, чтобы увидеть текущий субтитр.
 
 <RecipePreset
   gapVariants
   recipe={{
-    name: 'Audio only',
+    name: 'Только аудио',
     playbackModes: [1],
     settings: {
       ...nonAnnotationPlaybackSettings,
@@ -184,14 +184,14 @@ Listen continuously with subtitles hidden during playback. Manually pause to rev
   }}
 />
 
-### Intensive listening
+### Интенсивное аудирование
 
-Listen to each subtitle three times, with a 1-second pause after each pass. Subtitles stay hidden for the first two passes and appear on the final replay to check your understanding. Playback resumes automatically after each pause, customize the 1s pause duration as needed.
+Прослушивайте каждый субтитр трижды, делая паузу на 1 секунду после каждого прохода. В первых двух проходах субтитры скрыты, а при последнем повторе появляются, чтобы вы могли проверить понимание. После паузы воспроизведение продолжается автоматически; при необходимости измените её длительность.
 
 <RecipePreset
   gapVariants
   recipe={{
-    name: 'Intensive listening',
+    name: 'Интенсивное аудирование',
     playbackModes: [3, 5],
     settings: {
       ...nonAnnotationPlaybackSettings,
@@ -208,16 +208,16 @@ Listen to each subtitle three times, with a 1-second pause after each pass. Subt
   }}
 />
 
-### Primed listening
+### Подготовленное аудирование
 
-Pause at the start of each subtitle to read it in your native language, let it disappear, then listen to the audio without subtitles. Reading time is 80 ms per character, with a minimum of 1 second and a maximum of 6 seconds. After the text disappears, playback stays paused for another 500 ms before resuming automatically. You can adjust these timings when editing the recipe.
+Приостанавливайтесь в начале каждого субтитра, чтобы прочитать его на родном языке. Затем субтитр исчезает, и вы слушаете аудио без текста. Время чтения — 80 мс на символ, минимум 1 секунда и максимум 6 секунд. После исчезновения текста воспроизведение остаётся на паузе ещё 500 мс, затем автоматически продолжается. Эти интервалы можно изменить при редактировании рецепта.
 
-Choose the tracks used to calculate reading time under **Subtitle tracks affected by playback modes and keyboard shortcuts**.
+Выберите дорожки, по которым рассчитывается время чтения, в параметре **Дорожки субтитров, на которые влияют режимы воспроизведения и сочетания клавиш**.
 
 <RecipePreset
   gapVariants
   recipe={{
-    name: 'Primed listening',
+    name: 'Подготовленное аудирование',
     playbackModes: [3],
     settings: {
       ...nonAnnotationPlaybackSettings,
@@ -234,14 +234,14 @@ Choose the tracks used to calculate reading time under **Subtitle tracks affecte
   }}
 />
 
-### Read aloud
+### Чтение вслух
 
-Read each subtitle aloud before hearing the original audio, then compare your pronunciation and rhythm. Playback pauses at the start with subtitles visible and resumes automatically after 80 ms per character, bounded to 1–6 seconds. Each subtitle repeats once. Adjust the pause timings to give yourself enough speaking time.
+Прочитайте каждый субтитр вслух до прослушивания оригинальной аудиодорожки, а затем сравните произношение и ритм. В начале субтитра воспроизведение приостанавливается и показывает текст, а затем автоматически продолжается через 80 мс на символ (от 1 до 6 секунд). Каждый субтитр повторяется один раз. Настройте длительность паузы, чтобы успевать говорить.
 
 <RecipePreset
   gapVariants
   recipe={{
-    name: 'Read aloud',
+    name: 'Чтение вслух',
     playbackModes: [3, 5],
     settings: {
       ...nonAnnotationPlaybackSettings,
@@ -260,14 +260,14 @@ Read each subtitle aloud before hearing the original audio, then compare your pr
   }}
 />
 
-### Shadowing
+### Повторение за диктором
 
-Speak alongside or slightly behind the original audio, matching its rhythm and pronunciation with subtitles visible. Each subtitle repeats once, with a 1-second pause at the end of each pass before playback resumes automatically.
+Говорите одновременно с оригинальной аудиодорожкой или немного отставая от неё, повторяя ритм и произношение. Субтитры остаются видимыми. Каждый субтитр повторяется один раз; после каждого прохода воспроизведение автоматически приостанавливается на 1 секунду.
 
 <RecipePreset
   gapVariants
   recipe={{
-    name: 'Shadowing',
+    name: 'Повторение за диктором',
     playbackModes: [3, 5],
     settings: {
       ...nonAnnotationPlaybackSettings,
@@ -284,14 +284,14 @@ Speak alongside or slightly behind the original audio, matching its rhythm and p
   }}
 />
 
-### Recall
+### Воспроизведение по памяти
 
-Listen to the audio, then reproduce the line aloud from memory during the automatic pause at its end. Subtitles stay hidden during playback and automatic pauses. Speaking time is 80 ms per character, bounded to 1–6 seconds, and each subtitle repeats once. Adjust the pause timings as needed; manually pause during a replay to reveal the text when you need help.
+Прослушайте аудио, а затем повторите реплику по памяти во время автоматической паузы в её конце. Во время воспроизведения и автоматических пауз субтитры скрыты. На произнесение отводится 80 мс на символ, от 1 до 6 секунд. Каждый субтитр повторяется один раз. При необходимости настройте длительность паузы; если нужна подсказка, вручную поставьте повтор на паузу, чтобы показать текст.
 
 <RecipePreset
   gapVariants
   recipe={{
-    name: 'Recall',
+    name: 'Воспроизведение по памяти',
     playbackModes: [3, 5],
     settings: {
       ...nonAnnotationPlaybackSettings,
@@ -309,20 +309,20 @@ Listen to the audio, then reproduce the line aloud from memory during the automa
   }}
 />
 
-## Annotation Recipes
+## Рецепты с аннотациями
 
-These presets require [Annotation](./annotation.md) to be enabled as they use its data. If you have any that you want to share or need a missing feature to create the perfect recipe, you can request them on <a href={project.urls.discord}>Discord</a> or on <a href={`${project.urls.repo}/issues/new/choose`}>GitHub</a>.
+Для этих рецептов нужно включить [аннотации](./annotation.md), данные которых они используют. Если вы хотите поделиться рецептом или вам не хватает функции для создания подходящего рецепта, напишите нам в <a href={project.urls.discord}>Discord</a> или на <a href={`${project.urls.repo}/issues/new/choose`}>GitHub</a>.
 
-Load your target-language subtitles as **Track 1**. These presets use that track for playback and word selection. **Unfamiliar** means **Uncollected** or **Unknown**. Other annotation display preferences, such as readings and colors, use your underlying settings.
+Загрузите субтитры на изучаемом языке как **Дорожку 1**. Эти рецепты используют её для воспроизведения и выбора слов. **Незнакомое** означает **Не собрано** или **Неизвестно**. Для других параметров отображения аннотаций, например чтения и цветов, используются основные настройки.
 
-### Unfamiliar-word rescue
+### Помощь с незнакомыми словами
 
-Watch with subtitles visible. When a line contains an unfamiliar word, pause for 1 second at its end, then replay it once. Other lines continue uninterrupted. The first unfamiliar word is selected during the pause for lookup. Adjust the pause duration if you need more time.
+Смотрите видео с включёнными субтитрами. Если в строке есть незнакомое слово, в конце строки воспроизведение приостанавливается на 1 секунду, а затем строка повторяется один раз. Остальные строки воспроизводятся без пауз. Во время паузы выбирается первое незнакомое слово, чтобы посмотреть его в словаре. Если нужно больше времени, измените длительность паузы.
 
 <RecipePreset
   gapVariants
   recipe={{
-    name: 'Unfamiliar-word rescue',
+    name: 'Помощь с незнакомыми словами',
     playbackModes: [3, 5],
     settings: {
       ...unfamiliarWordRepeatSettings,
@@ -334,15 +334,15 @@ Watch with subtitles visible. When a line contains an unfamiliar word, pause for
   }}
 />
 
-### i+1 mining
+### Майнинг i+1
 
-Focus on subtitles containing exactly one Uncollected token. Condensed playback skips between qualifying lines, and playback pauses at each line's end until you resume manually, selecting the Uncollected token for inspection or mining.
+Сосредоточьтесь на субтитрах, содержащих ровно одно слово со статусом «Не собрано». Сжатое воспроизведение пропускает остальные строки. В конце каждой подходящей строки воспроизведение приостанавливается до вашего действия; слово «Не собрано» выбирается для просмотра или майнинга.
 
-This finds i+1 candidates rather than guaranteeing that every other word is known: a line can also contain Unknown words, and repeated occurrences of the same Uncollected word count separately. Mining remains a manual action.
+Так находятся примеры i+1, но это не гарантирует, что все остальные слова известны: строка может также содержать неизвестные слова, а повторные вхождения одного и того же слова со статусом «Не собрано» считаются отдельно. Майнинг по-прежнему выполняется вручную.
 
 <RecipePreset
   recipe={{
-    name: 'i+1 mining',
+    name: 'Майнинг i+1',
     playbackModes: [2, 3],
     settings: {
       ...annotationPlaybackSettings({
@@ -362,14 +362,14 @@ This finds i+1 candidates rather than guaranteeing that every other word is know
   }}
 />
 
-### Unfamiliar-word hints
+### Подсказки для незнакомых слов
 
-Listen with unfamiliar words visible and familiar words hidden. Lines containing unfamiliar words pause for 1 second at their end, revealing the full text, then replay once with the hints restored. The first unfamiliar word is selected during the pause for lookup. Lines with no unfamiliar words have no caption when fully tokenized.
+Слушайте аудио, показывая незнакомые слова и скрывая знакомые. Если в строке есть незнакомые слова, в её конце воспроизведение приостанавливается на 1 секунду и показывает полный текст. Затем строка повторяется один раз, снова со скрытыми знакомыми словами. Во время паузы выбирается первое незнакомое слово, чтобы посмотреть его в словаре. Если все слова распознаны, строки без незнакомых слов не отображаются.
 
 <RecipePreset
   gapVariants
   recipe={{
-    name: 'Unfamiliar-word hints',
+    name: 'Подсказки для незнакомых слов',
     playbackModes: [3, 5],
     settings: {
       ...unfamiliarWordRepeatSettings,
@@ -386,14 +386,14 @@ Listen with unfamiliar words visible and familiar words hidden. Lines containing
   }}
 />
 
-### Unfamiliar-word cloze
+### Пропуски для незнакомых слов
 
-Read the familiar parts of each subtitle while unfamiliar words remain hidden, and try supplying the missing words from the audio and context. Lines containing unfamiliar words pause for 1 second at their end to reveal the full text, then replay once with the gaps restored. Ignored words remain visible.
+Читайте знакомые части каждого субтитра, пока незнакомые слова скрыты, и попробуйте восстановить пропуски по аудио и контексту. В конце строки с незнакомыми словами воспроизведение приостанавливается на 1 секунду и показывает полный текст; затем строка повторяется один раз с восстановленными пропусками. Игнорируемые слова остаются видимыми.
 
 <RecipePreset
   gapVariants
   recipe={{
-    name: 'Unfamiliar-word cloze',
+    name: 'Пропуски для незнакомых слов',
     playbackModes: [3, 5],
     settings: {
       ...unfamiliarWordRepeatSettings,
@@ -410,15 +410,15 @@ Read the familiar parts of each subtitle while unfamiliar words remain hidden, a
   }}
 />
 
-### Adaptive listening pace
+### Адаптивная скорость аудирования
 
-Play dialogue at 1× when its estimated comprehension is 60% or lower, increasing gradually to 1.8× at 100%. Condensed playback skips gaps using a 1-second minimum interval, keeping 150 ms of context on either side. Qualifying gaps that remain play at 1.8×.
+Воспроизводите диалоги со скоростью 1×, если предполагаемое понимание составляет 60% или ниже. По мере повышения этого показателя скорость постепенно увеличивается до 1,8× при 100%. Сжатое воспроизведение пропускает паузы длительностью не менее 1 секунды, сохраняя контекст по 150 мс с каждой стороны. Оставшиеся подходящие паузы воспроизводятся со скоростью 1,8×.
 
-Adjust the base and fast-forward speeds when editing the recipe, keeping the fast-forward speed higher than the base speed.
+При изменении рецепта настройте основную скорость и скорость ускоренного воспроизведения, причём последняя должна быть выше основной.
 
 <RecipePreset
   recipe={{
-    name: 'Adaptive listening pace',
+    name: 'Адаптивная скорость аудирования',
     playbackModes: [2, 4],
     settings: {
       ...annotationPlaybackSettings({ fastForward: { rateByComprehension: { enabled: true } } }),

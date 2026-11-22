@@ -4,33 +4,33 @@ sidebar_position: 1
 
 import project from '@site/src/project';
 
-# Loading subtitles {#loading-subtitles}
+# Загрузка субтитров {#loading-subtitles}
 
-The first step to using asbplayer is to load subtitles onto a video source.
+Первый шаг при использовании asbplayer — загрузить субтитры к видео.
 
-## Streaming video {#streaming-video}
+## Потоковое видео {#streaming-video}
 
-### Chrome (or other Chromium-based browsers) {#chromium}
+### Chrome (и другие браузеры на базе Chromium) {#chromium}
 
-1. Install the Chrome extension from Google's <a href={project.extension.chrome.storeUrl}>web store</a> or from the <a href={`${project.urls.repo}/releases/latest`}>GitHub release</a>.
-2. Click 🧩 icon in browser toolbar → asbplayer → **Open Side Panel**
-3. Click **Load Subtitles** to load subtitles onto any video on the current page.
+1. Установите расширение Chrome из <a href={project.extension.chrome.storeUrl}>интернет-магазина Google</a> или со <a href={`${project.urls.repo}/releases/latest`}>страницы релизов GitHub</a>.
+2. Нажмите значок 🧩 на панели инструментов браузера → asbplayer → **Открыть боковую панель**.
+3. Нажмите **Загрузить субтитры**, чтобы добавить субтитры к любому видео на текущей странице.
 
 ### Firefox {#firefox}
 
 :::warning
-asbplayer is missing some features on Firefox. See the [Compatibility](../compatibility.md#extension) section.  
+В Firefox доступны не все функции asbplayer. См. раздел [совместимости](../compatibility.md#extension).
 :::
 
-1. Install the the Firefox addon from the Mozilla <a href={project.extension.firefox.storeUrl}>addon store</a> or from the <a href={`${project.urls.repo}/releases/latest`}>GitHub release</a>.
-2. Click 🧩 icon in browser toolbar → asbplayer → **Open Side Panel**
-3. Click **Load Subtitles** to load subtitles onto any video on the current page.
+1. Установите дополнение Firefox из <a href={project.extension.firefox.storeUrl}>магазина дополнений Mozilla</a> или со <a href={`${project.urls.repo}/releases/latest`}>страницы релизов GitHub</a>.
+2. Нажмите значок 🧩 на панели инструментов браузера → asbplayer → **Открыть боковую панель**.
+3. Нажмите **Загрузить субтитры**, чтобы добавить субтитры к любому видео на текущей странице.
 
 ### Android {#android}
 
-See the [Android guide](../guides/android.md).
+См. [руководство по Android](../guides/android.md).
 
-## Video files {#video-files}
+## Видеофайлы {#video-files}
 
-1. Open the <a href={project.urls.app}>website</a>.
-2. Drag-and-drop video and subtitle files into the website.
+1. Откройте <a href={project.urls.app}>сайт</a>.
+2. Перетащите видеофайлы и файлы субтитров на страницу сайта.
