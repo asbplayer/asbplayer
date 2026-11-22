@@ -2,27 +2,27 @@
 sidebar_position: 2
 ---
 
-# Subtitle timing {#subtitle-timing}
+# Waktu takarir {#subtitle-timing}
 
-Subtitle files will very often not be aligned to the video source you load them into. To work around this, asbplayer provides ways to manually adjust subtitle timing.
+Berkas takarir sering kali tidak selaras dengan sumber video tempat berkas itu dimuat. Untuk mengatasinya, asbplayer menyediakan cara untuk menyesuaikan waktu takarir secara manual.
 
-## Keyboard shortcuts {#keyboard-shortcuts}
+## Pintasan keyboard {#keyboard-shortcuts}
 
-The fastest way to fix subtitle timing is with the [Subtitle offset keyboard shortcuts](../reference/settings.md#subtitle-offset-keyboard-shortcuts). There are two sets of shortcuts for adjusting subtitle offset:
+Cara tercepat untuk memperbaiki waktu takarir adalah menggunakan [pintasan keyboard offset takarir](../reference/settings.md#subtitle-offset-keyboard-shortcuts). Ada dua rangkaian pintasan untuk menyesuaikan offset takarir:
 
-- `Ctrl + Left/Right` or `Shift + Left/Right`: Align the current timestamp to the left or right subtitle.
-- `Ctrl + Shift + Left/Right`: Move the current timestamp `100ms` to the left or right.
+- `Ctrl + Left/Right` atau `Shift + Left/Right`: Selaraskan penanda waktu saat ini dengan takarir di kiri atau kanan.
+- `Ctrl + Shift + Left/Right`: Geser penanda waktu saat ini `100ms` ke kiri atau kanan.
 
-Most often, finding the correct offset will look like this:
+Biasanya, langkah untuk menemukan offset yang tepat seperti berikut:
 
-1. Wait for a character to start talking.
-2. `Ctrl + Left/Right` until the subtitle matching the character's dialog appears on screen.
-3. `Ctrl + Shift + Right/Left` until the subtitle timing precisely matches the dialog.
+1. Tunggu hingga karakter mulai berbicara.
+2. Tekan `Ctrl + Left/Right` sampai takarir yang sesuai dengan dialog karakter muncul di layar.
+3. Tekan `Ctrl + Shift + Right/Left` sampai waktu takarir tepat sesuai dengan dialog.
 
-## Overlay UI {#overlay-ui}
+## Antarmuka Overlay {#overlay-ui}
 
-The overlay UI provides buttons that perform the same functions as the keyboard shortcuts above.
+Antarmuka Overlay menyediakan tombol yang menjalankan fungsi yang sama dengan pintasan keyboard di atas.
 
-1. Scroll the rightmost section to the **middle** control.
-2. Click the left or right button to align the left or right subtitle to the current timestamp.
-3. Click and **hold** the left or right button to move the current timestamp `100ms` to the left or right.
+1. Gulir bagian paling kanan ke kontrol **tengah**.
+2. Klik tombol kiri atau kanan untuk menyelaraskan takarir kiri atau kanan dengan penanda waktu saat ini.
+3. Klik dan **tahan** tombol kiri atau kanan untuk menggeser penanda waktu saat ini `100ms` ke kiri atau kanan.

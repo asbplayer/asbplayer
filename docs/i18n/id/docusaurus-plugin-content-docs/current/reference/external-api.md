@@ -1,35 +1,35 @@
 ---
 sidebar_position: 2
-description: Technical reference for asbplayer’s external interface and the WebSocket server that implements it.
+description: Referensi teknis antarmuka eksternal asbplayer dan server WebSocket yang mengimplementasikannya.
 ---
 
 import project, { ankiConnectUrl } from '@site/src/project';
 import CodeBlock from '@theme/CodeBlock';
 
-# External API {#external-api}
+# API eksternal {#external-api}
 
-This page is intended to be an technical reference on asbplayer's external interface. Below are ways to call the interface:
+Halaman ini merupakan referensi teknis untuk antarmuka eksternal asbplayer. Berikut cara memanggil antarmuka tersebut:
 
-- The <a href={`${project.urls.repo}/tree/main/scripts/web-socket-server`}>pre-packaged WebSocket server</a>. See the [guide](../guides/web-socket-server.md) for how to setup the WebSocket server.
-- (v1.23 and above) Using an extension-to-extension connection obtained from [browser.runtime.connect](https://developer.chrome.com/docs/extensions/reference/api/runtime#method-connect). See the [guide](../guides/external-extensions.md) for how to connect to asbplayer from another extension.
+- <a href={`${project.urls.repo}/tree/main/scripts/web-socket-server`}>Server WebSocket yang disertakan</a>. Lihat [panduan](../guides/web-socket-server.md) untuk menyiapkan server WebSocket.
+- (v1.23 dan yang lebih baru) Menggunakan koneksi antar-ekstensi yang diperoleh dari [browser.runtime.connect](https://developer.chrome.com/docs/extensions/reference/api/runtime#method-connect). Lihat [panduan](../guides/external-extensions.md) untuk menghubungkan ekstensi lain ke asbplayer.
 
-## Commands {#commands}
+## Perintah {#commands}
 
-asbplayer responds to the following commands, represented as JSON-RPC messages. The OpenRPC schema can be found [here](https://github.com/asbplayer/asbplayer/blob/main/external-api/openrpc.json).
+asbplayer merespons perintah berikut, yang direpresentasikan sebagai pesan JSON-RPC. Skema OpenRPC tersedia [di sini](https://github.com/asbplayer/asbplayer/blob/main/external-api/openrpc.json).
 
 :::info
-asbplayer extensions v1.22 and below support the schema `{ command, messageId, body }` instead of `{ method, id, params }`.
+Ekstensi asbplayer v1.22 dan sebelumnya mendukung skema `{ command, messageId, body }`, bukan `{ method, id, params }`.
 :::
 
 ## `mine-subtitle` {#mine-subtitle}
 
-Mines from the active tab by default. Set `mediaId` to an ID returned by [`get-bound-media`](#get-bound-media) to target specific media. If the media is not found or has no subtitles, `published` is `false`.
+Secara bawaan, menambang dari tab aktif. Atur `mediaId` ke ID yang dikembalikan oleh [`get-bound-media`](#get-bound-media) untuk memilih media tertentu. Jika media tidak ditemukan atau tidak memiliki takarir, `published` bernilai `false`.
 
-When `postMineAction` is `2`, `noteId` selects the Anki note to update. If omitted, the last-added note is updated. `noteId` applies to streaming media only and is ignored for local media.
+Jika `postMineAction` bernilai `2`, `noteId` memilih catatan Anki yang akan diperbarui. Jika tidak disertakan, catatan yang terakhir ditambahkan akan diperbarui. `noteId` hanya berlaku untuk media streaming dan diabaikan untuk media lokal.
 
-> `mediaId` and `noteId` require extension v1.20.0 or later.
+> `mediaId` dan `noteId` memerlukan ekstensi v1.20.0 atau yang lebih baru.
 
-### Request {#mine-subtitle-request}
+### Permintaan {#mine-subtitle-request}
 
     ```javascript
     {
@@ -52,7 +52,7 @@ When `postMineAction` is `2`, `noteId` selects the Anki note to update. If omitt
     }
     ```
 
-### Response {#mine-subtitle-response}
+### Respons {#mine-subtitle-response}
 
     ```javascript
     {
@@ -68,11 +68,11 @@ When `postMineAction` is `2`, `noteId` selects the Anki note to update. If omitt
 
 ## `load-subtitles` {#load-subtitles}
 
-Loads the files into the active tab's media by default, showing the video selector when the tab has more than one video. Set `mediaId` to an ID returned by [`get-bound-media`](#get-bound-media) to load the files directly into that media.
+Secara bawaan, memuat berkas ke media di tab aktif dan menampilkan pemilih video jika tab memiliki lebih dari satu video. Atur `mediaId` ke ID yang dikembalikan oleh [`get-bound-media`](#get-bound-media) untuk memuat berkas langsung ke media tersebut.
 
-> `mediaId` requires extension v1.23.0 or later. Earlier versions load the files into every tab with a bound video
+> `mediaId` memerlukan ekstensi v1.23.0 atau yang lebih baru. Versi sebelumnya memuat berkas ke setiap tab yang memiliki video terikat.
 
-### Request {#load-subtitles-request}
+### Permintaan {#load-subtitles-request}
 
 ```javascript
 {
@@ -92,7 +92,7 @@ Loads the files into the active tab's media by default, showing the video select
 }
 ```
 
-### Response {#load-subtitles-response}
+### Respons {#load-subtitles-response}
 
 ```javascript
 {
@@ -105,11 +105,11 @@ Loads the files into the active tab's media by default, showing the video select
 
 ## `seek-timestamp` {#seek-timestamp}
 
-Seeks the active tab's media by default. Set `mediaId` to an ID returned by [`get-bound-media`](#get-bound-media) to target specific media.
+Secara bawaan, melompat ke posisi waktu pada media di tab aktif. Atur `mediaId` ke ID yang dikembalikan oleh [`get-bound-media`](#get-bound-media) untuk memilih media tertentu.
 
-> `mediaId` requires extension v1.20.0+. Seeking local media requires extension v1.23.0+
+> `mediaId` memerlukan ekstensi v1.20.0 atau yang lebih baru. Melompat pada media lokal memerlukan ekstensi v1.23.0 atau yang lebih baru.
 
-### Request {#seek-timestamp-request}
+### Permintaan {#seek-timestamp-request}
 
 ```javascript
 {
@@ -125,7 +125,7 @@ Seeks the active tab's media by default. Set `mediaId` to an ID returned by [`ge
 }
 ```
 
-### Response {#seek-timestamp-response}
+### Respons {#seek-timestamp-response}
 
 ```javascript
 {
@@ -138,11 +138,11 @@ Seeks the active tab's media by default. Set `mediaId` to an ID returned by [`ge
 
 ## `get-bound-media` {#get-bound-media}
 
-> Requires extension v1.20.0+
+> Memerlukan ekstensi v1.20.0 atau yang lebih baru.
 
-Returns the media asbplayer is currently tracking, including both `streaming` and `local` media.
+Mengembalikan media yang sedang dilacak asbplayer, termasuk media `streaming` dan `local`.
 
-### Request {#get-bound-media-request}
+### Permintaan {#get-bound-media-request}
 
 ```javascript
 {
@@ -153,7 +153,7 @@ Returns the media asbplayer is currently tracking, including both `streaming` an
 }
 ```
 
-### Response {#get-bound-media-response}
+### Respons {#get-bound-media-response}
 
 ```javascript
 {
@@ -188,10 +188,10 @@ Returns the media asbplayer is currently tracking, including both `streaming` an
 
 > Requires extension v1.20.0+
 
-Returns the subtitles currently loaded for a piece of media. By default it targets the active tab's media; pass a `mediaId` from [`get-bound-media`](#get-bound-media) to target specific media.
-Returns an empty list when no matching media is found or no subtitles are loaded.
+Mengembalikan takarir yang sedang dimuat untuk suatu media. Secara bawaan, perintah ini memilih media di tab aktif; berikan `mediaId` dari [`get-bound-media`](#get-bound-media) untuk memilih media tertentu.
+Mengembalikan daftar kosong jika media yang cocok tidak ditemukan atau tidak ada takarir yang dimuat.
 
-### Request {#get-subtitles-request}
+### Permintaan {#get-subtitles-request}
 
 ```javascript
 {
@@ -207,7 +207,7 @@ Returns an empty list when no matching media is found or no subtitles are loaded
 }
 ```
 
-### Response {#get-subtitles-response}
+### Respons {#get-subtitles-response}
 
 ```javascript
 {
@@ -225,9 +225,9 @@ Returns an empty list when no matching media is found or no subtitles are loaded
 
 ## `client-info` {#client-info}
 
-Returns asbplayer client info, such as supported protocols. The latest versions of asbplayer support JSON-RPC.
+Mengembalikan informasi klien asbplayer, seperti protokol yang didukung. Versi asbplayer terbaru mendukung JSON-RPC.
 
-### Request {#client-info-request}
+### Permintaan {#client-info-request}
 
 ```javascript
 {
@@ -239,7 +239,7 @@ Returns asbplayer client info, such as supported protocols. The latest versions 
 }
 ```
 
-### Response {#client-info-response}
+### Respons {#client-info-response}
 
 ```javascript
 {
@@ -254,9 +254,9 @@ Returns asbplayer client info, such as supported protocols. The latest versions 
 
 ## `rpc.discover` {#rpc-discover}
 
-Returns the OpenRPC document for the running build. Use it to discover the current method names, params, results, and transport tags instead of hard-coding them.
+Mengembalikan dokumen OpenRPC untuk build yang sedang berjalan. Gunakan dokumen ini untuk mengetahui nama metode, parameter, hasil, dan tag transport saat ini alih-alih menuliskannya secara tetap.
 
-### Request {#rpc-discover-request}
+### Permintaan {#rpc-discover-request}
 
 ```javascript
 {
@@ -267,13 +267,13 @@ Returns the OpenRPC document for the running build. Use it to discover the curre
 }
 ```
 
-### Response {#rpc-discover-response}
+### Respons {#rpc-discover-response}
 
-Returns the OpenRPC document describing the supported JSON-RPC methods. See [`external-api/openrpc.json`](https://github.com/asbplayer/asbplayer/blob/main/external-api/openrpc.json) for the full document.
+Mengembalikan dokumen OpenRPC yang menjelaskan metode JSON-RPC yang didukung. Lihat [`external-api/openrpc.json`](https://github.com/asbplayer/asbplayer/blob/main/external-api/openrpc.json) untuk dokumen lengkapnya.
 
-## Error codes {#error-codes}
+## Kode kesalahan {#error-codes}
 
-Errors use the standard JSON-RPC error object:
+Kesalahan menggunakan objek kesalahan JSON-RPC standar:
 
 ```javascript
 {
@@ -289,17 +289,17 @@ Errors use the standard JSON-RPC error object:
 }
 ```
 
-| Code     | Meaning          | Notes                                                           |
+| Kode     | Arti             | Catatan                                                         |
 | -------- | ---------------- | --------------------------------------------------------------- |
-| `-32700` | Parse error      | The frame is not valid JSON.                                    |
-| `-32600` | Invalid request  | The frame is not a valid JSON-RPC request.                      |
-| `-32601` | Method not found | Unknown method, or a method unavailable on that transport.      |
-| `-32602` | Invalid params   | The method's params failed schema validation.                   |
-| `-32603` | Internal error   | The handler failed or returned a result that failed validation. |
-| `-32000` | Request timeout  | A server did not receive a response from asbplayer in time.     |
-| `-32001` | No clients       | A server has no connected asbplayer to forward the request to.  |
-| `-32002` | Not approved     | An external extension sent a command before being approved.     |
+| `-32700` | Kesalahan parse  | Frame bukan JSON yang valid.                                     |
+| `-32600` | Permintaan tidak valid | Frame bukan permintaan JSON-RPC yang valid.                |
+| `-32601` | Metode tidak ditemukan | Metode tidak dikenal atau tidak tersedia pada transport tersebut. |
+| `-32602` | Parameter tidak valid | Parameter metode gagal divalidasi terhadap skema.          |
+| `-32603` | Kesalahan internal | Penangan gagal atau mengembalikan hasil yang gagal divalidasi. |
+| `-32000` | Waktu permintaan habis | Server tidak menerima respons dari asbplayer tepat waktu. |
+| `-32001` | Tidak ada klien | Tidak ada asbplayer yang terhubung untuk menerima penerusan permintaan dari server. |
+| `-32002` | Belum disetujui | Ekstensi eksternal mengirim perintah sebelum disetujui.       |
 
-Notifications are never answered, including when handling fails. A request with an unusable `id` receives an error response with `id: null`.
+Notifikasi tidak pernah dijawab, termasuk saat penanganannya gagal. Permintaan dengan `id` yang tidak dapat digunakan menerima respons kesalahan dengan `id: null`.
 
-The Go server's HTTP bridge maps these errors to HTTP statuses; see [`external-api/README.md`](https://github.com/asbplayer/asbplayer/blob/main/external-api/README.md#error-codes).
+Bridge HTTP pada server Go memetakan kesalahan ini ke status HTTP; lihat [`external-api/README.md`](https://github.com/asbplayer/asbplayer/blob/main/external-api/README.md#error-codes).

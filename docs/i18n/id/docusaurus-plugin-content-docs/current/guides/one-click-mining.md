@@ -4,44 +4,44 @@ sidebar_position: 8
 
 import project, { ankiConnectUrl, webSocketUrl } from '@site/src/project';
 
-# One-click mining {#one-click-mining}
+# Penambangan sekali klik {#one-click-mining}
 
-asbplayer is great at connecting subtitle and video content to AnkiConnect, but is not able to automatically provide word definitions on its own. For this reason, most sentence mining flows require at two or three mouse or keyboard inputs from the user.
+asbplayer sangat baik dalam menghubungkan konten takarir dan video ke AnkiConnect, tetapi tidak dapat menyediakan definisi kata secara otomatis. Karena itu, sebagian besar alur menambang kalimat memerlukan dua atau tiga kali input mouse atau keyboard dari pengguna.
 
-One-click mining is possible if asbplayer is combined with another application that:
+Penambangan sekali klik dapat dilakukan jika asbplayer digunakan bersama aplikasi lain yang:
 
-- supplies the missing word definition information, and
-- already integrates with AnkiConnect.
+- menyediakan informasi definisi kata yang belum ada, dan
+- sudah terintegrasi dengan AnkiConnect.
 
-[Yomitan](https://yomitan.wiki/) is an example of one such application.
+[Yomitan](https://yomitan.wiki/) adalah salah satu contoh aplikasi tersebut.
 
-## Install and configure Yomitan {#install-and-configure-yomitan}
+## Memasang dan mengonfigurasi Yomitan {#install-and-configure-yomitan}
 
-Follow the directions on [Yomitan's website](https://yomitan.wiki/) to install Yomitan and configure it with a dictionary for your target language. You will also need to add [AnkiConnect](https://ankiweb.net/shared/info/2055492159) to Anki if you haven't done so already.
+Ikuti petunjuk di [situs web Yomitan](https://yomitan.wiki/) untuk memasang Yomitan dan mengonfigurasikannya dengan kamus untuk bahasa sasaran Anda. Jika belum, tambahkan juga [AnkiConnect](https://ankiweb.net/shared/info/2055492159) ke Anki.
 
-In Yomitan's Anki settings:
+Di pengaturan Anki Yomitan:
 
-- The AnkiConnect server address should be the default (<code>{ankiConnectUrl}</code>).
-- Yomitan should be using the same **Note Type** as asbplayer.
+- Alamat server AnkiConnect harus berupa alamat bawaan (<code>{ankiConnectUrl}</code>).
+- Yomitan harus menggunakan **Note type** yang sama dengan asbplayer.
 
-## Install the asbplayer Anki add-on {#install-the-asbplayer-anki-add-on}
+## Memasang add-on Anki asbplayer {#install-the-asbplayer-anki-add-on}
 
-The add-on requires at least Anki 25.02. It is not yet available on AnkiWeb, so it has to be installed from a file:
+Add-on ini memerlukan Anki 25.02 atau yang lebih baru. Add-on ini belum tersedia di AnkiWeb, jadi harus dipasang dari berkas:
 
-1. Download the latest `.ankiaddon` file from the <a href={`${project.urls.repo}/releases?q=${encodeURIComponent(project.releases.ankiAddon.releaseTitlePrefix)}`}>releases page</a>.
-2. Open the file and press **Yes** on the popup.
-3. Restart Anki.
+1. Unduh berkas `.ankiaddon` terbaru dari <a href={`${project.urls.repo}/releases?q=${encodeURIComponent(project.releases.ankiAddon.releaseTitlePrefix)}`}>halaman rilis</a>.
+2. Buka berkas tersebut dan tekan **Ya** pada jendela popup.
+3. Mulai ulang Anki.
 
-## Connect asbplayer to the add-on {#connect-asbplayer-to-the-add-on}
+## Menghubungkan asbplayer ke add-on {#connect-asbplayer-to-the-add-on}
 
-Enable the WebSocket client in the <a href={new URL('?view=settings#misc-settings', project.urls.app).href}>misc settings</a> of the asbplayer extension (near the bottom). Keep the default WebSocket server URL (<code>{webSocketUrl}</code>), which matches the add-on's default.
+Aktifkan klien WebSocket di <a href={new URL('?view=settings#misc-settings', project.urls.app).href}>pengaturan lain-lain</a> ekstensi asbplayer (di dekat bagian bawah). Gunakan URL server WebSocket bawaan (<code>{webSocketUrl}</code>) yang sesuai dengan nilai bawaan add-on.
 
-## Mine with **Yomitan** as usual {#mine-with-yomitan-as-usual}
+## Menambang seperti biasa dengan **Yomitan** {#mine-with-yomitan-as-usual}
 
-Mining sentences using Yomitan will create cards with word definition, image, and audio already provided.
+Menambang kalimat menggunakan Yomitan akan membuat kartu yang sudah berisi definisi kata, gambar, dan audio.
 
-To always use asbplayer's subtitle text for the Sentence field, enable [**Always use subtitle text for sentence field**](../reference/settings#always-use-subtitle-text-for-sentence-field) under **Mining** settings. This replaces the sentence text supplied by Yomitan with the mined subtitle text from all tracks.
+Agar selalu menggunakan teks takarir asbplayer untuk kolom Sentence, aktifkan [**Selalu gunakan teks takarir untuk kolom kalimat**](../reference/settings#always-use-subtitle-text-for-sentence-field) di pengaturan **Penambangan**. Teks kalimat dari Yomitan akan diganti dengan teks takarir yang ditambang dari semua trek.
 
-## Add-on Settings
+## Pengaturan add-on
 
-The add-on's settings can be changed in Anki from **Tools > Add-ons** by selecting the add-on and pressing **Config**. `postMineAction` is the action asbplayer takes after Yomitan adds a card (default: <code>{project.services.webSocket.postMineAction}</code>). Set it to `2` (update last card) for the one-click mining flow. If `port` is changed, asbplayer's WebSocket server URL needs to be changed to match.
+Pengaturan add-on dapat diubah di Anki dengan membuka **Alat > Add-on**, memilih add-on, lalu menekan **Konfigurasi**. `postMineAction` adalah tindakan yang dijalankan asbplayer setelah Yomitan menambahkan kartu (bawaan: <code>{project.services.webSocket.postMineAction}</code>). Atur ke `2` (perbarui kartu terakhir) untuk alur penambangan sekali klik. Jika `port` diubah, URL server WebSocket asbplayer harus disesuaikan.

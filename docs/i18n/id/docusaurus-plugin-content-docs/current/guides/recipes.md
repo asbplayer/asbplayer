@@ -1,6 +1,6 @@
 ---
 sidebar_position: 1.5
-title: Recipes
+title: Resep
 ---
 
 import project from '@site/src/project';
@@ -67,41 +67,41 @@ export const unfamiliarWordRepeatSettings = {
   subtitleTriggerEndOffset: 0,
 };
 
-# Recipes
+# Resep
 
-Recipes combine playback modes and playback settings so you can switch between learning activities. Choose a recipe in **Settings > Playback**, beside the playback modes in the player controls, or in the mobile overlay. Choose **Disabled** to return to your underlying settings. Your saved playback settings, remembered playback rate, and remembered modes are preserved while a recipe is active.
+Resep menggabungkan mode pemutaran dan pengaturan pemutaran sehingga Anda dapat beralih di antara kegiatan belajar. Pilih resep di **Pengaturan > Pemutaran**, di samping mode pemutaran pada kontrol pemutar, atau di overlay seluler. Pilih **Nonaktif** untuk kembali ke pengaturan yang mendasarinya. Pengaturan pemutaran tersimpan, kecepatan pemutaran yang diingat, dan mode yang diingat tetap dipertahankan saat resep aktif.
 
-## Create and edit a recipe
+## Membuat dan mengedit resep
 
-Select **Edit Recipe** in the Playback tab. If a recipe is selected, you start with that recipe; otherwise you start with your current playback settings. Choose the playback modes and change the settings you want to include. These changes stay in a draft and do not affect playback until saved.
+Pilih **Edit Recipe** di tab Pemutaran. Jika resep telah dipilih, Anda memulai dari resep tersebut; jika tidak, Anda memulai dari pengaturan pemutaran saat ini. Pilih mode pemutaran dan ubah pengaturan yang ingin disertakan. Perubahan ini tetap menjadi draf dan tidak memengaruhi pemutaran sebelum disimpan.
 
-Select **Save Recipe** to review the settings and enter a name of up to 100 characters. You can remove individual settings from the preview; omitted settings use your underlying settings. Playback modes are always specified as a complete combination.
+Pilih **Save Recipe** untuk meninjau pengaturan dan memasukkan nama hingga 100 karakter. Anda dapat menghapus pengaturan tertentu dari pratinjau; pengaturan yang dihilangkan akan menggunakan pengaturan yang mendasarinya. Mode pemutaran selalu ditentukan sebagai satu kombinasi lengkap.
 
-When editing an existing recipe, leaving its name untouched updates it. Typing in the name field creates a new recipe, even if you return to the original name. Select **Cancel** to discard the draft.
+Saat mengedit resep yang sudah ada, biarkan namanya tetap sama untuk memperbarui resep tersebut. Mengetik di kolom nama akan membuat resep baru, meskipun nama aslinya diketik kembali. Pilih **Cancel** untuk membuang draf.
 
-## Import and share
+## Mengimpor dan membagikan
 
-Select **Import Recipe**, paste the recipe's JSON, review its settings, and confirm. You can change its name and remove settings before importing. Imported recipes are appended to your list and selected. Unknown settings and invalid setting values are ignored. The name and playback modes must be valid.
+Pilih **Import Recipe**, tempel JSON resep, tinjau pengaturannya, lalu konfirmasi. Anda dapat mengubah nama dan menghapus pengaturan sebelum mengimpor. Resep yang diimpor ditambahkan ke akhir daftar dan langsung dipilih. Pengaturan yang tidak dikenal dan nilai pengaturan yang tidak valid akan diabaikan. Nama dan mode pemutaran harus valid.
 
-You can also open an import link. It opens the web app with the Playback tab and import preview ready; the recipe takes effect after you confirm the import.
+Anda juga dapat membuka tautan impor. Tautan itu membuka aplikasi web pada tab Pemutaran dengan pratinjau impor yang siap digunakan; resep akan diterapkan setelah Anda mengonfirmasi impor.
 
-Open a recipe's preview icon in the dropdown to copy its JSON or share its import URL. The same preview lets you delete the recipe with confirmation. Move recipes with the up/down buttons or drag them in the dropdown. Selection follows a recipe when it moves; deleting the selected recipe disables recipes.
+Buka ikon pratinjau resep di menu tarik-turun untuk menyalin JSON atau membagikan URL impornya. Dari pratinjau yang sama, Anda dapat menghapus resep setelah mengonfirmasi. Pindahkan resep dengan tombol atas/bawah atau seret di menu tarik-turun. Pilihan akan mengikuti resep saat dipindahkan; menghapus resep yang dipilih akan menonaktifkan resep.
 
-## Keyboard shortcuts
+## Pintasan keyboard
 
-Configure **Cycle through recipes forward**, **Cycle through recipes backwards**, and **Toggle recipe #1** through **#10** under **Keyboard Shortcuts > Playback**. Toggling the active recipe disables recipes. Cycling follows the list order and includes **Disabled**. Playback setting and mode shortcuts show a notification while a recipe is active; edit or disable the recipe to change those settings.
+Atur **Cycle through recipes forward**, **Cycle through recipes backwards**, dan **Toggle recipe #1** hingga **#10** di **Pintasan Keyboard > Pemutaran**. Mengaktifkan atau menonaktifkan resep yang sedang dipakai akan menonaktifkan resep. Perpindahan resep mengikuti urutan daftar dan mencakup **Nonaktif**. Pintasan pengaturan dan mode pemutaran menampilkan notifikasi saat resep aktif; edit atau nonaktifkan resep untuk mengubah pengaturan tersebut.
 
-## Common recipes
+## Resep umum
 
-These contain some useful preset recipes for common learning activities. If you have any that you want to share or need a missing feature to create the perfect recipe, you can request them on <a href={project.urls.discord}>Discord</a> or on <a href={`${project.urls.repo}/issues/new/choose`}>GitHub</a>.
+Berikut beberapa resep prasetel yang berguna untuk kegiatan belajar umum. Jika memiliki resep yang ingin dibagikan atau memerlukan fitur yang belum tersedia untuk membuat resep yang tepat, Anda dapat memintanya di <a href={project.urls.discord}>Discord</a> atau <a href={`${project.urls.repo}/issues/new/choose`}>GitHub</a>.
 
-### Normal mode
+### Mode normal
 
-Use your usual playback settings without an automatic learning mode. We recommend keeping your non-recipe settings as plain as possible so that `Disabled` maps to normal playback behavior.
+Gunakan pengaturan pemutaran biasa tanpa mode belajar otomatis. Sebaiknya pengaturan di luar resep dibuat sesederhana mungkin agar `Nonaktif` berperilaku seperti pemutaran normal.
 
-### Dialogue focus
+### Fokus dialog
 
-Focus on dialogue by combining condensed playback with fast-forward. Skip gaps using a 5-second minimum skip interval and fast-forward remaining qualifying gaps at 3× with a 1-second minimum interval. Keep 150 ms of context on either side of each gap, with dialogue at your underlying playback speed.
+Fokus pada dialog dengan menggabungkan pemutaran ringkas dan maju cepat. Lewati jeda dengan interval lompatan minimum 5 detik dan majukan jeda lain yang memenuhi syarat dengan kecepatan 3× dan interval minimum 1 detik. Sisakan konteks 150 ms di kedua sisi setiap jeda, sementara dialog diputar pada kecepatan pemutaran yang mendasarinya.
 
 <RecipePreset
   recipe={{
@@ -113,9 +113,9 @@ Focus on dialogue by combining condensed playback with fast-forward. Skip gaps u
   }}
 />
 
-### Gap fast-forward
+### Maju cepat pada jeda
 
-Watch the entire video while fast-forwarding qualifying gaps at 3× with a 1-second minimum interval. Keep 150 ms of context on either side of each gap, with dialogue at your underlying playback speed.
+Tonton seluruh video sambil memajukan jeda yang memenuhi syarat dengan kecepatan 3× dan interval minimum 1 detik. Sisakan konteks 150 ms di kedua sisi setiap jeda, sementara dialog diputar pada kecepatan pemutaran yang mendasarinya.
 
 <RecipePreset
   recipe={{
@@ -127,9 +127,9 @@ Watch the entire video while fast-forwarding qualifying gaps at 3× with a 1-sec
   }}
 />
 
-### Reading mode
+### Mode membaca
 
-Pause at the start of each subtitle to read and look up words, then resume manually to hear the audio with subtitles visible. Hovering over subtitles during playback also pauses the video; moving away resumes it.
+Jeda di awal setiap takarir untuk membaca dan mencari kata, lalu lanjutkan secara manual untuk mendengar audio dengan takarir tetap terlihat. Mengarahkan kursor ke takarir selama pemutaran juga menjeda video; menjauhkan kursor akan melanjutkannya.
 
 <RecipePreset
   gapVariants
@@ -148,9 +148,9 @@ Pause at the start of each subtitle to read and look up words, then resume manua
   }}
 />
 
-### Listening mode
+### Mode mendengarkan
 
-Listen without subtitles, then pause automatically at the end of each subtitle to reveal the text and check your understanding. Resume manually when ready.
+Dengarkan tanpa takarir, lalu jeda otomatis di akhir setiap takarir untuk menampilkan teks dan memeriksa pemahaman Anda. Lanjutkan secara manual saat siap.
 
 <RecipePreset
   gapVariants
@@ -168,9 +168,9 @@ Listen without subtitles, then pause automatically at the end of each subtitle t
   }}
 />
 
-### Audio only
+### Audio saja
 
-Listen continuously with subtitles hidden during playback. Manually pause to reveal the current subtitle when you need help.
+Dengarkan terus-menerus dengan takarir tersembunyi selama pemutaran. Jeda secara manual untuk menampilkan takarir saat ini jika Anda memerlukan bantuan.
 
 <RecipePreset
   gapVariants
@@ -184,9 +184,9 @@ Listen continuously with subtitles hidden during playback. Manually pause to rev
   }}
 />
 
-### Intensive listening
+### Mendengarkan intensif
 
-Listen to each subtitle three times, with a 1-second pause after each pass. Subtitles stay hidden for the first two passes and appear on the final replay to check your understanding. Playback resumes automatically after each pause, customize the 1s pause duration as needed.
+Dengarkan setiap takarir tiga kali dengan jeda 1 detik setelah setiap putaran. Takarir tetap tersembunyi pada dua putaran pertama dan muncul pada pengulangan terakhir untuk memeriksa pemahaman Anda. Pemutaran dilanjutkan otomatis setelah setiap jeda; sesuaikan durasi jeda 1 detik sesuai kebutuhan.
 
 <RecipePreset
   gapVariants
@@ -208,11 +208,11 @@ Listen to each subtitle three times, with a 1-second pause after each pass. Subt
   }}
 />
 
-### Primed listening
+### Mendengarkan dengan persiapan
 
-Pause at the start of each subtitle to read it in your native language, let it disappear, then listen to the audio without subtitles. Reading time is 80 ms per character, with a minimum of 1 second and a maximum of 6 seconds. After the text disappears, playback stays paused for another 500 ms before resuming automatically. You can adjust these timings when editing the recipe.
+Jeda di awal setiap takarir untuk membacanya dalam bahasa ibu Anda, tunggu hingga takarir menghilang, lalu dengarkan audio tanpa takarir. Waktu membaca adalah 80 ms per karakter, dengan minimum 1 detik dan maksimum 6 detik. Setelah teks menghilang, pemutaran tetap dijeda selama 500 ms sebelum dilanjutkan secara otomatis. Anda dapat menyesuaikan waktu ini saat mengedit resep.
 
-Choose the tracks used to calculate reading time under **Subtitle tracks affected by playback modes and keyboard shortcuts**.
+Pilih trek yang digunakan untuk menghitung waktu membaca pada **Trek takarir yang terpengaruh oleh mode pemutaran dan pintasan keyboard**.
 
 <RecipePreset
   gapVariants
@@ -234,9 +234,9 @@ Choose the tracks used to calculate reading time under **Subtitle tracks affecte
   }}
 />
 
-### Read aloud
+### Membaca dengan suara lantang
 
-Read each subtitle aloud before hearing the original audio, then compare your pronunciation and rhythm. Playback pauses at the start with subtitles visible and resumes automatically after 80 ms per character, bounded to 1–6 seconds. Each subtitle repeats once. Adjust the pause timings to give yourself enough speaking time.
+Baca setiap takarir dengan suara lantang sebelum mendengarkan audio aslinya, lalu bandingkan pelafalan dan irama Anda. Pemutaran dijeda di awal dengan takarir terlihat dan dilanjutkan otomatis setelah 80 ms per karakter, dibatasi antara 1–6 detik. Setiap takarir diulang sekali. Sesuaikan waktu jeda agar Anda memiliki cukup waktu untuk berbicara.
 
 <RecipePreset
   gapVariants
@@ -260,9 +260,9 @@ Read each subtitle aloud before hearing the original audio, then compare your pr
   }}
 />
 
-### Shadowing
+### Membayangi ucapan
 
-Speak alongside or slightly behind the original audio, matching its rhythm and pronunciation with subtitles visible. Each subtitle repeats once, with a 1-second pause at the end of each pass before playback resumes automatically.
+Berbicaralah bersama atau sedikit setelah audio asli, tirukan irama dan pelafalannya dengan takarir terlihat. Setiap takarir diulang sekali, dengan jeda 1 detik di akhir tiap putaran sebelum pemutaran dilanjutkan otomatis.
 
 <RecipePreset
   gapVariants
@@ -284,9 +284,9 @@ Speak alongside or slightly behind the original audio, matching its rhythm and p
   }}
 />
 
-### Recall
+### Mengingat kembali
 
-Listen to the audio, then reproduce the line aloud from memory during the automatic pause at its end. Subtitles stay hidden during playback and automatic pauses. Speaking time is 80 ms per character, bounded to 1–6 seconds, and each subtitle repeats once. Adjust the pause timings as needed; manually pause during a replay to reveal the text when you need help.
+Dengarkan audio, lalu ucapkan kembali kalimat dari ingatan selama jeda otomatis di akhir kalimat. Takarir tersembunyi selama pemutaran dan jeda otomatis. Waktu berbicara adalah 80 ms per karakter, dibatasi antara 1–6 detik, dan setiap takarir diulang sekali. Sesuaikan waktu jeda sesuai kebutuhan; jeda secara manual saat pemutaran ulang untuk menampilkan teks jika Anda memerlukan bantuan.
 
 <RecipePreset
   gapVariants
@@ -309,15 +309,15 @@ Listen to the audio, then reproduce the line aloud from memory during the automa
   }}
 />
 
-## Annotation Recipes
+## Resep anotasi
 
-These presets require [Annotation](./annotation.md) to be enabled as they use its data. If you have any that you want to share or need a missing feature to create the perfect recipe, you can request them on <a href={project.urls.discord}>Discord</a> or on <a href={`${project.urls.repo}/issues/new/choose`}>GitHub</a>.
+Prasetel ini memerlukan [anotasi](./annotation.md) aktif karena menggunakan datanya. Jika memiliki resep yang ingin dibagikan atau memerlukan fitur yang belum tersedia untuk membuat resep yang tepat, Anda dapat memintanya di <a href={project.urls.discord}>Discord</a> atau <a href={`${project.urls.repo}/issues/new/choose`}>GitHub</a>.
 
-Load your target-language subtitles as **Track 1**. These presets use that track for playback and word selection. **Unfamiliar** means **Uncollected** or **Unknown**. Other annotation display preferences, such as readings and colors, use your underlying settings.
+Muat takarir bahasa sasaran sebagai **Trek 1**. Prasetel ini menggunakan trek tersebut untuk pemutaran dan pemilihan kata. **Belum dikenal** berarti **Belum dikumpulkan** atau **Tidak diketahui**. Preferensi tampilan anotasi lain, seperti bacaan dan warna, menggunakan pengaturan yang mendasarinya.
 
-### Unfamiliar-word rescue
+### Membantu kata yang belum dikenal
 
-Watch with subtitles visible. When a line contains an unfamiliar word, pause for 1 second at its end, then replay it once. Other lines continue uninterrupted. The first unfamiliar word is selected during the pause for lookup. Adjust the pause duration if you need more time.
+Tonton dengan takarir terlihat. Jika suatu baris berisi kata yang belum dikenal, jeda selama 1 detik di akhir baris lalu putar ulang sekali. Baris lain diputar tanpa jeda. Kata pertama yang belum dikenal dipilih selama jeda agar dapat dicari. Sesuaikan durasi jeda jika Anda memerlukan waktu lebih lama.
 
 <RecipePreset
   gapVariants
@@ -334,11 +334,11 @@ Watch with subtitles visible. When a line contains an unfamiliar word, pause for
   }}
 />
 
-### i+1 mining
+### Menambang i+1
 
-Focus on subtitles containing exactly one Uncollected token. Condensed playback skips between qualifying lines, and playback pauses at each line's end until you resume manually, selecting the Uncollected token for inspection or mining.
+Fokus pada takarir yang berisi tepat satu token berstatus Belum dikumpulkan. Pemutaran ringkas melompati jeda di antara baris yang memenuhi syarat. Pemutaran dijeda di akhir setiap baris sampai Anda melanjutkannya secara manual, dan token Belum dikumpulkan dipilih untuk diperiksa atau ditambang.
 
-This finds i+1 candidates rather than guaranteeing that every other word is known: a line can also contain Unknown words, and repeated occurrences of the same Uncollected word count separately. Mining remains a manual action.
+Fitur ini menemukan kandidat i+1, tetapi tidak menjamin bahwa semua kata lainnya diketahui: sebuah baris juga dapat berisi kata Tidak diketahui, dan setiap kemunculan kata Belum dikumpulkan yang sama dihitung terpisah. Penambangan tetap dilakukan secara manual.
 
 <RecipePreset
   recipe={{
@@ -362,9 +362,9 @@ This finds i+1 candidates rather than guaranteeing that every other word is know
   }}
 />
 
-### Unfamiliar-word hints
+### Petunjuk kata yang belum dikenal
 
-Listen with unfamiliar words visible and familiar words hidden. Lines containing unfamiliar words pause for 1 second at their end, revealing the full text, then replay once with the hints restored. The first unfamiliar word is selected during the pause for lookup. Lines with no unfamiliar words have no caption when fully tokenized.
+Dengarkan dengan kata yang belum dikenal terlihat dan kata yang sudah dikenal tersembunyi. Baris yang berisi kata belum dikenal dijeda selama 1 detik di akhir sehingga seluruh teks terlihat, lalu diputar ulang sekali dengan petunjuk ditampilkan kembali. Kata pertama yang belum dikenal dipilih selama jeda agar dapat dicari. Baris tanpa kata yang belum dikenal tidak menampilkan takarir jika semua kata berhasil dikenali.
 
 <RecipePreset
   gapVariants
@@ -386,9 +386,9 @@ Listen with unfamiliar words visible and familiar words hidden. Lines containing
   }}
 />
 
-### Unfamiliar-word cloze
+### Isian rumpang untuk kata yang belum dikenal
 
-Read the familiar parts of each subtitle while unfamiliar words remain hidden, and try supplying the missing words from the audio and context. Lines containing unfamiliar words pause for 1 second at their end to reveal the full text, then replay once with the gaps restored. Ignored words remain visible.
+Baca bagian takarir yang sudah dikenal sementara kata yang belum dikenal disembunyikan, lalu coba lengkapi kata yang hilang berdasarkan audio dan konteks. Baris yang berisi kata belum dikenal dijeda selama 1 detik di akhir untuk menampilkan seluruh teks, lalu diputar ulang sekali dengan bagian rumpang ditampilkan kembali. Kata yang diabaikan tetap terlihat.
 
 <RecipePreset
   gapVariants
@@ -410,11 +410,11 @@ Read the familiar parts of each subtitle while unfamiliar words remain hidden, a
   }}
 />
 
-### Adaptive listening pace
+### Tempo mendengarkan adaptif
 
-Play dialogue at 1× when its estimated comprehension is 60% or lower, increasing gradually to 1.8× at 100%. Condensed playback skips gaps using a 1-second minimum interval, keeping 150 ms of context on either side. Qualifying gaps that remain play at 1.8×.
+Putar dialog pada kecepatan 1× saat perkiraan pemahaman 60% atau lebih rendah, lalu tingkatkan bertahap hingga 1,8× pada 100%. Pemutaran ringkas melompati jeda dengan interval minimum 1 detik dan menyisakan konteks 150 ms di kedua sisinya. Jeda yang memenuhi syarat tetapi tersisa diputar pada kecepatan 1,8×.
 
-Adjust the base and fast-forward speeds when editing the recipe, keeping the fast-forward speed higher than the base speed.
+Sesuaikan kecepatan dasar dan maju cepat saat mengedit resep; pertahankan kecepatan maju cepat lebih tinggi daripada kecepatan dasar.
 
 <RecipePreset
   recipe={{

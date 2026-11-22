@@ -4,48 +4,48 @@ sidebar_position: 1
 
 import project from '@site/src/project';
 
-# Annotation {#annotation}
+# Anotasi {#annotation}
 
-asbplayer can annotate subtitles to better assist with language learning. Annotation features include:
+asbplayer dapat memberi anotasi pada takarir untuk membantu Anda belajar bahasa. Fitur anotasi meliputi:
 
-- **Word Styling**: color/underline/outline, etc. based on a word's status
-    - known status can be sourced from and synced with Anki, WaniKani, and/or tracked locally in asbplayer (includes import/export features to help seed known words)
-- **Reading Annotation**: readings displayed above each word or based on status
-- **Frequency Annotation**: rank-based frequency displayed below each word or based on status (requires at least on rank-based frequency dictionary)
-- **Pitch Accent Annotation**: accent patterns displayed on furigana or kana words (requires at least one pitch accent dictionary)
-- **Glossary Annotation**: short definitions or explanations displayed for each word
-- **Statistics and Comprehension**: provides insights into your known words for the current media.
-- **Adaptive Playback**: uses playback modes and annotation data to optimize your learning experience.
-- **Word Browser**: manage local and view words synced from external sources.
-- **Many more features for future releases!**
+- **Gaya kata**: warna, garis bawah, kerangka, dan lainnya berdasarkan status kata
+    - Status diketahui dapat bersumber dari dan disinkronkan dengan Anki, WaniKani, dan/atau dilacak secara lokal di asbplayer (termasuk fitur impor/ekspor untuk menambahkan kata yang diketahui)
+- **Anotasi bacaan**: bacaan yang ditampilkan di atas setiap kata atau berdasarkan statusnya
+- **Anotasi frekuensi**: frekuensi berbasis peringkat yang ditampilkan di bawah setiap kata atau berdasarkan statusnya (memerlukan setidaknya satu kamus frekuensi berbasis peringkat)
+- **Anotasi aksen nada**: pola aksen yang ditampilkan pada furigana atau kata kana (memerlukan setidaknya satu kamus aksen nada)
+- **Anotasi glosarium**: definisi atau penjelasan singkat yang ditampilkan untuk setiap kata
+- **Statistik dan pemahaman**: memberikan gambaran tentang kata yang Anda ketahui dalam media saat ini.
+- **Pemutaran adaptif**: menggunakan mode pemutaran dan data anotasi untuk mengoptimalkan pengalaman belajar Anda.
+- **Penjelajah kata**: mengelola kata lokal dan melihat kata yang disinkronkan dari sumber eksternal.
+- **Banyak fitur lainnya untuk rilis mendatang!**
 
 :::info
-Annotation requires a configured [Yomitan](https://yomitan.wiki/) instance and the [yomitan-api](https://github.com/yomidevs/yomitan-api).
+Anotasi memerlukan [Yomitan](https://yomitan.wiki/) yang telah dikonfigurasi dan [yomitan-api](https://github.com/yomidevs/yomitan-api).
 
-If you rely on the **local word database**, installing the asbplayer browser extension is recommended so your browser is less likely to delete stored words. If you can’t install the extension, consider periodically exporting your settings and/or local words as a backup.
+Jika Anda mengandalkan **basis data kata lokal**, sebaiknya pasang ekstensi peramban asbplayer agar kata tersimpan tidak mudah dihapus oleh peramban. Jika ekstensi tidak dapat dipasang, pertimbangkan untuk mengekspor pengaturan dan/atau kata lokal secara berkala sebagai cadangan.
 :::
 
-## Setup {#setup}
+## Penyiapan {#setup}
 
-1. Open asbplayer **Settings**.
-2. Go to the **Annotation** section.
-3. Select the track you want to configure.
-4. Configure the **Yomitan URL** for that track.
-    - You will need a configured [Yomitan](https://yomitan.wiki/) instance and the [yomitan-api](https://github.com/yomidevs/yomitan-api).
-    - If the URL is invalid or unreachable, asbplayer will show an error next to the setting.
-    - Frequency information requires at least one rank-based frequency dictionary to be available in your Yomitan instance.
-5. (Anki users) Configure which cards to source known status information from
-    - [`Anki decks`](../reference/settings.md#anki-decks) should typically be left blank to source from all decks, filtering by the fields is usually sufficient.
-    - [`Anki word fields`](../reference/settings.md#anki-word-fields) correspond to the field on the Anki note that contains only the target word.
-    - [`Anki sentence fields`](../reference/settings.md#anki-sentence-fields) should only be used for Anki notes that do not have a dedicated word field (such as sentence decks). These words are treated as a fallback if a word isn't present in the Anki word fields.
-    - To populate the database, use [`Re-build Anki word database`](../reference/settings.md#re-build-anki-word-database) after configuring these fields.
-6. (WaniKani users) Visit [WaniKani > Settings > API Tokens](https://www.wanikani.com/settings/personal_access_tokens) to create a token for asbplayer.
-    - In the `Token Description` field enter `asbplayer`, leave all `Permissions` unchecked, asbplayer only needs read access to your WaniKani account.
-    - Click `Generate token` and copy the generated token into [`WaniKani API token`](../reference/settings.md#wanikani-api-token).
-    - To populate the database, use [`Re-build WaniKani word database`](../reference/settings.md#re-build-wanikani-word-database) after configuring the API token.
-7. Enable your desired annotation features (styling, reading, frequency, pitch accent, etc.) for that track. Customize other settings as desired.
-8. For detailed explanations of each option, see the [Annotation](../reference/settings.md#annotation) section of the settings reference. Keyboard actions are listed in the [Annotation keyboard shortcuts](../reference/settings.md#annotation-keyboard-shortcuts) group.
+1. Buka **Pengaturan** asbplayer.
+2. Buka bagian **Anotasi**.
+3. Pilih trek yang ingin dikonfigurasi.
+4. Atur **URL Yomitan** untuk trek tersebut.
+    - Anda memerlukan [Yomitan](https://yomitan.wiki/) yang telah dikonfigurasi dan [yomitan-api](https://github.com/yomidevs/yomitan-api).
+    - Jika URL tidak valid atau tidak dapat dijangkau, asbplayer akan menampilkan kesalahan di samping pengaturan tersebut.
+    - Informasi frekuensi memerlukan setidaknya satu kamus frekuensi berbasis peringkat di Yomitan.
+5. (Pengguna Anki) Atur kartu mana yang menjadi sumber informasi status kata yang diketahui.
+    - [`Deck Anki`](../reference/settings.md#anki-decks) biasanya dibiarkan kosong agar semua deck digunakan sebagai sumber; penyaringan berdasarkan kolom biasanya sudah cukup.
+    - [`Kolom kata Anki`](../reference/settings.md#anki-word-fields) merujuk pada kolom di catatan Anki yang hanya berisi kata sasaran.
+    - [`Kolom kalimat Anki`](../reference/settings.md#anki-sentence-fields) hanya digunakan untuk catatan Anki yang tidak memiliki kolom khusus untuk kata (seperti deck kalimat). Kata dari sini digunakan sebagai cadangan jika kata tidak ditemukan di kolom kata Anki.
+    - Untuk mengisi basis data, gunakan [`Bangun ulang basis data kata Anki`](../reference/settings.md#re-build-anki-word-database) setelah mengatur kolom tersebut.
+6. (Pengguna WaniKani) Buka [WaniKani > Pengaturan > Token API](https://www.wanikani.com/settings/personal_access_tokens) untuk membuat token bagi asbplayer.
+    - Pada kolom `Token Description`, masukkan `asbplayer`. Biarkan semua `Permissions` tidak dicentang; asbplayer hanya memerlukan akses baca ke akun WaniKani Anda.
+    - Klik `Generate token`, lalu salin token yang dibuat ke [`Token API WaniKani`](../reference/settings.md#wanikani-api-token).
+    - Untuk mengisi basis data, gunakan [`Bangun ulang basis data kata WaniKani`](../reference/settings.md#re-build-wanikani-word-database) setelah mengatur token API.
+7. Aktifkan fitur anotasi yang diinginkan (gaya, bacaan, frekuensi, aksen nada, dan sebagainya) untuk trek tersebut. Sesuaikan pengaturan lain sesuai kebutuhan.
+8. Untuk penjelasan terperinci tentang setiap opsi, lihat bagian [Anotasi](../reference/settings.md#annotation) pada referensi pengaturan. Tindakan keyboard tercantum dalam grup [Pintasan keyboard anotasi](../reference/settings.md#annotation-keyboard-shortcuts).
 
-## Troubleshooting {#troubleshooting}
+## Pemecahan masalah {#troubleshooting}
 
-Please refer to the [common issues](../common-issues.md#annotation) section of the docs for troubleshooting annotation issues. If you can't find a solution there, please reach out on <a href={project.urls.discord}>Discord</a> or submit a <a href={`${project.urls.repo}/issues`}>bug report</a> with detailed information about your issue and steps to reproduce it.
+Lihat bagian [masalah umum](../common-issues.md#annotation) pada dokumentasi untuk mengatasi masalah anotasi. Jika solusi tidak ditemukan di sana, hubungi kami melalui <a href={project.urls.discord}>Discord</a> atau kirim <a href={`${project.urls.repo}/issues`}>laporan bug</a> yang berisi detail masalah dan langkah untuk mengulanginya.

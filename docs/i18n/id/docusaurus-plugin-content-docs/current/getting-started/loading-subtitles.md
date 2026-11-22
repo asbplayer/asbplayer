@@ -4,33 +4,33 @@ sidebar_position: 1
 
 import project from '@site/src/project';
 
-# Loading subtitles {#loading-subtitles}
+# Memuat takarir {#loading-subtitles}
 
-The first step to using asbplayer is to load subtitles onto a video source.
+Langkah pertama menggunakan asbplayer adalah memuat takarir ke sumber video.
 
-## Streaming video {#streaming-video}
+## Video streaming {#streaming-video}
 
-### Chrome (or other Chromium-based browsers) {#chromium}
+### Chrome (atau peramban berbasis Chromium lainnya) {#chromium}
 
-1. Install the Chrome extension from Google's <a href={project.extension.chrome.storeUrl}>web store</a> or from the <a href={`${project.urls.repo}/releases/latest`}>GitHub release</a>.
-2. Click 🧩 icon in browser toolbar → asbplayer → **Open Side Panel**
-3. Click **Load Subtitles** to load subtitles onto any video on the current page.
+1. Pasang ekstensi Chrome dari <a href={project.extension.chrome.storeUrl}>web store Google</a> atau dari <a href={`${project.urls.repo}/releases/latest`}>rilis GitHub</a>.
+2. Klik ikon 🧩 di bilah alat peramban → asbplayer → **Buka Panel Samping**
+3. Klik **Muat Takarir** untuk memuat takarir ke video mana pun di halaman saat ini.
 
 ### Firefox {#firefox}
 
 :::warning
-asbplayer is missing some features on Firefox. See the [Compatibility](../compatibility.md#extension) section.  
+Beberapa fitur asbplayer tidak tersedia di Firefox. Lihat bagian [Kompatibilitas](../compatibility.md#extension).  
 :::
 
-1. Install the the Firefox addon from the Mozilla <a href={project.extension.firefox.storeUrl}>addon store</a> or from the <a href={`${project.urls.repo}/releases/latest`}>GitHub release</a>.
-2. Click 🧩 icon in browser toolbar → asbplayer → **Open Side Panel**
-3. Click **Load Subtitles** to load subtitles onto any video on the current page.
+1. Pasang add-on Firefox dari <a href={project.extension.firefox.storeUrl}>toko add-on Mozilla</a> atau dari <a href={`${project.urls.repo}/releases/latest`}>rilis GitHub</a>.
+2. Klik ikon 🧩 di bilah alat peramban → asbplayer → **Buka Panel Samping**
+3. Klik **Muat Takarir** untuk memuat takarir ke video mana pun di halaman saat ini.
 
 ### Android {#android}
 
-See the [Android guide](../guides/android.md).
+Lihat [panduan Android](../guides/android.md).
 
-## Video files {#video-files}
+## Berkas video {#video-files}
 
-1. Open the <a href={project.urls.app}>website</a>.
-2. Drag-and-drop video and subtitle files into the website.
+1. Buka <a href={project.urls.app}>situs web</a>.
+2. Seret dan letakkan berkas video dan takarir ke situs web.

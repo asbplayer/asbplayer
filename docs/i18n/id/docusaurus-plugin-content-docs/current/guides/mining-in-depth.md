@@ -5,80 +5,80 @@ sidebar_position: 3
 import NoteAddIcon from '@site/src/components/NoteAddIcon';
 import ImageIcon from '@site/src/components/ImageIcon';
 
-# Mining in-depth {#mining-in-depth}
+# Menambang lebih lanjut {#mining-in-depth}
 
-Sentence mining can be accomplished in a variety of ways, according to your needs and preferences, using asbplayer.
+Anda dapat menambang kalimat dengan berbagai cara menggunakan asbplayer, sesuai kebutuhan dan preferensi.
 
-## Opening the Anki Export Dialog {#opening-the-anki-export-dialog}
+## Membuka Dialog Ekspor Anki {#opening-the-anki-export-dialog}
 
-There are multiple ways to open the **Anki Export Dialog**:
+Ada beberapa cara untuk membuka **Dialog Ekspor Anki**:
 
-1. **Mine Subtitle** <NoteAddIcon /> button that can be found in the **Subtitle List** of the **Side Panel** or on the website.
-2. **Mine Subtitle** <NoteAddIcon /> button in the **Overlay UI** on streaming videos or on the mobile website.
-3. The **mine current subtitle and open Anki dialog** [Mining keyboard shortcut](../reference/settings.md#mining-keyboard-shortcuts) - `Ctrl + Shift + X` by default.
-4. Right-click → asbplayer → **Mine Subtitle** on streaming video.
+1. Tombol **Tambang Takarir** <NoteAddIcon /> di **Daftar Takarir** pada **Panel Samping** atau situs web.
+2. Tombol **Tambang Takarir** <NoteAddIcon /> di **Antarmuka Overlay** pada video streaming atau situs web seluler.
+3. Pintasan keyboard [Menambang](../reference/settings.md#mining-keyboard-shortcuts) **tambang takarir saat ini dan buka dialog Anki** — bawaan `Ctrl + Shift + X`.
+4. Klik kanan → asbplayer → **Tambang Takarir** pada video streaming.
 
 :::info
-Methods #1 and #2 will open the dialog only if the [mining button default action](../reference/settings#mining-button-default-action) is set to "Show Anki dialog."  
+Cara #1 dan #2 hanya membuka dialog jika [tindakan bawaan tombol tambang](../reference/settings#mining-button-default-action) diatur ke "Tampilkan dialog Anki."  
 :::
 
 :::info
-When an _empty_ subtitle track is loaded, and audio recording is enabled, all of the above actions will start recording audio the first time they are triggered, and open the Anki dialog the second time they are triggered.
+Saat trek takarir _kosong_ dimuat dan perekaman audio diaktifkan, semua tindakan di atas akan mulai merekam audio saat pertama kali digunakan dan membuka dialog Anki saat digunakan untuk kedua kalinya.
 :::
 
-## Adjusting cards {#adjusting-cards}
+## Menyesuaikan kartu {#adjusting-cards}
 
-Prior to being exported, cards can be adjusted from the dialog.
+Kartu dapat disesuaikan dari dialog sebelum diekspor.
 
-### Selected time range {#selected-time-range}
+### Rentang waktu terpilih {#selected-time-range}
 
-A **slider** at the bottom of the dialog can be used to change the selected time range.
+**Penggeser** di bagian bawah dialog dapat digunakan untuk mengubah rentang waktu yang dipilih.
 
-- The **Sentence Field** will be automatically updated to match the selected time range, if it has not been manually edited already.
-- For local files, the audio clip will also be automatically updated.
-- For streaming video, the audio clip can be re-recorded with the selected time range.
+- **Kolom kalimat** akan otomatis diperbarui agar sesuai dengan rentang waktu yang dipilih, jika belum diedit secara manual.
+- Untuk berkas lokal, klip audio juga akan diperbarui secara otomatis.
+- Untuk video streaming, klip audio dapat direkam ulang sesuai rentang waktu yang dipilih.
 
-### Audio field {#audio-field}
+### Kolom audio {#audio-field}
 
-The **Audio Field** displays the recorded audio clip and provides three action buttons:
+**Kolom audio** menampilkan klip audio rekaman dan menyediakan tiga tombol tindakan:
 
-- **Play/Pause** — preview the audio clip directly in the dialog.
-- **Re-record** — re-record the audio using the currently selected time range (streaming video only; shown when a re-record callback is available).
-- **Download** — download the audio clip as a file to your device.
+- **Putar/Jeda** — pratinjau klip audio langsung di dalam dialog.
+- **Rekam ulang** — rekam ulang audio menggunakan rentang waktu yang dipilih (hanya untuk video streaming; ditampilkan jika callback rekam ulang tersedia).
+- **Unduh** — unduh klip audio sebagai berkas ke perangkat Anda.
 
-### Text fields {#text-fields}
+### Kolom teks {#text-fields}
 
-Any of the text fields - sentence, definition, word, custom fields, source, URL, tags - can be edited. Typically, a separate dictionary app is used to fill out the definition field.
+Semua kolom teks—kalimat, definisi, kata, kolom khusus, sumber, URL, dan tag—dapat diedit. Biasanya, aplikasi kamus terpisah digunakan untuk mengisi kolom definisi.
 
-### Image field {#image-field}
+### Kolom gambar {#image-field}
 
-For local files, clicking the **Preview Button** <ImageIcon /> on the **Image Field** can be used to change the video timestamp from which the screenshot is extracted.
+Untuk berkas lokal, klik **Tombol Pratinjau** <ImageIcon /> di **Kolom gambar** untuk mengubah penanda waktu video yang digunakan untuk mengambil tangkapan layar.
 
-## Exporting cards {#exporting-cards}
+## Mengekspor kartu {#exporting-cards}
 
-Use the buttons at the bottom of the dialog to finally export the card. There are three types of export:
+Gunakan tombol di bagian bawah dialog untuk mengekspor kartu. Ada tiga jenis ekspor:
 
-1. **Export**: simply export a card with the dialog content.
-2. **Update last card**: update the last card in your Anki deck with the dialog content.
-3. **Open in Anki**: opens Anki's card creator prefilled with the dialog content.
+1. **Ekspor**: hanya mengekspor kartu dengan isi dialog.
+2. **Perbarui kartu terakhir**: memperbarui kartu terakhir di deck Anki dengan isi dialog.
+3. **Buka di Anki**: membuka pembuat kartu Anki dengan isi dialog yang sudah diisikan.
 
-## Dialog-less mining flows {#dialog-less-mining-flows}
+## Alur menambang tanpa dialog {#dialog-less-mining-flows}
 
-Dialog-less mining flows that both include a word definition and skip the Anki dialog entirely can be achieved when asbplayer is used in combination with a dictionary app that also integrates with Anki. Currently, the most popular dictionary app that does this is [Yomitan](https://yomitan.wiki/).
+Alur menambang tanpa dialog, yang menyertakan definisi kata dan melewati dialog Anki sepenuhnya, dapat dilakukan jika asbplayer digunakan bersama aplikasi kamus yang juga terintegrasi dengan Anki. Saat ini, aplikasi kamus paling populer yang menyediakan fitur ini adalah [Yomitan](https://yomitan.wiki/).
 
-### Update last card {#update-last-card}
+### Perbarui kartu terakhir {#update-last-card}
 
-A dialog-less mining flow with Yomitan looks like this:
+Berikut contoh alur menambang tanpa dialog menggunakan Yomitan:
 
-1. Using Yomitan, highlight the word inside the subtitles that you would like to mine.
-2. Use Yomitan's card-creation button to create a card.
-3. Immediately use asbplayer's **update last card** [Mining keyboard shortcut](../reference/settings.md#mining-keyboard-shortcuts) - `Ctrl + Shift + U` - to update the card with asbplayer-supplied content.
+1. Gunakan Yomitan untuk menyorot kata dalam takarir yang ingin ditambang.
+2. Gunakan tombol pembuatan kartu Yomitan untuk membuat kartu.
+3. Segera gunakan pintasan keyboard [Menambang](../reference/settings.md#mining-keyboard-shortcuts) asbplayer **perbarui kartu terakhir** — `Ctrl + Shift + U` — untuk memperbarui kartu dengan konten dari asbplayer.
 
-The disadvantage of this flow is that skipping the dialog means skipping the opportunity to modify the card. However, there are ways to work around this:
+Kekurangan alur ini adalah Anda melewatkan kesempatan untuk mengubah kartu karena dialog dilewati. Namun, ada beberapa cara untuk mengatasinya:
 
-- Instead of directly updating the last card at the final step, you can always use `Ctrl + Shift + X` instead to open the dialog, adjust the card, and finally **update last card** using the dialog GUI. With this method you still go through the dialog, but retain the benefit of Yomitan's automatically-supplied word definition.
-- The **Anki Export Dialog** can always be opened _after_ card creation with the **manually take screenshot** [Mining keyboard shortcut](../reference/settings.md#mining-keyboard-shortcuts) - `Ctrl + Shift + V` by default.
+- Daripada langsung memperbarui kartu terakhir pada langkah akhir, gunakan `Ctrl + Shift + X` untuk membuka dialog, menyesuaikan kartu, lalu memilih **perbarui kartu terakhir** di antarmuka dialog. Dengan cara ini dialog tetap digunakan, tetapi definisi kata yang disediakan otomatis oleh Yomitan tetap tersedia.
+- **Dialog Ekspor Anki** dapat dibuka _setelah_ kartu dibuat menggunakan pintasan keyboard [Menambang](../reference/settings.md#mining-keyboard-shortcuts) **ambil tangkapan layar secara manual** — bawaan `Ctrl + Shift + V`.
 
-### One click {#one-click}
+### Sekali klik {#one-click}
 
-See the [one-click mining](./one-click-mining.md) guide.
+Lihat panduan [penambangan sekali klik](./one-click-mining.md).

@@ -4,15 +4,15 @@ sidebar_position: 9.5
 
 import project from '@site/src/project';
 
-# External extensions {#external-extensions}
+# Ekstensi eksternal {#external-extensions}
 
-As of v1.23, asbplayer exposes a way for other browser extensions to communicate with it. Any extension that connects to asbplayer via [browser.runtime.connect](https://developer.chrome.com/docs/extensions/reference/api/runtime#method-connect), and receives user approval, can issue [commands](../reference/external-api.md) through the connection.
+Mulai v1.23, asbplayer menyediakan cara bagi ekstensi peramban lain untuk berkomunikasi dengannya. Ekstensi apa pun yang terhubung ke asbplayer melalui [browser.runtime.connect](https://developer.chrome.com/docs/extensions/reference/api/runtime#method-connect) dan mendapat persetujuan pengguna dapat menjalankan [perintah](../reference/external-api.md) melalui koneksi tersebut.
 
-A template implementation of an extension that integrates with asbplayer in this way is provided <a href={`${project.urls.externalExtensionTemplateRepo}`}>here</a>.
+Contoh implementasi ekstensi yang terintegrasi dengan asbplayer dengan cara ini tersedia <a href={`${project.urls.externalExtensionTemplateRepo}`}>di sini</a>.
 
-## Connecting and obtaining user approval
+## Menghubungkan dan meminta persetujuan pengguna
 
-Any extension wishing to communicate with asbplayer must first connect using code like below. asbplayer's extension ID can be obtained from the browser's extension manager (on Chrome `chrome://extensions`, on Firefox `about:addons`).
+Ekstensi yang ingin berkomunikasi dengan asbplayer harus terlebih dahulu terhubung menggunakan kode seperti berikut. ID ekstensi asbplayer dapat ditemukan di pengelola ekstensi peramban (di Chrome, buka `chrome://extensions`; di Firefox, buka `about:addons`).
 
 ```typescript
 const port = browser.runtime.connect(<asbplayer extension ID>, {
@@ -20,7 +20,7 @@ const port = browser.runtime.connect(<asbplayer extension ID>, {
 });
 ```
 
-Request approval with `initialize`, which answers immediately with the current state.
+Minta persetujuan dengan `initialize`, yang langsung mengembalikan status saat ini.
 
 ```typescript
 port.postMessage({
@@ -34,7 +34,7 @@ port.postMessage({
 });
 ```
 
-If the extension is not approved, asbplayer registers the connection as pending, prompts the user, and responds:
+Jika ekstensi belum disetujui, asbplayer menandai koneksi sebagai tertunda, meminta persetujuan pengguna, lalu merespons:
 
 ```json
 {
@@ -44,7 +44,7 @@ If the extension is not approved, asbplayer registers the connection as pending,
 }
 ```
 
-Poll `approval-state` to see if the user has approved the connection request.
+Periksa `approval-state` untuk mengetahui apakah pengguna telah menyetujui permintaan koneksi.
 
 ```json
 {
@@ -55,9 +55,9 @@ Poll `approval-state` to see if the user has approved the connection request.
 }
 ```
 
-Once approved, `approval-state` will return `{ "state": "approved" }` and the connection can issue commands. If denied, `approval-state` returns `{ "state": "denied" }` once. asbplayer then closes the port. Once denied, the requesting extension cannot request approval for 24 hours.
+Setelah disetujui, `approval-state` mengembalikan `{ "state": "approved" }` dan koneksi dapat menjalankan perintah. Jika ditolak, `approval-state` mengembalikan `{ "state": "denied" }` satu kali, lalu asbplayer menutup port. Setelah permintaan ditolak, ekstensi tidak dapat meminta persetujuan lagi selama 24 jam.
 
-Commands can be issued as [documented](../reference/external-api.md). For example:
+Perintah dapat dijalankan seperti yang [didokumentasikan](../reference/external-api.md). Contoh:
 
 ```typescript
 port.postMessage({
@@ -68,4 +68,4 @@ port.postMessage({
 });
 ```
 
-asbplayer answers with `{ jsonrpc, id, result }` on success or `{ jsonrpc, id, error }` on failure.
+Jika berhasil, asbplayer merespons dengan `{ jsonrpc, id, result }`; jika gagal, responsnya `{ jsonrpc, id, error }`.

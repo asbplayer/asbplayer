@@ -5,73 +5,73 @@ sidebar_position: 9
 import project, { webSocketHttpUrl } from '@site/src/project';
 import CodeBlock from '@theme/CodeBlock';
 
-# WebSocket server {#websocket-server}
+# Server WebSocket {#websocket-server}
 
-asbplayer takes advantage of the two-way nature of WebSocket connections in order to expose an interface accessible from outside of the browser.
+asbplayer memanfaatkan koneksi WebSocket dua arah untuk menyediakan antarmuka yang dapat diakses dari luar peramban.
 
-In this design, asbplayer is a **WebSocket client** that maintains a connection with a **WebSocket server** that runs locally on the user's computer. The server then exposes an HTTP interface that triggers commands to asbplayer, the client. A technical reference on the pre-packaged server is [here](../reference/external-api.md).
+Dalam rancangan ini, asbplayer bertindak sebagai **klien WebSocket** yang mempertahankan koneksi ke **server WebSocket** yang berjalan secara lokal di komputer pengguna. Server tersebut menyediakan antarmuka HTTP untuk mengirim perintah ke asbplayer sebagai klien. Referensi teknis server yang disertakan tersedia [di sini](../reference/external-api.md).
 
-The server was originally written to enable a one-click mining flow that enriches AnkiConnect `addNote` requests with asbplayer-supplied media, and so one of its primary functions is also as an **AnkiConnect proxy**.
+Server ini awalnya dibuat untuk mendukung alur penambangan sekali klik yang memperkaya permintaan `addNote` AnkiConnect dengan media dari asbplayer. Karena itu, salah satu fungsi utamanya juga sebagai **proxy AnkiConnect**.
 
 :::note
-The preferred way to do one-click mining is with the [asbplayer Anki add-on](./one-click-mining.md#install-the-asbplayer-anki-add-on). The AnkiConnect proxy described below is an alternative.
+Cara yang disarankan untuk menambang sekali klik adalah menggunakan [add-on Anki asbplayer](./one-click-mining.md#install-the-asbplayer-anki-add-on). Proxy AnkiConnect yang dijelaskan di bawah merupakan alternatif.
 :::
 
-## Run the server {#run-the-server}
+## Menjalankan server {#run-the-server}
 
-1. Clone the <a href={project.urls.repo}>asbplayer repo</a>.
+1. Klon <a href={project.urls.repo}>repositori asbplayer</a>.
 
     <CodeBlock language="bash">{`git clone ${project.urls.repo}.git asbplayer`}</CodeBlock>
 
-2. If not already installed, install [Golang](https://go.dev/dl/).
-3. Run the server:
+2. Jika belum terpasang, pasang [Golang](https://go.dev/dl/).
+3. Jalankan server:
 
     ```
     cd asbplayer/scripts/web-socket-server
     go run .
     ```
 
-The proxy is very lightweight, so it's fine to leave it running in the background. On Windows, [RBTray](https://github.com/benbuck/rbtray) can be used to minimise it to the taskbar.
+Proxy ini sangat ringan, jadi dapat dibiarkan berjalan di latar belakang. Di Windows, [RBTray](https://github.com/benbuck/rbtray) dapat digunakan untuk meminimalkannya ke bilah tugas.
 
-## Connect asbplayer to the server {#connect-asbplayer-to-the-server}
+## Menghubungkan asbplayer ke server {#connect-asbplayer-to-the-server}
 
-Configure and enable asbplayer's WebSocket client from the <a href={new URL('?view=settings#misc-settings', project.urls.app).href}>misc settings</a>. By default, asbplayer is already pointed at the WebSocket server's default IP address and port, and so in general all that's required is to enable the WebSocket client.
+Konfigurasikan dan aktifkan klien WebSocket asbplayer dari <a href={new URL('?view=settings#misc-settings', project.urls.app).href}>pengaturan lain-lain</a>. Secara bawaan, asbplayer sudah diarahkan ke alamat IP dan port bawaan server WebSocket. Biasanya, Anda hanya perlu mengaktifkan klien WebSocket.
 
-## One-click mining with the AnkiConnect proxy {#one-click-mining-with-the-ankiconnect-proxy}
+## Penambangan sekali klik dengan proxy AnkiConnect {#one-click-mining-with-the-ankiconnect-proxy}
 
-Follow the directions on [Yomitan's website](https://yomitan.wiki/) to install Yomitan and configure it with a dictionary for your target language.
+Ikuti petunjuk di [situs web Yomitan](https://yomitan.wiki/) untuk memasang Yomitan dan mengonfigurasikannya dengan kamus untuk bahasa sasaran Anda.
 
-Then configure Yomitan:
+Lalu konfigurasikan Yomitan:
 
-- The AnkiConnect URL should point at the AnkiConnect proxy rather than AnkiConnect. The default proxy URL is <code>{webSocketHttpUrl}</code>.
-- Yomitan should be using the same **Note Type** as asbplayer.
+- URL AnkiConnect harus mengarah ke proxy AnkiConnect, bukan AnkiConnect secara langsung. URL proxy bawaan adalah <code>{webSocketHttpUrl}</code>.
+- Yomitan harus menggunakan **Note type** yang sama dengan asbplayer.
 
-Mining sentences using Yomitan will create cards with word definition, image, and audio already provided. A truly one-click mining flow can be achieved if the proxy's `POST_MINE_ACTION` is `2` (update last card). See the [server configuration](#server-configuration) for details.
+Menambang kalimat menggunakan Yomitan akan membuat kartu yang sudah berisi definisi kata, gambar, dan audio. Penambangan sekali klik sepenuhnya dapat dilakukan jika `POST_MINE_ACTION` proxy diatur ke `2` (perbarui kartu terakhir). Lihat [konfigurasi server](#server-configuration) untuk detailnya.
 
-To always use asbplayer's subtitle text for the Sentence field, enable [**Always use subtitle text for sentence field**](../reference/settings.md#always-use-subtitle-text-for-sentence-field) under **Mining** settings. This replaces the sentence text supplied by Yomitan with the mined subtitle text from all tracks.
+Agar selalu menggunakan teks takarir asbplayer untuk kolom Sentence, aktifkan [**Selalu gunakan teks takarir untuk kolom kalimat**](../reference/settings.md#always-use-subtitle-text-for-sentence-field) di pengaturan **Penambangan**. Teks kalimat dari Yomitan akan diganti dengan teks takarir yang ditambang dari semua trek.
 
-## API reference {#api-reference}
+## Referensi API {#api-reference}
 
-See the [technical reference](../reference/external-api.md#commands) for a description of supported commands that can be sent to asbplayer over the WebSocket connection.
+Lihat [referensi teknis](../reference/external-api.md#commands) untuk deskripsi perintah yang didukung dan dapat dikirim ke asbplayer melalui koneksi WebSocket.
 
-## HTTP-based API {#http-based-api}
+## API berbasis HTTP {#http-based-api}
 
-The WebSocket server implements an HTTP-based API which triggers the commands documented above.
+Server WebSocket menyediakan API berbasis HTTP yang menjalankan perintah-perintah yang didokumentasikan di atas.
 
 - `POST asbplayer/load-subtitles` (optional `mediaId` in the request body) (<a href={`${project.urls.repo}/blob/main/scripts/web-socket-server/cli/load-subtitles`}>script</a>)
 - `POST asbplayer/seek` (optional `mediaId` in the request body) (<a href={`${project.urls.repo}/blob/main/scripts/web-socket-server/cli/seek`}>script</a>)
 - `GET asbplayer/bound-media` (<a href={`${project.urls.repo}/blob/main/scripts/web-socket-server/cli/bound-media`}>script</a>)
 - `GET asbplayer/subtitles` (optional `?mediaId=...&trackNumbers=0,1`) (<a href={`${project.urls.repo}/blob/main/scripts/web-socket-server/cli/subtitles`}>script</a>)
 
-## AnkiConnect proxy {#ankiconnect-proxy}
+## Proxy AnkiConnect {#ankiconnect-proxy}
 
-The WebSocket server also functions as an AnkiConnect proxy that allows `addNote` requests to be enriched with asbplayer-provided context, such as audio and screenshots.
+Server WebSocket juga berfungsi sebagai proxy AnkiConnect yang memungkinkan permintaan `addNote` diperkaya dengan konteks dari asbplayer, seperti audio dan tangkapan layar.
 
-The proxy passes through all AnkiConnect requests as-is except for `addNote`. The proxy's specific behavior in the case of `addNote` depends on the value of `POST_MINE_ACTION` in the configuration documented below.
+Proxy meneruskan semua permintaan AnkiConnect apa adanya, kecuali `addNote`. Perilaku khusus proxy untuk `addNote` bergantung pada nilai `POST_MINE_ACTION` dalam konfigurasi yang dijelaskan di bawah.
 
-## Server configuration {#server-configuration}
+## Konfigurasi server {#server-configuration}
 
-The server is configured with an `.env` file placed next to it in the same directory. Below is an example file with explanation.
+Server dikonfigurasikan melalui berkas `.env` di direktori yang sama. Berikut contoh berkas beserta keterangannya.
 
 ```
 # Port that the proxy will listen on
