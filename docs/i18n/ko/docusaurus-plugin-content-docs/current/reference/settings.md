@@ -781,27 +781,27 @@ WaniKani 상태 판정 방법은 [**WaniKani API 토큰**](#wanikani-api-token)�
 
 단어를 계속 표시할 상태 및 상태값을 선택합니다.
 
-단어의 지정된 비율 이상이 숨겨질 경우 자막 전체 숨기기 {#whole-subtitle-hidden-percentage}
+### 단어의 지정된 비율 이상이 숨겨질 경우 자막 전체 숨기기 {#whole-subtitle-hidden-percentage}
 
 표시 규칙에 따라 자막 단어의 지정된 비율 이상이 숨겨지면 자막 전체를 숨깁니다. 예를 들어 **80%**로 설정하면 다섯 단어 중 네 단어가 숨겨질 자막에서 표시 대상으로 선택된 한 단어를 포함해 자막 전체가 숨겨집니다. 문장 부호와 기타 문자가 아닌 항목은 계산하지 않습니다.
 
-일치하지 않는 단어를 개별적으로 숨기기 {#hide-non-matching-words-individually}
+### 일치하지 않는 단어를 개별적으로 숨기기 {#hide-non-matching-words-individually}
 
 사용 설정하면 자막 전체 숨기기 기준에 도달하기 전 표시 규칙을 충족하지 않는 단어를 개별적으로 숨깁니다. 사용 중지하면 기준에 도달할 때까지 자막 전체를 표시합니다.
 
-선택한 범주별 최소 단어 수 {#minimum-words-per-selected-category}
+### 선택한 범주별 최소 단어 수 {#minimum-words-per-selected-category}
 
 자막 내에서 선택한 각 범주(예: **미수집**, **무시됨**)를 별도로 계산합니다. 해당 범주의 단어 수가 이 제한보다 적으면 그 범주의 단어는 규칙을 실행하지 않습니다. `0`은 제한을 사용하지 않습니다.
 
-선택한 범주별 최대 단어 수 {#maximum-words-per-selected-category}
+### 선택한 범주별 최대 단어 수 {#maximum-words-per-selected-category}
 
 자막 내에서 선택한 각 범주(예: **미수집**, **무시됨**)를 별도로 계산합니다. 해당 범주의 단어 수가 이 제한보다 많으면 그 범주의 단어는 규칙을 실행하지 않습니다. `0`은 제한을 사용하지 않습니다.
 
-단어 빈도가 다음 값 이상인 경우에만 {#only-when-word-frequency-is-at-least}
+### 단어 빈도가 다음 값 이상인 경우에만 {#only-when-word-frequency-is-at-least}
 
 일치하는 단어의 빈도가 이 값 이상이어야 합니다. 빈도 정보가 없으면 `1`로 계산합니다. `0`은 제한을 사용하지 않습니다.
 
-단어 빈도가 다음 값 이하인 경우에만 {#only-when-word-frequency-is-at-most}
+### 단어 빈도가 다음 값 이하인 경우에만 {#only-when-word-frequency-is-at-most}
 
 일치하는 단어의 빈도가 이 값 이하여야 합니다. 빈도 정보가 없으면 `1`로 계산합니다. `0`은 제한을 사용하지 않습니다.
 
