@@ -4,44 +4,44 @@ sidebar_position: 1
 
 import project from '@site/src/project';
 
-# What is asbplayer? {#what-is-asbplayer}
+# asbplayer 是什么？{#what-is-asbplayer}
 
-## A language-learning assistant {#a-language-learning-assistant}
+## 语言学习助手 {#a-language-learning-assistant}
 
-**asbplayer** is a language-learning assistant that makes it easier to learn languages through subtitled videos. Its original author created for himself to help with learning Japanese using [AJATT](https://tatsumoto-ren.github.io/blog/whats-ajatt.html). It was then popularized in the [Refold](https://refold.la/) Japanese-learning community as a **sentence mining** and **subtitle** tool. However, asbplayer's feature set is always growing. With asbplayer you can:
+**asbplayer** 是一款语言学习助手，让你可以通过带字幕的视频更轻松地学习语言。最初，作者为了使用 [AJATT](https://tatsumoto-ren.github.io/blog/whats-ajatt.html) 学习日语而为自己开发了它。后来，它在 [Refold](https://refold.la/) 日语学习社区中作为**句子挖掘**和**字幕**工具逐渐流行起来。asbplayer 的功能仍在不断增加。使用 asbplayer，你可以：
 
-- **Easily create high-quality, multimedia flashcards** out of subtitled videos.
-- **Load text-selectable subtitles onto most video sources**, including streaming sources. You can use **auto-detected subtitles** on popular streaming services like Netflix and YouTube, or your own **subtitle files**. A generic fallback subtitle detection algorithm allows asbplayer to detect subtitles on 85% of all other streaming services.
-- **Seek through subtitles** using a **navigable subtitle list**.
-- **Utilize customizable [keyboard shortcuts](./reference/settings.md#keyboard-shortcuts)** to access most of asbplayer's features.
-- **Optimize language acquisition** with **playback modes** like:
-    - **Condensed playback**: Skip unsubtitled sections of video.
-    - **Fast-forward playback**: Fast-forward through unsubtitled sections of video.
-    - **Auto-pause**: Automatically pause at the beginning or end of every subtitle.
-    - **Repeat**: Automatically repeat subtitles indefinitely or for a specified number of times.
-- **Use customizable [recipes](./guides/recipes.md)** to create and import immersion presets with asbplayer's rich playback features.
-- **Annotate subtitles** with the help of tools such as [Yomitan](https://yomitan.wiki/)
-    - **Word styling** (color/underline/outline, etc.) based on a word's status (uncollected/unknown/learning, etc.) synced from Anki, WaniKani, and/or tracked locally in asbplayer.
-    - **Reading annotation** for reading displayed above each word or based on status.
-    - **Accent annotation** such as pitch accent.
-    - **Frequency annotation** for rank-based frequency displayed below each word or based on status.
-    - **Glossary annotation** for a short definition or explanation of the word.
-    - **Statistics and Comprehension** on your known words for the current media.
-    - **Adaptive Playback** that uses **playback modes** and the annotation data to optimize your learning experience.
-    - **Word browser** to manage local and view words synced from external sources.
-    - Many more features for future releases! Some planned features include:
-        - **Auto mining** on uncollected/unknown/learning words.
-        - **Rich Anki Card Creation** for generating high-quality flashcards from annotated subtitles.
-        - **Statistics and Comprehension** on your known words across media.
+- **轻松制作高质量的多媒体闪卡**，从带字幕的视频中挖掘内容。
+- **为大多数视频来源加载可选择文本的字幕**，包括流媒体来源。你可以使用 Netflix 和 YouTube 等热门流媒体服务上的**自动检测字幕**，也可以使用自己的**字幕文件**。通用备用字幕检测算法可让 asbplayer 在其他约 85% 的流媒体服务上检测字幕。
+- 使用**可导航的字幕列表**在字幕间定位。
+- 使用可自定义的[键盘快捷键](./reference/settings.md#keyboard-shortcuts)访问 asbplayer 的大多数功能。
+- 使用多种**播放模式**优化语言学习：
+    - **紧凑模式**：跳过视频中没有字幕的片段。
+    - **快进模式**：快进视频中没有字幕的片段。
+    - **自动暂停**：在每条字幕的开头或结尾自动暂停。
+    - **重复**：无限次或按指定次数自动重复字幕。
+- 使用可自定义的[学习方案](./guides/recipes.md)，借助 asbplayer 丰富的播放功能创建并导入沉浸式学习预设。
+- 借助 [Yomitan](https://yomitan.wiki/) 等工具为字幕添加标注：
+    - 根据单词状态（未收集、未知、学习中等）设置**单词样式**（颜色、下划线、轮廓等）；状态可从 Anki、WaniKani 同步，也可在 asbplayer 中本地追踪。
+    - **读音标注**：在单词上方显示读音，或根据状态显示。
+    - **音调标注**：例如显示音高重音。
+    - **词频标注**：在单词下方显示基于排名的词频，或根据状态显示。
+    - **释义标注**：显示单词的简短释义或说明。
+    - 查看当前媒体中已知单词的**统计和理解度估算**。
+    - 使用**自适应播放**，结合**播放模式**和标注数据优化学习体验。
+    - 使用**单词浏览器**管理本地单词并查看从外部来源同步的单词。
+    - 未来版本还会推出更多功能！计划中的功能包括：
+        - 对未收集、未知或学习中的单词进行**自动挖掘**。
+        - **丰富的 Anki 制卡功能**，从标注过的字幕中生成高质量闪卡。
+        - 查看跨媒体的已知单词**统计和理解度估算**。
 
-## A website and browser extension {#a-website-and-browser-extension}
+## 网站和浏览器扩展 {#a-website-and-browser-extension}
 
-In order to make asbplayer as widely available as possible, asbplayer comes in two different forms, a <a href={project.urls.app}>website</a> which works with local video files, and a <a href={project.extension.chrome.storeUrl}>browser extension</a> which works with streaming video. Neither one is required to use the other - however, they work together to make the asbplayer user experience as seamless as possible.
+为了让更多人可以使用 asbplayer，它提供两种形式：适用于本地视频文件的<a href={project.urls.app}>网站</a>，以及适用于流媒体视频的<a href={project.extension.chrome.storeUrl}>浏览器扩展</a>。两者可以单独使用，也可以配合使用，让 asbplayer 的体验更加连贯。
 
-## Why use asbplayer? {#why-use-asbplayer}
+## 为什么使用 asbplayer？{#why-use-asbplayer}
 
-- You want a way to watch videos with text-selectable subtitles.
-- You want a way to create high-quality, multimedia flashcards out of video and subtitle sources.
-- The video sources you are using are obscure and not supported by other similar tools.
-- You are somewhat tools-savvy. You will most likely need to combine asbplayer with other tools (like a dictionary app) for a complete language-learning toolset.
-- You don't want to pay money. asbplayer is free to use and open-source.
+- 你希望观看带有可选择文本字幕的视频。
+- 你希望从视频和字幕中制作高质量的多媒体闪卡。
+- 你使用的视频来源比较冷门，其他类似工具不支持。
+- 你熟悉一些工具。要获得完整的语言学习工具集，你很可能需要将 asbplayer 与其他工具（例如词典应用）搭配使用。
+- 你不想付费。asbplayer 免费且开源。

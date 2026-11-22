@@ -4,13 +4,13 @@ sidebar_position: 7
 
 import project from '@site/src/project';
 
-# Acknowledgements {#acknowledgements}
+# 致谢 {#acknowledgements}
 
-asbplayer would not be what it is today without the community around it. We thank all the people who have used and benefited from asbplayer, who have advocated for it, suggested features, reported bugs, and made contributions.
+没有社区的支持，asbplayer 就不会有今天。感谢所有使用并受益于 asbplayer、为它宣传、提出功能建议、报告错误并作出贡献的人。
 
-We epecially acknowledge the wonderful humans below.
+我们特别感谢以下各位。
 
-## Contributors {#contributors}
+## 贡献者 {#contributors}
 
 [@Renji-XD](https://www.github.com/Renji-XD),
 [@MatiasIslaA](https://www.github.com/MatiasIslaA),
@@ -79,7 +79,7 @@ We epecially acknowledge the wonderful humans below.
 [@joaquinmuzzi](https://github.com/joaquinmuzzi),
 [@mvanhorn](https://github.com/mvanhorn)
 
-## Translators {#translators}
+## 译者 {#translators}
 
 **Mana Tsutsumi** (Japanese, initial translation),
 **kasader** (Japanese),
@@ -100,9 +100,9 @@ We epecially acknowledge the wonderful humans below.
 **[@yaaacha](https://github.com/yaaacha)** (Indonesian),
 **[@NeriSal](https://github.com/nerisal)** (Italian)
 
-If you are a non-English native, and would like to help translate asbplayer, join the [Crowdin project](https://crowdin.com/project/asbplayer). If your language isn't there, feel free to create an issue on the <a href={`${project.urls.repo}/issues`}>issues page</a>.
+如果你的母语不是英语，并希望帮助翻译 asbplayer，请加入 [Crowdin 项目](https://crowdin.com/project/asbplayer)。如果列表中没有你的语言，欢迎在<a href={`${project.urls.repo}/issues`}>问题页面</a>创建问题。
 
-## Sponsors {#sponsors}
+## 赞助者 {#sponsors}
 
 [@vivekchoksi](https://www.github.com/vivekchoksi),
 [@nzarbayezid](https://www.github.com/nzarbayezid),
@@ -153,4 +153,4 @@ marcman3001,
 shiki,
 kansha-gratitude
 
-and those who have donated privately.
+以及私下捐赠的各位。
