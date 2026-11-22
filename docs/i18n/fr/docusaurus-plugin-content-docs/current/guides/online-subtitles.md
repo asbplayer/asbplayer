@@ -4,58 +4,58 @@ sidebar_position: 11
 
 import project from '@site/src/project';
 
-# Online subtitles {#online-subtitles}
+# Sous-titres en ligne {#online-subtitles}
 
-Instead of hunting for subtitle files by hand, you can search for them and load them straight from asbplayer. Subtitles are provided by [Jimaku](https://jimaku.cc), a community subtitle site mostly covering anime and Japanese drama.
+Au lieu de chercher manuellement des fichiers de sous-titres, vous pouvez les rechercher et les charger directement depuis asbplayer. Ils sont fournis par [Jimaku](https://jimaku.cc), un site communautaire consacré principalement aux sous-titres d’anime et de séries japonaises.
 
-## Usage {#usage}
+## Utilisation {#usage}
 
-1. Open the side panel on a page with a video, then click **Load Subtitles**.
-2. Click **Search online subtitles** (also available from the subtitle track dropdown).
-3. The search term is pre-filled from the page title. Adjust it if needed, pick **Anime** or **Drama**, and search.
-4. Click a search result to see its subtitle files, then click a file to load it.
+1. Ouvrez le panneau latéral sur une page contenant une vidéo, puis cliquez sur **Charger des sous-titres**.
+2. Cliquez sur **Rechercher des sous-titres en ligne** (également accessible depuis le menu déroulant des pistes de sous-titres).
+3. Le titre de la page est proposé comme terme de recherche. Modifiez-le si nécessaire, choisissez **Anime** ou **Série**, puis lancez la recherche.
+4. Cliquez sur un résultat pour afficher ses fichiers de sous-titres, puis sur un fichier pour le charger.
 
-Only `.srt` and `.ass` files are listed. Works you opened recently show up under **Recent** so you can skip the search next time.
+Seuls les fichiers `.srt` et `.ass` sont répertoriés. Les œuvres ouvertes récemment apparaissent sous **Récents**, afin que vous puissiez ignorer la recherche la prochaine fois.
 
-## Getting a Jimaku API key {#api-key}
+## Obtenir une clé API Jimaku {#api-key}
 
-Jimaku requires an API key to search and download.
+Jimaku nécessite une clé API pour effectuer des recherches et des téléchargements.
 
-1. Create an account at [jimaku.cc](https://jimaku.cc) and log in.
-2. Open your [account page](https://jimaku.cc/account) and generate an API key.
-3. Paste the key into the **Jimaku API key** field in the search dialog.
+1. Créez un compte sur [jimaku.cc](https://jimaku.cc), puis connectez-vous.
+2. Ouvrez votre [page de compte](https://jimaku.cc/account) et générez une clé API.
+3. Collez la clé dans le champ **Clé API Jimaku** de la boîte de dialogue de recherche.
 
-The key is saved automatically, so you only need to do this once. It is hidden by default; use the eye icon to show it.
+La clé est enregistrée automatiquement, vous n’avez donc à effectuer cette opération qu’une fois. Elle est masquée par défaut ; utilisez l’icône en forme d’œil pour l’afficher.
 
-## Automatic episode detection {#episode-detection}
+## Détection automatique des épisodes {#episode-detection}
 
-For series, asbplayer tries to read the episode number from the page title (for example `S01E05`, `EP05`, or `第5話`/`第五集`). If one is found:
+Pour les séries, asbplayer essaie de lire le numéro de l’épisode dans le titre de la page (par exemple `S01E05`, `EP05` ou `第5話`/`第五集`). Si un numéro est détecté :
 
-- the episode marker is removed from the search term, so you search for the series name only;
-- the file list is filtered to that episode, shown as an **EP N** chip. Click the chip's ✕ to see all files.
+- le numéro d’épisode est supprimé du terme de recherche, qui ne contient alors que le nom de la série ;
+- la liste des fichiers est filtrée pour cet épisode, indiqué par une pastille **EP N**. Cliquez sur le ✕ de la pastille pour afficher tous les fichiers.
 
-If the chosen episode has no usable subtitle files, the full list is shown instead.
+Si aucun fichier de sous-titres utilisable n’est disponible pour l’épisode choisi, la liste complète s’affiche.
 
-### Custom episode regex {#episode-regex}
+### Expression régulière personnalisée pour les épisodes {#episode-regex}
 
-Some websites use title formats that the built-in rules don't recognize, so no episode is detected and you see every file in the series. A custom regex teaches asbplayer how to read the episode on those sites.
+Certains sites utilisent des formats de titre que les règles intégrées ne reconnaissent pas. Aucun épisode n’est alors détecté et tous les fichiers de la série s’affichent. Une expression régulière personnalisée permet à asbplayer de reconnaître les épisodes sur ces sites.
 
-Once you've opened a series, click the gear icon next to the file list header to show the **Custom episode regex** field. The gear is highlighted while a regex is set.
+Après avoir ouvert une série, cliquez sur l’icône d’engrenage à côté de l’en-tête de la liste des fichiers pour afficher le champ **Expression régulière personnalisée pour les épisodes**. L’engrenage est mis en évidence lorsqu’une expression est définie.
 
-- **Capture group 1** must be the episode number (arabic or kanji numerals both work).
-- Your regex is tried first. If it is empty, invalid, or doesn't match, the built-in rules are used as usual, so it can only add coverage.
-- Press **Enter** to re-filter the current series. The search term picks up the change the next time you open the dialog.
+- Le **groupe de capture 1** doit contenir le numéro de l’épisode (les chiffres arabes et les chiffres kanji sont acceptés).
+- Votre expression est essayée en premier. Si elle est vide, invalide ou ne correspond pas au titre, les règles intégrées sont utilisées comme d’habitude ; elle ne peut donc qu’améliorer la détection.
+- Appuyez sur **Entrée** pour filtrer à nouveau la série actuelle. Le terme de recherche sera mis à jour à la prochaine ouverture de la boîte de dialogue.
 
 :::tip
-The built-in rules were only tested on the few websites the feature's author uses. If a site's title format isn't recognized, please <a href={`${project.urls.repo}/issues`}>open an issue</a> with an example page title (or a PR on `common/subtitle-sources/jimaku-episode-patterns.ts`) so the built-in rules can be extended.
+Les règles intégrées n’ont été testées que sur les quelques sites utilisés par l’auteur de cette fonctionnalité. Si le format du titre d’un site n’est pas reconnu, veuillez <a href={`${project.urls.repo}/issues`}>ouvrir un ticket</a> avec un exemple de titre de page (ou proposer une PR sur `common/subtitle-sources/jimaku-episode-patterns.ts`) afin d’améliorer ces règles.
 :::
 
-For example, if a site titles its pages `Some Show - Chapter 07 | SiteName`, use:
+Par exemple, si un site intitule ses pages `Some Show - Chapter 07 | SiteName`, utilisez :
 
 ```
 Chapter (\d+)
 ```
 
-## Acknowledgements {#jimaku-acknowledgements}
+## Remerciements {#jimaku-acknowledgements}
 
-Huge thanks to [Rapptz](https://github.com/Rapptz), who built and maintains [Jimaku](https://github.com/Rapptz/jimaku) and provides the API that makes this feature possible. If you find it useful, please consider supporting the site and uploading your own subtitles.
+Un grand merci à [Rapptz](https://github.com/Rapptz), qui a créé et maintient [Jimaku](https://github.com/Rapptz/jimaku) et fournit l’API qui rend cette fonctionnalité possible. Si elle vous est utile, pensez à soutenir le site et à y partager vos propres sous-titres.

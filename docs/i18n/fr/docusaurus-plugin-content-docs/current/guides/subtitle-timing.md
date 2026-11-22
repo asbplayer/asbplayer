@@ -2,27 +2,27 @@
 sidebar_position: 2
 ---
 
-# Subtitle timing {#subtitle-timing}
+# Synchronisation des sous-titres {#subtitle-timing}
 
-Subtitle files will very often not be aligned to the video source you load them into. To work around this, asbplayer provides ways to manually adjust subtitle timing.
+Les fichiers de sous-titres ne sont souvent pas synchronisés avec la vidéo dans laquelle vous les chargez. asbplayer permet d’ajuster manuellement leur synchronisation.
 
 ## Keyboard shortcuts {#keyboard-shortcuts}
 
-The fastest way to fix subtitle timing is with the [Subtitle offset keyboard shortcuts](../reference/settings.md#subtitle-offset-keyboard-shortcuts). There are two sets of shortcuts for adjusting subtitle offset:
+Le moyen le plus rapide d’ajuster la synchronisation est d’utiliser les [raccourcis clavier de décalage des sous-titres](../reference/settings.md#subtitle-offset-keyboard-shortcuts). Deux groupes de raccourcis permettent de régler le décalage :
 
-- `Ctrl + Left/Right` or `Shift + Left/Right`: Align the current timestamp to the left or right subtitle.
-- `Ctrl + Shift + Left/Right`: Move the current timestamp `100ms` to the left or right.
+- `Ctrl + Left/Right` or `Shift + Left/Right`: Aligner l’horodatage actuel sur le sous-titre précédent ou suivant.
+- `Ctrl + Shift + Left/Right`: Déplacer l’horodatage actuel de `100ms` vers la gauche ou la droite.
 
-Most often, finding the correct offset will look like this:
+En général, procédez ainsi pour trouver le bon décalage :
 
-1. Wait for a character to start talking.
-2. `Ctrl + Left/Right` until the subtitle matching the character's dialog appears on screen.
-3. `Ctrl + Shift + Right/Left` until the subtitle timing precisely matches the dialog.
+1. Attendez qu’un personnage commence à parler.
+2. Appuyez sur `Ctrl + Left/Right` jusqu’à ce que le sous-titre correspondant au dialogue du personnage apparaisse.
+3. Appuyez sur `Ctrl + Shift + Right/Left` jusqu’à ce que le sous-titre soit parfaitement synchronisé avec le dialogue.
 
-## Overlay UI {#overlay-ui}
+## Interface superposée {#overlay-ui}
 
-The overlay UI provides buttons that perform the same functions as the keyboard shortcuts above.
+L’interface superposée propose des boutons qui remplissent les mêmes fonctions que les raccourcis clavier ci-dessus.
 
-1. Scroll the rightmost section to the **middle** control.
-2. Click the left or right button to align the left or right subtitle to the current timestamp.
-3. Click and **hold** the left or right button to move the current timestamp `100ms` to the left or right.
+1. Faites défiler la section la plus à droite jusqu’aux commandes du **milieu**.
+2. Cliquez sur le bouton gauche ou droit pour aligner le sous-titre précédent ou suivant sur l’horodatage actuel.
+3. Cliquez sur le bouton gauche ou droit et **maintenez-le enfoncé** pour déplacer l’horodatage actuel de `100ms` vers la gauche ou la droite.

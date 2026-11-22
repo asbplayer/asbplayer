@@ -1,6 +1,6 @@
 ---
 sidebar_position: 1.5
-title: Recipes
+title: Recettes
 ---
 
 import project from '@site/src/project';
@@ -67,41 +67,41 @@ export const unfamiliarWordRepeatSettings = {
   subtitleTriggerEndOffset: 0,
 };
 
-# Recipes
+# Recettes
 
-Recipes combine playback modes and playback settings so you can switch between learning activities. Choose a recipe in **Settings > Playback**, beside the playback modes in the player controls, or in the mobile overlay. Choose **Disabled** to return to your underlying settings. Your saved playback settings, remembered playback rate, and remembered modes are preserved while a recipe is active.
+Les recettes combinent des modes et des paramètres de lecture pour vous permettre de passer d’une activité d’apprentissage à une autre. Choisissez une recette dans **Paramètres > Lecture**, à côté des modes de lecture dans les commandes du lecteur ou dans l’interface superposée mobile. Choisissez **Désactivé** pour revenir à vos paramètres habituels. Vos paramètres de lecture enregistrés, votre vitesse de lecture mémorisée et vos modes mémorisés sont préservés tant qu’une recette est active.
 
-## Create and edit a recipe
+## Créer et modifier une recette
 
-Select **Edit Recipe** in the Playback tab. If a recipe is selected, you start with that recipe; otherwise you start with your current playback settings. Choose the playback modes and change the settings you want to include. These changes stay in a draft and do not affect playback until saved.
+Dans l’onglet Lecture, sélectionnez **Modifier la recette**. Si une recette est sélectionnée, vous partez de celle-ci ; sinon, vous partez des paramètres de lecture actuels. Choisissez les modes de lecture et modifiez les paramètres à inclure. Ces modifications restent dans un brouillon et ne changent pas la lecture tant qu’elles ne sont pas enregistrées.
 
-Select **Save Recipe** to review the settings and enter a name of up to 100 characters. You can remove individual settings from the preview; omitted settings use your underlying settings. Playback modes are always specified as a complete combination.
+Sélectionnez **Enregistrer la recette** pour vérifier les paramètres et saisir un nom de 100 caractères maximum. Vous pouvez retirer certains paramètres de l’aperçu ; ceux qui sont omis utilisent vos paramètres habituels. Les modes de lecture sont toujours définis comme une combinaison complète.
 
-When editing an existing recipe, leaving its name untouched updates it. Typing in the name field creates a new recipe, even if you return to the original name. Select **Cancel** to discard the draft.
+Lorsque vous modifiez une recette existante, ne changez pas son nom pour la mettre à jour. Saisir un nom crée une nouvelle recette, même si vous rétablissez ensuite le nom d’origine. Sélectionnez **Annuler** pour abandonner le brouillon.
 
-## Import and share
+## Importer et partager
 
-Select **Import Recipe**, paste the recipe's JSON, review its settings, and confirm. You can change its name and remove settings before importing. Imported recipes are appended to your list and selected. Unknown settings and invalid setting values are ignored. The name and playback modes must be valid.
+Sélectionnez **Importer une recette**, collez le JSON de la recette, vérifiez ses paramètres et confirmez. Vous pouvez modifier son nom et retirer des paramètres avant l’importation. Les recettes importées sont ajoutées à la fin de votre liste et sélectionnées. Les paramètres inconnus et les valeurs non valides sont ignorés. Le nom et les modes de lecture doivent être valides.
 
-You can also open an import link. It opens the web app with the Playback tab and import preview ready; the recipe takes effect after you confirm the import.
+Vous pouvez également ouvrir un lien d’importation. L’application web s’ouvre dans l’onglet Lecture avec l’aperçu d’importation prêt ; la recette prend effet après confirmation de l’importation.
 
-Open a recipe's preview icon in the dropdown to copy its JSON or share its import URL. The same preview lets you delete the recipe with confirmation. Move recipes with the up/down buttons or drag them in the dropdown. Selection follows a recipe when it moves; deleting the selected recipe disables recipes.
+Ouvrez l’aperçu d’une recette depuis le menu déroulant pour copier son JSON ou partager son URL d’importation. Vous pouvez également supprimer la recette depuis cet aperçu, après confirmation. Déplacez les recettes avec les boutons haut/bas ou en les faisant glisser dans le menu. La sélection suit la recette lorsqu’elle est déplacée ; la suppression de la recette sélectionnée désactive les recettes.
 
-## Keyboard shortcuts
+## Raccourcis clavier
 
-Configure **Cycle through recipes forward**, **Cycle through recipes backwards**, and **Toggle recipe #1** through **#10** under **Keyboard Shortcuts > Playback**. Toggling the active recipe disables recipes. Cycling follows the list order and includes **Disabled**. Playback setting and mode shortcuts show a notification while a recipe is active; edit or disable the recipe to change those settings.
+Configurez **Passer à la recette suivante**, **Passer à la recette précédente** et **Activer/désactiver la recette n° 1** à **10** dans **Raccourcis clavier > Lecture**. Le raccourci d’activation/désactivation de la recette active désactive les recettes. Le cycle suit l’ordre de la liste et comprend **Désactivé**. Les raccourcis des paramètres et des modes de lecture affichent une notification lorsqu’une recette est active ; modifiez ou désactivez la recette pour changer ces paramètres.
 
-## Common recipes
+## Recettes courantes
 
-These contain some useful preset recipes for common learning activities. If you have any that you want to share or need a missing feature to create the perfect recipe, you can request them on <a href={project.urls.discord}>Discord</a> or on <a href={`${project.urls.repo}/issues/new/choose`}>GitHub</a>.
+Voici des recettes prédéfinies utiles pour des activités d’apprentissage courantes. Si vous souhaitez partager une recette ou demander une fonctionnalité manquante pour créer la recette idéale, vous pouvez le faire sur <a href={project.urls.discord}>Discord</a> ou sur <a href={`${project.urls.repo}/issues/new/choose`}>GitHub</a>.
 
-### Normal mode
+### Mode normal
 
-Use your usual playback settings without an automatic learning mode. We recommend keeping your non-recipe settings as plain as possible so that `Disabled` maps to normal playback behavior.
+Utilisez vos paramètres habituels sans mode d’apprentissage automatique. Nous vous recommandons de garder des paramètres simples en dehors des recettes afin que `Désactivé` corresponde à un comportement de lecture normal.
 
-### Dialogue focus
+### Se concentrer sur les dialogues
 
-Focus on dialogue by combining condensed playback with fast-forward. Skip gaps using a 5-second minimum skip interval and fast-forward remaining qualifying gaps at 3× with a 1-second minimum interval. Keep 150 ms of context on either side of each gap, with dialogue at your underlying playback speed.
+Concentrez-vous sur les dialogues en combinant la lecture condensée et l’avance rapide. Ignorez les silences d’au moins 5 secondes, puis accélérez les autres silences admissibles à 3×, avec un intervalle minimum d’une seconde. Conservez 150 ms de contexte de part et d’autre de chaque silence et lisez les dialogues à votre vitesse habituelle.
 
 <RecipePreset
   recipe={{
@@ -113,9 +113,9 @@ Focus on dialogue by combining condensed playback with fast-forward. Skip gaps u
   }}
 />
 
-### Gap fast-forward
+### Avance rapide dans les silences
 
-Watch the entire video while fast-forwarding qualifying gaps at 3× with a 1-second minimum interval. Keep 150 ms of context on either side of each gap, with dialogue at your underlying playback speed.
+Regardez toute la vidéo en accélérant à 3× les silences admissibles d’au moins une seconde. Conservez 150 ms de contexte de part et d’autre de chaque silence et lisez les dialogues à votre vitesse habituelle.
 
 <RecipePreset
   recipe={{
@@ -127,9 +127,9 @@ Watch the entire video while fast-forwarding qualifying gaps at 3× with a 1-sec
   }}
 />
 
-### Reading mode
+### Mode lecture
 
-Pause at the start of each subtitle to read and look up words, then resume manually to hear the audio with subtitles visible. Hovering over subtitles during playback also pauses the video; moving away resumes it.
+Mettez la lecture en pause au début de chaque sous-titre pour le lire et rechercher des mots, puis reprenez-la manuellement pour entendre l’audio avec les sous-titres visibles. Survoler les sous-titres pendant la lecture met également la vidéo en pause ; éloigner le pointeur reprend la lecture.
 
 <RecipePreset
   gapVariants
@@ -148,9 +148,9 @@ Pause at the start of each subtitle to read and look up words, then resume manua
   }}
 />
 
-### Listening mode
+### Mode écoute
 
-Listen without subtitles, then pause automatically at the end of each subtitle to reveal the text and check your understanding. Resume manually when ready.
+Écoutez sans sous-titres, puis mettez automatiquement la lecture en pause à la fin de chaque sous-titre pour afficher le texte et vérifier votre compréhension. Reprenez manuellement lorsque vous êtes prêt.
 
 <RecipePreset
   gapVariants
@@ -168,9 +168,9 @@ Listen without subtitles, then pause automatically at the end of each subtitle t
   }}
 />
 
-### Audio only
+### Audio uniquement
 
-Listen continuously with subtitles hidden during playback. Manually pause to reveal the current subtitle when you need help.
+Écoutez sans interruption, avec les sous-titres masqués pendant la lecture. Mettez manuellement la lecture en pause pour afficher le sous-titre actuel si vous avez besoin d’aide.
 
 <RecipePreset
   gapVariants
@@ -184,9 +184,9 @@ Listen continuously with subtitles hidden during playback. Manually pause to rev
   }}
 />
 
-### Intensive listening
+### Écoute intensive
 
-Listen to each subtitle three times, with a 1-second pause after each pass. Subtitles stay hidden for the first two passes and appear on the final replay to check your understanding. Playback resumes automatically after each pause, customize the 1s pause duration as needed.
+Écoutez chaque sous-titre trois fois, avec une pause d’une seconde après chaque passage. Les sous-titres restent masqués lors des deux premiers passages et apparaissent à la dernière répétition pour vérifier votre compréhension. La lecture reprend automatiquement après chaque pause ; adaptez la durée de la pause d’une seconde si nécessaire.
 
 <RecipePreset
   gapVariants
@@ -208,11 +208,11 @@ Listen to each subtitle three times, with a 1-second pause after each pass. Subt
   }}
 />
 
-### Primed listening
+### Écoute préparée
 
-Pause at the start of each subtitle to read it in your native language, let it disappear, then listen to the audio without subtitles. Reading time is 80 ms per character, with a minimum of 1 second and a maximum of 6 seconds. After the text disappears, playback stays paused for another 500 ms before resuming automatically. You can adjust these timings when editing the recipe.
+Mettez la lecture en pause au début de chaque sous-titre pour le lire dans votre langue maternelle, puis écoutez l’audio sans sous-titres après sa disparition. Le temps de lecture est de 80 ms par caractère, avec un minimum d’une seconde et un maximum de six secondes. Après la disparition du texte, la lecture reste en pause pendant 500 ms supplémentaires avant de reprendre automatiquement. Vous pouvez modifier ces durées en modifiant la recette.
 
-Choose the tracks used to calculate reading time under **Subtitle tracks affected by playback modes and keyboard shortcuts**.
+Choisissez les pistes utilisées pour calculer le temps de lecture dans **Pistes de sous-titres concernées par les modes de lecture et les raccourcis clavier**.
 
 <RecipePreset
   gapVariants
@@ -234,9 +234,9 @@ Choose the tracks used to calculate reading time under **Subtitle tracks affecte
   }}
 />
 
-### Read aloud
+### Lire à voix haute
 
-Read each subtitle aloud before hearing the original audio, then compare your pronunciation and rhythm. Playback pauses at the start with subtitles visible and resumes automatically after 80 ms per character, bounded to 1–6 seconds. Each subtitle repeats once. Adjust the pause timings to give yourself enough speaking time.
+Lisez chaque sous-titre à voix haute avant d’entendre l’audio d’origine, puis comparez votre prononciation et votre rythme. La lecture se met en pause au début, sous-titres visibles, puis reprend automatiquement après 80 ms par caractère, dans une limite de 1 à 6 secondes. Chaque sous-titre est répété une fois. Ajustez les durées de pause pour avoir suffisamment de temps pour parler.
 
 <RecipePreset
   gapVariants
@@ -260,9 +260,9 @@ Read each subtitle aloud before hearing the original audio, then compare your pr
   }}
 />
 
-### Shadowing
+### Répétition simultanée
 
-Speak alongside or slightly behind the original audio, matching its rhythm and pronunciation with subtitles visible. Each subtitle repeats once, with a 1-second pause at the end of each pass before playback resumes automatically.
+Parlez en même temps que l’audio d’origine ou avec un léger décalage, en imitant son rythme et sa prononciation, sous-titres visibles. Chaque sous-titre est répété une fois, avec une pause d’une seconde à la fin de chaque passage avant la reprise automatique.
 
 <RecipePreset
   gapVariants
@@ -284,9 +284,9 @@ Speak alongside or slightly behind the original audio, matching its rhythm and p
   }}
 />
 
-### Recall
+### Rappel
 
-Listen to the audio, then reproduce the line aloud from memory during the automatic pause at its end. Subtitles stay hidden during playback and automatic pauses. Speaking time is 80 ms per character, bounded to 1–6 seconds, and each subtitle repeats once. Adjust the pause timings as needed; manually pause during a replay to reveal the text when you need help.
+Écoutez l’audio, puis répétez la réplique de mémoire à voix haute pendant la pause automatique à la fin du sous-titre. Les sous-titres restent masqués pendant la lecture et les pauses automatiques. Le temps de parole est de 80 ms par caractère, dans une limite de 1 à 6 secondes, et chaque sous-titre est répété une fois. Ajustez les durées de pause si nécessaire ; mettez manuellement la lecture en pause pendant une répétition pour afficher le texte si vous avez besoin d’aide.
 
 <RecipePreset
   gapVariants
@@ -309,15 +309,15 @@ Listen to the audio, then reproduce the line aloud from memory during the automa
   }}
 />
 
-## Annotation Recipes
+## Recettes d’annotation
 
-These presets require [Annotation](./annotation.md) to be enabled as they use its data. If you have any that you want to share or need a missing feature to create the perfect recipe, you can request them on <a href={project.urls.discord}>Discord</a> or on <a href={`${project.urls.repo}/issues/new/choose`}>GitHub</a>.
+Ces préréglages nécessitent l’activation de l’[annotation](./annotation.md), car ils utilisent ses données. Si vous souhaitez partager une recette ou demander une fonctionnalité manquante pour créer la recette idéale, vous pouvez le faire sur <a href={project.urls.discord}>Discord</a> ou sur <a href={`${project.urls.repo}/issues/new/choose`}>GitHub</a>.
 
-Load your target-language subtitles as **Track 1**. These presets use that track for playback and word selection. **Unfamiliar** means **Uncollected** or **Unknown**. Other annotation display preferences, such as readings and colors, use your underlying settings.
+Chargez les sous-titres dans la langue que vous apprenez sur la **Piste 1**. Ces préréglages utilisent cette piste pour la lecture et la sélection des mots. **Inconnu** signifie **Non collecté** ou **Inconnu**. Les autres préférences d’affichage des annotations, comme les lectures et les couleurs, suivent vos paramètres habituels.
 
-### Unfamiliar-word rescue
+### Repérer les mots inconnus
 
-Watch with subtitles visible. When a line contains an unfamiliar word, pause for 1 second at its end, then replay it once. Other lines continue uninterrupted. The first unfamiliar word is selected during the pause for lookup. Adjust the pause duration if you need more time.
+Regardez la vidéo avec les sous-titres visibles. Lorsqu’une réplique contient un mot inconnu, la lecture se met en pause pendant une seconde à la fin, puis la réplique est répétée une fois. Les autres répliques continuent sans interruption. Le premier mot inconnu est sélectionné pendant la pause afin de pouvoir le rechercher. Augmentez la durée de pause si vous avez besoin de plus de temps.
 
 <RecipePreset
   gapVariants
@@ -334,11 +334,11 @@ Watch with subtitles visible. When a line contains an unfamiliar word, pause for
   }}
 />
 
-### i+1 mining
+### Mining i+1
 
-Focus on subtitles containing exactly one Uncollected token. Condensed playback skips between qualifying lines, and playback pauses at each line's end until you resume manually, selecting the Uncollected token for inspection or mining.
+Concentrez-vous sur les sous-titres contenant exactement un mot **Non collecté**. La lecture condensée passe d’une réplique admissible à l’autre et se met en pause à la fin de chacune jusqu’à ce que vous la repreniez manuellement. Le mot **Non collecté** est sélectionné pour que vous puissiez l’examiner ou l’extraire.
 
-This finds i+1 candidates rather than guaranteeing that every other word is known: a line can also contain Unknown words, and repeated occurrences of the same Uncollected word count separately. Mining remains a manual action.
+Cette méthode repère des phrases candidates i+1, sans garantir que tous les autres mots sont connus : une réplique peut aussi contenir des mots **Inconnus**, et les répétitions d’un même mot **Non collecté** sont comptées séparément. Le mining reste manuel.
 
 <RecipePreset
   recipe={{
@@ -362,9 +362,9 @@ This finds i+1 candidates rather than guaranteeing that every other word is know
   }}
 />
 
-### Unfamiliar-word hints
+### Indices sur les mots inconnus
 
-Listen with unfamiliar words visible and familiar words hidden. Lines containing unfamiliar words pause for 1 second at their end, revealing the full text, then replay once with the hints restored. The first unfamiliar word is selected during the pause for lookup. Lines with no unfamiliar words have no caption when fully tokenized.
+Écoutez avec les mots inconnus visibles et les mots familiers masqués. Les répliques contenant un mot inconnu se mettent en pause pendant une seconde à la fin pour révéler le texte complet, puis sont répétées une fois avec les indices rétablis. Le premier mot inconnu est sélectionné pendant la pause pour être recherché. Les répliques sans mot inconnu n’affichent pas de sous-titre si elles sont entièrement analysées.
 
 <RecipePreset
   gapVariants
@@ -386,9 +386,9 @@ Listen with unfamiliar words visible and familiar words hidden. Lines containing
   }}
 />
 
-### Unfamiliar-word cloze
+### Texte à trous avec des mots inconnus
 
-Read the familiar parts of each subtitle while unfamiliar words remain hidden, and try supplying the missing words from the audio and context. Lines containing unfamiliar words pause for 1 second at their end to reveal the full text, then replay once with the gaps restored. Ignored words remain visible.
+Lisez les parties familières de chaque sous-titre tandis que les mots inconnus restent masqués, et essayez de retrouver les mots manquants grâce à l’audio et au contexte. Les répliques contenant des mots inconnus se mettent en pause pendant une seconde à la fin pour révéler le texte complet, puis sont répétées une fois avec les blancs rétablis. Les mots ignorés restent visibles.
 
 <RecipePreset
   gapVariants
@@ -410,11 +410,11 @@ Read the familiar parts of each subtitle while unfamiliar words remain hidden, a
   }}
 />
 
-### Adaptive listening pace
+### Rythme d’écoute adaptatif
 
-Play dialogue at 1× when its estimated comprehension is 60% or lower, increasing gradually to 1.8× at 100%. Condensed playback skips gaps using a 1-second minimum interval, keeping 150 ms of context on either side. Qualifying gaps that remain play at 1.8×.
+Lisez les dialogues à 1× lorsque leur compréhension estimée est inférieure ou égale à 60 %, puis augmentez progressivement jusqu’à 1,8× à 100 %. La lecture condensée ignore les silences d’au moins une seconde en conservant 150 ms de contexte de chaque côté. Les silences admissibles restants sont lus à 1,8×.
 
-Adjust the base and fast-forward speeds when editing the recipe, keeping the fast-forward speed higher than the base speed.
+Lorsque vous modifiez la recette, ajustez les vitesses de base et d’avance rapide en veillant à ce que cette dernière soit supérieure à la vitesse de base.
 
 <RecipePreset
   recipe={{

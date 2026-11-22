@@ -6,46 +6,46 @@ import project from '@site/src/project';
 
 # Annotation {#annotation}
 
-asbplayer can annotate subtitles to better assist with language learning. Annotation features include:
+asbplayer peut annoter les sous-titres pour faciliter l’apprentissage des langues. Les fonctionnalités d’annotation comprennent :
 
-- **Word Styling**: color/underline/outline, etc. based on a word's status
-    - known status can be sourced from and synced with Anki, WaniKani, and/or tracked locally in asbplayer (includes import/export features to help seed known words)
-- **Reading Annotation**: readings displayed above each word or based on status
-- **Frequency Annotation**: rank-based frequency displayed below each word or based on status (requires at least on rank-based frequency dictionary)
-- **Pitch Accent Annotation**: accent patterns displayed on furigana or kana words (requires at least one pitch accent dictionary)
-- **Glossary Annotation**: short definitions or explanations displayed for each word
-- **Statistics and Comprehension**: provides insights into your known words for the current media.
-- **Adaptive Playback**: uses playback modes and annotation data to optimize your learning experience.
-- **Word Browser**: manage local and view words synced from external sources.
-- **Many more features for future releases!**
+- **Mise en forme des mots** : couleur, soulignement, contour, etc. selon le statut du mot
+    - les statuts connus peuvent provenir d’Anki ou de WaniKani, être synchronisés avec ces services et/ou être suivis localement dans asbplayer (des fonctions d’importation et d’exportation permettent d’ajouter des mots connus)
+- **Annotation de lecture** : lectures affichées au-dessus de chaque mot ou selon son statut
+- **Annotation de fréquence** : fréquence basée sur le rang, affichée sous chaque mot ou selon son statut (nécessite au moins un dictionnaire de fréquence basé sur le rang)
+- **Annotation de l’accent tonal** : motifs accentuels affichés sur les furigana ou les mots en kana (nécessite au moins un dictionnaire d’accent tonal)
+- **Annotation de glossaire** : courtes définitions ou explications affichées pour chaque mot
+- **Statistiques et compréhension** : informations sur les mots que vous connaissez dans le média actuel.
+- **Lecture adaptative** : utilise les modes de lecture et les données d’annotation pour optimiser votre apprentissage.
+- **Navigateur de mots** : gestion des mots locaux et consultation des mots synchronisés depuis des sources externes.
+- **Et bien d’autres fonctionnalités à venir !**
 
 :::info
-Annotation requires a configured [Yomitan](https://yomitan.wiki/) instance and the [yomitan-api](https://github.com/yomidevs/yomitan-api).
+L’annotation nécessite une instance [Yomitan](https://yomitan.wiki/) configurée ainsi que [yomitan-api](https://github.com/yomidevs/yomitan-api).
 
-If you rely on the **local word database**, installing the asbplayer browser extension is recommended so your browser is less likely to delete stored words. If you can’t install the extension, consider periodically exporting your settings and/or local words as a backup.
+Si vous utilisez la **base de données de mots locale**, il est recommandé d’installer l’extension de navigateur asbplayer afin de réduire le risque que votre navigateur supprime les mots enregistrés. Si vous ne pouvez pas installer l’extension, pensez à exporter régulièrement vos paramètres et/ou vos mots locaux en guise de sauvegarde.
 :::
 
-## Setup {#setup}
+## Configuration {#setup}
 
-1. Open asbplayer **Settings**.
-2. Go to the **Annotation** section.
-3. Select the track you want to configure.
-4. Configure the **Yomitan URL** for that track.
-    - You will need a configured [Yomitan](https://yomitan.wiki/) instance and the [yomitan-api](https://github.com/yomidevs/yomitan-api).
-    - If the URL is invalid or unreachable, asbplayer will show an error next to the setting.
-    - Frequency information requires at least one rank-based frequency dictionary to be available in your Yomitan instance.
-5. (Anki users) Configure which cards to source known status information from
-    - [`Anki decks`](../reference/settings.md#anki-decks) should typically be left blank to source from all decks, filtering by the fields is usually sufficient.
-    - [`Anki word fields`](../reference/settings.md#anki-word-fields) correspond to the field on the Anki note that contains only the target word.
-    - [`Anki sentence fields`](../reference/settings.md#anki-sentence-fields) should only be used for Anki notes that do not have a dedicated word field (such as sentence decks). These words are treated as a fallback if a word isn't present in the Anki word fields.
-    - To populate the database, use [`Re-build Anki word database`](../reference/settings.md#re-build-anki-word-database) after configuring these fields.
-6. (WaniKani users) Visit [WaniKani > Settings > API Tokens](https://www.wanikani.com/settings/personal_access_tokens) to create a token for asbplayer.
-    - In the `Token Description` field enter `asbplayer`, leave all `Permissions` unchecked, asbplayer only needs read access to your WaniKani account.
-    - Click `Generate token` and copy the generated token into [`WaniKani API token`](../reference/settings.md#wanikani-api-token).
-    - To populate the database, use [`Re-build WaniKani word database`](../reference/settings.md#re-build-wanikani-word-database) after configuring the API token.
-7. Enable your desired annotation features (styling, reading, frequency, pitch accent, etc.) for that track. Customize other settings as desired.
-8. For detailed explanations of each option, see the [Annotation](../reference/settings.md#annotation) section of the settings reference. Keyboard actions are listed in the [Annotation keyboard shortcuts](../reference/settings.md#annotation-keyboard-shortcuts) group.
+1. Ouvrez les **paramètres** d’asbplayer.
+2. Accédez à la section **Annotation**.
+3. Sélectionnez la piste à configurer.
+4. Configurez l’**URL Yomitan** pour cette piste.
+    - Vous devez disposer d’une instance [Yomitan](https://yomitan.wiki/) configurée ainsi que de [yomitan-api](https://github.com/yomidevs/yomitan-api).
+    - Si l’URL est invalide ou inaccessible, asbplayer affiche une erreur à côté du paramètre.
+    - Les informations de fréquence nécessitent au moins un dictionnaire de fréquence basé sur le rang dans votre instance Yomitan.
+5. (Utilisateurs d’Anki) Configurez les cartes qui serviront à déterminer les statuts connus.
+    - En général, laissez [`Paquets Anki`](../reference/settings.md#anki-decks) vide pour utiliser tous les paquets ; le filtrage par champs suffit généralement.
+    - [`Champs de mots Anki`](../reference/settings.md#anki-word-fields) désigne le champ de la note Anki qui contient uniquement le mot cible.
+    - [`Champs de phrases Anki`](../reference/settings.md#anki-sentence-fields) ne doivent être utilisés que pour les notes Anki sans champ dédié au mot (comme les paquets de phrases). Les mots qu’ils contiennent servent de solution de repli si un mot ne figure pas dans les champs de mots Anki.
+    - Pour remplir la base de données, utilisez [`Reconstruire la base de données de mots Anki`](../reference/settings.md#re-build-anki-word-database) après avoir configuré ces champs.
+6. (Utilisateurs de WaniKani) Accédez à [WaniKani > Paramètres > Jetons API](https://www.wanikani.com/settings/personal_access_tokens) pour créer un jeton pour asbplayer.
+    - Dans le champ `Token Description`, saisissez `asbplayer` et laissez toutes les `Permissions` décochées : asbplayer a uniquement besoin d’un accès en lecture à votre compte WaniKani.
+    - Cliquez sur `Generate token`, puis copiez le jeton généré dans [`Jeton API WaniKani`](../reference/settings.md#wanikani-api-token).
+    - Pour remplir la base de données, utilisez [`Reconstruire la base de données de mots WaniKani`](../reference/settings.md#re-build-wanikani-word-database) après avoir configuré le jeton API.
+7. Activez les fonctions d’annotation souhaitées (mise en forme, lecture, fréquence, accent tonal, etc.) pour cette piste. Configurez les autres paramètres comme vous le souhaitez.
+8. Pour obtenir une explication détaillée de chaque option, consultez la section [Annotation](../reference/settings.md#annotation) de la référence des paramètres. Les raccourcis clavier sont répertoriés dans le groupe [Raccourcis clavier d’annotation](../reference/settings.md#annotation-keyboard-shortcuts).
 
-## Troubleshooting {#troubleshooting}
+## Dépannage {#troubleshooting}
 
-Please refer to the [common issues](../common-issues.md#annotation) section of the docs for troubleshooting annotation issues. If you can't find a solution there, please reach out on <a href={project.urls.discord}>Discord</a> or submit a <a href={`${project.urls.repo}/issues`}>bug report</a> with detailed information about your issue and steps to reproduce it.
+Pour résoudre les problèmes d’annotation, consultez la section [Problèmes fréquents](../common-issues.md#annotation) de la documentation. Si vous n’y trouvez pas de solution, contactez-nous sur <a href={project.urls.discord}>Discord</a> ou envoyez un <a href={`${project.urls.repo}/issues`}>rapport de bug</a> en décrivant le problème et les étapes permettant de le reproduire.
