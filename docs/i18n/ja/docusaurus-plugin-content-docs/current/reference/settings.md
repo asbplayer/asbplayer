@@ -669,27 +669,27 @@ WaniKaniの状態の判定方法は、[**WaniKani APIトークン**](#wanikani-a
 
 再生が続行するまでに各字幕を繰り返す回数を指定します。`0`は無限に繰り返します。
 
-字幕を表示するまでのリピート回数 {#repeats-before-showing-subtitles}
+### 字幕を表示するまでのリピート回数 {#repeats-before-showing-subtitles}
 
 リピート中の区間で、指定回数繰り返すまで字幕を非表示にします。`0`では非表示にせず、`1`では最初のリピートから表示します。
 
-字幕トリガーの開始・終了オフセット {#subtitle-trigger-start-and-end-offsets}
+### 字幕トリガーの開始・終了オフセット {#subtitle-trigger-start-and-end-offsets}
 
 自動一時停止とリピートに使う字幕の開始・終了トリガーをミリ秒単位でずらします。このオフセットは全体の字幕表示タイミングの後に適用されます。開始と終了のオフセットは個別に設定でき、正の値では再生効果が遅く、負の値では早く発生します。ずらした境界は、メディアと前後の字幕イベントの境界を越えません。ずらした開始と終了が交差した場合は、時系列上の役割が入れ替わります。
 
-早送りの最小スキップ間隔 {#fast-forward-minimum-skip-interval}
+### 早送りの最小スキップ間隔 {#fast-forward-minimum-skip-interval}
 
 字幕間の間隔がこの長さ以上の場合、間隔全体を早送りします。短い間隔は通常の再生速度のままです。
 
-早送り再生速度 {#fast-forward-playback-rate}
+### 早送り再生速度 {#fast-forward-playback-rate}
 
 早送りモードが有効なときの再生速度です。
 
-短縮プレイバックの最小スキップ間隔 {#condensed-playback-minimum-skip-interval}
+### 短縮プレイバックの最小スキップ間隔 {#condensed-playback-minimum-skip-interval}
 
 短縮プレイバックが有効な場合、次の字幕までの時間がこの値以上のときにのみ次の字幕へスキップします。
 
-字幕間隔トリガーの開始・終了オフセット {#subtitle-gap-trigger-start-and-end-offsets}
+### 字幕間隔トリガーの開始・終了オフセット {#subtitle-gap-trigger-start-and-end-offsets}
 
 早送り再生と短縮プレイバックに使う字幕間隔のトリガーをずらします。間隔開始オフセットは0以上で、字幕終了時点から後ろにトリガーを移動します。間隔終了オフセットは0以下で、次の字幕が始まる時点から前にトリガーを移動します。各間隔はメディアと前後の字幕イベントの境界を越えません。
 
@@ -753,19 +753,19 @@ WaniKaniの状態の判定方法は、[**WaniKani APIトークン**](#wanikani-a
 
 自動一時停止モードが有効なとき、一致する単語を含む字幕でのみ一時停止し、最初に一致した単語を選択します。自動一時停止では[**一時停止時に最初に一致した単語を選択**](#select-first-matching-word-on-pause)より優先されます。このドロップダウンの設定は手動一時停止時に引き続き適用されます。
 
-これらの単語を含む字幕をリピート {#repeat-subtitles-containing-these-words}
+### これらの単語を含む字幕をリピート {#repeat-subtitles-containing-these-words}
 
 リピートモードが有効なとき、一致する単語を含む字幕のみをリピートします。
 
-短縮モードでこれらの単語を含む字幕を再生 {#play-subtitles-containing-these-words-in-condensed-mode}
+### 短縮モードでこれらの単語を含む字幕を再生 {#play-subtitles-containing-these-words-in-condensed-mode}
 
 短縮モードが有効なとき、一致する単語を含む字幕を短縮タイムラインに残します。それ以外の字幕はスキップします。
 
-早送りモードでこれらの単語を含む字幕を通常速度で再生 {#play-subtitles-containing-these-words-at-normal-speed-in-fast-forward-mode}
+### 早送りモードでこれらの単語を含む字幕を通常速度で再生 {#play-subtitles-containing-these-words-at-normal-speed-in-fast-forward-mode}
 
 早送りモードが有効なとき、一致する単語を含む字幕を通常の再生速度で再生します。それ以外の字幕は早送りします。
 
-理解度に応じて早送り速度を調整 {#adjust-fast-forward-rate-by-comprehension}
+### 理解度に応じて早送り速度を調整 {#adjust-fast-forward-rate-by-comprehension}
 
 早送りモードが有効なとき、文の理解度スコアを使って字幕内の再生速度を決定します。
 
@@ -777,31 +777,31 @@ WaniKaniの状態の判定方法は、[**WaniKani APIトークン**](#wanikani-a
 
 加速を開始する理解度を設定します（0～99%、デフォルトは60%）。
 
-再生中にこれらの単語を表示 {#show-these-words-during-playback}
+### 再生中にこれらの単語を表示 {#show-these-words-during-playback}
 
 単語を表示したままにする状態と属性を選択します。
 
-単語が指定割合以上非表示になる場合、字幕全体を隠す {#whole-subtitle-hidden-percentage}
+### 単語が指定割合以上非表示になる場合、字幕全体を隠す {#whole-subtitle-hidden-percentage}
 
 表示ルールによって字幕内の単語が指定割合以上隠れる場合、字幕全体を非表示にします。たとえば**80%**に設定した場合、5語の字幕のうち4語が隠れると、表示対象に選択された1語も含めて字幕全体が非表示になります。句読点などの文字以外の記号は数えません。
 
-一致しない単語を個別に隠す {#hide-non-matching-words-individually}
+### 一致しない単語を個別に隠す {#hide-non-matching-words-individually}
 
 有効にすると、字幕が全体非表示のしきい値を下回っている間、表示ルールを満たさない単語が個別に隠されます。無効にすると、しきい値に達するまで字幕全体が表示されます。
 
-選択したカテゴリごとの最小単語数 {#minimum-words-per-selected-category}
+### 選択したカテゴリごとの最小単語数 {#minimum-words-per-selected-category}
 
 字幕内では、選択したカテゴリ（**未収集**や**無視**など）をそれぞれ個別に数えます。個数がこの下限を下回る場合、そのカテゴリの単語はルールを発動しません。`0`は下限なしを意味します。
 
-選択したカテゴリごとの最大単語数 {#maximum-words-per-selected-category}
+### 選択したカテゴリごとの最大単語数 {#maximum-words-per-selected-category}
 
 字幕内では、選択したカテゴリ（**未収集**や**無視**など）をそれぞれ個別に数えます。個数がこの上限を超える場合、そのカテゴリの単語はルールを発動しません。`0`は上限なしを意味します。
 
-単語の頻度がこの値以上の場合のみ {#only-when-word-frequency-is-at-least}
+### 単語の頻度がこの値以上の場合のみ {#only-when-word-frequency-is-at-least}
 
 一致する単語の頻度がこの値以上である必要があります。頻度がない場合は`1`として扱います。`0`は下限なしを意味します。
 
-単語の頻度がこの値以下の場合のみ {#only-when-word-frequency-is-at-most}
+### 単語の頻度がこの値以下の場合のみ {#only-when-word-frequency-is-at-most}
 
 一致する単語の頻度がこの値以下である必要があります。頻度がない場合は`1`として扱います。`0`は上限なしを意味します。
 
