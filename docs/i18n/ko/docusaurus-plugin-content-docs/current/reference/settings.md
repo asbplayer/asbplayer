@@ -6,439 +6,439 @@ import project from '@site/src/project';
 
 import NoteAddIcon from '@site/src/components/NoteAddIcon';
 
-# Settings {#settings}
+# 설정 {#settings}
 
 ## <a href={new URL('?view=settings#anki-settings', project.urls.app).href}>Anki</a> {#anki}
 
 ### AnkiConnect URL {#ankiconnect-url}
 
-URL to the AnkiConnect server running as on addon inside Anki.
+Anki 내부의 추가 기능으로 실행 중인 AnkiConnect 서버의 URL입니다.
 
-### AnkiConnect API Key {#ankiconnect-api-key}
+### AnkiConnect API 키 {#ankiconnect-api-key}
 
-API key configured in AnkiConnect when API key protection is enabled.
+API 키 보호를 사용 설정했을 때 AnkiConnect에 구성한 API 키입니다.
 
-### Refresh Anki Card Browser after updating cards {#refresh-anki-card-browser}
+### 카드 업데이트 후 Anki 카드 브라우저 새로고침 {#refresh-anki-card-browser}
 
-When enabled, refreshes the open Anki Card Browser after asbplayer updates a card so that its fields display their current values. This may bring the Card Browser window to the foreground. This setting is disabled by default.
+사용 설정하면 asbplayer가 카드를 업데이트한 후 열려 있는 Anki 카드 브라우저를 새로고침해 현재 필드 값을 표시합니다. 카드 브라우저 창이 앞으로 표시될 수 있습니다. 기본적으로 사용 중지되어 있습니다.
 
-### Deck {#deck}
+### 덱 {#deck}
 
-Anki deck where cards are sent.
+카드를 보낼 Anki 덱입니다.
 
-### Note Type {#note-type}
+### 노트 유형 {#note-type}
 
-Anki note type to use for cards. A note type defines a "model" and a "view" for the cards. More specifically, a set of card fields, and an HTML template that determines how to render those fields on the card's front and back.
+카드에 사용할 Anki 노트 유형입니다. 노트 유형은 카드의 "모델"과 "보기"를 정의합니다. 구체적으로는 카드 필드 모음과 카드 앞면 및 뒷면에서 필드를 표시하는 방식을 정하는 HTML 템플릿을 말합니다.
 
-### Card Fields {#card-fields}
+### 카드 필드 {#card-fields}
 
-Each card field setting determines what content gets mapped to which field of the configured note type. The **field label** - Sentence, Definition, Word, Image, Audio, or URL - is the **content** - and the **field value** is the **field inside the note type**.
+각 카드 필드 설정은 어떤 내용을 구성된 노트 유형의 어떤 필드에 연결할지 정합니다. **필드 레이블**(문장, 정의, 단어, 이미지, 오디오 또는 URL)은 **콘텐츠**를 지정하고, **필드 값**은 **노트 유형 안의 필드**를 지정합니다.
 
-Fields will appear in the **Anki Export Dialog** in the order that they appear in the settings. The order can be changed using the **⋮ menu** → **Move Down** or **Move Up**.
+필드는 설정에 표시된 순서대로 **Anki 내보내기 대화상자**에 나타납니다. **⋮ 메뉴** → **아래로 이동** 또는 **위로 이동**을 사용해 순서를 바꿀 수 있습니다.
 
-| Field                 | Content                                            |
+| 필드                 | 콘텐츠                                            |
 | --------------------- | -------------------------------------------------- |
-| Sentence (all tracks) | All subtitles at the mined timestamp               |
-| Definition            | The user-provided word definition                  |
-| Word                  | The user-provided word                             |
-| Audio                 | Audio recorded from video source                   |
-| Image                 | Screenshot of video source                         |
-| Source                | Subtitle file or video name and timestamp          |
-| URL                   | Current URL if card was mined from streaming video |
-| Subtitle Track 1      | Subtitles from track 1 at the mined timestamp      |
-| Subtitle Track 2      | Subtitles from track 2 at the mined timestamp      |
-| Subtitle Track 3      | Subtitles from track 3 at the mined timestamp      |
-| Custom Fields         | User-provided values                               |
+| 문장 (모든 트랙) | 마이닝한 타임스탬프의 모든 자막               |
+| 정의            | 사용자가 입력한 단어 정의                  |
+| 단어                  | 사용자가 입력한 단어                             |
+| 오디오                 | 동영상 소스에서 녹음한 오디오                   |
+| 이미지                 | 동영상 소스의 스크린샷                         |
+| 출처                | 자막 파일 또는 동영상 이름과 타임스탬프          |
+| URL                   | 스트리밍 동영상에서 마이닝한 경우 현재 URL |
+| 자막 트랙 1      | 마이닝한 타임스탬프의 트랙 1 자막      |
+| 자막 트랙 2      | 마이닝한 타임스탬프의 트랙 2 자막      |
+| 자막 트랙 3      | 마이닝한 타임스탬프의 트랙 3 자막      |
+| 사용자 지정 필드         | 사용자가 입력한 값                               |
 
-### Tags {#tags}
+### 태그 {#tags}
 
-Default tags to supply with each card.
+각 카드에 기본으로 추가할 태그입니다.
 
-## <a href={new URL('?view=settings#mining-settings', project.urls.app).href}>Mining</a> {#mining}
+## <a href={new URL('?view=settings#mining-settings', project.urls.app).href}>마이닝</a> {#mining}
 
-### Mining button default action {#mining-button-default-action}
+### 마이닝 버튼 기본 동작 {#mining-button-default-action}
 
-"Mining button" <NoteAddIcon/> refers to the leftmost button that appears in the **Overlay UI**, and the button that appears next to subtitles in the **Subtitle List**. This setting configures what those buttons do.
+"마이닝 버튼" <NoteAddIcon/>은 **오버레이 UI**에 표시되는 가장 왼쪽 버튼과 **자막 목록**에서 자막 옆에 표시되는 버튼을 가리킵니다. 이 설정에서 버튼의 동작을 지정합니다.
 
-| Setting                 | Behavior                                                                                                                                                                                               |
+| 설정                 | 동작                                                                                                                                                                                               |
 | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Show Anki dialog        | Record target subtitle in mining history and show **Anki Export Dialog**                                                                                                                               |
-| Update last card        | Record target subtitle in mining history and update the last card in the configured deck with all asbplayer-provided context - all fields except the user-provided definition, word, and custom fields |
-| Show update card dialog | Record target subtitle in mining history and show the dialog for updating the last card with asbplayer-provided context                                                                                |
-| Export card             | Record target subtitle in mining history and export a card _only_ with asbplayer-provided context - all fields except the user-provided definition, word, and custom fields                            |
-| None                    | Record target subtitle in mining history                                                                                                                                                               |
+| Anki 대화상자 표시        | 대상 자막을 마이닝 기록에 저장하고 **Anki 내보내기 대화상자** 표시                                                                                                                               |
+| 마지막 카드 업데이트        | 대상 자막을 마이닝 기록에 저장하고 구성된 덱의 마지막 카드에 asbplayer가 제공하는 문맥을 반영해 업데이트합니다(사용자가 입력한 정의, 단어 및 사용자 지정 필드는 제외). |
+| 카드 업데이트 대화상자 표시 | 대상 자막을 마이닝 기록에 저장하고 asbplayer가 제공하는 문맥으로 마지막 카드를 업데이트하는 대화상자 표시                                                                                |
+| 카드 내보내기             | 대상 자막을 마이닝 기록에 저장하고 asbplayer가 제공하는 문맥만으로 카드를 내보냅니다(사용자가 입력한 정의, 단어 및 사용자 지정 필드는 제외).                            |
+| 없음                    | 대상 자막을 마이닝 기록에 저장                                                                                                                                                               |
 
-### Post-mining playback state {#post-mining-playback-state}
+### 마이닝 후 재생 상태 {#post-mining-playback-state}
 
-Configures the desired playback state after triggering a mining action.
+마이닝 동작을 실행한 후의 재생 상태를 설정합니다.
 
-### Copy mined subtitles to clipboard {#copy-mined-subtitles-to-clipboard}
+### 마이닝한 자막을 클립보드에 복사 {#copy-mined-subtitles-to-clipboard}
 
-If enabled, copies the target subtitle to clipboard anytime mining action is triggered.
+사용 설정하면 마이닝 동작을 실행할 때마다 대상 자막을 클립보드에 복사합니다.
 
-### Always use subtitle text for sentence field {#always-use-subtitle-text-for-sentence-field}
+### 문장 필드에 항상 자막 텍스트 사용 {#always-use-subtitle-text-for-sentence-field}
 
-When enabled, fills the Sentence field with the mined subtitle text from all tracks, even if an external application supplies different sentence text. This is useful when [mining with Yomitan](../guides/one-click-mining.md).
+사용 설정하면 외부 앱에서 다른 문장 텍스트를 제공하더라도 모든 트랙에서 마이닝한 자막 텍스트를 문장 필드에 입력합니다. [Yomitan으로 마이닝](../guides/one-click-mining.md)할 때 유용합니다.
 
-### When updating last card, also update image/audio for cards that have the same subtitle text" {#update-all-cards-with-the-same-subtitle-text}
+### 마지막 카드 업데이트 시 같은 자막 텍스트가 있는 카드의 이미지/오디오도 업데이트 {#update-all-cards-with-the-same-subtitle-text}
 
-When enabled, the **Update last card** mining action also updates the audio and image fields on consecutively created notes from the same subtitle line. Each preceding note keeps its sentence, word, definition, and custom fields. Matching ignores sentence markup and allows the sentence to be part of the mined subtitle context.
+사용 설정하면 **마지막 카드 업데이트** 마이닝 동작이 같은 자막 대사에서 연이어 만든 노트의 오디오 및 이미지 필드도 업데이트합니다. 앞서 만든 각 노트의 문장, 단어, 정의 및 사용자 지정 필드는 유지됩니다. 문장 마크업은 일치 여부에 반영되지 않으며 문장이 마이닝한 자막 문맥의 일부여도 일치하는 것으로 처리됩니다.
 
-The search includes notes added within the last two Anki days and stops at the first different or missing sentence. A sentence field must be configured. This setting is disabled by default and does not affect updates to a specifically selected card.
+최근 Anki 기준 2일 이내에 추가한 노트를 검색하며 문장이 다르거나 없으면 검색을 중단합니다. 문장 필드를 구성해야 합니다. 기본적으로 사용 중지되어 있으며 특정 카드를 선택해 업데이트할 때는 영향을 주지 않습니다.
 
-### Play audio while recording from local video {#play-audio-while-recording-from-local-video}
+### 로컬 동영상 녹음 중 오디오 재생 {#play-audio-while-recording-from-local-video}
 
-asbplayer uses the browser's built-in [MediaRecorder](https://developer.mozilla.org/ja/docs/Web/API/MediaRecorder) API to record audio from local video files. This setting configures whether sound should play during recording.
+asbplayer는 브라우저에 내장된 [MediaRecorder](https://developer.mozilla.org/ja/docs/Web/API/MediaRecorder) API를 사용해 로컬 동영상 파일의 오디오를 녹음합니다. 이 설정은 녹음 중 소리를 재생할지 지정합니다.
 
-### Re-encode audio as mp3 {#re-encode-audio-as-mp3}
+### 오디오를 mp3로 다시 인코딩 {#re-encode-audio-as-mp3}
 
-Recorded audio is not encoded as an `mp3` by default. This setting will cause audio to be re-encoded as an `mp3`. In general there's no reason to turn this setting off, especially for users who want to review their cards on iOS.
+녹음한 오디오는 기본적으로 `mp3`로 인코딩되지 않습니다. 이 설정을 사용하면 오디오를 `mp3`로 다시 인코딩합니다. 특히 iOS에서 카드를 복습하려면 이 설정을 사용 중지할 이유가 거의 없습니다.
 
-### Audio padding start {#audio-padding-start}
+### 오디오 앞쪽 패딩 {#audio-padding-start}
 
-How many milliseconds **before** the target subtitle to start recording audio.
+대상 자막보다 **앞서** 오디오 녹음을 시작할 시간(밀리초)입니다.
 
-### Audio padding end {#audio-padding-end}
+### 오디오 뒤쪽 패딩 {#audio-padding-end}
 
-How many milliseconds **after** the target subtitle to stop recording audio.
+대상 자막이 끝난 뒤 오디오 녹음을 중지할 시간(밀리초)입니다.
 
-### Image capture format (website only) {#image-capture-format}
+### 이미지 캡처 형식(웹사이트 전용) {#image-capture-format}
 
-Specifies the image capture format for mined cards. Only available on the website for local video files where the only additional option is "video clip."
+마이닝한 카드의 이미지 캡처 형식을 지정합니다. 웹사이트에서 로컬 동영상 파일을 사용할 때만 제공되며 추가 옵션은 "동영상 클립"뿐입니다.
 
-### Max capture width/height {#max-capture-dimensions}
+### 최대 캡처 너비/높이 {#max-capture-dimensions}
 
-Max width/height in pixels of screenshots. `0` means "no limit."
+스크린샷의 최대 너비/높이(픽셀)입니다. `0`은 "제한 없음"을 뜻합니다.
 
-### Trim black bars from screenshots {#trim-black-bars-from-screenshots}
+### 스크린샷에서 검은 여백 자르기 {#trim-black-bars-from-screenshots}
 
-When enabled, trims black bars due to letterboxing from screenshots.
+사용 설정하면 레터박스로 생긴 검은 여백을 스크린샷에서 잘라냅니다.
 
-### Clip trim start/end {#clip-trim-start-end}
+### 클립 시작/끝 자르기 {#clip-trim-start-end}
 
-Specifies how much time to trim off the start and end of a subtitle's time interval when determining the default time interval for the video clip. Only available when the video clip image capture format is selected.
+동영상 클립의 기본 시간 범위를 정할 때 자막 시간 범위의 시작과 끝에서 잘라낼 시간을 지정합니다. 동영상 클립 이미지 캡처 형식을 선택했을 때만 사용할 수 있습니다.
 
-### Max clip length {#max-clip-length}
+### 최대 클립 길이 {#max-clip-length}
 
-Specifies the max video clip length. Only available when video clip image capture format is selected.
+동영상 클립의 최대 길이를 지정합니다. 동영상 클립 이미지 캡처 형식을 선택했을 때만 사용할 수 있습니다.
 
-### Screenshot capture delay {#screenshot-capture-delay}
+### 스크린샷 캡처 지연 시간 {#screenshot-capture-delay}
 
-How long to wait after the target subtitle appears before taking the screenshot.
+대상 자막이 표시된 후 스크린샷을 찍기까지 기다릴 시간입니다.
 
-### Surrounding subtitles count radius {#surrounding-subtitles-count-radius}
+### 주변 자막 개수 범위 {#surrounding-subtitles-count-radius}
 
-At the bottom of **Anki Export Dialog** there's a slider which can be used to adjust the selected time interval. The slider includes surrounding subtitles as additional context. This setting controls limits the number of those surrounding subtitles.
+**Anki 내보내기 대화상자** 아래쪽의 슬라이더로 선택한 시간 범위를 조정할 수 있습니다. 슬라이더에는 문맥을 위해 주변 자막도 포함됩니다. 이 설정은 주변 자막의 개수를 제한합니다.
 
-### Surrounding subtitles time radius {#surrounding-subtitles-time-radius}
+### 주변 자막 시간 범위 {#surrounding-subtitles-time-radius}
 
-At the bottom of **Anki Export Dialog** there's a slider which can be used to adjust the selected time interval. The slider includes surrounding subtitles as additional context. This setting controls the size of the allowed time interval around the target subtitle, for those surrounding subtitles.
+**Anki 내보내기 대화상자** 아래쪽의 슬라이더로 선택한 시간 범위를 조정할 수 있습니다. 슬라이더에는 문맥을 위해 주변 자막도 포함됩니다. 이 설정은 대상 자막 주변에서 허용할 시간 범위를 지정합니다.
 
-## <a href={new URL('?view=settings#subtitle-appearance', project.urls.app).href}>Subtitle appearance</a> {#subtitle-appearance}
+## <a href={new URL('?view=settings#subtitle-appearance', project.urls.app).href}>자막 모양</a> {#subtitle-appearance}
 
-### Subtitle track {#subtitle-appearance-track}
+### 자막 트랙 {#subtitle-appearance-track}
 
-asbplayer can load multiple subtitle tracks simultaneously. This dropdown selects the track(s) to which the settings below will apply. The default selection is "All." Modifying any appearance setting with "All" selected, modifies that setting for all tracks simultaneously. When you configure a track-specific value for a setting, that setting disappears from the "All" page.
+asbplayer는 여러 자막 트랙을 동시에 불러올 수 있습니다. 이 드롭다운에서 아래 설정을 적용할 트랙을 선택합니다. 기본 선택은 "모두"입니다. "모두"를 선택한 상태에서 모양 설정을 변경하면 모든 트랙에 동시에 적용됩니다. 특정 트랙에 대한 설정 값을 지정하면 해당 설정은 "모두" 페이지에서 사라집니다.
 
-### Subtitle preview {#subtitle-preview}
+### 자막 미리보기 {#subtitle-preview}
 
-Preview and edit the subtitle text used to show the effect of the appearance settings.
+모양 설정의 효과를 미리 볼 자막 텍스트를 확인하고 수정합니다.
 
-### Styling {#styling}
+### 스타일 {#styling}
 
-| Setting                           | Description                                                                          | CSS property                |
+| 설정                           | 설명                                                                          | CSS 속성                |
 | --------------------------------- | ------------------------------------------------------------------------------------ | --------------------------- |
-| Subtitle color                    | Color                                                                                | `color`                     |
-| Subtitle size                     | Size in `px`                                                                         | `font-size`                 |
-| Subtitle font thickness           | Font thickness                                                                       | `font-weight`               |
-| Subtitle outline color            | Color of the stroke                                                                  | `-webkit-text-stroke-color` |
-| Subtitle outline thickness        | Thickness of the stroke                                                              | `-webkit-text-stroke-width` |
-| Subtitle shadow color             | Color of the shadow                                                                  | `text-shadow`               |
-| Subtitle shadow thickness         | Thickness of the shadow                                                              | `text-shadow`               |
-| Subtitle background color         | Background color                                                                     | `background-color`          |
-| Subtitle background opacity       | Background opacity                                                                   | `background`                |
-| Subtitle font family              | Font. A dropdown of available fonts appears when local font access is granted.       | `font-family`               |
-| CSS:\<style key\>                 | String value of any custom CSS property added using the **Add Custom CSS** dropdown. | Custom property             |
-| Subtitle blur                     | Applies a blur effect to subtitles. Unblurs on hover.                                | `filter:blur(...)`          |
-| Image-based subtitle scale factor | Scales image-based subtitles.                                                        | —                           |
+| 자막 색상                    | 색상                                                                                | `color`                     |
+| 자막 크기                     | `px` 단위 크기                                                                         | `font-size`                 |
+| 자막 글꼴 두께           | 글꼴 두께                                                                       | `font-weight`               |
+| 자막 윤곽선 색상            | 획 색상                                                                  | `-webkit-text-stroke-color` |
+| 자막 윤곽선 두께        | 획 두께                                                              | `-webkit-text-stroke-width` |
+| 자막 그림자 색상             | 그림자 색상                                                                  | `text-shadow`               |
+| 자막 그림자 두께         | 그림자 두께                                                              | `text-shadow`               |
+| 자막 배경색         | 배경색                                                                     | `background-color`          |
+| 자막 배경 불투명도       | 배경 불투명도                                                                   | `background`                |
+| 자막 글꼴              | 글꼴. 로컬 글꼴 액세스 권한을 부여하면 사용 가능한 글꼴 드롭다운이 표시됩니다.       | `font-family`               |
+| CSS:\<style key\>                 | **사용자 지정 CSS 추가** 드롭다운에서 추가한 사용자 지정 CSS 속성의 문자열 값입니다. | 사용자 지정 속성             |
+| 자막 흐리게                     | 자막을 흐리게 표시합니다. 마우스를 올리면 선명해집니다.                                | `filter:blur(...)`          |
+| 이미지 기반 자막 크기 조정 | 이미지 기반 자막의 크기를 조정합니다.                                                        | —                           |
 
-### Layout {#layout}
+### 레이아웃 {#layout}
 
-| Setting                              | Description                                                                  |
+| 설정                              | 설명                                                                  |
 | ------------------------------------ | ---------------------------------------------------------------------------- |
-| Subtitle alignment                   | Whether to place subtitles at the top or bottom of the video element.        |
-| Subtitle position offset from bottom | Distance from the bottom of the video element of all bottom subtitle tracks. |
-| Subtitle position offset from top    | Distance from the top of the video element of all top subtitle tracks.       |
-| Subtitles width                      | Width of subtitle container, in `%` or pixels.                               |
+| 자막 정렬                   | 동영상 요소의 위 또는 아래에 자막을 배치할지 정합니다.        |
+| 아래쪽 자막 위치 오프셋 | 아래쪽에 표시되는 모든 자막 트랙과 동영상 요소 하단 사이의 거리입니다. |
+| 위쪽 자막 위치 오프셋    | 위쪽에 표시되는 모든 자막 트랙과 동영상 요소 상단 사이의 거리입니다.       |
+| 자막 너비                      | 자막 컨테이너의 너비입니다(`%` 또는 픽셀).                               |
 
-## <a href={new URL('?view=settings#keyboard-shortcuts', project.urls.app).href}>Keyboard shortcuts</a> {#keyboard-shortcuts}
+## <a href={new URL('?view=settings#keyboard-shortcuts', project.urls.app).href}>키보드 단축키</a> {#keyboard-shortcuts}
 
-Keyboard shortcuts can be used to access most of asbplayer's features.
+키보드 단축키로 asbplayer의 대부분 기능에 접근할 수 있습니다.
 
-### <a href={new URL('?view=settings#subtitle-appearance', project.urls.app).href}>Subtitles</a> keyboard shortcuts {#subtitles-keyboard-shortcuts}
+### <a href={new URL('?view=settings#subtitle-appearance', project.urls.app).href}>자막</a> 키보드 단축키 {#subtitles-keyboard-shortcuts}
 
-| Behavior                             | Default shortcut |
+| 동작                             | 기본 단축키 |
 | ------------------------------------ | ---------------- |
-| Select subtitle tracks to load.      | Ctrl + Shift + F |
-| Toggle subtitles                     | ↓                |
-| Toggle subtitle track 1 in video     | 1                |
-| Toggle subtitle track 2 in video     | 2                |
-| Toggle subtitle track 3 in video     | 3                |
-| Toggle subtitle track 1 in asbplayer | W + 1            |
-| Toggle subtitle track 2 in asbplayer | W + 2            |
-| Toggle subtitle track 3 in asbplayer | W + 3            |
-| Unblur subtitle track 1 in asbplayer | B + 1            |
-| Unblur subtitle track 2 in asbplayer | B + 2            |
-| Unblur subtitle track 3 in asbplayer | B + 3            |
-| Move bottom subtitles up             |                  |
-| Move bottom subtitles down           |                  |
-| Move top subtitles up                |                  |
-| Move top subtitles down              |                  |
+| 불러올 자막 트랙 선택      | Ctrl + Shift + F |
+| 자막 표시 전환                     | ↓                |
+| 동영상의 자막 트랙 1 전환     | 1                |
+| 동영상의 자막 트랙 2 전환     | 2                |
+| 동영상의 자막 트랙 3 전환     | 3                |
+| asbplayer의 자막 트랙 1 전환 | W + 1            |
+| asbplayer의 자막 트랙 2 전환 | W + 2            |
+| asbplayer의 자막 트랙 3 전환 | W + 3            |
+| asbplayer의 자막 트랙 1 흐리게 해제 | B + 1            |
+| asbplayer의 자막 트랙 2 흐리게 해제 | B + 2            |
+| asbplayer의 자막 트랙 3 흐리게 해제 | B + 3            |
+| 아래쪽 자막 위로 이동             |                  |
+| 아래쪽 자막 아래로 이동           |                  |
+| 위쪽 자막 위로 이동                |                  |
+| 위쪽 자막 아래로 이동              |                  |
 
-### <a href={new URL('?view=settings#mining-settings', project.urls.app).href}>Mining</a> keyboard shortcuts {#mining-keyboard-shortcuts}
+### <a href={new URL('?view=settings#mining-settings', project.urls.app).href}>마이닝</a> 키보드 단축키 {#mining-keyboard-shortcuts}
 
-| Behavior                                                                             | Default shortcut           |
+| 동작                                                                             | 기본 단축키           |
 | ------------------------------------------------------------------------------------ | -------------------------- |
-| Mine current subtitle                                                                | Ctrl + Shift + Z (website) |
-| Mine current subtitle and open Anki dialog                                           | Ctrl + Shift + X           |
-| Update last-created Anki card with asbplayer-captured screenshot, audio, etc.        | Ctrl + Shift + U           |
-| Export card to Anki, bypassing dialog.                                               |                            |
-| Manually take screenshot, overriding the one that is automatically taken when mining | Ctrl + Shift + V (website) |
-| Manually start/stop audio recording, even when a subtitle file is loaded.            | Ctrl + Shift + R (website) |
+| 현재 자막 마이닝                                                                | Ctrl + Shift + Z (website) |
+| 현재 자막을 마이닝하고 Anki 대화상자 열기                                           | Ctrl + Shift + X           |
+| asbplayer가 캡처한 스크린샷, 오디오 등으로 마지막 Anki 카드 업데이트        | Ctrl + Shift + U           |
+| 대화상자를 건너뛰고 Anki로 카드 내보내기                                               |                            |
+| 마이닝 시 자동 촬영되는 스크린샷 대신 직접 스크린샷 촬영 | Ctrl + Shift + V (website) |
+| 자막 파일을 불러온 경우에도 오디오 녹음 직접 시작/중지            | Ctrl + Shift + R (website) |
 
-### <a href={new URL('?view=settings#playback', project.urls.app).href}>Playback</a> keyboard shortcuts {#playback-keyboard-shortcuts}
+### <a href={new URL('?view=settings#playback', project.urls.app).href}>재생</a> 키보드 단축키 {#playback-keyboard-shortcuts}
 
-| Behavior                        | Default shortcut |
+| 동작                        | 기본 단축키 |
 | ------------------------------- | ---------------- |
-| Toggle side panel               | \`               |
-| Play/pause                      | Space            |
-| Toggle auto-pause               | Shift + P        |
-| Toggle condensed playback       | Shift + O        |
-| Toggle fast forward playback    | Shift + F        |
-| Toggle repeat mode              | Shift + R        |
-| Toggle when subtitles are shown |                  |
-| Cycle auto-pause resume mode    |                  |
-| Cycle through recipes forward   |                  |
-| Cycle through recipes backward  |                  |
-| Toggle recipe 1                 |                  |
-| Toggle recipe 2                 |                  |
-| Toggle recipe 3                 |                  |
-| Toggle recipe 4                 |                  |
-| Toggle recipe 5                 |                  |
-| Toggle recipe 6                 |                  |
-| Toggle recipe 7                 |                  |
-| Toggle recipe 8                 |                  |
-| Toggle recipe 9                 |                  |
-| Toggle recipe 10                |                  |
+| 사이드 패널 전환               | \`               |
+| 재생/일시 정지                      | Space            |
+| 자동 일시 정지 전환               | Shift + P        |
+| 압축 재생 전환       | Shift + O        |
+| 빨리 감기 재생 전환    | Shift + F        |
+| 반복 모드 전환              | Shift + R        |
+| 자막 표시 시점 전환 |                  |
+| 자동 일시 정지 재개 모드 순환    |                  |
+| 레시피 순방향 순환   |                  |
+| 레시피 역방향 순환  |                  |
+| 레시피 1 전환                 |                  |
+| 레시피 2 전환                 |                  |
+| 레시피 3 전환                 |                  |
+| 레시피 4 전환                 |                  |
+| 레시피 5 전환                 |                  |
+| 레시피 6 전환                 |                  |
+| 레시피 7 전환                 |                  |
+| 레시피 8 전환                 |                  |
+| 레시피 9 전환                 |                  |
+| 레시피 10 전환                |                  |
 
-### <a href={new URL('?view=settings#playback', project.urls.app).href}>Seek</a> keyboard shortcuts {#seek-keyboard-shortcuts}
+### <a href={new URL('?view=settings#playback', project.urls.app).href}>탐색</a> 키보드 단축키 {#seek-keyboard-shortcuts}
 
-| Behavior                                                                  | Default shortcut |
+| 동작                                                                  | 기본 단축키 |
 | ------------------------------------------------------------------------- | ---------------- |
-| Seek backward (default 3 seconds, [configurable](#seek-interval-seconds)) | A                |
-| Seek forward (default 3 seconds, [configurable](#seek-interval-seconds))  | D                |
-| Seek to previous subtitle                                                 | ←                |
-| Seek to next subtitle                                                     | →                |
-| Seek to beginning of current/previous subtitle                            | ↑                |
+| 뒤로 탐색(기본값 3초, [설정 가능](#seek-interval-seconds)) | A                |
+| 앞으로 탐색(기본값 3초, [설정 가능](#seek-interval-seconds))  | D                |
+| 이전 자막으로 이동                                                 | ←                |
+| 다음 자막으로 이동                                                     | →                |
+| 현재/이전 자막의 시작 부분으로 이동                            | ↑                |
 
-### <a href={new URL('?view=settings#playback', project.urls.app).href}>Playback rate</a> keyboard shortcuts {#playback-rate-keyboard-shortcuts}
+### <a href={new URL('?view=settings#playback', project.urls.app).href}>재생 속도</a> 키보드 단축키 {#playback-rate-keyboard-shortcuts}
 
-| Behavior               | Default shortcut |
+| 동작               | 기본 단축키 |
 | ---------------------- | ---------------- |
-| Increase playback rate | Ctrl + Shift + ] |
-| Decrease playback rate | Ctrl + Shift + [ |
+| 재생 속도 높이기 | Ctrl + Shift + ] |
+| 재생 속도 낮추기 | Ctrl + Shift + [ |
 
-### <a href={new URL('?view=settings#playback', project.urls.app).href}>Subtitle offset</a> keyboard shortcuts {#subtitle-offset-keyboard-shortcuts}
+### <a href={new URL('?view=settings#playback', project.urls.app).href}>자막 오프셋</a> 키보드 단축키 {#subtitle-offset-keyboard-shortcuts}
 
-| Behavior                                                                 | Default shortcut |
+| 동작                                                                 | 기본 단축키 |
 | ------------------------------------------------------------------------ | ---------------- |
-| Adjust subtitle offset so that previous subtitle is at current timestamp | Ctrl + ←         |
-| Adjust subtitle offset so that next subtitle is at current timestamp     | Ctrl + →         |
-| Adjust subtitle offset by +100ms                                         | Ctrl + Shift + ← |
-| Adjust subtitle offset by -100ms                                         | Ctrl + Shift + → |
-| Reset subtitle offset                                                    | Ctrl + Shift + ↓ |
+| 이전 자막이 현재 타임스탬프에 오도록 자막 오프셋 조정 | Ctrl + ←         |
+| 다음 자막이 현재 타임스탬프에 오도록 자막 오프셋 조정     | Ctrl + →         |
+| 자막 오프셋을 +100ms 조정                                         | Ctrl + Shift + ← |
+| 자막 오프셋을 -100ms 조정                                         | Ctrl + Shift + → |
+| 자막 오프셋 재설정                                                    | Ctrl + Shift + ↓ |
 
-### <a href={new URL('?view=settings#annotation', project.urls.app).href}>Annotation</a> keyboard shortcuts {#annotation-keyboard-shortcuts}
+### <a href={new URL('?view=settings#annotation', project.urls.app).href}>주석</a> 키보드 단축키 {#annotation-keyboard-shortcuts}
 
-| Behavior                          | Default shortcut |
+| 동작                          | 기본 단축키 |
 | --------------------------------- | ---------------- |
-| Open statistics                   | Q + S            |
-| Jump to next word                 | Q + E            |
-| Jump to previous word             | Q + W            |
-| Mark hovered word as Mature       | Q + 5            |
-| Jump to next Mature word          |                  |
-| Jump to previous Mature word      |                  |
-| Mark hovered word as Young        | Q + 4            |
-| Jump to next Young word           |                  |
-| Jump to previous Young word       |                  |
-| Mark hovered word as Graduated    | Q + 3            |
-| Jump to next Graduated word       |                  |
-| Jump to previous Graduated word   |                  |
-| Mark hovered word as Learning     | Q + 2            |
-| Jump to next Learning word        |                  |
-| Jump to previous Learning word    |                  |
-| Mark hovered word as Unknown      | Q + 1            |
-| Jump to next Unknown word         |                  |
-| Jump to previous Unknown word     |                  |
-| Mark hovered word as Uncollected  | Q + 0            |
-| Jump to next Uncollected word     |                  |
-| Jump to previous Uncollected word |                  |
-| Toggle hovered word as Ignored    | Q + I            |
-| Jump to next Ignored word         |                  |
-| Jump to previous Ignored word     |                  |
+| 통계 열기                   | Q + S            |
+| 다음 단어로 이동                 | Q + E            |
+| 이전 단어로 이동             | Q + W            |
+| 마우스를 올린 단어를 성숙으로 표시       | Q + 5            |
+| 다음 성숙 단어로 이동          |                  |
+| 이전 성숙 단어로 이동      |                  |
+| 마우스를 올린 단어를 청년으로 표시        | Q + 4            |
+| 다음 청년 단어로 이동           |                  |
+| 이전 청년 단어로 이동       |                  |
+| 마우스를 올린 단어를 졸업으로 표시    | Q + 3            |
+| 다음 졸업 단어로 이동       |                  |
+| 이전 졸업 단어로 이동   |                  |
+| 마우스를 올린 단어를 학습 중으로 표시     | Q + 2            |
+| 다음 학습 중 단어로 이동        |                  |
+| 이전 학습 중 단어로 이동    |                  |
+| 마우스를 올린 단어를 알 수 없음으로 표시      | Q + 1            |
+| 다음 알 수 없음 단어로 이동         |                  |
+| 이전 알 수 없음 단어로 이동     |                  |
+| 마우스를 올린 단어를 미수집으로 표시  | Q + 0            |
+| 다음 미수집 단어로 이동     |                  |
+| 이전 미수집 단어로 이동 |                  |
+| 마우스를 올린 단어 무시 전환    | Q + I            |
+| 다음 무시 단어로 이동         |                  |
+| 이전 무시 단어로 이동     |                  |
 
-### Seek interval (seconds) {#seek-interval-seconds}
+### 탐색 간격(초) {#seek-interval-seconds}
 
-Controls the interval used by the [Seek keyboard shortcuts](#seek-keyboard-shortcuts).
+[탐색 키보드 단축키](#seek-keyboard-shortcuts)에서 사용할 간격을 지정합니다.
 
-### Always play after invoking 'Seek to beginning of current/previous subtitle' {#always-play-on-subtitle-seek}
+### '현재/이전 자막 시작 부분으로 이동' 실행 후 항상 재생 {#always-play-on-subtitle-seek}
 
-Instead of retaining the current playback state, always play when using the [Seek keyboard shortcut](#seek-keyboard-shortcuts) that seeks to the beginning of the current/previous subtitle. Saves a keypress.
+현재 재생 상태를 유지하는 대신 [탐색 키보드 단축키](#seek-keyboard-shortcuts)로 현재/이전 자막의 시작 부분으로 이동할 때 항상 재생합니다. 키 입력을 한 번 줄일 수 있습니다.
 
-### Playback speed adjust step {#playback-speed-adjust-step}
+### 재생 속도 조정 단위 {#playback-speed-adjust-step}
 
-Increment to use when using the "increase/decrease playback rate" [keyboard shortcuts](#playback-rate-keyboard-shortcuts).
+"재생 속도 높이기/낮추기" [키보드 단축키](#playback-rate-keyboard-shortcuts)를 사용할 때 적용할 증감 값입니다.
 
-### Extension shortcuts {#extension-shortcuts}
+### 확장 프로그램 단축키 {#extension-shortcuts}
 
-When the browser extension is installed, some mining shortcuts (e.g. mine current subtitle, mine current subtitle and open Anki dialog) are implemented as browser commands rather than vanilla key event listeners, and can only be edited in the browser's extension shortcuts editor.
+브라우저 확장 프로그램이 설치되어 있으면 일부 마이닝 단축키(예: 현재 자막 마이닝, 현재 자막을 마이닝하고 Anki 대화상자 열기)는 일반 키 이벤트 리스너가 아니라 브라우저 명령으로 구현됩니다. 이 단축키는 브라우저의 확장 프로그램 단축키 편집기에서만 수정할 수 있습니다.
 
 - Chrome: `chrome://extensions/shortcuts`
 - Firefox: `about:addons` → `Manage Extension Shortcuts`
 
-## <a href={new URL('?view=settings#annotation', project.urls.app).href}>Annotation</a> {#annotation}
+## <a href={new URL('?view=settings#annotation', project.urls.app).href}>주석</a> {#annotation}
 
-### Word Browser {#word-browser}
+### 단어 브라우저 {#word-browser}
 
 :::info
-Only local words can be edited/deleted, external sources are read-only and can only update through [syncing](#re-build-anki-word-database).
+로컬 단어만 수정하거나 삭제할 수 있습니다. 외부 소스의 단어는 읽기 전용이며 [동기화](#re-build-anki-word-database)로만 업데이트할 수 있습니다.
 :::
 
-Opens the Word Browser, where you can view and manage all words in your local word database and Anki-synced word database.
+단어 브라우저를 열어 로컬 및 Anki 동기화 단어 데이터베이스의 모든 단어를 확인하고 관리합니다.
 
 :::tip
-You can lookup words in any script of the language (e.g romaji/hiragana/katakana/kanji for Japanese).
+해당 언어의 모든 문자 체계로 단어를 검색할 수 있습니다(예: 일본어의 로마자/히라가나/가타카나/한자).
 
-There are also some other common QOL substitutions, such as `e -> é` or `ss -> ß` done automatically.
+`e -> é` 또는 `ss -> ß`와 같은 일반적인 편의 치환도 자동으로 적용됩니다.
 :::
 
-### Import Words {#import-words}
+### 단어 가져오기 {#import-words}
 
-Imports words into asbplayer's **local word database**.
+asbplayer의 **로컬 단어 데이터베이스**로 단어를 가져옵니다.
 
-Imported words are considered local and take priority over the external sources when determining word status.
+가져온 단어는 로컬 단어로 간주되며 단어 상태를 판단할 때 외부 소스보다 우선합니다.
 
-The import dialog supports pasting arbitrary text (asbplayer will tokenize it) and importing previously-exported files.
+가져오기 대화상자에 임의의 텍스트를 붙여 넣거나 이전에 내보낸 파일을 가져올 수 있습니다. 텍스트는 asbplayer가 토큰으로 분리합니다.
 
 :::tip
-You can hover over words and use the [Annotation keyboard shortcuts](#annotation-keyboard-shortcuts) to change their status locally.
+단어 위에 마우스를 올리고 [주석 키보드 단축키](#annotation-keyboard-shortcuts)를 사용해 로컬 상태를 변경할 수 있습니다.
 :::
 
-### Export Words {#export-words}
+### 단어 내보내기 {#export-words}
 
-Exports your local word database so it can be backed up, moved to another device, or shared between the website and extension.
+로컬 단어 데이터베이스를 내보내 백업하거나 다른 기기로 옮기고, 웹사이트와 확장 프로그램 간에 공유할 수 있습니다.
 
-### Re-Build Anki word database {#re-build-anki-word-database}
+### Anki 단어 데이터베이스 다시 만들기 {#re-build-anki-word-database}
 
-Builds (or rebuilds) the local cache of word-status information sourced from Anki.
+Anki에서 가져온 단어 상태 정보의 로컬 캐시를 만들거나 다시 만듭니다.
 
 :::tip
-The cache is also updated automatically during playback when a track is enabled and Anki is connectable.
+트랙을 사용 설정했고 Anki에 연결할 수 있으면 재생 중에도 캐시가 자동으로 업데이트됩니다.
 
-This button is disabled unless your annotation settings [benefit from Anki integration](../common-issues.md#enable-or-disable-annotation-for-a-track).
+주석 설정이 [Anki 연동을 활용하는 경우](../common-issues.md#enable-or-disable-annotation-for-a-track)에만 이 버튼을 사용할 수 있습니다.
 
-To clear the Anki word database entries for a track, [follow these steps](../common-issues.md#clear-anki-word-database).
+트랙의 Anki 단어 데이터베이스 항목을 지우려면 [이 단계를 따르세요](../common-issues.md#clear-anki-word-database).
 :::
 
-### Re-Build WaniKani word database {#re-build-wanikani-word-database}
+### WaniKani 단어 데이터베이스 다시 만들기 {#re-build-wanikani-word-database}
 
-Builds (or rebuilds) the local cache of vocabulary information sourced from WaniKani.
+WaniKani에서 가져온 어휘 정보의 로컬 캐시를 만들거나 다시 만듭니다.
 
 :::tip
-The cache is also updated automatically during playback when a track is enabled and a token is configured.
+트랙을 사용 설정하고 토큰을 구성하면 재생 중에도 캐시가 자동으로 업데이트됩니다.
 
-This button is disabled unless your annotation settings [benefit from WaniKani integration](../common-issues.md#enable-or-disable-annotation-for-a-track).
+주석 설정이 [WaniKani 연동을 활용하는 경우](../common-issues.md#enable-or-disable-annotation-for-a-track)에만 이 버튼을 사용할 수 있습니다.
 
-To clear the WaniKani word database entries for a track, [follow these steps](../common-issues.md#clear-wanikani-word-database).
+트랙의 WaniKani 단어 데이터베이스 항목을 지우려면 [이 단계를 따르세요](../common-issues.md#clear-wanikani-word-database).
 :::
 
-### Subtitle track {#annotation-track}
+### 자막 트랙 {#annotation-track}
 
-Selects which subtitle track these annotation settings apply to.
+이 주석 설정을 적용할 자막 트랙을 선택합니다.
 
-### Colorize subtitles based on known words {#colorize-subtitles-based-on-known-words}
+### 알고 있는 단어에 따라 자막 색상 지정 {#colorize-subtitles-based-on-known-words}
 
-Enables word-status styling (uncollected/unknown/learning/etc.). Styling uses the configured [**Word color style**](#word-color-style) and [**Word status colors**](#word-status-colors).
+단어 상태(미수집/알 수 없음/학습 중 등)에 따른 스타일을 사용합니다. 스타일에는 구성된 [**단어 색상 스타일**](#word-color-style)과 [**단어 상태 색상**](#word-status-colors)을 사용합니다.
 
-### Generate statistics automatically {#generate-statistics-automatically}
+### 통계 자동 생성 {#generate-statistics-automatically}
 
-Automatically generate statistics for the current media upon load. This will also enable the statistics overlay. The [Open statistics keyboard shortcut](#annotation-keyboard-shortcuts) is in the Annotation group.
+현재 미디어를 불러올 때 통계를 자동으로 생성하고 통계 오버레이도 사용 설정합니다. [통계 열기 키보드 단축키](#annotation-keyboard-shortcuts)는 주석 그룹에 있습니다.
 
-### Display word readings {#display-word-readings}
+### 단어 읽는 법 표시 {#display-word-readings}
 
-Shows readings (e.g. furigana) above words based on the word status and states.
+단어 상태와 상태값에 따라 단어 위에 읽는 법(예: 후리가나)을 표시합니다.
 
-### Display word frequency {#display-word-frequency}
+### 단어 빈도 표시 {#display-word-frequency}
 
-Shows a rank-based frequency value below words (when available) based on status and states. This is useful for prioritizing which words are worth spending time learning.
+상태 및 상태값에 따라 단어 아래에 순위 기반 빈도 값을 표시합니다(사용 가능한 경우). 학습에 시간을 들일 가치가 있는 단어의 우선순위를 정하는 데 유용합니다.
 
 :::tip
-Frequency information requires at least one rank-based frequency dictionary to be available in your Yomitan instance. If a frequency dictionary doesn't declare its mode, asbplayer will try to infer whether it is rank-based and use it accordingly.
+빈도 정보를 사용하려면 Yomitan 인스턴스에 순위 기반 빈도 사전이 하나 이상 있어야 합니다. 빈도 사전에 모드가 지정되어 있지 않으면 asbplayer가 순위 기반인지 추정해 적용합니다.
 
-If multiple frequency numbers are available for a word, the lowest (most frequent) number is used.
+단어에 여러 빈도 값이 있으면 가장 낮은 값(가장 자주 사용됨)을 사용합니다.
 :::
 
-### Display pitch accent (Japanese) {#display-pitch-accent-japanese}
+### 피치 악센트 표시(일본어) {#display-pitch-accent-japanese}
 
 :::note
-Too see the pitch accent on furigana, it must be enabled via [**Display word readings**](#display-word-readings).
+후리가나에 피치 악센트를 표시하려면 [**단어 읽는 법 표시**](#display-word-readings)를 사용 설정해야 합니다.
 :::
 
-Shows pitch accent on furigana or the kana itself based on status and states.
+상태와 상태값에 따라 후리가나 또는 가나 자체에 피치 악센트를 표시합니다.
 
 :::info
-The attaching particle's pitch accent following a word is determined by the pitch accent of the word, if the data is available.
+단어 뒤에 붙는 조사에는 데이터가 있는 경우 해당 단어의 피치 악센트를 적용합니다.
 
-Typically only kanji would receive furigana readings but with this feature enabled all characters in a word will receive furigana readings if at least one character is kanji. This makes it easier to reading the pitch accent for compound words.
+보통 한자에만 후리가나를 표시하지만 이 기능을 사용하면 단어에 한자가 하나 이상 있을 때 모든 문자에 후리가나를 표시합니다. 복합어의 피치 악센트를 더 쉽게 읽을 수 있습니다.
 :::
 
-### Display word definitions {#display-word-definitions}
+### 단어 정의 표시 {#display-word-definitions}
 
-Controls whether short definitions or explanations are displayed for each word based on the word status and states.
+단어 상태와 상태값에 따라 각 단어의 간단한 정의나 설명을 표시할지 지정합니다.
 
-### Word field search strategy {#word-field-search-strategy}
+### 단어 필드 검색 전략 {#word-field-search-strategy}
 
-Controls how asbplayer matches a subtitle word against your known words.
+asbplayer가 자막의 단어를 알고 있는 단어와 어떻게 일치시킬지 지정합니다.
 
-- **Exact form collected**: the field must contain the exact surface form from the subtitle (running -> running).
-- **Lemma form collected**: you must have the lemma/base form collected (running -> run).
-- **Lemma or exact form collected**: treat the word as collected if either lemma or exact form matches (any of the above).
-- **Any form collected**: treat the word as collected if any related form matches (running -> run, ran, runs, etc.).
+- **정확한 형태 수집됨**: 필드에 자막의 표면형이 정확히 포함되어야 합니다(running -> running).
+- **표제어 형태 수집됨**: 표제어/기본형을 수집해야 합니다(running -> run).
+- **표제어 또는 정확한 형태 수집됨**: 둘 중 하나가 일치하면 단어를 수집된 것으로 처리합니다(위 두 옵션).
+- **모든 형태 수집됨**: 관련된 형태 중 하나라도 일치하면 단어를 수집된 것으로 처리합니다(running -> run, ran, runs 등).
 
-When **Lemma form collected**, **Lemma or exact form collected**, or **Any form collected** is selected, [**Match across language scripts**](#match-across-language-scripts) controls whether lemma-based matching may cross between different scripts for a language (e.g Kanji, Hiragana, Katakana).
+**표제어 형태 수집됨**, **표제어 또는 정확한 형태 수집됨**, **모든 형태 수집됨**을 선택하면 [**언어 문자 체계 간 일치 허용**](#match-across-language-scripts)에서 표제어 기반 일치가 한 언어의 문자 체계(예: 한자, 히라가나, 가타카나)를 넘나들 수 있는지 지정합니다.
 
-### Card choice priority {#card-choice-priority}
+### 카드 선택 우선순위 {#card-choice-priority}
 
-If multiple Anki cards match a word, this controls which card is used to determine the word's status:
+Anki 카드 여러 개가 단어와 일치하면 단어 상태를 판정할 때 사용할 카드를 지정합니다.
 
-- **Field contains exact form** (fallback to best known card if multiple)
-- **Field contains lemma** (fallback to best known card if multiple)
-- **Best known card**
-- **Least known card**
+- **필드에 정확한 형태 포함**(여러 개면 가장 잘 아는 카드 사용)
+- **필드에 표제어 포함**(여러 개면 가장 잘 아는 카드 사용)
+- **가장 잘 아는 카드**
+- **가장 덜 아는 카드**
 
-### Sentence field search strategy {#sentence-field-search-strategy}
+### 문장 필드 검색 전략 {#sentence-field-search-strategy}
 
-Controls how asbplayer searches your configured [**Anki sentence fields**](#anki-sentence-fields), it has the same options as [**Word field search strategy**](#word-field-search-strategy).
+구성된 [**Anki 문장 필드**](#anki-sentence-fields)를 asbplayer가 검색하는 방식을 지정합니다. [**단어 필드 검색 전략**](#word-field-search-strategy)과 같은 옵션을 제공합니다.
 
-When **Lemma form collected**, **Lemma or exact form collected**, or **Any form collected** is selected, [**Match across language scripts**](#match-across-language-scripts) controls whether lemma-based matching may cross between different scripts for a language (e.g Kanji, Hiragana, Katakana).
+**표제어 형태 수집됨**, **표제어 또는 정확한 형태 수집됨**, **모든 형태 수집됨**을 선택하면 [**언어 문자 체계 간 일치 허용**](#match-across-language-scripts)에서 표제어 기반 일치가 한 언어의 문자 체계(예: 한자, 히라가나, 가타카나)를 넘나들 수 있는지 지정합니다.
 
 :::tip
-Since sentences will contain multiple words thus diluting the relevance of the card state to any individual word, it's best to keep this as **Exact form collected** unless you only have sentence cards.
+문장에는 여러 단어가 포함되므로 카드 상태와 개별 단어의 관련성이 낮아질 수 있습니다. 문장 카드만 사용하는 경우가 아니라면 **정확한 형태 수집됨**을 유지하는 것이 좋습니다.
 :::
 
-### Match across language scripts {#match-across-language-scripts}
+### 언어 문자 체계 간 일치 허용 {#match-across-language-scripts}
 
-Controls whether lemma-based matching may cross between different scripts for a language (e.g Kanji, Hiragana, Katakana).
+표제어 기반 일치가 한 언어의 서로 다른 문자 체계(예: 한자, 히라가나, 가타카나)를 넘나들 수 있는지 지정합니다.
 
 ```
 if true:
@@ -451,522 +451,522 @@ if false:
 
 ### Yomitan API URL {#yomitan-api-url}
 
-The URL for the Yomitan API endpoint. If the URL is unreachable or invalid, asbplayer will show an error.
+Yomitan API 엔드포인트의 URL입니다. URL에 연결할 수 없거나 잘못된 경우 asbplayer가 오류를 표시합니다.
 
 :::tip
-You will need a configured [Yomitan](https://yomitan.wiki/) instance and the [yomitan-api](https://github.com/yomidevs/yomitan-api).
+[Yomitan](https://yomitan.wiki/) 인스턴스와 [yomitan-api](https://github.com/yomidevs/yomitan-api)를 설정해야 합니다.
 :::
 
-### Yomitan parser {#yomitan-parser}
+### Yomitan 파서 {#yomitan-parser}
 
-Selects which Yomitan parser to use for tokenizing subtitle text:
+자막 텍스트를 토큰으로 분리할 때 사용할 Yomitan 파서를 선택합니다.
 
-- **Scanning Parser (All languages)**: Yomitan's internal parser that matches the longest words from your dictionaries.
-- **MeCab (Japanese)**: Uses MeCab to parse Japanese text. Requires Yomitan to be configured with MeCab support, preferably with at least one UniDic dictionary.
+- **스캐닝 파서(모든 언어)**: 사전에서 가장 긴 단어를 찾는 Yomitan 내부 파서입니다.
+- **MeCab(일본어)**: MeCab을 사용해 일본어 텍스트를 분석합니다. Yomitan에서 MeCab 지원을 설정해야 하며 UniDic 사전이 하나 이상 있는 것이 좋습니다.
 
-### Max word length {#max-word-length}
+### 최대 단어 길이 {#max-word-length}
 
 :::info
-This setting only applies to the Scanning Parser.
+이 설정은 스캐닝 파서에만 적용됩니다.
 :::
 
-Limits the maximum word length that asbplayer will try to scan/tokenize for annotation.
+주석 처리를 위해 asbplayer가 스캔하거나 토큰으로 분리할 단어의 최대 길이를 제한합니다.
 
 :::tip
-Setting this too low will miss longer words, setting it too high may cause performance issues.
+값이 너무 낮으면 긴 단어를 놓치고, 너무 높으면 성능 문제가 발생할 수 있습니다.
 :::
 
-### Anki decks (optional) {#anki-decks}
+### Anki 덱(선택 사항) {#anki-decks}
 
-Restricts Anki searches to the selected decks. If left empty, asbplayer searches across all decks.
+Anki 검색을 선택한 덱으로 제한합니다. 비워 두면 asbplayer가 모든 덱을 검색합니다.
 
-### Anki word fields {#anki-word-fields}
+### Anki 단어 필드 {#anki-word-fields}
 
-Anki note fields that contain _only_ the target word. This is the recommended way to source known-status information from Anki.
+대상 단어만 _포함하는_ Anki 노트 필드입니다. Anki에서 알고 있는 상태 정보를 가져오는 데 권장되는 방법입니다.
 
-### Anki sentence fields {#anki-sentence-fields}
+### Anki 문장 필드 {#anki-sentence-fields}
 
-Anki note fields that contain a sentence (commonly used for sentence decks). This will be used as a fallback if there are no cards with the target word in [**Anki word fields**](#anki-word-fields).
+문장이 포함된 Anki 노트 필드입니다(주로 문장 덱에서 사용). [**Anki 단어 필드**](#anki-word-fields)에 대상 단어가 있는 카드가 없으면 대체 항목으로 사용합니다.
 
-### Mature Anki stability/interval (days) {#mature-anki-stability-interval}
+### 성숙한 Anki 카드 안정성/간격(일) {#mature-anki-stability-interval}
 
-Controls the cutoff (in days) for treating an Anki card as **Mature** versus lower maturity statuses.
+Anki 카드를 **성숙**으로 간주할 기준 일수를 지정합니다. 이보다 낮은 성숙도 상태도 구분됩니다.
 
-- **Uncollected**: not found in Anki.
-- **Unknown**: found in Anki with `is:new`.
-- **Learning**: found in Anki with `is:learn`.
-- **Graduated**: found in Anki with `-is:new -is:learn prop:s<{ceil(cutoff / 2)}`.
-- **Young**: found in Anki with `-is:new -is:learn prop:s>=${ceil(cutoff / 2)} prop:s<${cutoff}`.
-- **Mature**: found in Anki with `-is:new -is:learn prop:s>=${cutoff}`.
+- **미수집**: Anki에서 찾을 수 없습니다.
+- **알 수 없음**: `is:new`로 Anki에서 찾았습니다.
+- **학습 중**: `is:learn`으로 Anki에서 찾았습니다.
+- **졸업**: `-is:new -is:learn prop:s<{ceil(cutoff / 2)}`로 Anki에서 찾았습니다.
+- **초기**: `-is:new -is:learn prop:s>=${ceil(cutoff / 2)} prop:s<${cutoff}`로 Anki에서 찾았습니다.
+- **성숙**: `-is:new -is:learn prop:s>=${cutoff}`로 Anki에서 찾았습니다.
 
 :::tip
-If a card has its FSRS stability available (last review of the card was with FSRS enabled), it will be used instead of the interval.
+카드의 FSRS 안정성 정보를 사용할 수 있으면(마지막 복습 시 FSRS가 사용 설정된 경우) 간격 대신 이 값을 사용합니다.
 
-For more information on word statuses, see [**Word status colors**](#word-status-colors).
+단어 상태에 관한 자세한 내용은 [**단어 상태 색상**](#word-status-colors)을 참고하세요.
 :::
 
-### Treat suspended Anki cards as {#treat-suspended-anki-cards-as}
+### 정지된 Anki 카드를 다음과 같이 처리 {#treat-suspended-anki-cards-as}
 
-Controls how **suspended** cards are treated when building word status from Anki:
+Anki에서 단어 상태를 만들 때 **정지된** 카드를 처리하는 방식을 지정합니다.
 
-- **Normal**: use Anki status as-is.
-- Or choose a specific word status (e.g. **Mature**, **Unknown**, etc.) to force suspended cards to be treated as that status.
+- **기본값**: Anki 상태를 그대로 사용합니다.
+- 또는 특정 단어 상태(예: **성숙**, **알 수 없음**)를 선택해 정지된 카드를 해당 상태로 처리합니다.
 
 :::tip
-If only some of the cards for a word are suspended, the suspended cards will be filtered out and the word status will be based on the unsuspended cards.
+단어에 해당하는 카드 중 일부만 정지된 경우 정지된 카드는 필터링되고 정지되지 않은 카드로 단어 상태를 판정합니다.
 
-For more information on word statuses, see [**Word status colors**](#word-status-colors).
+단어 상태에 관한 자세한 내용은 [**단어 상태 색상**](#word-status-colors)을 참고하세요.
 :::
 
-### WaniKani API token {#wanikani-api-token}
+### WaniKani API 토큰 {#wanikani-api-token}
 
-Use the WaniKani API token to sync your known words from WaniKani. For setup, follow the instructions in the [annotations guide](../guides/annotation.md#setup).
+WaniKani API 토큰을 사용해 WaniKani에서 알고 있는 단어를 동기화합니다. 설정 방법은 [주석 안내](../guides/annotation.md#setup)를 참고하세요.
 
-For asbplayer, we only use the `vocabulary` and `kana_vocabulary` subject types to determine known words. Statuses are determined based on the SRS stage based on the configured [spaced repetition system](https://docs.api.wanikani.com/20170710/#spaced-repetition-system) for that subject. WaniKani statuses are determined as follows:
+asbplayer는 알고 있는 단어를 판정할 때 `vocabulary` 및 `kana_vocabulary` 항목 유형만 사용합니다. 상태는 해당 항목에 구성된 [간격 반복 시스템](https://docs.api.wanikani.com/20170710/#spaced-repetition-system)의 SRS 단계에 따라 판정합니다. WaniKani 상태는 다음과 같습니다.
 
-- **Uncollected**: not found in WaniKani.
-- **Unknown**: found in WaniKani with an SRS stage below `Starting stage`.
-- **Learning**: found in WaniKani with an SRS stage at or above `Starting stage` and below `Passing stage`.
-- **Graduated**: found in WaniKani with an SRS stage in the lower half of the stages between `Passing stage` and `Burning stage`.
-- **Young**: found in WaniKani with an SRS stage in the upper half of the stages between `Passing stage` and `Burning stage`.
-- **Mature**: found in WaniKani with an SRS stage at or above `Burning stage`.
+- **미수집**: WaniKani에서 찾을 수 없습니다.
+- **알 수 없음**: WaniKani에서 찾았지만 SRS 단계가 `Starting stage`보다 낮습니다.
+- **학습 중**: WaniKani에서 찾았으며 SRS 단계가 `Starting stage` 이상이고 `Passing stage` 미만입니다.
+- **졸업**: WaniKani에서 찾았으며 SRS 단계가 `Passing stage`와 `Burning stage` 사이 단계의 하위 절반에 속합니다.
+- **초기**: WaniKani에서 찾았으며 SRS 단계가 `Passing stage`와 `Burning stage` 사이 단계의 상위 절반에 속합니다.
+- **성숙**: WaniKani에서 찾았으며 SRS 단계가 `Burning stage` 이상입니다.
 
 :::tip
-For more information on word statuses, see [**Word status colors**](#word-status-colors).
+단어 상태에 관한 자세한 내용은 [**단어 상태 색상**](#word-status-colors)을 참고하세요.
 :::
 
-### Word color style {#word-color-style}
+### 단어 색상 스타일 {#word-color-style}
 
-Controls how status colors are applied to words for [**Colorize subtitles based on known words**](#colorize-subtitles-based-on-known-words):
+ [**알고 있는 단어에 따라 자막 색상 지정**](#colorize-subtitles-based-on-known-words)에서 단어에 상태 색상을 적용하는 방식을 지정합니다.
 
-- **Text**: color of the word is changed.
-- **Background**: color behind the word is changed.
-- **Underline**: underline the word with the status color.
-- **Overline**: overline the word with the status color.
-- **Outline**: outline the word with the status color.
+- **텍스트**: 단어 색상을 변경합니다.
+- **배경**: 단어 뒤의 색상을 변경합니다.
+- **밑줄**: 상태 색상으로 단어에 밑줄을 긋습니다.
+- **윗줄**: 상태 색상으로 단어 위에 줄을 긋습니다.
+- **윤곽선**: 상태 색상으로 단어 윤곽선을 표시합니다.
 
 :::tip
-When using **Outline**, you may need to set [**Subtitle outline thickness**](#subtitle-appearance-track) to `0` for the best results.
+**윤곽선**을 사용할 때는 최상의 결과를 위해 [**자막 윤곽선 두께**](#subtitle-appearance-track)를 `0`으로 설정해야 할 수 있습니다.
 :::
 
-### Thickness {#thickness}
+### 두께 {#thickness}
 
-Controls the thickness (in pixels) of **Underline**, **Overline**, and **Outline** styling.
+**밑줄**, **윗줄**, **윤곽선** 스타일의 두께(픽셀)를 지정합니다.
 
-### Highlight words on hover {#highlight-words-on-hover}
+### 마우스를 올렸을 때 단어 강조 표시 {#highlight-words-on-hover}
 
 :::info
-This highlight reflects the focus asbplayer has to register keyboard shortcuts. If the highlight does not appear, you may need to click on the player to focus it. Keyboard shortcuts only work for either the video or the subtitle list (but not both at the same time) depending on where the focus is.
+이 강조 표시는 키보드 단축키를 인식하는 asbplayer의 포커스 상태를 나타냅니다. 강조 표시가 나타나지 않으면 플레이어를 클릭해 포커스를 맞춰야 할 수 있습니다. 포커스 위치에 따라 키보드 단축키는 동영상 또는 자막 목록 중 한 곳에서만 작동합니다(두 곳에서 동시에 작동하지 않음).
 
-The highlight exists primarily to help you understand which word you're hovering over for collection. As such it requires that the hover target must be a word and that you have coloring enabled.
+강조 표시는 주로 수집할 단어 위에 마우스가 놓였는지 확인하기 위한 기능입니다. 따라서 마우스를 올린 대상이 단어여야 하고 색상 표시를 사용 설정해야 합니다.
 :::
 
-If enabled, hovering a word will highlight it which helps you understand how yomitan has tokenized it.
+사용 설정하면 단어 위에 마우스를 올릴 때 해당 단어가 강조되어 Yomitan이 텍스트를 어떻게 토큰화했는지 확인할 수 있습니다.
 
-### Only display word color on hover {#only-display-word-color-on-hover}
+### 마우스를 올렸을 때만 단어 색상 표시 {#only-display-word-color-on-hover}
 
 :::note
-This setting only applies if [**Colorize subtitles based on known words**](#colorize-subtitles-based-on-known-words) is enabled.
+이 설정은 [**알고 있는 단어에 따라 자막 색상 지정**](#colorize-subtitles-based-on-known-words)을 사용 설정한 경우에만 적용됩니다.
 :::
 
-If enabled for video or subtitle list, word colors are hidden by default and only appear when you hover over the subtitle text in the video or subtitle list respectively.
+동영상 또는 자막 목록에 사용 설정하면 기본적으로 단어 색상을 숨기고, 각각 동영상 또는 자막 목록의 자막 텍스트 위에 마우스를 올렸을 때만 표시합니다.
 
-### Only display word reading on hover {#only-display-word-reading-on-hover}
+### 마우스를 올렸을 때만 단어 읽는 법 표시 {#only-display-word-reading-on-hover}
 
 :::note
-This setting only applies if [**Display word readings**](#display-word-readings) is enabled.
+이 설정은 [**단어 읽는 법 표시**](#display-word-readings)를 사용 설정한 경우에만 적용됩니다.
 :::
 
-If enabled for video or subtitle list, word readings are hidden by default and only appear when you hover over the subtitle text in the video or subtitle list respectively.
+동영상 또는 자막 목록에 사용 설정하면 기본적으로 단어 읽는 법을 숨기고, 각각 동영상 또는 자막 목록의 자막 텍스트 위에 마우스를 올렸을 때만 표시합니다.
 
-### Only display word frequency on hover {#only-display-word-frequency-on-hover}
+### 마우스를 올렸을 때만 단어 빈도 표시 {#only-display-word-frequency-on-hover}
 
 :::note
-This setting only applies if [**Display word frequency**](#display-word-frequency) is enabled.
+이 설정은 [**단어 빈도 표시**](#display-word-frequency)를 사용 설정한 경우에만 적용됩니다.
 :::
 
-If enabled for video or subtitle list, word frequency is hidden by default and only appears when you hover over the subtitle text in the video or subtitle list respectively.
+동영상 또는 자막 목록에 사용 설정하면 기본적으로 단어 빈도를 숨기고, 각각 동영상 또는 자막 목록의 자막 텍스트 위에 마우스를 올렸을 때만 표시합니다.
 
-### Only display word definitions on hover {#only-display-word-definitions-on-hover}
+### 마우스를 올렸을 때만 단어 정의 표시 {#only-display-word-definitions-on-hover}
 
 :::note
-This setting only applies if [**Display word definitions**](#display-word-definitions) is enabled.
+이 설정은 [**단어 정의 표시**](#display-word-definitions)를 사용 설정한 경우에만 적용됩니다.
 :::
 
-If enabled for video or subtitle list, word definitions are hidden by default and only appear when you hover over the subtitle text in the video or subtitle list respectively.
+동영상 또는 자막 목록에 사용 설정하면 기본적으로 단어 정의를 숨기고, 각각 동영상 또는 자막 목록의 자막 텍스트 위에 마우스를 올렸을 때만 표시합니다.
 
-### Only display pitch accent on hover {#only-display-pitch-accent-on-hover}
+### 마우스를 올렸을 때만 피치 악센트 표시 {#only-display-pitch-accent-on-hover}
 
 :::note
-This setting only applies if [**Display pitch accent (Japanese)**](#display-pitch-accent-japanese) is enabled.
+이 설정은 [**피치 악센트 표시(일본어)**](#display-pitch-accent-japanese)를 사용 설정한 경우에만 적용됩니다.
 :::
 
-If enabled for video or subtitle list, pitch accent is hidden by default and only appears when you hover over the subtitle text in the video or subtitle list respectively.
+동영상 또는 자막 목록에 사용 설정하면 기본적으로 피치 악센트를 숨기고, 각각 동영상 또는 자막 목록의 자막 텍스트 위에 마우스를 올렸을 때만 표시합니다.
 
-### Word reading size {#word-reading-size}
+### 단어 읽는 법 크기 {#word-reading-size}
 
-Controls the size of word readings (furigana) in em units (% of subtitle font size).
+단어 읽는 법(후리가나)의 크기를 em 단위(자막 글꼴 크기의 %)로 지정합니다.
 
-### Word frequency size {#word-frequency-size}
+### 단어 빈도 크기 {#word-frequency-size}
 
-Controls the size of word frequency in em units (% of subtitle font size).
+단어 빈도 표시 크기를 em 단위(자막 글꼴 크기의 %)로 지정합니다.
 
-### Word definition size {#word-definition-size}
+### 단어 정의 크기 {#word-definition-size}
 
-Controls the size of word definitions in em units (% of subtitle font size).
+단어 정의 크기를 em 단위(자막 글꼴 크기의 %)로 지정합니다.
 
-### Pitch accent size {#pitch-accent-size}
+### 피치 악센트 크기 {#pitch-accent-size}
 
-Controls the size of pitch accent in em units (% of subtitle font size).
+피치 악센트 크기를 em 단위(자막 글꼴 크기의 %)로 지정합니다.
 
-### Word status colors {#word-status-colors}
+### 단어 상태 색상 {#word-status-colors}
 
-Each status has a configurable color and transparency used by [**Word color style**](#word-color-style) which can be individually enabled or disabled.
+각 상태에 설정 가능한 색상과 투명도가 있으며 [**단어 색상 스타일**](#word-color-style)에 사용됩니다. 상태별로 사용 여부를 설정할 수 있습니다.
 
-- **Uncollected**: Word is not present in your asbplayer database.
-- **Unknown**: Word is present but considered unknown.
-- **Learning**: Word is currently learning.
-- **Graduated**: Word has graduated from learning.
-- **Young**: Word is known, but not yet mature.
-- **Mature**: Word is fully known (mature).
+- **미수집**: asbplayer 데이터베이스에 단어가 없습니다.
+- **알 수 없음**: 단어는 있지만 알 수 없는 것으로 간주됩니다.
+- **학습 중**: 단어를 학습하고 있습니다.
+- **졸업**: 단어가 학습 단계를 마쳤습니다.
+- **초기**: 단어를 알고 있지만 아직 성숙하지 않았습니다.
+- **성숙**: 단어를 완전히 알고 있습니다.
 
 :::tip
-You can disable status stylings per your liking, e.g. disabling **Mature** to reduce clutter.
+원하는 상태 스타일을 사용 중지할 수 있습니다. 예를 들어 **성숙** 스타일을 사용 중지하면 화면을 덜 복잡하게 만들 수 있습니다.
 
-You can reuse colors (e.g. **Graduated** and **Young**) if you don't want to differentiate between certain statuses.
+특정 상태를 구분하지 않으려면 **졸업**과 **초기**처럼 같은 색상을 사용할 수 있습니다.
 
-For how Anki Card statuses are determined, see [**Mature Anki stability/interval (days)**](#mature-anki-stability-interval).
-For how WaniKani statuses are determined, see [**WaniKani API token**](#wanikani-api-token).
+Anki 카드 상태 판정 방법은 [**성숙한 Anki 카드 안정성/간격(일)**](#mature-anki-stability-interval)을 참고하세요.
+WaniKani 상태 판정 방법은 [**WaniKani API 토큰**](#wanikani-api-token)을 참고하세요.
 :::
 
-## <a href={new URL('?view=settings#playback', project.urls.app).href}>Playback</a> {#playback}
+## <a href={new URL('?view=settings#playback', project.urls.app).href}>재생</a> {#playback}
 
-### Subtitle tracks affected by playback modes and keyboard shortcuts {#playback-subtitle-tracks}
+### 재생 모드 및 키보드 단축키의 영향을 받는 자막 트랙 {#playback-subtitle-tracks}
 
-Specifies which tracks will be considered when using the [Subtitles](#subtitles-keyboard-shortcuts) and [Seek](#seek-keyboard-shortcuts) keyboard shortcuts, or when using playback modes. For example, when condensed mode is enabled, blank space to be automatically skipped, is considered to be any part of the timeline without subtitles in the tracks specified by this option.
+[자막](#subtitles-keyboard-shortcuts) 및 [탐색](#seek-keyboard-shortcuts) 키보드 단축키나 재생 모드에서 고려할 트랙을 지정합니다. 예를 들어 압축 모드를 사용하면 이 옵션에서 선택한 트랙에 자막이 없는 타임라인 구간을 자동으로 건너뜁니다.
 
-### Auto-pause when mousing over subtitles {#auto-pause-when-mousing-over-subtitles}
+### 자막 위에 마우스를 올리면 자동 일시 정지 {#auto-pause-when-mousing-over-subtitles}
 
-Auto-pause behavior when mousing over subtitles. "Enabled with auto-resume" means that playback will automatically resume when mousing off of subtitles.
+자막 위에 마우스를 올렸을 때 자동 일시 정지 동작을 지정합니다. "자동 재개 사용"은 자막에서 마우스를 옮기면 재생이 자동으로 재개됨을 뜻합니다.
 
-### Playback modes {#playback-modes}
+### 재생 모드 {#playback-modes}
 
-Playback modes can be toggled with the [Playback keyboard shortcuts](#playback-keyboard-shortcuts).
+[재생 키보드 단축키](#playback-keyboard-shortcuts)로 재생 모드를 전환할 수 있습니다.
 
-### Playback rate {#playback-rate}
+### 재생 속도 {#playback-rate}
 
-Controls the normal media playback speed, including the speed used inside subtitles while fast-forward is enabled. New playback always starts at this rate. Use the [Playback rate keyboard shortcuts](#playback-rate-keyboard-shortcuts) to adjust it while watching.
+미디어의 일반 재생 속도를 지정합니다. 빨리 감기를 사용할 때 자막 안에서 재생되는 속도도 포함됩니다. 재생은 항상 이 속도로 시작합니다. 시청 중 속도를 조정하려면 [재생 속도 키보드 단축키](#playback-rate-keyboard-shortcuts)를 사용합니다.
 
-### Show playback rate notification {#show-playback-rate-notification}
+### 재생 속도 알림 표시 {#show-playback-rate-notification}
 
-Shows a notification when the playback rate changes outside fast-forward playback.
+빨리 감기 재생 외의 상황에서 재생 속도가 바뀌면 알림을 표시합니다.
 
-### Auto-pause preference {#auto-pause-preference}
+### 자동 일시 정지 설정 {#auto-pause-preference}
 
-When auto-pause is enabled, whether to auto-pause at the start, end, or both edges of subtitles. When both edges and repeat are enabled, repeats pauses at the end before repeating, but the start pause is skipped to prevent double pausing.
+자동 일시 정지를 사용할 때 자막의 시작, 끝 또는 양쪽 경계에서 일시 정지할지 지정합니다. 양쪽 경계와 반복을 모두 사용하면 반복 전에 끝에서 일시 정지하지만, 두 번 멈추지 않도록 시작 부분의 일시 정지는 건너뜁니다.
 
-### Repeat count preference {#repeat-count-preference}
+### 반복 횟수 설정 {#repeat-count-preference}
 
-Controls how many times each subtitle repeats before playback continues. A value of `0` repeats indefinitely.
+재생을 계속하기 전에 각 자막을 반복할 횟수를 지정합니다. `0`은 무한 반복을 뜻합니다.
 
-### Repeats before showing subtitles {#repeats-before-showing-subtitles}
+### 자막을 표시하기 전 반복 횟수 {#repeats-before-showing-subtitles}
 
-Suppress subtitles in a repeating segment until it has repeated this many times. `0` adds no suppression, `1` removes suppression from the first repeat.
+반복 구간에서 지정한 횟수만큼 반복하기 전까지 자막을 숨깁니다. `0`은 숨기지 않으며 `1`은 첫 번째 반복부터 자막을 표시합니다.
 
-### Subtitle trigger start and end offsets {#subtitle-trigger-start-and-end-offsets}
+### 자막 트리거 시작 및 종료 오프셋 {#subtitle-trigger-start-and-end-offsets}
 
-Offsets the subtitle start and end triggers used by auto-pause and repeat in milliseconds. These offsets are applied after the global subtitle offset. Start and end offsets can be configured independently; positive values trigger playback effects later, while negative values trigger them earlier. Each shifted edge is limited by the media and neighboring subtitle-event boundaries. If the shifted start and end cross, their chronological roles are swapped.
+자동 일시 정지 및 반복에 사용하는 자막 시작/종료 트리거를 밀리초 단위로 조정합니다. 이 오프셋은 전역 자막 오프셋을 적용한 후 적용됩니다. 시작 및 종료 오프셋은 별도로 설정할 수 있습니다. 양수는 재생 동작을 늦추고 음수는 앞당깁니다. 이동한 각 경계는 미디어 및 인접 자막 이벤트의 경계를 넘지 않습니다. 이동한 시작과 종료가 서로 교차하면 시간 순서에 따라 역할을 바꿉니다.
 
-### Fast-forward minimum skip interval {#fast-forward-minimum-skip-interval}
+### 빨리 감기 최소 건너뛰기 간격 {#fast-forward-minimum-skip-interval}
 
-Fast-forward for the full gap between subtitles when the gap is at least this long. Shorter gaps stay at the normal playback rate.
+자막 사이 간격이 이 값 이상이면 전체 구간을 빨리 감습니다. 더 짧은 간격은 일반 재생 속도로 유지합니다.
 
-### Fast-forward playback rate {#fast-forward-playback-rate}
+### 빨리 감기 재생 속도 {#fast-forward-playback-rate}
 
-How fast to fast-forward when fast-forward mode is enabled.
+빨리 감기 모드를 사용할 때의 재생 속도입니다.
 
-### Condensed playback minimum skip interval {#condensed-playback-minimum-skip-interval}
+### 압축 재생 최소 건너뛰기 간격 {#condensed-playback-minimum-skip-interval}
 
-When condensed playback is enabled, skip to the next subtitle only if the next subtitle is at least this amount of time away.
+압축 재생을 사용할 때 다음 자막까지의 간격이 이 값 이상인 경우에만 다음 자막으로 건너뜁니다.
 
-### Subtitle gap trigger start and end offsets {#subtitle-gap-trigger-start-and-end-offsets}
+### 자막 사이 구간 트리거 시작 및 종료 오프셋 {#subtitle-gap-trigger-start-and-end-offsets}
 
-Offsets the subtitle gap triggers used by fast-forward and condensed playback. The gap start offset is non-negative and moves the trigger later from the moment the subtitle ends; the gap end offset is non-positive and moves the trigger earlier from the moment before the next subtitle. Each gap is limited by the media and neighboring subtitle-event boundaries.
+빨리 감기 및 압축 재생에서 사용하는 자막 사이 구간 트리거를 조정합니다. 구간 시작 오프셋은 음수가 아니며 자막이 끝난 시점에서 트리거를 늦춥니다. 구간 종료 오프셋은 양수가 아니며 다음 자막 직전 시점에서 트리거를 앞당깁니다. 각 구간은 미디어 및 인접 자막 이벤트의 경계를 넘지 않습니다.
 
-### Auto-pause resume mode {#auto-pause-resume-mode}
+### 자동 일시 정지 재개 모드 {#auto-pause-resume-mode}
 
-Controls how an automatic pause finishes.
+자동 일시 정지의 종료 방식을 지정합니다.
 
-- **Manual**: Playback stays paused until you resume it.
+- **수동**: 직접 재개할 때까지 일시 정지 상태를 유지합니다.
 
-- **Fixed**: Every automatic pause lasts for the same configured time.
-  - Controls [Fixed pause duration](#fixed-pause-duration) and [Resume delay after auto-pause](#resume-delay-after-auto-pause).
+- **고정**: 모든 자동 일시 정지가 같은 시간 동안 지속됩니다.
+  - [고정 일시 정지 시간](#fixed-pause-duration)과 [자동 일시 정지 후 재개 지연](#resume-delay-after-auto-pause) 설정을 사용합니다.
 
-- **Subtitle length**: The pause duration is calculated from the subtitle's character count. Only subtitles on seekable tracks are counted, so a translation track loaded alongside the target language does not inflate the pause.
-  - Controls [Minimum pause duration](#minimum-pause-duration), [Maximum pause duration](#maximum-pause-duration), [Pause time per character](#pause-time-per-character), and [Resume delay after auto-pause](#resume-delay-after-auto-pause).
+- **자막 길이**: 자막의 문자 수로 일시 정지 시간을 계산합니다. 탐색 가능한 트랙의 자막만 계산하므로 학습 언어와 함께 불러온 번역 트랙은 일시 정지 시간을 늘리지 않습니다.
+  - [최소 일시 정지 시간](#minimum-pause-duration), [최대 일시 정지 시간](#maximum-pause-duration), [문자당 일시 정지 시간](#pause-time-per-character), [자동 일시 정지 후 재개 지연](#resume-delay-after-auto-pause) 설정을 사용합니다.
 
-### Fixed pause duration {#fixed-pause-duration}
+### 고정 일시 정지 시간 {#fixed-pause-duration}
 
-The amount of time an automatic pause lasts in **Fixed** mode.
+**고정** 모드에서 자동 일시 정지가 지속되는 시간입니다.
 
-### Minimum pause duration {#minimum-pause-duration}
+### 최소 일시 정지 시간 {#minimum-pause-duration}
 
-The shortest pause allowed in **Subtitle length** mode, regardless of the subtitle's character count.
+자막 문자 수와 관계없이 **자막 길이** 모드에 적용할 수 있는 가장 짧은 일시 정지 시간입니다.
 
-### Maximum pause duration {#maximum-pause-duration}
+### 최대 일시 정지 시간 {#maximum-pause-duration}
 
-The longest pause allowed in **Subtitle length** mode. A value of `0` means there is no upper limit. A nonzero maximum cannot be lower than the minimum pause duration.
+**자막 길이** 모드에 적용할 수 있는 가장 긴 일시 정지 시간입니다. `0`은 상한이 없음을 뜻합니다. 0이 아닌 최대값은 최소 일시 정지 시간보다 낮을 수 없습니다.
 
-### Pause time per character {#pause-time-per-character}
+### 문자당 일시 정지 시간 {#pause-time-per-character}
 
-The number of milliseconds assigned to each character in **Subtitle length** mode. The character count multiplied by this value is clamped between the minimum and maximum pause durations.
+**자막 길이** 모드에서 문자마다 할당할 시간(밀리초)입니다. 문자 수에 이 값을 곱한 결과는 최소 및 최대 일시 정지 시간 사이로 제한됩니다.
 
-### Resume delay after auto-pause {#resume-delay-after-auto-pause}
+### 자동 일시 정지 후 재개 지연 {#resume-delay-after-auto-pause}
 
-In **Fixed** and **Subtitle length** modes, an automatic pause runs in two phases: the subtitle is shown for the configured pause duration, then hidden while playback stays paused for the resume delay. This setting controls the length of that second phase.
+**고정** 및 **자막 길이** 모드에서는 자동 일시 정지가 두 단계로 진행됩니다. 먼저 설정된 일시 정지 시간 동안 자막을 표시한 다음 자막을 숨기고 재개 지연 시간 동안 일시 정지 상태를 유지합니다. 이 설정은 두 번째 단계의 길이를 지정합니다.
 
-### Show subtitles {#show-subtitles}
+### 자막 표시 {#show-subtitles}
 
-- **When due**: Subtitles appear while their timing is active.
+- **표시 시간 동안**: 자막 표시 시간이 활성 상태일 때 자막을 표시합니다.
 
-- **While paused**: Subtitles appear only when they are due and playback is paused.
+- **일시 정지 중**: 자막 표시 시간 중에 재생이 일시 정지된 경우에만 자막을 표시합니다.
 
-- **While manually paused**: Subtitles appear only when they are due and playback is manually paused.
+- **수동 일시 정지 중**: 자막 표시 시간 중에 재생을 직접 일시 정지한 경우에만 자막을 표시합니다.
 
-## <a href={new URL('?view=settings#playback', project.urls.app).href}>Playback > Annotation</a> {#playback-annotation}
+## <a href={new URL('?view=settings#playback', project.urls.app).href}>재생 > 주석</a> {#playback-annotation}
 
-These settings use the word statuses, states, and frequencies from [Annotation](#annotation) for the selected subtitle track. The auto-pause, condensed, fast-forward, and repeat rules take effect while their playback modes are on. **No word filter** means no statuses or states are selected for that track. Rules apply per track: a seekable track without statuses or states selected for one of those modes keeps that mode's usual behavior, even when it plays alongside a track that has rules.
+이 설정은 선택한 자막 트랙의 [주석](#annotation)에서 단어 상태, 상태값 및 빈도 정보를 사용합니다. 자동 일시 정지, 압축, 빨리 감기, 반복 규칙은 해당 재생 모드가 켜져 있을 때 적용됩니다. **단어 필터 없음**은 해당 트랙에서 상태나 상태값을 선택하지 않았다는 뜻입니다. 규칙은 트랙별로 적용됩니다. 특정 모드의 상태나 상태값을 선택하지 않은 탐색 가능 트랙은 규칙이 있는 트랙과 함께 재생되더라도 해당 모드의 기본 동작을 유지합니다.
 
-### Subtitle track {#playback-annotation-track}
+### 자막 트랙 {#playback-annotation-track}
 
-Selects the subtitle track whose annotation playback settings you are editing. The selected track is shared with the Annotation tab.
+주석 재생 설정을 수정할 자막 트랙을 선택합니다. 선택한 트랙은 주석 탭과 공유됩니다.
 
-### Select first matching word on pause {#select-first-matching-word-on-pause}
+### 일시 정지 시 첫 번째 일치 단어 선택 {#select-first-matching-word-on-pause}
 
-Selects the first word matching any chosen status or state whenever playback pauses, including manual pauses, and after seeking while paused. Leave the selection empty to disable this behavior. Selection happens in the video player, or in the subtitle player when no video is loaded or connected.
+재생이 일시 정지될 때마다(직접 일시 정지하거나 일시 정지 상태에서 탐색한 경우 포함) 선택한 상태나 상태값과 일치하는 첫 번째 단어를 선택합니다. 이 동작을 사용하지 않으려면 선택 항목을 비워 둡니다. 동영상 플레이어에서 단어를 선택하며, 동영상이 불러와지지 않았거나 연결되지 않은 경우 자막 플레이어에서 선택합니다.
 
-When an [annotation-based auto-pause rule](#auto-pause-subtitles-containing-these-words) causes the pause, its matching word is selected instead. This dropdown continues to control selection on manual pauses.
+일시 정지가 [주석 기반 자동 일시 정지 규칙](#auto-pause-subtitles-containing-these-words)에 따른 경우에는 해당 규칙과 일치하는 단어를 선택합니다. 직접 일시 정지했을 때의 선택은 이 드롭다운 설정을 계속 따릅니다.
 
-Each of the word rules below has its own status and state selection, word-count limit, and frequency limit. A word must have a selected status or state and satisfy both limits.
+아래의 각 단어 규칙에는 상태 및 상태값 선택, 단어 수 제한, 빈도 제한이 각각 있습니다. 단어는 선택한 상태 또는 상태값에 해당하고 두 제한을 모두 만족해야 합니다.
 
-### Auto-pause subtitles containing these words {#auto-pause-subtitles-containing-these-words}
+### 다음 단어가 포함된 자막 자동 일시 정지 {#auto-pause-subtitles-containing-these-words}
 
-When auto-pause mode is on, pause only on subtitles containing a matching word and select the first matching word. This takes precedence over [**Select first matching word on pause**](#select-first-matching-word-on-pause) for automatic pauses; that dropdown still applies on manual pauses.
+자동 일시 정지 모드가 켜져 있으면 일치하는 단어가 포함된 자막에서만 일시 정지하고 첫 번째 일치 단어를 선택합니다. 자동 일시 정지에서는 [**일시 정지 시 첫 번째 일치 단어 선택**](#select-first-matching-word-on-pause)보다 이 설정이 우선합니다. 직접 일시 정지할 때는 해당 드롭다운 설정을 적용합니다.
 
-### Repeat subtitles containing these words {#repeat-subtitles-containing-these-words}
+### 다음 단어가 포함된 자막 반복 {#repeat-subtitles-containing-these-words}
 
-When repeat mode is on, repeat only subtitles containing a matching word.
+반복 모드가 켜져 있을 때 일치하는 단어가 포함된 자막만 반복합니다.
 
-### Play subtitles containing these words in condensed mode {#play-subtitles-containing-these-words-in-condensed-mode}
+### 다음 단어가 포함된 자막을 압축 모드로 재생 {#play-subtitles-containing-these-words-in-condensed-mode}
 
-When condensed mode is on, keep subtitles containing a matching word in the condensed timeline. Skip through other subtitles.
+압축 모드가 켜져 있으면 일치하는 단어가 포함된 자막을 압축 타임라인에 유지하고 다른 자막은 건너뜁니다.
 
-### Play subtitles containing these words at normal speed in fast-forward mode {#play-subtitles-containing-these-words-at-normal-speed-in-fast-forward-mode}
+### 빨리 감기 모드에서 다음 단어가 포함된 자막을 정상 속도로 재생 {#play-subtitles-containing-these-words-at-normal-speed-in-fast-forward-mode}
 
-When fast-forward mode is on, play subtitles containing a matching word at the normal playback rate. Fast-forward through other subtitles.
+빨리 감기 모드가 켜져 있으면 일치하는 단어가 포함된 자막을 일반 재생 속도로 재생하고 다른 자막은 빨리 감습니다.
 
-### Adjust fast-forward rate by comprehension {#adjust-fast-forward-rate-by-comprehension}
+### 이해도에 따라 빨리 감기 속도 조정 {#adjust-fast-forward-rate-by-comprehension}
 
-While fast-forward mode is on, use the sentence comprehension score to choose the rate within a subtitle.
+빨리 감기 모드가 켜져 있을 때 문장 이해도 점수에 따라 자막 구간 내 재생 속도를 정합니다.
 
-At or below [**Minimum comprehension**](#minimum-comprehension), use the normal playback rate; at 100%, use the configured fast-forward rate. Rates between those points are interpolated.
+[**최소 이해도**](#minimum-comprehension) 이하에서는 일반 재생 속도를 사용하고, 100%에서는 설정된 빨리 감기 속도를 사용합니다. 그 사이의 속도는 비례 계산됩니다.
 
-Changing the speed in a comprehension-controlled subtitle changes the configured fast-forward rate, then recalculates the applied rate from comprehension. This also applies when comprehension keeps the subtitle at normal speed. Keyboard shortcuts and player speed controls use the same behavior; the normal rate is unchanged.
+이해도에 따라 속도가 제어되는 자막에서 속도를 변경하면 설정된 빨리 감기 속도가 바뀌고 이해도를 바탕으로 적용 속도를 다시 계산합니다. 이해도에 따라 자막이 일반 속도로 유지되는 경우에도 마찬가지입니다. 키보드 단축키와 플레이어의 속도 컨트롤도 같은 방식으로 작동하며 일반 속도는 바뀌지 않습니다.
 
-### Minimum comprehension {#minimum-comprehension}
+### 최소 이해도 {#minimum-comprehension}
 
-Sets the percentage where acceleration starts (0–99%, default 60%).
+가속을 시작할 이해도 비율을 설정합니다(0~99%, 기본값 60%).
 
-### Show these words during playback {#show-these-words-during-playback}
+### 재생 중 다음 단어 표시 {#show-these-words-during-playback}
 
-Select the statuses and states whose words should remain visible.
+단어를 계속 표시할 상태 및 상태값을 선택합니다.
 
-### Hide the entire subtitle when at least this percentage of words would be hidden {#whole-subtitle-hidden-percentage}
+단어의 지정된 비율 이상이 숨겨질 경우 자막 전체 숨기기 {#whole-subtitle-hidden-percentage}
 
-Hide the whole subtitle when at least this percentage of its words would be hidden by the show rule. For example, at **80%**, if four words in a five-word subtitle would be hidden, the entire subtitle is hidden, including the one word selected to show. Punctuation and other non-letter characters do not count.
+표시 규칙에 따라 자막 단어의 지정된 비율 이상이 숨겨지면 자막 전체를 숨깁니다. 예를 들어 **80%**로 설정하면 다섯 단어 중 네 단어가 숨겨질 자막에서 표시 대상으로 선택된 한 단어를 포함해 자막 전체가 숨겨집니다. 문장 부호와 기타 문자가 아닌 항목은 계산하지 않습니다.
 
-### Hide non-matching words individually {#hide-non-matching-words-individually}
+일치하지 않는 단어를 개별적으로 숨기기 {#hide-non-matching-words-individually}
 
-When enabled, words that do not meet the show rule are hidden individually while the subtitle is below the whole-subtitle threshold. When disabled, the subtitle stays fully visible until the threshold is reached.
+사용 설정하면 자막 전체 숨기기 기준에 도달하기 전 표시 규칙을 충족하지 않는 단어를 개별적으로 숨깁니다. 사용 중지하면 기준에 도달할 때까지 자막 전체를 표시합니다.
 
-### Minimum words per selected category {#minimum-words-per-selected-category}
+선택한 범주별 최소 단어 수 {#minimum-words-per-selected-category}
 
-Each selected category (such as **Uncollected** or **Ignored**) is counted separately within a subtitle. If its count is below this limit, words in that category do not trigger the rule. `0` disables the limit.
+자막 내에서 선택한 각 범주(예: **미수집**, **무시됨**)를 별도로 계산합니다. 해당 범주의 단어 수가 이 제한보다 적으면 그 범주의 단어는 규칙을 실행하지 않습니다. `0`은 제한을 사용하지 않습니다.
 
-### Maximum words per selected category {#maximum-words-per-selected-category}
+선택한 범주별 최대 단어 수 {#maximum-words-per-selected-category}
 
-Each selected category (such as **Uncollected** or **Ignored**) is counted separately within a subtitle. If its count exceeds this limit, words in that category do not trigger the rule. `0` disables the limit.
+자막 내에서 선택한 각 범주(예: **미수집**, **무시됨**)를 별도로 계산합니다. 해당 범주의 단어 수가 이 제한보다 많으면 그 범주의 단어는 규칙을 실행하지 않습니다. `0`은 제한을 사용하지 않습니다.
 
-### Only when word frequency is at least {#only-when-word-frequency-is-at-least}
+단어 빈도가 다음 값 이상인 경우에만 {#only-when-word-frequency-is-at-least}
 
-A matching word must have a frequency at or above this value. Missing frequency counts as `1`. `0` disables the limit.
+일치하는 단어의 빈도가 이 값 이상이어야 합니다. 빈도 정보가 없으면 `1`로 계산합니다. `0`은 제한을 사용하지 않습니다.
 
-### Only when word frequency is at most {#only-when-word-frequency-is-at-most}
+단어 빈도가 다음 값 이하인 경우에만 {#only-when-word-frequency-is-at-most}
 
-A matching word must have a frequency at or below this value. Missing frequency counts as `1`. `0` disables the limit.
+일치하는 단어의 빈도가 이 값 이하여야 합니다. 빈도 정보가 없으면 `1`로 계산합니다. `0`은 제한을 사용하지 않습니다.
 
-## <a href={new URL('?view=settings#streaming-video', project.urls.app).href}>Streaming video</a> (extension only) {#streaming-video}
+## <a href={new URL('?view=settings#streaming-video', project.urls.app).href}>스트리밍 동영상</a> (확장 프로그램 전용) {#streaming-video}
 
-Streaming video settings are available only when the browser extension is installed.
+스트리밍 동영상 설정은 브라우저 확장 프로그램을 설치한 경우에만 사용할 수 있습니다.
 
-### When loading subtitles, also open subtitle list via the app in a separate tab {#open-subtitle-list-in-tab}
+### 자막을 불러올 때 별도 탭에서 앱으로 자막 목록도 열기 {#open-subtitle-list-in-tab}
 
-Anytime subtitles are loaded into a video element, opens the website, and syncs the loaded subtitles with the website in a separate tab.
+동영상 요소에 자막을 불러올 때마다 웹사이트를 열고 불러온 자막을 별도 탭의 웹사이트와 동기화합니다.
 
-### App URL {#app-url}
+### 앱 URL {#app-url}
 
-Determines where the extension fetches some configuration, and what URL to open when syncing subtitles to the website running in a separate tab. Essentially the website URL.
+확장 프로그램이 일부 설정을 가져올 위치와 별도 탭에서 실행 중인 웹사이트와 자막을 동기화할 때 열 URL을 지정합니다. 기본적으로 웹사이트 URL입니다.
 
-### Enable controls overlay {#enable-controls-overlay}
+### 컨트롤 오버레이 사용 설정 {#enable-controls-overlay}
 
-Display the overlay UI on video elements with loaded subtitles.
+자막을 불러온 동영상 요소에 오버레이 UI를 표시합니다.
 
-### Display subtitles {#display-subtitles}
+### 자막 표시 {#display-subtitles}
 
-Display loaded subtitles on video elements.
+불러온 자막을 동영상 요소에 표시합니다.
 
-### Record audio when mining {#record-audio-when-mining}
+### 마이닝 시 오디오 녹음 {#record-audio-when-mining}
 
-When mining a subtitle, record the audio covered by the subtitle for inclusion in the flashcard.
+자막을 마이닝할 때 해당 자막에 포함된 오디오를 녹음해 플래시카드에 추가합니다.
 
-### Take screenshot when mining {#take-screenshot-when-mining}
+### 마이닝 시 스크린샷 촬영 {#take-screenshot-when-mining}
 
-When mining a subtitle, take a screenshot for inclusion in the flashcard.
+자막을 마이닝할 때 스크린샷을 촬영해 플래시카드에 추가합니다.
 
-### Clean screenshot when mining {#clean-screenshot-when-mining}
+### 마이닝 시 스크린샷 정리 {#clean-screenshot-when-mining}
 
-When mining a subtitle and screenshots are enabled, keep the screenshot "clean" by removing any HTML elements on top of the video element before taking the screenshot.
+자막을 마이닝하고 스크린샷을 사용 설정한 경우 스크린샷을 찍기 전에 동영상 요소 위의 HTML 요소를 제거해 스크린샷을 "깔끔하게" 만듭니다.
 
-### Crop screenshot when mining {#crop-screenshot-when-mining}
+### 마이닝 시 스크린샷 자르기 {#crop-screenshot-when-mining}
 
-When mining a subtitle, crop the screenshot to the video element.
+자막을 마이닝할 때 스크린샷을 동영상 요소 크기에 맞춰 자릅니다.
 
-### Image capture format {#streaming-image-capture-format}
+### 이미지 캡처 형식 {#streaming-image-capture-format}
 
-Specifies the image capture format for cards mined from streaming video. The additional option is "Animated WebP," which captures the video playing in the tab for the subtitle's time interval - including the audio padding - and saves it as an animated image, instead of a single screenshot.
+스트리밍 동영상에서 마이닝한 카드의 이미지 캡처 형식을 지정합니다. 추가 옵션인 "애니메이션 WebP"는 단일 스크린샷 대신 자막 시간 범위(오디오 패딩 포함) 동안 탭에서 재생되는 동영상을 캡처해 애니메이션 이미지로 저장합니다.
 
-Animated WebP is only used while [recording audio when mining](#record-audio-when-mining) is enabled, and otherwise a screenshot is taken as usual. It applies to every way of mining that records media, including manual recording started and stopped with the record keyboard shortcut, which captures everything up to the moment recording is stopped (up to 30 seconds). Only one recording can run at a time. Animated WebP is not available in Firefox, and videos protected by DRM can't be captured. The tab has to stay visible while the clip is being captured, since Chrome stops rendering hidden tabs.
+애니메이션 WebP는 [마이닝 시 오디오 녹음](#record-audio-when-mining)을 사용 설정했을 때만 사용되며, 그렇지 않으면 평소처럼 스크린샷을 촬영합니다. 녹화 키보드 단축키로 시작하고 중지하는 수동 녹화를 포함해 미디어를 녹음하는 모든 마이닝 방식에 적용되며, 녹화를 중지할 때까지(최대 30초) 캡처합니다. 한 번에 하나의 녹음만 진행할 수 있습니다. Firefox에서는 애니메이션 WebP를 사용할 수 없으며 DRM 보호 동영상은 캡처할 수 없습니다. Chrome은 숨겨진 탭의 렌더링을 중단하므로 클립을 캡처하는 동안 탭이 표시되어 있어야 합니다.
 
-### Animated image FPS {#animated-image-fps}
+### 애니메이션 이미지 FPS {#animated-image-fps}
 
-How many frames per second to capture for animated WebP images. Longer clips automatically use fewer frames to keep the card small. Only available when the Animated WebP image capture format is selected.
+애니메이션 WebP 이미지의 초당 캡처 프레임 수입니다. 클립이 길수록 카드 크기를 줄이기 위해 프레임 수가 자동으로 감소합니다. 애니메이션 WebP 이미지 캡처 형식을 선택했을 때만 사용할 수 있습니다.
 
-### Animated image quality {#animated-image-quality}
+### 애니메이션 이미지 품질 {#animated-image-quality}
 
-Quality of each frame of animated WebP images, from `0.1` to `1`. Higher is better looking but results in a larger file. Only available when the Animated WebP image capture format is selected.
+애니메이션 WebP 이미지의 각 프레임 품질입니다(`0.1`~`1`). 값이 높을수록 화질이 좋아지지만 파일 크기도 커집니다. 애니메이션 WebP 이미지 캡처 형식을 선택했을 때만 사용할 수 있습니다.
 
-### Allow subtitle file drag-and-drop {#allow-subtitle-file-drag-and-drop}
+### 자막 파일 끌어다 놓기 허용 {#allow-subtitle-file-drag-and-drop}
 
-Allow subtitle files to be drag-and-dropped into video elements.
+자막 파일을 동영상 요소에 끌어다 놓을 수 있도록 허용합니다.
 
-### Auto-load detected subtitles {#auto-load-detected-subtitles}
+### 감지된 자막 자동 불러오기 {#auto-load-detected-subtitles}
 
-If subtitle auto-detection is supported on the current website, load them automatically. If multiple tracks are detected, load the track for the preferred language. The preferred language is the one that was last loaded with the "remember these track choices" box checked.
+현재 웹사이트에서 자막 자동 감지를 지원하면 자막을 자동으로 불러옵니다. 여러 트랙이 감지되면 기본 설정 언어의 트랙을 불러옵니다. 기본 설정 언어는 "트랙 선택 기억" 상자를 선택한 상태에서 마지막으로 불러온 언어입니다.
 
-### Prompt when auto-loading detected subtitles fails {#prompt-on-subtitle-autoload-failure}
+### 감지된 자막 자동 불러오기에 실패하면 확인 요청 {#prompt-on-subtitle-autoload-failure}
 
-When automatic subtitle loading fails, prompt before trying to load detected subtitles.
+자막 자동 불러오기에 실패하면 감지된 자막을 불러오기 전에 확인을 요청합니다.
 
-## <a href={new URL('?view=settings#streaming-video', project.urls.app).href}>Streaming video > Pages</a> {#pages}
+## <a href={new URL('?view=settings#streaming-video', project.urls.app).href}>스트리밍 동영상 > 페이지</a> {#pages}
 
-Settings for page-specific integrations like YouTube, Netflix, etc. asbplayer has pre-configured default settings for each page. The pages section allows those defaults to be modified.
+YouTube, Netflix 등 페이지별 연동을 설정합니다. asbplayer에는 각 페이지의 기본 설정이 미리 구성되어 있으며 페이지 섹션에서 기본값을 변경할 수 있습니다.
 
-### Target language codes for machine translation (YouTube only) {#youtube-translation-languages}
+### 기계 번역 대상 언어 코드(YouTube 전용) {#youtube-translation-languages}
 
-Specifies which target languages to use for YouTube's machine translation. When languages are specified here, additional tracks for each target language appear in the subtitle track selector.
+YouTube 기계 번역에 사용할 대상 언어를 지정합니다. 언어를 지정하면 자막 트랙 선택기에 대상 언어별 트랙이 추가로 표시됩니다.
 
-## <a href={new URL('?view=settings#misc-settings', project.urls.app).href}>Misc</a> {#misc}
+## <a href={new URL('?view=settings#misc-settings', project.urls.app).href}>기타</a> {#misc}
 
-### Import/export settings {#import-export-settings}
+### 설정 가져오기/내보내기 {#import-export-settings}
 
-Imports or exports settings as a `json` file.
+설정을 `json` 파일로 가져오거나 내보냅니다.
 
-### Theme {#theme}
+### 테마 {#theme}
 
-Display all asbplayer in a light or dark theme.
+asbplayer 전체를 밝은 테마 또는 어두운 테마로 표시합니다.
 
-### Language {#language}
+### 언어 {#language}
 
-Language to display UI in.
+UI를 표시할 언어입니다.
 
-Note: not all strings have been localized in every language that asbplayer supports. Unlocalized will be displayed in English. Feel free to help out with localization at the [Crowdin project](https://crowdin.com/project/asbplayer).
+참고: asbplayer가 지원하는 모든 언어로 모든 문자열이 번역된 것은 아닙니다. 번역되지 않은 문자열은 영어로 표시됩니다. [Crowdin 프로젝트](https://crowdin.com/project/asbplayer)에서 번역에 참여할 수 있습니다.
 
-### Auto-maximize local video {#auto-maximize-local-video}
+### 로컬 동영상 자동 최대화 {#auto-maximize-local-video}
 
-Automatically maximize the local video when the subtitle panel is opened.
+자막 패널을 열 때 로컬 동영상을 자동으로 최대화합니다.
 
-### Show mining button in subtitle list {#show-mining-button-in-subtitle-list}
+### 자막 목록에 마이닝 버튼 표시 {#show-mining-button-in-subtitle-list}
 
-When enabled, shows a mining button next to each subtitle in the subtitle list.
+사용 설정하면 자막 목록의 각 자막 옆에 마이닝 버튼을 표시합니다.
 
-### Subtitle list timestamps {#subtitle-list-timestamps}
+### 자막 목록 타임스탬프 {#subtitle-list-timestamps}
 
-Controls how timestamps are displayed in the subtitle list.
+자막 목록에서 타임스탬프를 표시하는 방식을 지정합니다.
 
-- **Hidden**: Not shown.
-- **Start**: Shows subtitle's start timestamp only.
-- **Start and end**: Shows both start and end timestamps of the subtitle.
+- **숨김**: 표시하지 않습니다.
+- **시작**: 자막 시작 타임스탬프만 표시합니다.
+- **시작 및 종료**: 자막 시작 및 종료 타임스탬프를 모두 표시합니다.
 
-### Remember subtitle offset {#remember-subtitle-offset}
+### 자막 오프셋 기억 {#remember-subtitle-offset}
 
-When enabled, timing offset is "sticky." Subtitles are loaded with the last-used offset.
+사용 설정하면 타이밍 오프셋이 유지됩니다. 자막을 마지막으로 사용한 오프셋으로 불러옵니다.
 
-### Remember last playback rate {#remember-last-playback-rate}
+### 마지막 재생 속도 기억 {#remember-last-playback-rate}
 
-Updates the playback rate setting when the rate is changed on a video. When disabled, playback still starts at the configured playback rate, but changes made while watching remain temporary.
+동영상의 재생 속도를 변경하면 재생 속도 설정을 업데이트합니다. 사용 중지하면 재생은 구성된 속도로 시작하지만 시청 중 변경한 값은 임시로만 적용됩니다.
 
-### Remember last playback modes {#remember-last-playback-modes}
+### 마지막 재생 모드 기억 {#remember-last-playback-modes}
 
-Restores the last enabled playback modes when loading playback again. When disabled, playback starts in normal mode.
+다시 재생을 불러올 때 마지막으로 사용한 재생 모드를 복원합니다. 사용 중지하면 일반 모드로 재생을 시작합니다.
 
-### Auto-copy current subtitle to clipboard {#auto-copy-current-subtitle-to-clipboard}
+### 현재 자막을 클립보드에 자동 복사 {#auto-copy-current-subtitle-to-clipboard}
 
-Automatically copies subtitle to clipboard when it appears on screen. Useful for sending subtitles to apps that can monitor the clipboard.
+자막이 화면에 나타날 때 클립보드에 자동으로 복사합니다. 클립보드를 모니터링하는 앱으로 자막을 보낼 때 유용합니다.
 
-### Subtitle tracks eligible for auto-copy {#subtitle-tracks-eligible-for-auto-copy}
+### 자동 복사할 자막 트랙 {#subtitle-tracks-eligible-for-auto-copy}
 
-Specifies which tracks will be auto-copied when the [Auto-copy current subtitle to clipboard](#auto-copy-current-subtitle-to-clipboard) setting is enabled.
+[현재 자막을 클립보드에 자동 복사](#auto-copy-current-subtitle-to-clipboard)를 사용 설정했을 때 자동 복사할 트랙을 지정합니다.
 
-### Show preview thumbnails {#show-preview-thumbnails}
+### 미리보기 썸네일 표시 {#show-preview-thumbnails}
 
-Shows preview thumbnails in the subtitle list.
+자막 목록에 미리보기 썸네일을 표시합니다.
 
-### Subtitle above thumbnail {#subtitle-above-thumbnail}
+### 썸네일 위에 자막 표시 {#subtitle-above-thumbnail}
 
-Shows the subtitle above the preview thumbnail in the subtitle list.
+자막 목록의 미리보기 썸네일 위에 자막을 표시합니다.
 
-### Subtitle regex filter {#subtitle-regex-filter}
+### 자막 Regex 필터 {#subtitle-regex-filter}
 
-Substrings matched by this regex will be replaced by the value of [Subtitle regex filter text replacement](#subtitle-regex-filter-text-replacement)
+이 Regex와 일치하는 부분 문자열은 [자막 Regex 필터 텍스트 대체](#subtitle-regex-filter-text-replacement)에 지정한 값으로 바뀝니다.
 
-### Subtitle regex filter text replacement {#subtitle-regex-filter-text-replacement}
+### 자막 Regex 필터 텍스트 대체 {#subtitle-regex-filter-text-replacement}
 
-Substrings matched by the regex above are replaced with the value of this setting. If left empty, matched substrings are simply removed.
+위 Regex와 일치하는 부분 문자열을 이 설정의 값으로 바꿉니다. 비워 두면 일치하는 부분 문자열을 제거합니다.
 
-### Subtitle HTML {#subtitle-html}
+### 자막 HTML {#subtitle-html}
 
-How to handle HTML that appears in subtitle files.
+자막 파일에 포함된 HTML을 처리하는 방식을 지정합니다.
 
-### Detect and Display Ruby {#detect-and-display-ruby}
+### 루비 자동 감지 및 표시 {#detect-and-display-ruby}
 
-When enabled, asbplayer will automatically detect Netflix-style word readings and display them stylistically using `ruby` tags. Netflix-style readings frequently appear in Japanese subtitles and look like `花子（はなこ）` where a reading in parentheses follows a word.
+사용 설정하면 asbplayer가 Netflix 방식의 단어 읽는 법을 자동으로 감지하고 `ruby` 태그를 사용해 스타일을 적용해 표시합니다. Netflix 방식의 읽는 법은 일본어 자막에 자주 나타나며 `花子（はなこ）`처럼 단어 뒤에 괄호로 읽는 법이 붙습니다.
 
-### Enable WebSocket client {#enable-websocket-client}
+### WebSocket 클라이언트 사용 {#enable-websocket-client}
 
-Enables the WebSocket client. Allows asbplayer to be controlled using the WebSocket interface.
+WebSocket 클라이언트를 사용합니다. WebSocket 인터페이스로 asbplayer를 제어할 수 있습니다.
 
-### WebSocket Server URL {#websocket-server-url}
+### WebSocket 서버 URL {#websocket-server-url}
 
-The URL of the WebSocket server to connect to when enabling the WebSocket client. Usually this would be a locally-running instance of the [pre-packaged WebSocket server](../guides/web-socket-server.md).
+WebSocket 클라이언트를 사용할 때 연결할 서버의 URL입니다. 일반적으로 [사전 패키징된 WebSocket 서버](../guides/web-socket-server.md)를 로컬에서 실행한 인스턴스입니다.
 
-### Mining history storage limit {#mining-history-storage-limit}
+### 마이닝 기록 저장 한도 {#mining-history-storage-limit}
 
-Limits the number of cards that can be saved in the mining history.
+마이닝 기록에 저장할 수 있는 카드 수를 제한합니다.
 
-### Name of the tab {#name-of-the-tab}
+### 탭 이름 {#name-of-the-tab}
 
-The name to use for the app tab.
+앱 탭에 표시할 이름입니다.
 
-## Profiles {#profiles}
+## 프로필 {#profiles}
 
-A settings profile is a completely different set of settings values. The active settings profile can be changed from the settings UI or from the **Load Subtitles** and **Anki Export** dialogs.
+설정 프로필은 서로 다른 설정 값 모음입니다. 설정 UI 또는 **자막 불러오기** 및 **Anki 내보내기** 대화상자에서 활성 설정 프로필을 변경할 수 있습니다.

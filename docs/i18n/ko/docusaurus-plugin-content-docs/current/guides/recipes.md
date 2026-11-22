@@ -1,6 +1,6 @@
 ---
 sidebar_position: 1.5
-title: Recipes
+title: 레시피
 ---
 
 import project from '@site/src/project';
@@ -67,41 +67,41 @@ export const unfamiliarWordRepeatSettings = {
   subtitleTriggerEndOffset: 0,
 };
 
-# Recipes
+# 레시피
 
-Recipes combine playback modes and playback settings so you can switch between learning activities. Choose a recipe in **Settings > Playback**, beside the playback modes in the player controls, or in the mobile overlay. Choose **Disabled** to return to your underlying settings. Your saved playback settings, remembered playback rate, and remembered modes are preserved while a recipe is active.
+레시피는 재생 모드와 재생 설정을 결합해 학습 활동 사이를 전환할 수 있게 합니다. **설정 > 재생**, 플레이어 컨트롤의 재생 모드 옆, 또는 모바일 오버레이에서 레시피를 선택합니다. 기본 설정으로 돌아가려면 **사용 안 함**을 선택합니다. 레시피가 활성화된 동안에도 저장된 재생 설정, 기억된 재생 속도와 모드는 유지됩니다.
 
-## Create and edit a recipe
+## 레시피 만들기 및 수정
 
-Select **Edit Recipe** in the Playback tab. If a recipe is selected, you start with that recipe; otherwise you start with your current playback settings. Choose the playback modes and change the settings you want to include. These changes stay in a draft and do not affect playback until saved.
+재생 탭에서 **레시피 수정**을 선택합니다. 레시피가 선택된 상태라면 해당 레시피를 바탕으로 시작하고, 선택된 레시피가 없으면 현재 재생 설정을 바탕으로 시작합니다. 포함할 재생 모드를 선택하고 설정을 변경합니다. 변경 사항은 임시 초안으로 저장되며 저장하기 전까지 재생에 적용되지 않습니다.
 
-Select **Save Recipe** to review the settings and enter a name of up to 100 characters. You can remove individual settings from the preview; omitted settings use your underlying settings. Playback modes are always specified as a complete combination.
+**레시피 저장**을 선택해 설정을 검토하고 최대 100자까지 이름을 입력합니다. 미리보기에서 개별 설정을 제거할 수 있으며, 제거한 설정에는 기본 설정이 적용됩니다. 재생 모드는 항상 전체 조합으로 지정됩니다.
 
-When editing an existing recipe, leaving its name untouched updates it. Typing in the name field creates a new recipe, even if you return to the original name. Select **Cancel** to discard the draft.
+기존 레시피를 수정할 때 이름을 변경하지 않으면 해당 레시피가 업데이트됩니다. 이름 필드에 입력하면 원래 이름으로 되돌리더라도 새 레시피가 만들어집니다. 초안을 버리려면 **취소**를 선택합니다.
 
-## Import and share
+## 가져오기 및 공유
 
-Select **Import Recipe**, paste the recipe's JSON, review its settings, and confirm. You can change its name and remove settings before importing. Imported recipes are appended to your list and selected. Unknown settings and invalid setting values are ignored. The name and playback modes must be valid.
+**레시피 가져오기**를 선택하고 레시피 JSON을 붙여 넣은 뒤 설정을 검토하고 확인합니다. 가져오기 전에 이름을 바꾸거나 설정을 제거할 수 있습니다. 가져온 레시피는 목록 끝에 추가되고 선택됩니다. 알 수 없는 설정과 잘못된 설정 값은 무시됩니다. 이름과 재생 모드는 유효해야 합니다.
 
-You can also open an import link. It opens the web app with the Playback tab and import preview ready; the recipe takes effect after you confirm the import.
+가져오기 링크를 열 수도 있습니다. 웹 앱의 재생 탭에 가져오기 미리보기가 표시되며, 가져오기를 확인하면 레시피가 적용됩니다.
 
-Open a recipe's preview icon in the dropdown to copy its JSON or share its import URL. The same preview lets you delete the recipe with confirmation. Move recipes with the up/down buttons or drag them in the dropdown. Selection follows a recipe when it moves; deleting the selected recipe disables recipes.
+드롭다운에서 레시피의 미리보기 아이콘을 열어 JSON을 복사하거나 가져오기 URL을 공유합니다. 같은 미리보기에서 확인 후 레시피를 삭제할 수 있습니다. 위/아래 버튼을 사용하거나 드롭다운에서 끌어 레시피 순서를 바꿉니다. 레시피를 이동하면 선택 상태도 따라가며, 선택된 레시피를 삭제하면 레시피 기능이 사용 중지됩니다.
 
-## Keyboard shortcuts
+## 키보드 단축키
 
-Configure **Cycle through recipes forward**, **Cycle through recipes backwards**, and **Toggle recipe #1** through **#10** under **Keyboard Shortcuts > Playback**. Toggling the active recipe disables recipes. Cycling follows the list order and includes **Disabled**. Playback setting and mode shortcuts show a notification while a recipe is active; edit or disable the recipe to change those settings.
+**키보드 단축키 > 재생**에서 **레시피 순방향 순환**, **레시피 역방향 순환**, **레시피 #1 전환**부터 **#10**까지 설정합니다. 활성 레시피를 전환하면 레시피 기능이 사용 중지됩니다. 순환은 목록 순서를 따르며 **사용 안 함**도 포함합니다. 레시피가 활성화된 동안 재생 설정 및 모드 단축키를 사용하면 알림이 표시됩니다. 해당 설정을 바꾸려면 레시피를 수정하거나 사용 중지합니다.
 
-## Common recipes
+## 일반 레시피
 
-These contain some useful preset recipes for common learning activities. If you have any that you want to share or need a missing feature to create the perfect recipe, you can request them on <a href={project.urls.discord}>Discord</a> or on <a href={`${project.urls.repo}/issues/new/choose`}>GitHub</a>.
+아래에는 자주 하는 학습 활동에 유용한 레시피 프리셋이 있습니다. 공유하고 싶은 레시피가 있거나 원하는 레시피를 만들 기능이 필요하다면 <a href={project.urls.discord}>Discord</a> 또는 <a href={`${project.urls.repo}/issues/new/choose`}>GitHub</a>에서 요청할 수 있습니다.
 
-### Normal mode
+### 일반 모드
 
-Use your usual playback settings without an automatic learning mode. We recommend keeping your non-recipe settings as plain as possible so that `Disabled` maps to normal playback behavior.
+자동 학습 모드 없이 평소 재생 설정을 사용합니다. **사용 안 함**이 일반 재생 동작과 일치하도록 레시피 외부의 설정은 가능한 한 단순하게 유지하는 것이 좋습니다.
 
-### Dialogue focus
+### 대화 집중
 
-Focus on dialogue by combining condensed playback with fast-forward. Skip gaps using a 5-second minimum skip interval and fast-forward remaining qualifying gaps at 3× with a 1-second minimum interval. Keep 150 ms of context on either side of each gap, with dialogue at your underlying playback speed.
+압축 재생과 빨리 감기를 함께 사용해 대화에 집중합니다. 건너뛸 구간의 최소 간격을 5초로 설정하고, 조건에 맞는 나머지 구간은 최소 간격 1초로 3배속 재생합니다. 각 구간의 앞뒤 문맥을 150ms씩 유지하고 대화는 기본 재생 속도로 재생합니다.
 
 <RecipePreset
   recipe={{
@@ -113,9 +113,9 @@ Focus on dialogue by combining condensed playback with fast-forward. Skip gaps u
   }}
 />
 
-### Gap fast-forward
+### 구간 빨리 감기
 
-Watch the entire video while fast-forwarding qualifying gaps at 3× with a 1-second minimum interval. Keep 150 ms of context on either side of each gap, with dialogue at your underlying playback speed.
+동영상 전체를 보면서 조건에 맞는 구간을 최소 간격 1초로 3배속 재생합니다. 각 구간의 앞뒤 문맥을 150ms씩 유지하고 대화는 기본 재생 속도로 재생합니다.
 
 <RecipePreset
   recipe={{
@@ -127,9 +127,9 @@ Watch the entire video while fast-forwarding qualifying gaps at 3× with a 1-sec
   }}
 />
 
-### Reading mode
+### 읽기 모드
 
-Pause at the start of each subtitle to read and look up words, then resume manually to hear the audio with subtitles visible. Hovering over subtitles during playback also pauses the video; moving away resumes it.
+각 자막이 시작될 때 일시 정지해 읽고 단어를 찾아본 다음, 직접 재개해 자막을 보면서 오디오를 듣습니다. 재생 중 자막 위에 마우스를 올려도 동영상이 일시 정지되며, 마우스를 옮기면 다시 재생됩니다.
 
 <RecipePreset
   gapVariants
@@ -148,9 +148,9 @@ Pause at the start of each subtitle to read and look up words, then resume manua
   }}
 />
 
-### Listening mode
+### 듣기 모드
 
-Listen without subtitles, then pause automatically at the end of each subtitle to reveal the text and check your understanding. Resume manually when ready.
+자막 없이 듣고 각 자막 끝에서 자동으로 일시 정지해 텍스트를 확인하고 이해했는지 살펴봅니다. 준비가 되면 직접 재개합니다.
 
 <RecipePreset
   gapVariants
@@ -168,9 +168,9 @@ Listen without subtitles, then pause automatically at the end of each subtitle t
   }}
 />
 
-### Audio only
+### 오디오만
 
-Listen continuously with subtitles hidden during playback. Manually pause to reveal the current subtitle when you need help.
+재생 중 자막을 숨긴 채 계속 듣습니다. 도움이 필요하면 직접 일시 정지해 현재 자막을 표시합니다.
 
 <RecipePreset
   gapVariants
@@ -184,9 +184,9 @@ Listen continuously with subtitles hidden during playback. Manually pause to rev
   }}
 />
 
-### Intensive listening
+### 집중 듣기
 
-Listen to each subtitle three times, with a 1-second pause after each pass. Subtitles stay hidden for the first two passes and appear on the final replay to check your understanding. Playback resumes automatically after each pause, customize the 1s pause duration as needed.
+각 자막을 세 번씩 듣고 매번 재생한 뒤 1초간 일시 정지합니다. 처음 두 번은 자막을 숨기고 마지막 반복에서 자막을 표시해 이해했는지 확인합니다. 일시 정지 후 재생은 자동으로 재개됩니다. 필요에 따라 1초의 일시 정지 시간을 조정하세요.
 
 <RecipePreset
   gapVariants
@@ -208,11 +208,11 @@ Listen to each subtitle three times, with a 1-second pause after each pass. Subt
   }}
 />
 
-### Primed listening
+### 예습 후 듣기
 
-Pause at the start of each subtitle to read it in your native language, let it disappear, then listen to the audio without subtitles. Reading time is 80 ms per character, with a minimum of 1 second and a maximum of 6 seconds. After the text disappears, playback stays paused for another 500 ms before resuming automatically. You can adjust these timings when editing the recipe.
+각 자막이 시작될 때 일시 정지해 모국어로 읽고, 자막이 사라진 뒤 자막 없이 오디오를 듣습니다. 글자당 읽기 시간은 80ms이며 최소 1초, 최대 6초입니다. 텍스트가 사라진 후에도 500ms 동안 일시 정지한 뒤 자동으로 재생을 재개합니다. 레시피를 수정할 때 이 시간을 조정할 수 있습니다.
 
-Choose the tracks used to calculate reading time under **Subtitle tracks affected by playback modes and keyboard shortcuts**.
+읽기 시간을 계산할 트랙은 **재생 모드 및 키보드 단축키의 영향을 받는 자막 트랙**에서 선택합니다.
 
 <RecipePreset
   gapVariants
@@ -234,9 +234,9 @@ Choose the tracks used to calculate reading time under **Subtitle tracks affecte
   }}
 />
 
-### Read aloud
+### 소리 내어 읽기
 
-Read each subtitle aloud before hearing the original audio, then compare your pronunciation and rhythm. Playback pauses at the start with subtitles visible and resumes automatically after 80 ms per character, bounded to 1–6 seconds. Each subtitle repeats once. Adjust the pause timings to give yourself enough speaking time.
+원본 오디오를 듣기 전에 각 자막을 소리 내어 읽고 발음과 리듬을 비교합니다. 자막을 표시한 채 각 자막의 시작 부분에서 일시 정지하며, 글자당 80ms 후 자동으로 재생을 재개합니다(1~6초 범위). 각 자막은 한 번 반복됩니다. 충분히 말할 수 있도록 일시 정지 시간을 조정하세요.
 
 <RecipePreset
   gapVariants
@@ -260,9 +260,9 @@ Read each subtitle aloud before hearing the original audio, then compare your pr
   }}
 />
 
-### Shadowing
+### 섀도잉
 
-Speak alongside or slightly behind the original audio, matching its rhythm and pronunciation with subtitles visible. Each subtitle repeats once, with a 1-second pause at the end of each pass before playback resumes automatically.
+자막을 보면서 원본 오디오와 동시에 또는 약간 늦게 말해 리듬과 발음을 따라 합니다. 각 자막은 한 번 반복되며, 반복을 마칠 때마다 1초간 일시 정지한 뒤 자동으로 재생을 재개합니다.
 
 <RecipePreset
   gapVariants
@@ -284,9 +284,9 @@ Speak alongside or slightly behind the original audio, matching its rhythm and p
   }}
 />
 
-### Recall
+### 회상
 
-Listen to the audio, then reproduce the line aloud from memory during the automatic pause at its end. Subtitles stay hidden during playback and automatic pauses. Speaking time is 80 ms per character, bounded to 1–6 seconds, and each subtitle repeats once. Adjust the pause timings as needed; manually pause during a replay to reveal the text when you need help.
+오디오를 들은 뒤 끝에서 자동으로 일시 정지할 때 기억을 떠올려 대사를 소리 내어 말합니다. 재생 및 자동 일시 정지 중에는 자막이 숨겨집니다. 말하기 시간은 글자당 80ms이며 1~6초 범위이고, 각 자막은 한 번 반복됩니다. 필요에 따라 일시 정지 시간을 조정하고, 도움이 필요하면 반복 재생 중 직접 일시 정지해 텍스트를 표시합니다.
 
 <RecipePreset
   gapVariants
@@ -309,15 +309,15 @@ Listen to the audio, then reproduce the line aloud from memory during the automa
   }}
 />
 
-## Annotation Recipes
+## 주석 레시피
 
-These presets require [Annotation](./annotation.md) to be enabled as they use its data. If you have any that you want to share or need a missing feature to create the perfect recipe, you can request them on <a href={project.urls.discord}>Discord</a> or on <a href={`${project.urls.repo}/issues/new/choose`}>GitHub</a>.
+이 프리셋은 주석 데이터를 사용하므로 [주석](./annotation.md)을 사용 설정해야 합니다. 공유하고 싶은 레시피가 있거나 원하는 레시피를 만들 기능이 필요하다면 <a href={project.urls.discord}>Discord</a> 또는 <a href={`${project.urls.repo}/issues/new/choose`}>GitHub</a>에서 요청할 수 있습니다.
 
-Load your target-language subtitles as **Track 1**. These presets use that track for playback and word selection. **Unfamiliar** means **Uncollected** or **Unknown**. Other annotation display preferences, such as readings and colors, use your underlying settings.
+학습할 언어의 자막을 **트랙 1**로 불러옵니다. 이 프리셋은 해당 트랙에서 재생하고 단어를 선택합니다. **낯선 단어**는 **미수집** 또는 **알 수 없음** 상태를 뜻합니다. 읽는 법과 색상 등 나머지 주석 표시 설정에는 기본 설정이 사용됩니다.
 
-### Unfamiliar-word rescue
+### 낯선 단어 복습
 
-Watch with subtitles visible. When a line contains an unfamiliar word, pause for 1 second at its end, then replay it once. Other lines continue uninterrupted. The first unfamiliar word is selected during the pause for lookup. Adjust the pause duration if you need more time.
+자막을 표시한 채 시청합니다. 낯선 단어가 포함된 대사는 끝에서 1초간 일시 정지한 뒤 한 번 반복 재생합니다. 그 밖의 대사는 멈추지 않고 계속 재생됩니다. 일시 정지 중에는 찾아볼 수 있도록 첫 번째 낯선 단어를 선택합니다. 시간이 더 필요하면 일시 정지 시간을 조정하세요.
 
 <RecipePreset
   gapVariants
@@ -334,11 +334,11 @@ Watch with subtitles visible. When a line contains an unfamiliar word, pause for
   }}
 />
 
-### i+1 mining
+### i+1 마이닝
 
-Focus on subtitles containing exactly one Uncollected token. Condensed playback skips between qualifying lines, and playback pauses at each line's end until you resume manually, selecting the Uncollected token for inspection or mining.
+미수집 토큰이 정확히 하나 포함된 자막에 집중합니다. 압축 재생은 조건에 맞는 대사 사이를 건너뛰며, 각 대사의 끝에서 직접 재개할 때까지 일시 정지하고 확인하거나 마이닝할 수 있도록 미수집 토큰을 선택합니다.
 
-This finds i+1 candidates rather than guaranteeing that every other word is known: a line can also contain Unknown words, and repeated occurrences of the same Uncollected word count separately. Mining remains a manual action.
+i+1에 해당할 수 있는 후보를 찾는 기능이며 다른 모든 단어를 알고 있다고 보장하지는 않습니다. 대사에 알 수 없음 상태의 단어가 포함될 수 있고, 같은 미수집 단어가 반복되면 각각 별도로 계산됩니다. 마이닝은 직접 수행해야 합니다.
 
 <RecipePreset
   recipe={{
@@ -362,9 +362,9 @@ This finds i+1 candidates rather than guaranteeing that every other word is know
   }}
 />
 
-### Unfamiliar-word hints
+### 낯선 단어 힌트
 
-Listen with unfamiliar words visible and familiar words hidden. Lines containing unfamiliar words pause for 1 second at their end, revealing the full text, then replay once with the hints restored. The first unfamiliar word is selected during the pause for lookup. Lines with no unfamiliar words have no caption when fully tokenized.
+낯선 단어는 표시하고 익숙한 단어는 숨긴 채 듣습니다. 낯선 단어가 포함된 대사는 끝에서 1초간 일시 정지해 전체 텍스트를 표시한 다음 힌트를 다시 표시해 한 번 반복 재생합니다. 일시 정지 중에는 찾아볼 수 있도록 첫 번째 낯선 단어를 선택합니다. 토큰 분석이 완료되었고 낯선 단어가 없는 대사에는 자막이 표시되지 않습니다.
 
 <RecipePreset
   gapVariants
@@ -386,9 +386,9 @@ Listen with unfamiliar words visible and familiar words hidden. Lines containing
   }}
 />
 
-### Unfamiliar-word cloze
+### 낯선 단어 빈칸 채우기
 
-Read the familiar parts of each subtitle while unfamiliar words remain hidden, and try supplying the missing words from the audio and context. Lines containing unfamiliar words pause for 1 second at their end to reveal the full text, then replay once with the gaps restored. Ignored words remain visible.
+낯선 단어를 숨긴 채 자막의 익숙한 부분을 읽고 오디오와 문맥을 바탕으로 빠진 단어를 맞혀 봅니다. 낯선 단어가 포함된 대사는 끝에서 1초간 일시 정지해 전체 텍스트를 표시한 다음 빈칸을 다시 적용해 한 번 반복 재생합니다. 무시됨 상태의 단어는 계속 표시됩니다.
 
 <RecipePreset
   gapVariants
@@ -410,11 +410,11 @@ Read the familiar parts of each subtitle while unfamiliar words remain hidden, a
   }}
 />
 
-### Adaptive listening pace
+### 적응형 듣기 속도
 
-Play dialogue at 1× when its estimated comprehension is 60% or lower, increasing gradually to 1.8× at 100%. Condensed playback skips gaps using a 1-second minimum interval, keeping 150 ms of context on either side. Qualifying gaps that remain play at 1.8×.
+예상 이해도가 60% 이하인 대화는 1배속으로 재생하고, 이해도가 100%일 때는 1.8배속까지 점차 속도를 높입니다. 압축 재생은 최소 간격 1초로 공백을 건너뛰며 앞뒤 문맥을 150ms씩 유지합니다. 조건에 맞지만 건너뛰지 않은 구간은 1.8배속으로 재생됩니다.
 
-Adjust the base and fast-forward speeds when editing the recipe, keeping the fast-forward speed higher than the base speed.
+레시피를 수정할 때 기본 속도와 빨리 감기 속도를 조정합니다. 빨리 감기 속도는 기본 속도보다 높게 설정해야 합니다.
 
 <RecipePreset
   recipe={{

@@ -2,27 +2,27 @@
 sidebar_position: 2
 ---
 
-# Subtitle timing {#subtitle-timing}
+# 자막 타이밍 {#subtitle-timing}
 
-Subtitle files will very often not be aligned to the video source you load them into. To work around this, asbplayer provides ways to manually adjust subtitle timing.
+자막 파일의 타이밍이 불러온 동영상과 맞지 않는 경우가 많습니다. 이 문제를 해결할 수 있도록 asbplayer에서는 자막 타이밍을 직접 조정하는 기능을 제공합니다.
 
-## Keyboard shortcuts {#keyboard-shortcuts}
+## 키보드 단축키 {#keyboard-shortcuts}
 
-The fastest way to fix subtitle timing is with the [Subtitle offset keyboard shortcuts](../reference/settings.md#subtitle-offset-keyboard-shortcuts). There are two sets of shortcuts for adjusting subtitle offset:
+자막 타이밍을 가장 빠르게 맞추려면 [자막 오프셋 키보드 단축키](../reference/settings.md#subtitle-offset-keyboard-shortcuts)를 사용하세요. 자막 오프셋을 조정하는 단축키는 두 가지입니다.
 
-- `Ctrl + Left/Right` or `Shift + Left/Right`: Align the current timestamp to the left or right subtitle.
-- `Ctrl + Shift + Left/Right`: Move the current timestamp `100ms` to the left or right.
+- `Ctrl + Left/Right` 또는 `Shift + Left/Right`: 현재 타임스탬프를 왼쪽 또는 오른쪽 자막에 맞춥니다.
+- `Ctrl + Shift + Left/Right`: 현재 타임스탬프를 왼쪽 또는 오른쪽으로 `100ms` 이동합니다.
 
-Most often, finding the correct offset will look like this:
+대개 다음 순서로 올바른 오프셋을 찾을 수 있습니다.
 
-1. Wait for a character to start talking.
-2. `Ctrl + Left/Right` until the subtitle matching the character's dialog appears on screen.
-3. `Ctrl + Shift + Right/Left` until the subtitle timing precisely matches the dialog.
+1. 등장인물이 말하기 시작할 때까지 기다립니다.
+2. 해당 대사와 일치하는 자막이 화면에 나타날 때까지 `Ctrl + Left/Right`를 누릅니다.
+3. 자막 타이밍이 대사와 정확히 맞을 때까지 `Ctrl + Shift + Right/Left`를 누릅니다.
 
-## Overlay UI {#overlay-ui}
+## 오버레이 UI {#overlay-ui}
 
-The overlay UI provides buttons that perform the same functions as the keyboard shortcuts above.
+오버레이 UI에는 위 키보드 단축키와 같은 기능을 수행하는 버튼이 있습니다.
 
-1. Scroll the rightmost section to the **middle** control.
-2. Click the left or right button to align the left or right subtitle to the current timestamp.
-3. Click and **hold** the left or right button to move the current timestamp `100ms` to the left or right.
+1. 가장 오른쪽 영역을 스크롤해 **가운데** 컨트롤로 이동합니다.
+2. 왼쪽 또는 오른쪽 버튼을 클릭해 해당 방향의 자막을 현재 타임스탬프에 맞춥니다.
+3. 왼쪽 또는 오른쪽 버튼을 **길게 누르면** 현재 타임스탬프를 해당 방향으로 `100ms` 이동합니다.

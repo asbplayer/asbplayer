@@ -4,58 +4,58 @@ sidebar_position: 11
 
 import project from '@site/src/project';
 
-# Online subtitles {#online-subtitles}
+# 온라인 자막 {#online-subtitles}
 
-Instead of hunting for subtitle files by hand, you can search for them and load them straight from asbplayer. Subtitles are provided by [Jimaku](https://jimaku.cc), a community subtitle site mostly covering anime and Japanese drama.
+자막 파일을 직접 찾아다니는 대신 asbplayer에서 바로 검색하고 불러올 수 있습니다. 자막은 주로 애니메이션과 일본 드라마를 다루는 커뮤니티 자막 사이트 [Jimaku](https://jimaku.cc)에서 제공합니다.
 
-## Usage {#usage}
+## 사용 방법 {#usage}
 
-1. Open the side panel on a page with a video, then click **Load Subtitles**.
-2. Click **Search online subtitles** (also available from the subtitle track dropdown).
-3. The search term is pre-filled from the page title. Adjust it if needed, pick **Anime** or **Drama**, and search.
-4. Click a search result to see its subtitle files, then click a file to load it.
+1. 동영상이 있는 페이지에서 사이드 패널을 연 다음 **자막 불러오기**를 클릭합니다.
+2. **온라인 자막 검색**을 클릭합니다(자막 트랙 드롭다운에서도 사용할 수 있음).
+3. 페이지 제목이 검색어에 자동으로 입력됩니다. 필요한 경우 수정하고 **애니메이션** 또는 **드라마**를 선택한 뒤 검색합니다.
+4. 검색 결과를 클릭해 자막 파일을 확인한 다음 파일을 클릭해 불러옵니다.
 
-Only `.srt` and `.ass` files are listed. Works you opened recently show up under **Recent** so you can skip the search next time.
+`.srt` 및 `.ass` 파일만 표시됩니다. 최근에 연 작품은 **최근 항목**에 표시되므로 다음에는 검색을 건너뛸 수 있습니다.
 
-## Getting a Jimaku API key {#api-key}
+## Jimaku API 키 받기 {#api-key}
 
-Jimaku requires an API key to search and download.
+검색 및 다운로드에는 Jimaku API 키가 필요합니다.
 
-1. Create an account at [jimaku.cc](https://jimaku.cc) and log in.
-2. Open your [account page](https://jimaku.cc/account) and generate an API key.
-3. Paste the key into the **Jimaku API key** field in the search dialog.
+1. [jimaku.cc](https://jimaku.cc)에서 계정을 만들고 로그인합니다.
+2. [계정 페이지](https://jimaku.cc/account)를 열고 API 키를 생성합니다.
+3. 검색 대화상자의 **Jimaku API 키** 필드에 키를 붙여 넣습니다.
 
-The key is saved automatically, so you only need to do this once. It is hidden by default; use the eye icon to show it.
+키는 자동으로 저장되므로 이 작업은 한 번만 하면 됩니다. 키는 기본적으로 숨겨져 있으며 눈 모양 아이콘을 눌러 표시할 수 있습니다.
 
-## Automatic episode detection {#episode-detection}
+## 에피소드 자동 감지 {#episode-detection}
 
-For series, asbplayer tries to read the episode number from the page title (for example `S01E05`, `EP05`, or `第5話`/`第五集`). If one is found:
+시리즈의 경우 asbplayer가 페이지 제목에서 에피소드 번호를 찾습니다(예: `S01E05`, `EP05`, `第5話`/`第五集`). 번호를 찾으면 다음과 같이 처리합니다.
 
-- the episode marker is removed from the search term, so you search for the series name only;
-- the file list is filtered to that episode, shown as an **EP N** chip. Click the chip's ✕ to see all files.
+- 검색어에서 에피소드 표시를 제거해 시리즈 이름만 검색합니다.
+- 파일 목록을 해당 에피소드로 필터링해 **EP N** 칩으로 표시합니다. 칩의 ✕를 클릭하면 모든 파일을 표시합니다.
 
-If the chosen episode has no usable subtitle files, the full list is shown instead.
+선택한 에피소드에 사용할 수 있는 자막 파일이 없으면 전체 목록을 표시합니다.
 
-### Custom episode regex {#episode-regex}
+### 사용자 지정 에피소드 Regex {#episode-regex}
 
-Some websites use title formats that the built-in rules don't recognize, so no episode is detected and you see every file in the series. A custom regex teaches asbplayer how to read the episode on those sites.
+일부 웹사이트는 기본 규칙에서 인식하지 못하는 제목 형식을 사용하므로 에피소드를 감지하지 못하고 시리즈의 모든 파일이 표시됩니다. 사용자 지정 Regex를 설정하면 해당 사이트에서 에피소드 번호를 읽을 수 있습니다.
 
-Once you've opened a series, click the gear icon next to the file list header to show the **Custom episode regex** field. The gear is highlighted while a regex is set.
+시리즈를 연 다음 파일 목록 제목 옆의 톱니바퀴 아이콘을 클릭해 **사용자 지정 에피소드 Regex** 필드를 표시합니다. Regex가 설정되어 있으면 톱니바퀴가 강조 표시됩니다.
 
-- **Capture group 1** must be the episode number (arabic or kanji numerals both work).
-- Your regex is tried first. If it is empty, invalid, or doesn't match, the built-in rules are used as usual, so it can only add coverage.
-- Press **Enter** to re-filter the current series. The search term picks up the change the next time you open the dialog.
+- **캡처 그룹 1**에는 에피소드 번호가 있어야 합니다(아라비아 숫자와 한자 숫자 모두 사용 가능).
+- 사용자 지정 Regex를 먼저 적용합니다. 비어 있거나 잘못되었거나 일치하는 항목이 없으면 기본 규칙을 사용하므로 감지 범위만 넓힐 수 있습니다.
+- **Enter**를 눌러 현재 시리즈를 다시 필터링합니다. 다음에 대화상자를 열면 검색어에 변경 사항이 반영됩니다.
 
 :::tip
-The built-in rules were only tested on the few websites the feature's author uses. If a site's title format isn't recognized, please <a href={`${project.urls.repo}/issues`}>open an issue</a> with an example page title (or a PR on `common/subtitle-sources/jimaku-episode-patterns.ts`) so the built-in rules can be extended.
+기본 규칙은 기능 작성자가 사용하는 일부 웹사이트에서만 테스트했습니다. 사이트의 제목 형식을 인식하지 못하면 예시 페이지 제목과 함께 <a href={`${project.urls.repo}/issues`}>이슈를 열어</a> 주세요(또는 `common/subtitle-sources/jimaku-episode-patterns.ts`에 PR을 제출해 주세요). 기본 규칙을 확장하는 데 도움이 됩니다.
 :::
 
-For example, if a site titles its pages `Some Show - Chapter 07 | SiteName`, use:
+예를 들어 사이트 페이지 제목이 `Some Show - Chapter 07 | SiteName` 형식이라면 다음을 사용합니다.
 
 ```
 Chapter (\d+)
 ```
 
-## Acknowledgements {#jimaku-acknowledgements}
+## 감사의 말 {#jimaku-acknowledgements}
 
-Huge thanks to [Rapptz](https://github.com/Rapptz), who built and maintains [Jimaku](https://github.com/Rapptz/jimaku) and provides the API that makes this feature possible. If you find it useful, please consider supporting the site and uploading your own subtitles.
+[Jimaku](https://github.com/Rapptz/jimaku)를 만들고 유지 관리하며 이 기능에 필요한 API를 제공하는 [Rapptz](https://github.com/Rapptz)에게 깊이 감사드립니다. 유용하게 사용하셨다면 사이트를 후원하고 직접 만든 자막을 업로드해 주세요.

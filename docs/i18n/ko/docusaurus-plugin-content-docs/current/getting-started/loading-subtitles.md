@@ -4,33 +4,33 @@ sidebar_position: 1
 
 import project from '@site/src/project';
 
-# Loading subtitles {#loading-subtitles}
+# 자막 불러오기 {#loading-subtitles}
 
-The first step to using asbplayer is to load subtitles onto a video source.
+asbplayer를 사용하려면 먼저 동영상에 자막을 불러와야 합니다.
 
-## Streaming video {#streaming-video}
+## 스트리밍 동영상 {#streaming-video}
 
-### Chrome (or other Chromium-based browsers) {#chromium}
+### Chrome(또는 기타 Chromium 기반 브라우저) {#chromium}
 
-1. Install the Chrome extension from Google's <a href={project.extension.chrome.storeUrl}>web store</a> or from the <a href={`${project.urls.repo}/releases/latest`}>GitHub release</a>.
-2. Click 🧩 icon in browser toolbar → asbplayer → **Open Side Panel**
-3. Click **Load Subtitles** to load subtitles onto any video on the current page.
+1. Google <a href={project.extension.chrome.storeUrl}>웹 스토어</a> 또는 <a href={`${project.urls.repo}/releases/latest`}>GitHub 릴리스</a>에서 Chrome 확장 프로그램을 설치합니다.
+2. 브라우저 도구 모음에서 🧩 아이콘 → asbplayer → **사이드 패널 열기**를 클릭합니다.
+3. **자막 불러오기**를 클릭해 현재 페이지의 동영상에 자막을 불러옵니다.
 
 ### Firefox {#firefox}
 
 :::warning
-asbplayer is missing some features on Firefox. See the [Compatibility](../compatibility.md#extension) section.  
+Firefox에서는 asbplayer의 일부 기능을 사용할 수 없습니다. [호환성](../compatibility.md#extension) 섹션을 참고하세요.
 :::
 
-1. Install the the Firefox addon from the Mozilla <a href={project.extension.firefox.storeUrl}>addon store</a> or from the <a href={`${project.urls.repo}/releases/latest`}>GitHub release</a>.
-2. Click 🧩 icon in browser toolbar → asbplayer → **Open Side Panel**
-3. Click **Load Subtitles** to load subtitles onto any video on the current page.
+1. Mozilla <a href={project.extension.firefox.storeUrl}>부가 기능 스토어</a> 또는 <a href={`${project.urls.repo}/releases/latest`}>GitHub 릴리스</a>에서 Firefox 부가 기능을 설치합니다.
+2. 브라우저 도구 모음에서 🧩 아이콘 → asbplayer → **사이드 패널 열기**를 클릭합니다.
+3. **자막 불러오기**를 클릭해 현재 페이지의 동영상에 자막을 불러옵니다.
 
 ### Android {#android}
 
-See the [Android guide](../guides/android.md).
+자세한 내용은 [Android 안내](../guides/android.md)를 참고하세요.
 
-## Video files {#video-files}
+## 동영상 파일 {#video-files}
 
-1. Open the <a href={project.urls.app}>website</a>.
-2. Drag-and-drop video and subtitle files into the website.
+1. <a href={project.urls.app}>웹사이트</a>를 엽니다.
+2. 동영상 파일과 자막 파일을 웹사이트에 끌어다 놓습니다.
