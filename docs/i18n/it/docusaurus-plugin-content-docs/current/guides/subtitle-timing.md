@@ -2,27 +2,27 @@
 sidebar_position: 2
 ---
 
-# Subtitle timing {#subtitle-timing}
+# Sincronizzazione dei sottotitoli {#subtitle-timing}
 
-Subtitle files will very often not be aligned to the video source you load them into. To work around this, asbplayer provides ways to manually adjust subtitle timing.
+Spesso i file dei sottotitoli non sono sincronizzati con la sorgente video su cui vengono caricati. Per risolvere il problema, asbplayer offre vari modi per regolare manualmente la temporizzazione dei sottotitoli.
 
-## Keyboard shortcuts {#keyboard-shortcuts}
+## Scorciatoie da tastiera {#keyboard-shortcuts}
 
-The fastest way to fix subtitle timing is with the [Subtitle offset keyboard shortcuts](../reference/settings.md#subtitle-offset-keyboard-shortcuts). There are two sets of shortcuts for adjusting subtitle offset:
+Il modo più rapido per correggere la temporizzazione dei sottotitoli è usare le [scorciatoie da tastiera per lo scostamento dei sottotitoli](../reference/settings.md#subtitle-offset-keyboard-shortcuts). Sono disponibili due gruppi di scorciatoie per regolare lo scostamento dei sottotitoli:
 
-- `Ctrl + Left/Right` or `Shift + Left/Right`: Align the current timestamp to the left or right subtitle.
-- `Ctrl + Shift + Left/Right`: Move the current timestamp `100ms` to the left or right.
+- `Ctrl + Left/Right` o `Shift + Left/Right`: allinea la marca temporale corrente al sottotitolo precedente o successivo.
+- `Ctrl + Shift + Left/Right`: sposta la marca temporale corrente di `100ms` a sinistra o a destra.
 
-Most often, finding the correct offset will look like this:
+Di solito, per trovare lo scostamento corretto basta:
 
-1. Wait for a character to start talking.
-2. `Ctrl + Left/Right` until the subtitle matching the character's dialog appears on screen.
-3. `Ctrl + Shift + Right/Left` until the subtitle timing precisely matches the dialog.
+1. Aspettare che un personaggio inizi a parlare.
+2. Premere `Ctrl + Left/Right` finché non appare sullo schermo il sottotitolo corrispondente al dialogo del personaggio.
+3. Premere `Ctrl + Shift + Right/Left` finché il sottotitolo non è perfettamente sincronizzato con il dialogo.
 
-## Overlay UI {#overlay-ui}
+## Interfaccia in sovrimpressione {#overlay-ui}
 
-The overlay UI provides buttons that perform the same functions as the keyboard shortcuts above.
+L'interfaccia in sovrimpressione offre pulsanti che svolgono le stesse funzioni delle scorciatoie da tastiera qui sopra.
 
-1. Scroll the rightmost section to the **middle** control.
-2. Click the left or right button to align the left or right subtitle to the current timestamp.
-3. Click and **hold** the left or right button to move the current timestamp `100ms` to the left or right.
+1. Scorri la sezione più a destra fino ai controlli **centrali**.
+2. Fai clic sul pulsante sinistro o destro per allineare il sottotitolo precedente o successivo alla marca temporale corrente.
+3. Fai clic e **tieni premuto** il pulsante sinistro o destro per spostare la marca temporale corrente di `100ms` a sinistra o a destra.
