@@ -4,33 +4,33 @@ sidebar_position: 1
 
 import project from '@site/src/project';
 
-# Loading subtitles {#loading-subtitles}
+# Caricare i sottotitoli {#loading-subtitles}
 
-The first step to using asbplayer is to load subtitles onto a video source.
+Il primo passo per usare asbplayer è caricare i sottotitoli su una sorgente video.
 
-## Streaming video {#streaming-video}
+## Video in streaming {#streaming-video}
 
-### Chrome (or other Chromium-based browsers) {#chromium}
+### Chrome (o altri browser basati su Chromium) {#chromium}
 
-1. Install the Chrome extension from Google's <a href={project.extension.chrome.storeUrl}>web store</a> or from the <a href={`${project.urls.repo}/releases/latest`}>GitHub release</a>.
-2. Click 🧩 icon in browser toolbar → asbplayer → **Open Side Panel**
-3. Click **Load Subtitles** to load subtitles onto any video on the current page.
+1. Installa l'estensione di Chrome dal <a href={project.extension.chrome.storeUrl}>Chrome Web Store</a> di Google o dalla <a href={`${project.urls.repo}/releases/latest`}>release su GitHub</a>.
+2. Fai clic sull'icona 🧩 nella barra degli strumenti del browser → asbplayer → **Apri pannello laterale**
+3. Fai clic su **Carica sottotitoli** per caricare i sottotitoli su qualsiasi video della pagina corrente.
 
 ### Firefox {#firefox}
 
 :::warning
-asbplayer is missing some features on Firefox. See the [Compatibility](../compatibility.md#extension) section.  
+Su Firefox mancano alcune funzionalità di asbplayer. Consulta la sezione [Compatibilità](../compatibility.md#extension).  
 :::
 
-1. Install the the Firefox addon from the Mozilla <a href={project.extension.firefox.storeUrl}>addon store</a> or from the <a href={`${project.urls.repo}/releases/latest`}>GitHub release</a>.
-2. Click 🧩 icon in browser toolbar → asbplayer → **Open Side Panel**
-3. Click **Load Subtitles** to load subtitles onto any video on the current page.
+1. Installa il componente aggiuntivo di Firefox dal <a href={project.extension.firefox.storeUrl}>negozio di componenti aggiuntivi Mozilla</a> o dalla <a href={`${project.urls.repo}/releases/latest`}>release su GitHub</a>.
+2. Fai clic sull'icona 🧩 nella barra degli strumenti del browser → asbplayer → **Apri pannello laterale**
+3. Fai clic su **Carica sottotitoli** per caricare i sottotitoli su qualsiasi video della pagina corrente.
 
 ### Android {#android}
 
-See the [Android guide](../guides/android.md).
+Consulta la [guida per Android](../guides/android.md).
 
-## Video files {#video-files}
+## File video {#video-files}
 
-1. Open the <a href={project.urls.app}>website</a>.
-2. Drag-and-drop video and subtitle files into the website.
+1. Apri il <a href={project.urls.app}>sito web</a>.
+2. Trascina i file video e i file dei sottotitoli sul sito web.

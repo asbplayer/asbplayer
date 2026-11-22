@@ -4,15 +4,15 @@ sidebar_position: 9.5
 
 import project from '@site/src/project';
 
-# External extensions {#external-extensions}
+# Estensioni esterne {#external-extensions}
 
-As of v1.23, asbplayer exposes a way for other browser extensions to communicate with it. Any extension that connects to asbplayer via [browser.runtime.connect](https://developer.chrome.com/docs/extensions/reference/api/runtime#method-connect), and receives user approval, can issue [commands](../reference/external-api.md) through the connection.
+A partire dalla v1.23, asbplayer permette ad altre estensioni del browser di comunicare con esso. Qualsiasi estensione che si connette ad asbplayer tramite [browser.runtime.connect](https://developer.chrome.com/docs/extensions/reference/api/runtime#method-connect) e riceve l'approvazione dell'utente può inviare [comandi](../reference/external-api.md) tramite la connessione.
 
-A template implementation of an extension that integrates with asbplayer in this way is provided <a href={`${project.urls.externalExtensionTemplateRepo}`}>here</a>.
+È disponibile <a href={`${project.urls.externalExtensionTemplateRepo}`}>qui</a> un'implementazione modello di un'estensione che si integra con asbplayer in questo modo.
 
-## Connecting and obtaining user approval
+## Connessione e approvazione dell'utente
 
-Any extension wishing to communicate with asbplayer must first connect using code like below. asbplayer's extension ID can be obtained from the browser's extension manager (on Chrome `chrome://extensions`, on Firefox `about:addons`).
+Qualsiasi estensione che desideri comunicare con asbplayer deve prima connettersi usando codice come il seguente. L'ID dell'estensione di asbplayer si trova nel gestore delle estensioni del browser (in Chrome `chrome://extensions`, in Firefox `about:addons`).
 
 ```typescript
 const port = browser.runtime.connect(<asbplayer extension ID>, {
@@ -20,7 +20,7 @@ const port = browser.runtime.connect(<asbplayer extension ID>, {
 });
 ```
 
-Request approval with `initialize`, which answers immediately with the current state.
+Richiedi l'approvazione con `initialize`, che risponde immediatamente con lo stato corrente.
 
 ```typescript
 port.postMessage({
@@ -34,7 +34,7 @@ port.postMessage({
 });
 ```
 
-If the extension is not approved, asbplayer registers the connection as pending, prompts the user, and responds:
+Se l'estensione non è approvata, asbplayer registra la connessione come in sospeso, avvisa l'utente e risponde:
 
 ```json
 {
@@ -44,7 +44,7 @@ If the extension is not approved, asbplayer registers the connection as pending,
 }
 ```
 
-Poll `approval-state` to see if the user has approved the connection request.
+Interroga `approval-state` per sapere se l'utente ha approvato la richiesta di connessione.
 
 ```json
 {
@@ -55,9 +55,9 @@ Poll `approval-state` to see if the user has approved the connection request.
 }
 ```
 
-Once approved, `approval-state` will return `{ "state": "approved" }` and the connection can issue commands. If denied, `approval-state` returns `{ "state": "denied" }` once. asbplayer then closes the port. Once denied, the requesting extension cannot request approval for 24 hours.
+Una volta approvata, `approval-state` restituisce `{ "state": "approved" }` e la connessione può inviare comandi. Se la richiesta è negata, `approval-state` restituisce `{ "state": "denied" }` una sola volta. A quel punto asbplayer chiude la porta. Dopo una richiesta negata, l'estensione richiedente non può chiedere di nuovo l'approvazione per 24 ore.
 
-Commands can be issued as [documented](../reference/external-api.md). For example:
+I comandi possono essere inviati come [descritto](../reference/external-api.md). Ad esempio:
 
 ```typescript
 port.postMessage({
@@ -68,4 +68,4 @@ port.postMessage({
 });
 ```
 
-asbplayer answers with `{ jsonrpc, id, result }` on success or `{ jsonrpc, id, error }` on failure.
+In caso di successo, asbplayer risponde con `{ jsonrpc, id, result }`; in caso di errore, con `{ jsonrpc, id, error }`.

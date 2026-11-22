@@ -4,13 +4,13 @@ sidebar_position: 7
 
 import project from '@site/src/project';
 
-# Acknowledgements {#acknowledgements}
+# Ringraziamenti {#acknowledgements}
 
-asbplayer would not be what it is today without the community around it. We thank all the people who have used and benefited from asbplayer, who have advocated for it, suggested features, reported bugs, and made contributions.
+asbplayer non sarebbe quello che è oggi senza la community che lo sostiene. Ringraziamo tutte le persone che lo hanno usato e ne hanno tratto beneficio, che lo hanno promosso, hanno suggerito funzionalità, segnalato bug e contribuito al progetto.
 
-We epecially acknowledge the wonderful humans below.
+Ringraziamo in particolare le persone qui sotto.
 
-## Contributors {#contributors}
+## Contributori {#contributors}
 
 [@Renji-XD](https://www.github.com/Renji-XD),
 [@MatiasIslaA](https://www.github.com/MatiasIslaA),
@@ -79,7 +79,7 @@ We epecially acknowledge the wonderful humans below.
 [@joaquinmuzzi](https://github.com/joaquinmuzzi),
 [@mvanhorn](https://github.com/mvanhorn)
 
-## Translators {#translators}
+## Traduttori {#translators}
 
 **Mana Tsutsumi** (Japanese, initial translation),
 **kasader** (Japanese),
@@ -98,11 +98,11 @@ We epecially acknowledge the wonderful humans below.
 **[@Jaybird1291](https://github.com/jaybird1291)** (French),
 **Tigerbabe aka Gyaru Jinsei Juku** (Korean),
 **[@yaaacha](https://github.com/yaaacha)** (Indonesian),
-**[@NeriSal](https://github.com/nerisal)** (Italian)
+**[@NeriSal](https://github.com/nerisal)** (italiano)
 
-If you are a non-English native, and would like to help translate asbplayer, join the [Crowdin project](https://crowdin.com/project/asbplayer). If your language isn't there, feel free to create an issue on the <a href={`${project.urls.repo}/issues`}>issues page</a>.
+Se non sei di madrelingua inglese e vuoi contribuire alla traduzione di asbplayer, unisciti al [progetto Crowdin](https://crowdin.com/project/asbplayer). Se la tua lingua non è presente, puoi aprire una segnalazione nella <a href={`${project.urls.repo}/issues`}>pagina delle segnalazioni</a>.
 
-## Sponsors {#sponsors}
+## Sponsor {#sponsors}
 
 [@vivekchoksi](https://www.github.com/vivekchoksi),
 [@nzarbayezid](https://www.github.com/nzarbayezid),
@@ -153,4 +153,4 @@ marcman3001,
 shiki,
 kansha-gratitude
 
-and those who have donated privately.
+e chi ha fatto donazioni in privato.
