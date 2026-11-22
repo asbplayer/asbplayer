@@ -2,10 +2,10 @@
 sidebar_position: 10
 ---
 
-# Audio track selection {#audio-track-selection}
+# Seleção da faixa de áudio {#audio-track-selection}
 
-Some video files have multiple audio tracks. On the website, an audio track selector is available when the **Experimental Web Platform features** flag is enabled from `chrome://flags` (or equivalent for the current browser).
+Alguns arquivos de vídeo têm várias faixas de áudio. No site, é possível selecionar uma faixa de áudio quando a opção **Experimental Web Platform features** está ativada em `chrome://flags` (ou no equivalente do navegador atual).
 
 :::warning
-As of this writing **Experimental Web Platform features** completely breaks the browser extension for streaming video (on some websites, maybe all). Enable this flag at your own risk.
+No momento da redação deste texto, **Experimental Web Platform features** faz a extensão para navegador parar de funcionar com vídeos em streaming (em alguns sites, talvez em todos). Ative essa opção por sua conta e risco.
 :::
