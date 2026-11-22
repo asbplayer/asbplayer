@@ -3,7 +3,10 @@
   "extends": "@docusaurus/tsconfig",
   "compilerOptions": {
     "baseUrl": ".",
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    // docusaurus.config.ts imports repo-root scripts (shared locale mapping) with
+    // explicit .ts extensions, as required by Node's type stripping.
+    "allowImportingTsExtensions": true
   },
   "exclude": [".docusaurus", "build"]
 }

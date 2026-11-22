@@ -1,4 +1,4 @@
-import { readFile, writeFile, access, mkdir } from 'fs/promises';
+import { readFile, writeFile, access, mkdir, readdir } from 'fs/promises';
 import { join } from 'path';
 import { fileURLToPath } from 'url';
 import { XMLBuilder } from 'fast-xml-parser';
@@ -21,12 +21,25 @@ const slug = (term) => {
     return slugified.length > 0 ? slugified : 'term';
 };
 
+const docsPath = join(dirname, '../../docs/docs');
+
+async function readDocsText() {
+    const entries = await readdir(docsPath, { withFileTypes: true, recursive: true });
+    const contents = await Promise.all(
+        entries
+            .filter((entry) => entry.isFile() && /\.(md|mdx)$/.test(entry.name))
+            .map((entry) => readFile(join(entry.parentPath ?? entry.path, entry.name), 'utf8'))
+    );
+    return contents.join('\n');
+}
+
 async function englishSourceText() {
     const en = await flattenedLocJsonByNamespace('en');
-    return Object.values(en)
+    const locText = Object.values(en)
         .flatMap((namespace) => Object.values(namespace))
-        .join('\n')
-        .toLowerCase();
+        .join('\n');
+    const docsText = await readDocsText();
+    return `${locText}\n${docsText}`.toLowerCase();
 }
 
 async function validate() {

@@ -1,10 +1,10 @@
 /*
- * Brand mark for the hero, above the subtitle stream. The logo is a
- * frosted-glass tile: backdrop blur and saturation over a translucent brand
- * gradient. Subtitle rows scrolling out of frame behind it get diffused
- * instead of colliding with it. HeroSubtitleStream renders the rows above
- * the highlight brighter, so there is content behind the glass for the blur
- * to act on.
+ * Brand mark for the hero, above the subtitle stream. The logo is a dark
+ * frosted-glass tile: a 6px backdrop blur over a low-alpha, deepened brand
+ * gradient. Subtitle rows scrolling out of frame behind it stay readable
+ * through the glass while the white glyph keeps high contrast against the
+ * dark sheet. HeroSubtitleStream renders the rows above the highlight
+ * brighter, so there is content behind the glass for the blur to act on.
  */
 .wrapper {
     position: relative;
@@ -26,23 +26,36 @@
     width: 72px;
     height: 72px;
     border-radius: 12.5%;
-    backdrop-filter: blur(12px) saturate(160%);
-    -webkit-backdrop-filter: blur(12px) saturate(160%);
-    background: linear-gradient(150deg, rgba(255, 31, 98, 0.7), rgba(73, 0, 122, 0.75) 160%);
-    border: 1px solid rgba(0, 0, 0, 0.08);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
+    /* 6px keeps the rows behind readable as text; larger radii smear 20px
+       cue text into an unrecognizable wash. */
+    backdrop-filter: blur(6px) saturate(140%);
+    -webkit-backdrop-filter: blur(6px) saturate(140%);
+    /* Dark glass: the brand hues deepened rather than brightened. A dark
+       low-alpha sheet keeps the white glyph high-contrast while transmitting
+       enough of the rows behind for them to read through the blur. */
+    background: linear-gradient(150deg, rgba(122, 10, 60, 0.3), rgba(46, 0, 82, 0.36) 160%);
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.35),
+        0 6px 18px rgba(0, 0, 0, 0.18);
 }
 
-/* Dark mode wants a shallower tint or the tile reads as an opaque dark chip;
-   white on the 30% gradient keeps the glyph legible. */
+/* Over the dark hero the bright brand hues can stay; the page itself
+   provides the dark field behind the glyph. A brighter edge keeps the
+   low-alpha tile visible as a glass sheet rather than a hole in the page. */
 [data-theme='dark'] .glass {
-    background: linear-gradient(150deg, rgba(255, 31, 98, 0.3), rgba(73, 0, 122, 0.35) 160%);
-    border-color: rgba(255, 255, 255, 0.15);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    background: linear-gradient(150deg, rgba(255, 31, 98, 0.24), rgba(73, 0, 122, 0.3) 160%);
+    border-color: rgba(255, 255, 255, 0.25);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.25),
+        0 6px 18px rgba(0, 0, 0, 0.4);
 }
 
 .logo {
     position: relative;
     width: 72px;
     height: 72px;
+    /* Edge definition for the white glyph over the dark glass; the dark
+       sheet itself carries most of the glyph's contrast. */
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.35));
 }

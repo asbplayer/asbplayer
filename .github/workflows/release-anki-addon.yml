@@ -33,7 +33,7 @@ jobs:
             - name: Test add-on configuration and packaging
               run: |
                   set -euo pipefail
-                  node --test --experimental-strip-types scripts/sync-project-config.test.ts scripts/package-anki-addon.test.ts
+                  node --test --experimental-strip-types scripts/sync-project-config.test.ts scripts/anki-release-info.test.ts
 
             - name: Read Anki release metadata
               id: release-info
@@ -45,6 +45,28 @@ jobs:
               run: |
                   set -euo pipefail
                   bash plugins/anki/package.sh
+
+            - name: Verify packaged add-on
+              env:
+                  RELEASE_VERSION: ${{ steps.release-info.outputs.version }}
+                  RELEASE_FILENAME: ${{ steps.release-info.outputs.filename }}
+              run: |
+                  set -euo pipefail
+                  ARTIFACT="plugins/anki/$RELEASE_FILENAME"
+                  test -f "$ARTIFACT"
+                  INVENTORY="$(unzip -Z1 "$ARTIFACT")"
+                  for REQUIRED in manifest.json config.json config.md __init__.py; do
+                      grep -qx "$REQUIRED" <<<"$INVENTORY" || { echo "Artifact is missing $REQUIRED" >&2; exit 1; }
+                  done
+                  if grep -q '__pycache__' <<<"$INVENTORY"; then
+                      echo 'Artifact contains __pycache__ entries' >&2
+                      exit 1
+                  fi
+                  MANIFEST_VERSION="$(unzip -p "$ARTIFACT" manifest.json | jq -r .human_version)"
+                  if test "$MANIFEST_VERSION" != "$RELEASE_VERSION"; then
+                      echo "Packaged manifest version $MANIFEST_VERSION does not match release version $RELEASE_VERSION" >&2
+                      exit 1
+                  fi
 
             - name: Create draft GitHub release
               env:
