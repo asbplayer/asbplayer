@@ -360,5 +360,50 @@
   "theme.tags.tagsPageTitle": {
     "message": "タグ",
     "description": "The title of the tag list page"
+  },
+  "homepage.tagline": {
+    "message": "字幕で語学を学ぶ"
+  },
+  "homepage.linksHint": {
+    "message": "ストリーミング動画には拡張機能をインストールし、動画ファイルにはウェブアプリを使用してください。"
+  },
+  "homepage.pill.webApp": {
+    "message": "ウェブアプリ"
+  },
+  "homepage.pill.userGuide": {
+    "message": "ユーザーガイド"
+  },
+  "homepage.features.subtitles.heading": {
+    "message": "ほぼすべての動画ソースに{selectable}字幕を追加"
+  },
+  "homepage.features.subtitles.paragraph": {
+    "message": "ストリーミング動画を含むほぼすべての動画ソースに、テキスト選択可能な字幕を追加できます。手持ちの字幕を使うか、25以上の対応ウェブサイトで自動検出された字幕を使うか、約85%のウェブサイトで動作する汎用字幕検出をお試しください。"
+  },
+  "homepage.features.anki.heading": {
+    "message": "マルチメディアAnkiカードを作成"
+  },
+  "homepage.features.anki.paragraph": {
+    "message": "字幕と動画ソースを組み合わせて、画像と音声付きの高品質なマルチメディア語彙カードを作成できます。"
+  },
+  "homepage.features.progress.heading": {
+    "message": "語学学習の進捗を分析・記録"
+  },
+  "homepage.cta.heading": {
+    "message": "語学学習者が、語学学習者のために"
+  },
+  "homepage.cta.paragraph": {
+    "message": "asbplayerは無料のオープンソースプロジェクトで、コミュニティによって運営され、何千人もの語学学習者に利用されています。"
+  },
+  "homepage.cta.learnMore": {
+    "message": "詳しく見る"
+  },
+  "homepage.cta.joinDiscord": {
+    "message": "Discordに参加"
+  },
+  "homepage.features.progress.paragraph": {
+    "message": "asbplayerと{yomitan}を組み合わせると、字幕を分析し、既知の語彙を記録する強力な単語注釈機能を利用できます。"
+  },
+  "homepage.features.subtitles.selectable": {
+    "message": "テキスト選択可能な"
   }
 }
