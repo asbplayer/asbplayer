@@ -757,15 +757,15 @@ WaniKani 状态的判定方法请参阅 [**WaniKani API 令牌**](#wanikani-api-
 
 启用循环播放模式时，只重复包含匹配单词的字幕。
 
-在紧凑模式下播放含有这些单词的字幕 {#play-subtitles-containing-these-words-in-condensed-mode}
+### 在紧凑模式下播放含有这些单词的字幕 {#play-subtitles-containing-these-words-in-condensed-mode}
 
 启用紧凑模式时，在紧凑时间轴中保留包含匹配单词的字幕。跳过其他字幕。
 
-在快进模式下以正常速度播放含有这些单词的字幕 {#play-subtitles-containing-these-words-at-normal-speed-in-fast-forward-mode}
+### 在快进模式下以正常速度播放含有这些单词的字幕 {#play-subtitles-containing-these-words-at-normal-speed-in-fast-forward-mode}
 
 启用快进模式时，以正常播放速度播放包含匹配单词的字幕。其他字幕则快进播放。
 
-根据理解度估算调整快进速度 {#adjust-fast-forward-rate-by-comprehension}
+### 根据理解度估算调整快进速度 {#adjust-fast-forward-rate-by-comprehension}
 
 启用快进模式时，根据句子的理解度估算分数选择字幕片段内的播放速度。
 
@@ -781,27 +781,27 @@ WaniKani 状态的判定方法请参阅 [**WaniKani API 令牌**](#wanikani-api-
 
 选择播放期间应保持可见的单词状态和标记。
 
-至少有此百分比的单词将被隐藏时，隐藏整条字幕 {#whole-subtitle-hidden-percentage}
+### 至少有此百分比的单词将被隐藏时，隐藏整条字幕 {#whole-subtitle-hidden-percentage}
 
 如果显示规则会隐藏字幕中至少此百分比的单词，就隐藏整条字幕。例如设为 **80%** 时，五个单词的字幕中若有四个将被隐藏，则整条字幕都会隐藏，包括那个设为显示的单词。标点和其他非字母字符不计入。
 
-逐个隐藏不匹配的单词 {#hide-non-matching-words-individually}
+### 逐个隐藏不匹配的单词 {#hide-non-matching-words-individually}
 
 启用后，整条字幕尚未达到隐藏阈值时，不符合显示规则的单词会逐个隐藏。禁用后，字幕会一直完整显示，直到达到阈值。
 
-每个所选类别的最少单词数 {#minimum-words-per-selected-category}
+### 每个所选类别的最少单词数 {#minimum-words-per-selected-category}
 
 字幕中的每个所选类别（例如**未收集**或**已忽略**）会分别计数。如果某类别的单词数低于此限制，该类别的单词不会触发规则。`0` 表示不限制。
 
-每个所选类别的最多单词数 {#maximum-words-per-selected-category}
+### 每个所选类别的最多单词数 {#maximum-words-per-selected-category}
 
 字幕中的每个所选类别（例如**未收集**或**已忽略**）会分别计数。如果某类别的单词数超过此限制，该类别的单词不会触发规则。`0` 表示不限制。
 
-仅当单词词频不低于 {#only-when-word-frequency-is-at-least}
+### 仅当单词词频不低于 {#only-when-word-frequency-is-at-least}
 
 匹配的单词词频必须不低于此值。缺少词频数据时按 `1` 计算。`0` 表示不限制。
 
-仅当单词词频不高于 {#only-when-word-frequency-is-at-most}
+### 仅当单词词频不高于 {#only-when-word-frequency-is-at-most}
 
 匹配的单词词频必须不高于此值。缺少词频数据时按 `1` 计算。`0` 表示不限制。
 
