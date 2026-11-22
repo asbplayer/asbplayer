@@ -4,44 +4,44 @@ sidebar_position: 1
 
 import project from '@site/src/project';
 
-# What is asbplayer? {#what-is-asbplayer}
+# asbplayerとは？ {#what-is-asbplayer}
 
-## A language-learning assistant {#a-language-learning-assistant}
+## 語学学習アシスタント {#a-language-learning-assistant}
 
-**asbplayer** is a language-learning assistant that makes it easier to learn languages through subtitled videos. Its original author created for himself to help with learning Japanese using [AJATT](https://tatsumoto-ren.github.io/blog/whats-ajatt.html). It was then popularized in the [Refold](https://refold.la/) Japanese-learning community as a **sentence mining** and **subtitle** tool. However, asbplayer's feature set is always growing. With asbplayer you can:
+**asbplayer**は、字幕付き動画を使った語学学習を支援するアシスタントです。最初の作者が、[AJATT](https://tatsumoto-ren.github.io/blog/whats-ajatt.html)を使った日本語学習のために自分用に作りました。その後、[Refold](https://refold.la/)の日本語学習コミュニティで、**センテンスマイニング**や**字幕**のツールとして広まりました。asbplayerの機能は現在も拡張を続けています。asbplayerでは次のことができます。
 
-- **Easily create high-quality, multimedia flashcards** out of subtitled videos.
-- **Load text-selectable subtitles onto most video sources**, including streaming sources. You can use **auto-detected subtitles** on popular streaming services like Netflix and YouTube, or your own **subtitle files**. A generic fallback subtitle detection algorithm allows asbplayer to detect subtitles on 85% of all other streaming services.
-- **Seek through subtitles** using a **navigable subtitle list**.
-- **Utilize customizable [keyboard shortcuts](./reference/settings.md#keyboard-shortcuts)** to access most of asbplayer's features.
-- **Optimize language acquisition** with **playback modes** like:
-    - **Condensed playback**: Skip unsubtitled sections of video.
-    - **Fast-forward playback**: Fast-forward through unsubtitled sections of video.
-    - **Auto-pause**: Automatically pause at the beginning or end of every subtitle.
-    - **Repeat**: Automatically repeat subtitles indefinitely or for a specified number of times.
-- **Use customizable [recipes](./guides/recipes.md)** to create and import immersion presets with asbplayer's rich playback features.
-- **Annotate subtitles** with the help of tools such as [Yomitan](https://yomitan.wiki/)
-    - **Word styling** (color/underline/outline, etc.) based on a word's status (uncollected/unknown/learning, etc.) synced from Anki, WaniKani, and/or tracked locally in asbplayer.
-    - **Reading annotation** for reading displayed above each word or based on status.
-    - **Accent annotation** such as pitch accent.
-    - **Frequency annotation** for rank-based frequency displayed below each word or based on status.
-    - **Glossary annotation** for a short definition or explanation of the word.
-    - **Statistics and Comprehension** on your known words for the current media.
-    - **Adaptive Playback** that uses **playback modes** and the annotation data to optimize your learning experience.
-    - **Word browser** to manage local and view words synced from external sources.
-    - Many more features for future releases! Some planned features include:
-        - **Auto mining** on uncollected/unknown/learning words.
-        - **Rich Anki Card Creation** for generating high-quality flashcards from annotated subtitles.
-        - **Statistics and Comprehension** on your known words across media.
+- **字幕付き動画から高品質なマルチメディアフラッシュカードを簡単に作成**できます。
+- ストリーミング動画を含む多くの動画ソースに、**テキスト選択可能な字幕を読み込めます**。NetflixやYouTubeなどの人気サービスでは**自動検出された字幕**を、自分の**字幕ファイル**も使用できます。汎用のフォールバック字幕検出アルゴリズムにより、その他のストリーミングサービスの85%で字幕を検出できます。
+- **操作可能な字幕リスト**を使って**字幕間を移動**できます。
+- カスタマイズ可能な[キーボードショートカット](./reference/settings.md#keyboard-shortcuts)で、asbplayerのほとんどの機能にアクセスできます。
+- **プレイバックモード**を使って語学習得を最適化できます。
+    - **短縮プレイバック**: 字幕のない動画区間をスキップします。
+    - **早送り再生**: 字幕のない動画区間を早送りします。
+    - **自動一時停止**: 各字幕の開始時または終了時に自動で一時停止します。
+    - **リピート**: 字幕を無期限または指定回数だけ自動で繰り返します。
+- カスタマイズ可能な[レシピ](./guides/recipes.md)を使い、asbplayerの豊富な再生機能を組み合わせた没入学習プリセットを作成、インポートできます。
+- [Yomitan](https://yomitan.wiki/)などのツールを使って字幕に**アノテーション**を付けられます。
+    - Anki、WaniKaniと同期したり、asbplayerでローカルに記録したりした単語の状態（未収集、新規、学習中など）に応じた**単語のスタイル**（色、下線、輪郭線など）。
+    - 各単語の上に読みを表示したり、状態に応じて表示したりする**読みのアノテーション**。
+    - ピッチアクセントなどの**アクセントアノテーション**。
+    - 順位ベースの頻度を各単語の下に表示したり、状態に応じて表示したりする**頻度アノテーション**。
+    - 単語の短い定義や説明を表示する**語義アノテーション**。
+    - 現在のメディアで既知の単語に関する**統計と理解度**。
+    - **プレイバックモード**とアノテーションデータを使って学習体験を最適化する**適応再生**。
+    - ローカルの単語を管理し、外部ソースと同期した単語を確認する**単語ブラウザー**。
+    - 今後のリリースでは、さらに多くの機能を予定しています。たとえば次の機能を計画しています。
+        - 未収集、新規、学習中の単語に対する**自動マイニング**。
+        - アノテーション付き字幕から高品質なフラッシュカードを作る**充実したAnkiマイニング機能**。
+        - メディアをまたいだ既知単語の**統計と理解度**。
 
-## A website and browser extension {#a-website-and-browser-extension}
+## ウェブサイトとブラウザー拡張機能 {#a-website-and-browser-extension}
 
-In order to make asbplayer as widely available as possible, asbplayer comes in two different forms, a <a href={project.urls.app}>website</a> which works with local video files, and a <a href={project.extension.chrome.storeUrl}>browser extension</a> which works with streaming video. Neither one is required to use the other - however, they work together to make the asbplayer user experience as seamless as possible.
+asbplayerを幅広く利用できるよう、ローカル動画ファイルで動作する<a href={project.urls.app}>ウェブサイト</a>と、ストリーミング動画で動作する<a href={project.extension.chrome.storeUrl}>ブラウザー拡張機能</a>の2つを提供しています。どちらか一方を使うのにもう一方は必要ありませんが、組み合わせることでasbplayerをよりスムーズに利用できます。
 
-## Why use asbplayer? {#why-use-asbplayer}
+## asbplayerを使う理由 {#why-use-asbplayer}
 
-- You want a way to watch videos with text-selectable subtitles.
-- You want a way to create high-quality, multimedia flashcards out of video and subtitle sources.
-- The video sources you are using are obscure and not supported by other similar tools.
-- You are somewhat tools-savvy. You will most likely need to combine asbplayer with other tools (like a dictionary app) for a complete language-learning toolset.
-- You don't want to pay money. asbplayer is free to use and open-source.
+- テキスト選択可能な字幕付きで動画を見たい。
+- 動画と字幕から高品質なマルチメディアフラッシュカードを作りたい。
+- 使用している動画ソースが一般的でなく、他の類似ツールでサポートされていない。
+- ツールの扱いにある程度慣れている。語学学習に必要なツール一式をそろえるには、asbplayerを辞書アプリなどと組み合わせる必要があるでしょう。
+- お金をかけたくない。asbplayerは無料で使えるオープンソースソフトウェアです。

@@ -4,58 +4,58 @@ sidebar_position: 11
 
 import project from '@site/src/project';
 
-# Online subtitles {#online-subtitles}
+# オンライン字幕 {#online-subtitles}
 
-Instead of hunting for subtitle files by hand, you can search for them and load them straight from asbplayer. Subtitles are provided by [Jimaku](https://jimaku.cc), a community subtitle site mostly covering anime and Japanese drama.
+字幕ファイルを自分で探さなくても、asbplayerから直接検索して読み込めます。字幕は、主にアニメや日本のドラマを扱うコミュニティ字幕サイト[Jimaku](https://jimaku.cc)から提供されます。
 
-## Usage {#usage}
+## 使い方 {#usage}
 
-1. Open the side panel on a page with a video, then click **Load Subtitles**.
-2. Click **Search online subtitles** (also available from the subtitle track dropdown).
-3. The search term is pre-filled from the page title. Adjust it if needed, pick **Anime** or **Drama**, and search.
-4. Click a search result to see its subtitle files, then click a file to load it.
+1. 動画のあるページでサイドパネルを開き、**字幕を読み込む**をクリックします。
+2. **オンライン字幕を検索**をクリックします（字幕トラックのドロップダウンからも利用できます）。
+3. ページタイトルから検索語が自動入力されます。必要に応じて修正し、**アニメ**または**ドラマ**を選んで検索します。
+4. 検索結果をクリックして字幕ファイルを表示し、ファイルをクリックして読み込みます。
 
-Only `.srt` and `.ass` files are listed. Works you opened recently show up under **Recent** so you can skip the search next time.
+`.srt`と`.ass`ファイルのみが表示されます。最近開いた作品は**最近使用した項目**に表示されるため、次回は検索を省略できます。
 
-## Getting a Jimaku API key {#api-key}
+## Jimaku APIキーの取得 {#api-key}
 
-Jimaku requires an API key to search and download.
+Jimakuで検索やダウンロードを行うには、APIキーが必要です。
 
-1. Create an account at [jimaku.cc](https://jimaku.cc) and log in.
-2. Open your [account page](https://jimaku.cc/account) and generate an API key.
-3. Paste the key into the **Jimaku API key** field in the search dialog.
+1. [jimaku.cc](https://jimaku.cc)でアカウントを作成してログインします。
+2. [アカウントページ](https://jimaku.cc/account)を開き、APIキーを生成します。
+3. 検索ダイアログの**Jimaku APIキー**欄にキーを貼り付けます。
 
-The key is saved automatically, so you only need to do this once. It is hidden by default; use the eye icon to show it.
+キーは自動的に保存されるため、この操作は一度だけで済みます。初期状態では非表示です。目のアイコンを使うと表示できます。
 
-## Automatic episode detection {#episode-detection}
+## エピソードの自動検出 {#episode-detection}
 
-For series, asbplayer tries to read the episode number from the page title (for example `S01E05`, `EP05`, or `第5話`/`第五集`). If one is found:
+シリーズの場合、asbplayerはページタイトルからエピソード番号（例: `S01E05`、`EP05`、`第5話`／`第五集`）を読み取ろうとします。検出されると、次のようになります。
 
-- the episode marker is removed from the search term, so you search for the series name only;
-- the file list is filtered to that episode, shown as an **EP N** chip. Click the chip's ✕ to see all files.
+- エピソード表記が検索語から除かれ、シリーズ名だけで検索されます。
+- ファイル一覧がそのエピソードに絞り込まれ、**EP N**チップで示されます。チップの✕をクリックするとすべてのファイルが表示されます。
 
-If the chosen episode has no usable subtitle files, the full list is shown instead.
+選択したエピソードに利用可能な字幕ファイルがない場合は、代わりに一覧全体が表示されます。
 
-### Custom episode regex {#episode-regex}
+### エピソード用カスタム正規表現 {#episode-regex}
 
-Some websites use title formats that the built-in rules don't recognize, so no episode is detected and you see every file in the series. A custom regex teaches asbplayer how to read the episode on those sites.
+一部のウェブサイトでは、組み込みルールで認識できない形式のタイトルが使われています。その場合はエピソードが検出されず、シリーズの全ファイルが表示されます。カスタム正規表現を設定すると、そのようなサイトでエピソードを読み取れるようになります。
 
-Once you've opened a series, click the gear icon next to the file list header to show the **Custom episode regex** field. The gear is highlighted while a regex is set.
+シリーズを開いたら、ファイル一覧の見出しの横にある歯車アイコンをクリックして、**エピソード用カスタム正規表現**欄を表示します。正規表現が設定されている間、歯車は強調表示されます。
 
-- **Capture group 1** must be the episode number (arabic or kanji numerals both work).
-- Your regex is tried first. If it is empty, invalid, or doesn't match, the built-in rules are used as usual, so it can only add coverage.
-- Press **Enter** to re-filter the current series. The search term picks up the change the next time you open the dialog.
+- **キャプチャグループ1**にはエピソード番号を指定します（アラビア数字と漢数字のどちらも使えます）。
+- 正規表現が最初に試されます。空欄、無効、または不一致の場合は、通常どおり組み込みルールが使われるため、検出できる範囲が広がります。
+- **Enter**を押すと、現在のシリーズを再度絞り込みます。検索語には、次回ダイアログを開いたときから変更が反映されます。
 
 :::tip
-The built-in rules were only tested on the few websites the feature's author uses. If a site's title format isn't recognized, please <a href={`${project.urls.repo}/issues`}>open an issue</a> with an example page title (or a PR on `common/subtitle-sources/jimaku-episode-patterns.ts`) so the built-in rules can be extended.
+組み込みルールは、この機能の作者が利用する少数のウェブサイトでのみテストされています。サイトのタイトル形式が認識されない場合は、ページタイトルの例を添えて<a href={`${project.urls.repo}/issues`}>イシューを作成</a>してください（または`common/subtitle-sources/jimaku-episode-patterns.ts`へのPRを作成してください）。組み込みルールを拡張できます。
 :::
 
-For example, if a site titles its pages `Some Show - Chapter 07 | SiteName`, use:
+たとえば、サイトのページタイトルが`Some Show - Chapter 07 | SiteName`の場合は、次を使います。
 
 ```
 Chapter (\d+)
 ```
 
-## Acknowledgements {#jimaku-acknowledgements}
+## 謝辞 {#jimaku-acknowledgements}
 
-Huge thanks to [Rapptz](https://github.com/Rapptz), who built and maintains [Jimaku](https://github.com/Rapptz/jimaku) and provides the API that makes this feature possible. If you find it useful, please consider supporting the site and uploading your own subtitles.
+[Jimaku](https://github.com/Rapptz/jimaku)を開発・保守し、この機能を実現するAPIを提供している[Rapptz](https://github.com/Rapptz)に心から感謝します。この機能が役に立ったら、サイトへの支援や字幕の投稿をご検討ください。

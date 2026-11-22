@@ -2,27 +2,27 @@
 sidebar_position: 2
 ---
 
-# Subtitle timing {#subtitle-timing}
+# 字幕のタイミング調整 {#subtitle-timing}
 
-Subtitle files will very often not be aligned to the video source you load them into. To work around this, asbplayer provides ways to manually adjust subtitle timing.
+字幕ファイルは、読み込んだ動画ソースとタイミングが合わないことがよくあります。asbplayerでは字幕のタイミングを手動で調整できます。
 
-## Keyboard shortcuts {#keyboard-shortcuts}
+## キーボードショートカット {#keyboard-shortcuts}
 
-The fastest way to fix subtitle timing is with the [Subtitle offset keyboard shortcuts](../reference/settings.md#subtitle-offset-keyboard-shortcuts). There are two sets of shortcuts for adjusting subtitle offset:
+字幕のタイミングをすばやく修正するには、[字幕表示タイミングのキーボードショートカット](../reference/settings.md#subtitle-offset-keyboard-shortcuts)を使います。字幕表示タイミングの調整には、次の2種類のショートカットがあります。
 
-- `Ctrl + Left/Right` or `Shift + Left/Right`: Align the current timestamp to the left or right subtitle.
-- `Ctrl + Shift + Left/Right`: Move the current timestamp `100ms` to the left or right.
+- `Ctrl + Left/Right`または`Shift + Left/Right`: 現在のタイムスタンプを前後の字幕に合わせます。
+- `Ctrl + Shift + Left/Right`: 現在のタイムスタンプを左右に`100ms`移動します。
 
-Most often, finding the correct offset will look like this:
+通常は、次の手順で適切なオフセットを見つけます。
 
-1. Wait for a character to start talking.
-2. `Ctrl + Left/Right` until the subtitle matching the character's dialog appears on screen.
-3. `Ctrl + Shift + Right/Left` until the subtitle timing precisely matches the dialog.
+1. 登場人物が話し始めるのを待ちます。
+2. 話している内容に合う字幕が表示されるまで`Ctrl + Left/Right`を押します。
+3. 字幕のタイミングが会話に正確に合うまで`Ctrl + Shift + Right/Left`を押します。
 
-## Overlay UI {#overlay-ui}
+## オーバーレイUI {#overlay-ui}
 
-The overlay UI provides buttons that perform the same functions as the keyboard shortcuts above.
+オーバーレイUIには、上記のキーボードショートカットと同じ操作を行うボタンがあります。
 
-1. Scroll the rightmost section to the **middle** control.
-2. Click the left or right button to align the left or right subtitle to the current timestamp.
-3. Click and **hold** the left or right button to move the current timestamp `100ms` to the left or right.
+1. 右端のセクションをスクロールし、**中央**のコントロールを表示します。
+2. 左または右のボタンをクリックして、前後の字幕を現在のタイムスタンプに合わせます。
+3. 左または右のボタンをクリックして**長押し**すると、現在のタイムスタンプを`100ms`移動できます。

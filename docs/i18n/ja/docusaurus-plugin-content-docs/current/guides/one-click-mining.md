@@ -4,44 +4,44 @@ sidebar_position: 8
 
 import project, { ankiConnectUrl, webSocketUrl } from '@site/src/project';
 
-# One-click mining {#one-click-mining}
+# ワンクリックマイニング {#one-click-mining}
 
-asbplayer is great at connecting subtitle and video content to AnkiConnect, but is not able to automatically provide word definitions on its own. For this reason, most sentence mining flows require at two or three mouse or keyboard inputs from the user.
+asbplayerは字幕や動画の内容をAnkiConnectに連携できますが、単語の定義を自動で提供することはできません。そのため、ほとんどのセンテンスマイニングフローでは、マウスやキーボードで2、3回の操作が必要です。
 
-One-click mining is possible if asbplayer is combined with another application that:
+次の機能を持つ別のアプリケーションとasbplayerを組み合わせると、ワンクリックマイニングが可能です。
 
-- supplies the missing word definition information, and
-- already integrates with AnkiConnect.
+- 不足している単語の定義情報を提供する。
+- AnkiConnectとすでに連携している。
 
-[Yomitan](https://yomitan.wiki/) is an example of one such application.
+[Yomitan](https://yomitan.wiki/)は、このようなアプリケーションの一例です。
 
-## Install and configure Yomitan {#install-and-configure-yomitan}
+## Yomitanのインストールと設定 {#install-and-configure-yomitan}
 
-Follow the directions on [Yomitan's website](https://yomitan.wiki/) to install Yomitan and configure it with a dictionary for your target language. You will also need to add [AnkiConnect](https://ankiweb.net/shared/info/2055492159) to Anki if you haven't done so already.
+手順に従って[Yomitanのウェブサイト](https://yomitan.wiki/)からYomitanをインストールし、学習対象言語の辞書を設定します。まだの場合は、Ankiに[AnkiConnect](https://ankiweb.net/shared/info/2055492159)も追加する必要があります。
 
-In Yomitan's Anki settings:
+YomitanのAnki設定で、次のようにします。
 
-- The AnkiConnect server address should be the default (<code>{ankiConnectUrl}</code>).
-- Yomitan should be using the same **Note Type** as asbplayer.
+- AnkiConnectサーバーアドレスはデフォルト（<code>{ankiConnectUrl}</code>）にします。
+- Yomitanではasbplayerと同じ**ノートタイプ**を使います。
 
-## Install the asbplayer Anki add-on {#install-the-asbplayer-anki-add-on}
+## asbplayer Ankiアドオンのインストール {#install-the-asbplayer-anki-add-on}
 
-The add-on requires at least Anki 25.02. It is not yet available on AnkiWeb, so it has to be installed from a file:
+このアドオンにはAnki 25.02以降が必要です。AnkiWebではまだ入手できないため、ファイルからインストールします。
 
-1. Download the latest `.ankiaddon` file from the <a href={`${project.urls.repo}/releases?q=${encodeURIComponent(project.releases.ankiAddon.releaseTitlePrefix)}`}>releases page</a>.
-2. Open the file and press **Yes** on the popup.
-3. Restart Anki.
+1. <a href={`${project.urls.repo}/releases?q=${encodeURIComponent(project.releases.ankiAddon.releaseTitlePrefix)}`}>リリースページ</a>から最新の`.ankiaddon`ファイルをダウンロードします。
+2. ファイルを開き、ポップアップの**はい**を押します。
+3. Ankiを再起動します。
 
-## Connect asbplayer to the add-on {#connect-asbplayer-to-the-add-on}
+## asbplayerをアドオンに接続 {#connect-asbplayer-to-the-add-on}
 
-Enable the WebSocket client in the <a href={new URL('?view=settings#misc-settings', project.urls.app).href}>misc settings</a> of the asbplayer extension (near the bottom). Keep the default WebSocket server URL (<code>{webSocketUrl}</code>), which matches the add-on's default.
+asbplayer拡張機能の<a href={new URL('?view=settings#misc-settings', project.urls.app).href}>その他の設定</a>（下部付近）でWebSocketクライアントを有効にします。アドオンのデフォルトと一致するため、WebSocketサーバーURL（<code>{webSocketUrl}</code>）はデフォルトのままにしてください。
 
-## Mine with **Yomitan** as usual {#mine-with-yomitan-as-usual}
+## 通常どおり**Yomitan**でマイニング {#mine-with-yomitan-as-usual}
 
-Mining sentences using Yomitan will create cards with word definition, image, and audio already provided.
+Yomitanで文をマイニングすると、単語の定義、画像、音声がすでに追加されたカードが作成されます。
 
-To always use asbplayer's subtitle text for the Sentence field, enable [**Always use subtitle text for sentence field**](../reference/settings#always-use-subtitle-text-for-sentence-field) under **Mining** settings. This replaces the sentence text supplied by Yomitan with the mined subtitle text from all tracks.
+Sentenceフィールドで常にasbplayerの字幕テキストを使うには、**マイニング**設定で[**文フィールドに常に字幕テキストを使う**](../reference/settings#always-use-subtitle-text-for-sentence-field)を有効にします。Yomitanが提供する文のテキストが、すべてのトラックから取得したマイニング対象の字幕テキストに置き換わります。
 
-## Add-on Settings
+## アドオンの設定
 
-The add-on's settings can be changed in Anki from **Tools > Add-ons** by selecting the add-on and pressing **Config**. `postMineAction` is the action asbplayer takes after Yomitan adds a card (default: <code>{project.services.webSocket.postMineAction}</code>). Set it to `2` (update last card) for the one-click mining flow. If `port` is changed, asbplayer's WebSocket server URL needs to be changed to match.
+アドオンの設定はAnkiの**ツール > アドオン**でアドオンを選択し、**設定**を押すと変更できます。`postMineAction`はYomitanがカードを追加した後にasbplayerが実行する操作です（デフォルト: <code>{project.services.webSocket.postMineAction}</code>）。ワンクリックマイニングフローでは`2`（最後のカードを更新）に設定します。`port`を変更した場合は、asbplayerのWebSocketサーバーURLも一致するように変更する必要があります。

@@ -5,80 +5,80 @@ sidebar_position: 3
 import NoteAddIcon from '@site/src/components/NoteAddIcon';
 import ImageIcon from '@site/src/components/ImageIcon';
 
-# Mining in-depth {#mining-in-depth}
+# マイニングの詳細 {#mining-in-depth}
 
-Sentence mining can be accomplished in a variety of ways, according to your needs and preferences, using asbplayer.
+asbplayerでは、ニーズや好みに応じてさまざまな方法でセンテンスマイニングができます。
 
-## Opening the Anki Export Dialog {#opening-the-anki-export-dialog}
+## Anki のエクスポートウィンドウを開く {#opening-the-anki-export-dialog}
 
-There are multiple ways to open the **Anki Export Dialog**:
+**Anki のエクスポートウィンドウ**を開く方法はいくつかあります。
 
-1. **Mine Subtitle** <NoteAddIcon /> button that can be found in the **Subtitle List** of the **Side Panel** or on the website.
-2. **Mine Subtitle** <NoteAddIcon /> button in the **Overlay UI** on streaming videos or on the mobile website.
-3. The **mine current subtitle and open Anki dialog** [Mining keyboard shortcut](../reference/settings.md#mining-keyboard-shortcuts) - `Ctrl + Shift + X` by default.
-4. Right-click → asbplayer → **Mine Subtitle** on streaming video.
+1. **サイドパネル**の**字幕リスト**またはウェブサイトにある**字幕をマイニングする** <NoteAddIcon /> ボタン。
+2. ストリーミング動画またはモバイル版ウェブサイトの**オーバーレイUI**にある**字幕をマイニングする** <NoteAddIcon /> ボタン。
+3. **現在の字幕をマイニングしてAnki のエクスポートウィンドウを開く**[マイニングのキーボードショートカット](../reference/settings.md#mining-keyboard-shortcuts)（デフォルトは`Ctrl + Shift + X`）。
+4. ストリーミング動画で右クリック → asbplayer → **字幕をマイニングする**。
 
 :::info
-Methods #1 and #2 will open the dialog only if the [mining button default action](../reference/settings#mining-button-default-action) is set to "Show Anki dialog."  
+方法1と2でダイアログが開くのは、[マイニングボタンのデフォルト動作](../reference/settings#mining-button-default-action)が「Anki のエクスポートウィンドウを開く」に設定されている場合のみです。
 :::
 
 :::info
-When an _empty_ subtitle track is loaded, and audio recording is enabled, all of the above actions will start recording audio the first time they are triggered, and open the Anki dialog the second time they are triggered.
+_空の_字幕トラックが読み込まれ、音声録音が有効な場合、上記の操作を初めて実行すると音声録音が始まり、2回目に実行するとAnki のエクスポートウィンドウが開きます。
 :::
 
-## Adjusting cards {#adjusting-cards}
+## カードの調整 {#adjusting-cards}
 
-Prior to being exported, cards can be adjusted from the dialog.
+エクスポートする前に、ダイアログでカードを調整できます。
 
-### Selected time range {#selected-time-range}
+### 選択した時間範囲 {#selected-time-range}
 
-A **slider** at the bottom of the dialog can be used to change the selected time range.
+ダイアログ下部の**スライダー**で選択した時間範囲を変更できます。
 
-- The **Sentence Field** will be automatically updated to match the selected time range, if it has not been manually edited already.
-- For local files, the audio clip will also be automatically updated.
-- For streaming video, the audio clip can be re-recorded with the selected time range.
+- **文フィールド**が手動で編集されていない場合、選択した時間範囲に合わせて自動更新されます。
+- ローカルファイルの場合、音声クリップも自動更新されます。
+- ストリーミング動画の場合、選択した時間範囲で音声クリップを再録音できます。
 
-### Audio field {#audio-field}
+### 音声フィールド {#audio-field}
 
-The **Audio Field** displays the recorded audio clip and provides three action buttons:
+**音声フィールド**には録音済みの音声クリップが表示され、3つの操作ボタンがあります。
 
-- **Play/Pause** — preview the audio clip directly in the dialog.
-- **Re-record** — re-record the audio using the currently selected time range (streaming video only; shown when a re-record callback is available).
-- **Download** — download the audio clip as a file to your device.
+- **再生／一時停止** — ダイアログ内で音声クリップをプレビューします。
+- **再録音** — 現在選択されている時間範囲で音声を再録音します（ストリーミング動画のみ。再録音コールバックが使用可能な場合に表示されます）。
+- **ダウンロード** — 音声クリップをファイルとして端末にダウンロードします。
 
-### Text fields {#text-fields}
+### テキストフィールド {#text-fields}
 
-Any of the text fields - sentence, definition, word, custom fields, source, URL, tags - can be edited. Typically, a separate dictionary app is used to fill out the definition field.
+文、定義、単語、カスタムフィールド、ソース、URL、タグなど、すべてのテキストフィールドを編集できます。通常、定義フィールドの入力には別の辞書アプリを使います。
 
-### Image field {#image-field}
+### 画像フィールド {#image-field}
 
-For local files, clicking the **Preview Button** <ImageIcon /> on the **Image Field** can be used to change the video timestamp from which the screenshot is extracted.
+ローカルファイルの場合、**画像フィールド**の**プレビューボタン** <ImageIcon /> をクリックして、スクリーンショットを撮る動画のタイムスタンプを変更できます。
 
-## Exporting cards {#exporting-cards}
+## カードのエクスポート {#exporting-cards}
 
-Use the buttons at the bottom of the dialog to finally export the card. There are three types of export:
+ダイアログ下部のボタンでカードをエクスポートします。エクスポート方法は3種類あります。
 
-1. **Export**: simply export a card with the dialog content.
-2. **Update last card**: update the last card in your Anki deck with the dialog content.
-3. **Open in Anki**: opens Anki's card creator prefilled with the dialog content.
+1. **エクスポート**: ダイアログの内容でカードをエクスポートします。
+2. **最後のカードを更新**: ダイアログの内容でAnkiデッキの最後のカードを更新します。
+3. **Ankiで開く**: ダイアログの内容を入力済みの状態でAnkiのカード作成画面を開きます。
 
-## Dialog-less mining flows {#dialog-less-mining-flows}
+## ダイアログを使わないマイニングフロー {#dialog-less-mining-flows}
 
-Dialog-less mining flows that both include a word definition and skip the Anki dialog entirely can be achieved when asbplayer is used in combination with a dictionary app that also integrates with Anki. Currently, the most popular dictionary app that does this is [Yomitan](https://yomitan.wiki/).
+Ankiとも連携する辞書アプリとasbplayerを組み合わせると、単語の定義を追加し、Anki のエクスポートウィンドウを完全に省略したマイニングフローを実現できます。現在、これに使われる最も人気のある辞書アプリは[Yomitan](https://yomitan.wiki/)です。
 
-### Update last card {#update-last-card}
+### 最後のカードを更新 {#update-last-card}
 
-A dialog-less mining flow with Yomitan looks like this:
+Yomitanを使った、ダイアログを省略するマイニングフローは次のとおりです。
 
-1. Using Yomitan, highlight the word inside the subtitles that you would like to mine.
-2. Use Yomitan's card-creation button to create a card.
-3. Immediately use asbplayer's **update last card** [Mining keyboard shortcut](../reference/settings.md#mining-keyboard-shortcuts) - `Ctrl + Shift + U` - to update the card with asbplayer-supplied content.
+1. Yomitanを使い、字幕内でマイニングしたい単語を選択します。
+2. Yomitanのカード作成ボタンを使ってカードを作成します。
+3. すぐにasbplayerの**最後のカードを更新**[マイニングのキーボードショートカット](../reference/settings.md#mining-keyboard-shortcuts)（`Ctrl + Shift + U`）を使って、asbplayerが提供する情報でカードを更新します。
 
-The disadvantage of this flow is that skipping the dialog means skipping the opportunity to modify the card. However, there are ways to work around this:
+この方法の欠点は、ダイアログを省略するためカードを編集する機会もなくなることです。ただし、次の方法で回避できます。
 
-- Instead of directly updating the last card at the final step, you can always use `Ctrl + Shift + X` instead to open the dialog, adjust the card, and finally **update last card** using the dialog GUI. With this method you still go through the dialog, but retain the benefit of Yomitan's automatically-supplied word definition.
-- The **Anki Export Dialog** can always be opened _after_ card creation with the **manually take screenshot** [Mining keyboard shortcut](../reference/settings.md#mining-keyboard-shortcuts) - `Ctrl + Shift + V` by default.
+- 最後の手順で直接カードを更新する代わりに、`Ctrl + Shift + X`を使ってダイアログを開き、カードを調整してからダイアログのGUIで**最後のカードを更新**できます。この方法ではダイアログを使いますが、Yomitanが自動で追加した単語の定義を活用できます。
+- **スクリーンショットを手動で撮影**する[マイニングのキーボードショートカット](../reference/settings.md#mining-keyboard-shortcuts)（デフォルトは`Ctrl + Shift + V`）を使うと、カード作成後にいつでも**Anki のエクスポートウィンドウ**を開けます。
 
-### One click {#one-click}
+### ワンクリック {#one-click}
 
-See the [one-click mining](./one-click-mining.md) guide.
+[ワンクリックマイニング](./one-click-mining.md)ガイドを参照してください。
