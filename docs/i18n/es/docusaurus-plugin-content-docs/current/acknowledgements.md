@@ -4,13 +4,13 @@ sidebar_position: 7
 
 import project from '@site/src/project';
 
-# Acknowledgements {#acknowledgements}
+# Agradecimientos {#acknowledgements}
 
-asbplayer would not be what it is today without the community around it. We thank all the people who have used and benefited from asbplayer, who have advocated for it, suggested features, reported bugs, and made contributions.
+asbplayer no sería lo que es hoy sin su comunidad. Agradecemos a todas las personas que han usado asbplayer y se han beneficiado de él, lo han recomendado, han sugerido funciones, informado de errores y contribuido al proyecto.
 
-We epecially acknowledge the wonderful humans below.
+Queremos reconocer especialmente a las maravillosas personas que aparecen a continuación.
 
-## Contributors {#contributors}
+## Colaboradores {#contributors}
 
 [@Renji-XD](https://www.github.com/Renji-XD),
 [@MatiasIslaA](https://www.github.com/MatiasIslaA),
@@ -79,30 +79,30 @@ We epecially acknowledge the wonderful humans below.
 [@joaquinmuzzi](https://github.com/joaquinmuzzi),
 [@mvanhorn](https://github.com/mvanhorn)
 
-## Translators {#translators}
+## Traductores {#translators}
 
-**Mana Tsutsumi** (Japanese, initial translation),
-**kasader** (Japanese),
-**Kai Böse** (German),
-**Triline**, **[@nekorushi](https://github.com/nekorushi)** (Polish),
-**NeverWinterSwor** (Simplified Chinese),
-**[@AkihaZhang](https://github.com/AkihaZhang)** (Simplified Chinese),
-**senorli** (Simplified Chinese),
-**Yagxter**, **[@chatterine](https://github.com/chatterine)** (Brazilian Portuguese),
-**Leo Gonzalez** (Spanish),
-**[@NovaKing007](https://github.com/NovaKing007)** (Spanish),
-**Yuri ([@ganqqwerty](https://github.com/ganqqwerty))** (Russian),
-**Kellen (kputuhuk)** (Russian),
-**Vladislav Kochetkov (vakochetkov)** (Russian),
-**[@825i](https://github.com/825i)** (Finnish),
-**[@Jaybird1291](https://github.com/jaybird1291)** (French),
-**Tigerbabe aka Gyaru Jinsei Juku** (Korean),
-**[@yaaacha](https://github.com/yaaacha)** (Indonesian),
-**[@NeriSal](https://github.com/nerisal)** (Italian)
+**Mana Tsutsumi** (japonés, traducción inicial),
+**kasader** (japonés),
+**Kai Böse** (alemán),
+**Triline**, **[@nekorushi](https://github.com/nekorushi)** (polaco),
+**NeverWinterSwor** (chino simplificado),
+**[@AkihaZhang](https://github.com/AkihaZhang)** (chino simplificado),
+**senorli** (chino simplificado),
+**Yagxter**, **[@chatterine](https://github.com/chatterine)** (portugués brasileño),
+**Leo Gonzalez** (español),
+**[@NovaKing007](https://github.com/NovaKing007)** (español),
+**Yuri ([@ganqqwerty](https://github.com/ganqqwerty))** (ruso),
+**Kellen (kputuhuk)** (ruso),
+**Vladislav Kochetkov (vakochetkov)** (ruso),
+**[@825i](https://github.com/825i)** (finés),
+**[@Jaybird1291](https://github.com/jaybird1291)** (francés),
+**Tigerbabe aka Gyaru Jinsei Juku** (coreano),
+**[@yaaacha](https://github.com/yaaacha)** (indonesio),
+**[@NeriSal](https://github.com/nerisal)** (italiano)
 
-If you are a non-English native, and would like to help translate asbplayer, join the [Crowdin project](https://crowdin.com/project/asbplayer). If your language isn't there, feel free to create an issue on the <a href={`${project.urls.repo}/issues`}>issues page</a>.
+Si tu lengua materna no es el inglés y quieres ayudar a traducir asbplayer, únete al [proyecto de Crowdin](https://crowdin.com/project/asbplayer). Si tu idioma no aparece allí, puedes crear una incidencia en la <a href={`${project.urls.repo}/issues`}>página de incidencias</a>.
 
-## Sponsors {#sponsors}
+## Patrocinadores {#sponsors}
 
 [@vivekchoksi](https://www.github.com/vivekchoksi),
 [@nzarbayezid](https://www.github.com/nzarbayezid),
@@ -153,4 +153,4 @@ marcman3001,
 shiki,
 kansha-gratitude
 
-and those who have donated privately.
+y a quienes han hecho donaciones privadas.
