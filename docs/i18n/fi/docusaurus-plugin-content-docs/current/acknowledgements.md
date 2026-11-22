@@ -4,13 +4,13 @@ sidebar_position: 7
 
 import project from '@site/src/project';
 
-# Acknowledgements {#acknowledgements}
+# Kiitokset {#acknowledgements}
 
-asbplayer would not be what it is today without the community around it. We thank all the people who have used and benefited from asbplayer, who have advocated for it, suggested features, reported bugs, and made contributions.
+asbplayer ei olisi nykyisellään ilman ympärillään olevaa yhteisöä. Kiitämme kaikkia, jotka ovat käyttäneet asbplayeriä ja hyötyneet siitä, suositelleet sitä, ehdottaneet ominaisuuksia, ilmoittaneet virheistä ja osallistuneet sen kehittämiseen.
 
-We epecially acknowledge the wonderful humans below.
+Haluamme erityisesti kiittää alla mainittuja ihmisiä.
 
-## Contributors {#contributors}
+## Avustajat {#contributors}
 
 [@Renji-XD](https://www.github.com/Renji-XD),
 [@MatiasIslaA](https://www.github.com/MatiasIslaA),
@@ -79,7 +79,7 @@ We epecially acknowledge the wonderful humans below.
 [@joaquinmuzzi](https://github.com/joaquinmuzzi),
 [@mvanhorn](https://github.com/mvanhorn)
 
-## Translators {#translators}
+## Kääntäjät {#translators}
 
 **Mana Tsutsumi** (Japanese, initial translation),
 **kasader** (Japanese),
@@ -100,9 +100,9 @@ We epecially acknowledge the wonderful humans below.
 **[@yaaacha](https://github.com/yaaacha)** (Indonesian),
 **[@NeriSal](https://github.com/nerisal)** (Italian)
 
-If you are a non-English native, and would like to help translate asbplayer, join the [Crowdin project](https://crowdin.com/project/asbplayer). If your language isn't there, feel free to create an issue on the <a href={`${project.urls.repo}/issues`}>issues page</a>.
+Jos äidinkielesi ei ole englanti ja haluaisit auttaa asbplayerin kääntämisessä, liity [Crowdin-projektiin](https://crowdin.com/project/asbplayer). Jos kieltäsi ei löydy sieltä, voit luoda asiasta ilmoituksen <a href={`${project.urls.repo}/issues`}>ongelmien sivulla</a>.
 
-## Sponsors {#sponsors}
+## Tukijat {#sponsors}
 
 [@vivekchoksi](https://www.github.com/vivekchoksi),
 [@nzarbayezid](https://www.github.com/nzarbayezid),
@@ -153,4 +153,4 @@ marcman3001,
 shiki,
 kansha-gratitude
 
-and those who have donated privately.
+sekä kaikki yksityisesti lahjoittaneet.

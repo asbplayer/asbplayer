@@ -4,33 +4,33 @@ sidebar_position: 1
 
 import project from '@site/src/project';
 
-# Loading subtitles {#loading-subtitles}
+# Tekstitysten lataaminen {#loading-subtitles}
 
-The first step to using asbplayer is to load subtitles onto a video source.
+asbplayerin käytön ensimmäinen vaihe on tekstitysten lataaminen videolähteeseen.
 
-## Streaming video {#streaming-video}
+## Suoratoistovideo {#streaming-video}
 
-### Chrome (or other Chromium-based browsers) {#chromium}
+### Chrome (tai muu Chromium-pohjainen selain) {#chromium}
 
-1. Install the Chrome extension from Google's <a href={project.extension.chrome.storeUrl}>web store</a> or from the <a href={`${project.urls.repo}/releases/latest`}>GitHub release</a>.
-2. Click 🧩 icon in browser toolbar → asbplayer → **Open Side Panel**
-3. Click **Load Subtitles** to load subtitles onto any video on the current page.
+1. Asenna Chrome-laajennus Googlen <a href={project.extension.chrome.storeUrl}>verkkokaupasta</a> tai <a href={`${project.urls.repo}/releases/latest`}>GitHub-julkaisusta</a>.
+2. Napsauta selaimen työkalupalkin 🧩-kuvaketta → asbplayer → **Avaa sivupaneeli**.
+3. Lataa tekstitykset sivun mihin tahansa videoon napsauttamalla **Lataa tekstitykset**.
 
 ### Firefox {#firefox}
 
 :::warning
-asbplayer is missing some features on Firefox. See the [Compatibility](../compatibility.md#extension) section.  
+Firefoxista puuttuu joitakin asbplayerin ominaisuuksia. Katso [yhteensopivuus](../compatibility.md#extension)-osiosta lisätietoja.
 :::
 
-1. Install the the Firefox addon from the Mozilla <a href={project.extension.firefox.storeUrl}>addon store</a> or from the <a href={`${project.urls.repo}/releases/latest`}>GitHub release</a>.
-2. Click 🧩 icon in browser toolbar → asbplayer → **Open Side Panel**
-3. Click **Load Subtitles** to load subtitles onto any video on the current page.
+1. Asenna Firefox-lisäosa Mozillan <a href={project.extension.firefox.storeUrl}>lisäosakaupasta</a> tai <a href={`${project.urls.repo}/releases/latest`}>GitHub-julkaisusta</a>.
+2. Napsauta selaimen työkalupalkin 🧩-kuvaketta → asbplayer → **Avaa sivupaneeli**.
+3. Lataa tekstitykset sivun mihin tahansa videoon napsauttamalla **Lataa tekstitykset**.
 
 ### Android {#android}
 
-See the [Android guide](../guides/android.md).
+Katso [Android-opas](../guides/android.md).
 
-## Video files {#video-files}
+## Videotiedostot {#video-files}
 
-1. Open the <a href={project.urls.app}>website</a>.
-2. Drag-and-drop video and subtitle files into the website.
+1. Avaa <a href={project.urls.app}>verkkosivusto</a>.
+2. Vedä video- ja tekstitystiedostot verkkosivustolle.

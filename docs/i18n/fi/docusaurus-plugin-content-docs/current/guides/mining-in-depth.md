@@ -5,80 +5,80 @@ sidebar_position: 3
 import NoteAddIcon from '@site/src/components/NoteAddIcon';
 import ImageIcon from '@site/src/components/ImageIcon';
 
-# Mining in-depth {#mining-in-depth}
+# Tekstitysten louhinta perusteellisesti {#mining-in-depth}
 
-Sentence mining can be accomplished in a variety of ways, according to your needs and preferences, using asbplayer.
+asbplayerilla voit louhia lauseita monella tavalla tarpeidesi ja mieltymystesi mukaan.
 
-## Opening the Anki Export Dialog {#opening-the-anki-export-dialog}
+## Anki-vientivalintaikkunan avaaminen {#opening-the-anki-export-dialog}
 
-There are multiple ways to open the **Anki Export Dialog**:
+**Anki-vientivalintaikkunan** voi avata usealla tavalla:
 
-1. **Mine Subtitle** <NoteAddIcon /> button that can be found in the **Subtitle List** of the **Side Panel** or on the website.
-2. **Mine Subtitle** <NoteAddIcon /> button in the **Overlay UI** on streaming videos or on the mobile website.
-3. The **mine current subtitle and open Anki dialog** [Mining keyboard shortcut](../reference/settings.md#mining-keyboard-shortcuts) - `Ctrl + Shift + X` by default.
-4. Right-click → asbplayer → **Mine Subtitle** on streaming video.
+1. **Lähetä tekstitykset Ankin** <NoteAddIcon /> -painike, joka löytyy **sivupaneelin** **tekstityslistasta** tai verkkosivustolta.
+2. **Lähetä tekstitykset Ankin** <NoteAddIcon /> -painike **peittokuvan käyttöliittymässä** suoratoistovideolla tai mobiilisivustolla.
+3. **Lähetä nykyinen tekstitys Anki-valintaikkunaan** -toiminnon [louhinnan pikanäppäin](../reference/settings.md#mining-keyboard-shortcuts), oletuksena `Ctrl + Shift + X`.
+4. Napsauta suoratoistovideota hiiren kakkospainikkeella ja valitse asbplayer → **Lähetä tekstitykset Ankin**.
 
 :::info
-Methods #1 and #2 will open the dialog only if the [mining button default action](../reference/settings#mining-button-default-action) is set to "Show Anki dialog."  
+Menetelmät 1 ja 2 avaavat valintaikkunan vain, jos [louhintapainikkeen oletustoiminnoksi](../reference/settings#mining-button-default-action) on asetettu ”Näytä Anki-valintaikkuna”.
 :::
 
 :::info
-When an _empty_ subtitle track is loaded, and audio recording is enabled, all of the above actions will start recording audio the first time they are triggered, and open the Anki dialog the second time they are triggered.
+Kun ladattuna on _tyhjä_ tekstitysraita ja äänen tallennus on käytössä, kaikki yllä mainitut toiminnot käynnistävät äänen tallennuksen ensimmäisellä käyttökerralla ja avaavat Anki-valintaikkunan toisella käyttökerralla.
 :::
 
-## Adjusting cards {#adjusting-cards}
+## Korttien muokkaaminen {#adjusting-cards}
 
-Prior to being exported, cards can be adjusted from the dialog.
+Kortteja voi muokata valintaikkunassa ennen niiden viemistä.
 
-### Selected time range {#selected-time-range}
+### Valittu aikaväli {#selected-time-range}
 
-A **slider** at the bottom of the dialog can be used to change the selected time range.
+Aikaväliä voi muuttaa valintaikkunan alareunassa olevalla **liukusäätimellä**.
 
-- The **Sentence Field** will be automatically updated to match the selected time range, if it has not been manually edited already.
-- For local files, the audio clip will also be automatically updated.
-- For streaming video, the audio clip can be re-recorded with the selected time range.
+- **Lausekenttä** päivittyy automaattisesti vastaamaan valittua aikaväliä, jos sitä ei ole jo muokattu käsin.
+- Paikallisissa tiedostoissa myös äänileike päivittyy automaattisesti.
+- Suoratoistovideolla äänileikkeen voi tallentaa uudelleen valitulla aikavälillä.
 
-### Audio field {#audio-field}
+### Äänikenttä {#audio-field}
 
-The **Audio Field** displays the recorded audio clip and provides three action buttons:
+**Äänikentässä** näkyy tallennettu äänileike, ja siinä on kolme toimintopainiketta:
 
-- **Play/Pause** — preview the audio clip directly in the dialog.
-- **Re-record** — re-record the audio using the currently selected time range (streaming video only; shown when a re-record callback is available).
-- **Download** — download the audio clip as a file to your device.
+- **Toista/tauko** — kuuntele äänileikkeen esikatselu suoraan valintaikkunassa.
+- **Tallenna uudelleen** — tallenna ääni uudelleen valitulla aikavälillä (vain suoratoistovideolla; näkyy, kun uudelleentallennuksen takaisinkutsu on käytettävissä).
+- **Lataa** — lataa äänileike tiedostona laitteellesi.
 
-### Text fields {#text-fields}
+### Tekstikentät {#text-fields}
 
-Any of the text fields - sentence, definition, word, custom fields, source, URL, tags - can be edited. Typically, a separate dictionary app is used to fill out the definition field.
+Kaikkia tekstikenttiä — lausetta, määritelmää, sanaa, mukautettuja kenttiä, lähdettä, URL-osoitetta ja tunnisteita — voi muokata. Määritelmäkentän täyttämiseen käytetään yleensä erillistä sanakirjasovellusta.
 
-### Image field {#image-field}
+### Kuvakenttä {#image-field}
 
-For local files, clicking the **Preview Button** <ImageIcon /> on the **Image Field** can be used to change the video timestamp from which the screenshot is extracted.
+Paikallisissa tiedostoissa **Kuvakentän** **Esikatselu-painikkeella** <ImageIcon /> voi vaihtaa videon aikaleimaa, josta kuvakaappaus otetaan.
 
-## Exporting cards {#exporting-cards}
+## Korttien vieminen {#exporting-cards}
 
-Use the buttons at the bottom of the dialog to finally export the card. There are three types of export:
+Vie kortti lopuksi valintaikkunan alareunan painikkeilla. Vientitapoja on kolme:
 
-1. **Export**: simply export a card with the dialog content.
-2. **Update last card**: update the last card in your Anki deck with the dialog content.
-3. **Open in Anki**: opens Anki's card creator prefilled with the dialog content.
+1. **Vie**: vie kortti valintaikkunan sisällöllä.
+2. **Päivitä viimeisin kortti**: päivitä Anki-pakkasi viimeisin kortti valintaikkunan sisällöllä.
+3. **Avaa Ankissa**: avaa Ankin kortinluontinäkymän, jonka kentät on täytetty valintaikkunan sisällöllä.
 
-## Dialog-less mining flows {#dialog-less-mining-flows}
+## Louhinta ilman valintaikkunaa {#dialog-less-mining-flows}
 
-Dialog-less mining flows that both include a word definition and skip the Anki dialog entirely can be achieved when asbplayer is used in combination with a dictionary app that also integrates with Anki. Currently, the most popular dictionary app that does this is [Yomitan](https://yomitan.wiki/).
+Louhinta ilman valintaikkunaa ja sanan määritelmän lisääminen onnistuvat, kun asbplayeria käytetään Ankiin integroituvan sanakirjasovelluksen kanssa. Tällä hetkellä suosituin tällainen sovellus on [Yomitan](https://yomitan.wiki/).
 
-### Update last card {#update-last-card}
+### Päivitä viimeisin kortti {#update-last-card}
 
-A dialog-less mining flow with Yomitan looks like this:
+Louhinta Yomitanilla ilman valintaikkunaa toimii näin:
 
-1. Using Yomitan, highlight the word inside the subtitles that you would like to mine.
-2. Use Yomitan's card-creation button to create a card.
-3. Immediately use asbplayer's **update last card** [Mining keyboard shortcut](../reference/settings.md#mining-keyboard-shortcuts) - `Ctrl + Shift + U` - to update the card with asbplayer-supplied content.
+1. Valitse Yomitanilla tekstityksestä sana, josta haluat tehdä kortin.
+2. Luo kortti Yomitanin kortinluontipainikkeella.
+3. Päivitä kortti heti asbplayerin **Päivitä viimeisin kortti** -toiminnolla. Sen [louhinnan pikanäppäin](../reference/settings.md#mining-keyboard-shortcuts) on oletuksena `Ctrl + Shift + U`. Korttiin lisätään asbplayerin tarjoama sisältö.
 
-The disadvantage of this flow is that skipping the dialog means skipping the opportunity to modify the card. However, there are ways to work around this:
+Tässä toimintatavassa valintaikkunan ohittaminen tarkoittaa, ettei korttia voi muokata valintaikkunassa. Tähän on kuitenkin vaihtoehtoja:
 
-- Instead of directly updating the last card at the final step, you can always use `Ctrl + Shift + X` instead to open the dialog, adjust the card, and finally **update last card** using the dialog GUI. With this method you still go through the dialog, but retain the benefit of Yomitan's automatically-supplied word definition.
-- The **Anki Export Dialog** can always be opened _after_ card creation with the **manually take screenshot** [Mining keyboard shortcut](../reference/settings.md#mining-keyboard-shortcuts) - `Ctrl + Shift + V` by default.
+- Viimeisen kortin suoran päivittämisen sijaan voit avata valintaikkunan näppäimillä `Ctrl + Shift + X`, muokata korttia ja valita sitten **Päivitä viimeisin kortti** valintaikkunassa. Näin käytät edelleen valintaikkunaa, mutta saat Yomitanin automaattisesti lisäämän sanan määritelmän.
+- **Anki-vientivalintaikkunan** voi avata kortin luomisen _jälkeen_ myös **Ota kuvakaappaus manuaalisesti** -toiminnolla. Sen [louhinnan pikanäppäin](../reference/settings.md#mining-keyboard-shortcuts) on oletuksena `Ctrl + Shift + V`.
 
-### One click {#one-click}
+### Yhdellä napsautuksella {#one-click}
 
-See the [one-click mining](./one-click-mining.md) guide.
+Katso [yhden napsautuksen louhintaopas](./one-click-mining.md).

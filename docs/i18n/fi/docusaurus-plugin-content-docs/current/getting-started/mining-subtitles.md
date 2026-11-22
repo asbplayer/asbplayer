@@ -7,15 +7,15 @@ import CodeBlock from '@theme/CodeBlock';
 
 import NoteAddIcon from '@site/src/components/NoteAddIcon';
 
-# Mining subtitles {#mining-subtitles}
+# Tekstitysten louhinta {#mining-subtitles}
 
-**Sentence mining** is the act of creating flashcards out of sentences. asbplayer allows you to create high-quality sentence flashcards by combining video, audio, and subtitles into a single card. asbplayer integrates with **Anki**, a popular flashcard application.
+**Lauseiden louhinta** tarkoittaa muistikorttien luomista lauseista. asbplayerilla voit luoda laadukkaita lausekortteja yhdistämällä videon, äänen ja tekstitykset yhdeksi kortiksi. asbplayer integroituu suosittuun **Anki**-muistikorttisovellukseen.
 
-## Setup Anki {#setup-anki}
+## Ankin käyttöönotto {#setup-anki}
 
-1. Install [Anki](https://apps.ankiweb.net/).
-2. Add [AnkiConnect](https://ankiweb.net/shared/info/2055492159) to Anki.
-3. If mining from video files, add <code>{appOrigin}</code> to the `webCorsOriginList` in AnkiConnect's settings:
+1. Asenna [Anki](https://apps.ankiweb.net/).
+2. Lisää [AnkiConnect](https://ankiweb.net/shared/info/2055492159) Ankiin.
+3. Jos louhit kortteja videotiedostoista, lisää <code>{appOrigin}</code> AnkiConnectin asetusten `webCorsOriginList`-luetteloon:
 
    <CodeBlock language="json">{JSON.stringify({
      apiKey: null,
@@ -26,12 +26,12 @@ import NoteAddIcon from '@site/src/components/NoteAddIcon';
      webCorsOriginList: [appOrigin],
    }, null, 2)}</CodeBlock>
 
-4. Add a **Deck**.
-5. Add a **Note Type**.
-   We encourage you to create your own note type or use a pre-made one. But if you'd like to just get started follow the steps below to create a basic note type:
-   1. Click Tools → Manage Note Types.
-   2. Add a "Basic" note type.
-   3. Configure **Fields**:
+4. Lisää **pakka**.
+5. Lisää **muistiinpanotyyppi**.
+   Suosittelemme luomaan oman muistiinpanotyypin tai käyttämään valmista tyyppiä. Jos haluat päästä nopeasti alkuun, luo perustyyppi seuraavasti:
+   1. Valitse Työkalut → Hallitse muistiinpanotyyppejä.
+   2. Lisää ”Perus”-muistiinpanotyyppi.
+   3. Määritä **kentät**:
       - Sentence
       - Word
       - Definition
@@ -39,12 +39,12 @@ import NoteAddIcon from '@site/src/components/NoteAddIcon';
       - Audio
       - Source
       - URL
-   4. Configure **Card**:
-      - Front:
+   4. Määritä **kortti**:
+      - Etupuoli:
         ```
         {{Sentence}}
         ```
-      - Back:
+      - Kääntöpuoli:
         ```
         {{FrontSide}}
         <hr id=answer>
@@ -61,21 +61,21 @@ import NoteAddIcon from '@site/src/components/NoteAddIcon';
         {{URL}}
         ```
 
-## Configure asbplayer {#configure-asbplayer}
+## asbplayerin määrittäminen {#configure-asbplayer}
 
-1. Open <a href={new URL('?view=settings', project.urls.app).href}>asbplayer's settings</a>.
-2. Select the **Deck** and **Note Type** you just created.
-3. For each of the **Sentence**, **Definition**, **Word**, **Audio**, **Image**, **Source**, and **URL** fields, select the corresponding field in the note type.
+1. Avaa <a href={new URL('?view=settings', project.urls.app).href}>asbplayerin asetukset</a>.
+2. Valitse juuri luomasi **pakka** ja **muistiinpanotyyppi**.
+3. Valitse muistiinpanotyypistä vastaava kenttä kullekin **lauseen**, **määritelmän**, **sanan**, **äänen**, **kuvan**, **lähteen** ja **URL-osoitteen** kentälle.
 
-## Install a dictionary app {#install-a-dictionary-app}
+## Sanakirjasovelluksen asentaminen {#install-a-dictionary-app}
 
-asbplayer does not have a built-in dictionary. We recommend installing a dictionary app to make it easy to fill out the **Definition** field of cards. Below are a couple popular ones:
+asbplayerissa ei ole sisäänrakennettua sanakirjaa. Suosittelemme asentamaan sanakirjasovelluksen, jotta korttien **Määritelmä**-kentän täyttäminen on helppoa. Tässä on kaksi suosittua vaihtoehtoa:
 
-- [Yomitan](https://yomitan.wiki/) is a browser extension that allows you to lookup words by hovering over them. It was originally made for Japanese, but is beginning to support other languages as well.
-- [VocabSieve](https://docs.freelanguagetools.org/) is a standalone language-learning app with support for European languages.
+- [Yomitan](https://yomitan.wiki/) on selainlaajennus, jolla voit etsiä sanoja viemällä osoittimen niiden päälle. Se kehitettiin alun perin japanille, mutta se alkaa tukea myös muita kieliä.
+- [VocabSieve](https://docs.freelanguagetools.org/) on itsenäinen kieltenoppimissovellus, joka tukee eurooppalaisia kieliä.
 
-## Mine subtitles {#mine-subtitles}
+## Tekstitysten louhinta {#mine-subtitles}
 
-1. [Load subtitles](./loading-subtitles.md) onto any video source.
-2. Click the **Mine Subtitle** <NoteAddIcon /> button .
-3. Fill out the dialog that appears and click **Export**.
+1. [Lataa tekstitykset](./loading-subtitles.md) mihin tahansa videolähteeseen.
+2. Napsauta **Lähetä tekstitykset Ankin** <NoteAddIcon /> -painiketta.
+3. Täytä avautuva valintaikkuna ja napsauta **Vie**.
