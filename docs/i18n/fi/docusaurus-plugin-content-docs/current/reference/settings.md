@@ -6,439 +6,439 @@ import project from '@site/src/project';
 
 import NoteAddIcon from '@site/src/components/NoteAddIcon';
 
-# Settings {#settings}
+# Asetukset {#settings}
 
 ## <a href={new URL('?view=settings#anki-settings', project.urls.app).href}>Anki</a> {#anki}
 
-### AnkiConnect URL {#ankiconnect-url}
+### AnkiConnect-URL {#ankiconnect-url}
 
-URL to the AnkiConnect server running as on addon inside Anki.
+Ankin lisäosana toimivan AnkiConnect-palvelimen URL-osoite.
 
-### AnkiConnect API Key {#ankiconnect-api-key}
+### AnkiConnect API -avain {#ankiconnect-api-key}
 
-API key configured in AnkiConnect when API key protection is enabled.
+AnkiConnectissa määritetty API-avain, kun API-avaimen suojaus on käytössä.
 
-### Refresh Anki Card Browser after updating cards {#refresh-anki-card-browser}
+### Päivitä Ankin korttiselain korttien päivityksen jälkeen {#refresh-anki-card-browser}
 
-When enabled, refreshes the open Anki Card Browser after asbplayer updates a card so that its fields display their current values. This may bring the Card Browser window to the foreground. This setting is disabled by default.
+Kun tämä on käytössä, asbplayer päivittää avoimen Ankin korttiselaimen kortin päivityksen jälkeen, jolloin kentissä näkyvät niiden nykyiset arvot. Tämä voi tuoda korttiselainikkunan etualalle. Asetus on oletuksena poissa käytöstä.
 
-### Deck {#deck}
+### Pakka {#deck}
 
-Anki deck where cards are sent.
+Anki-pakka, johon kortit lähetetään.
 
-### Note Type {#note-type}
+### Muistiinpanotyyppi {#note-type}
 
-Anki note type to use for cards. A note type defines a "model" and a "view" for the cards. More specifically, a set of card fields, and an HTML template that determines how to render those fields on the card's front and back.
+Korteissa käytettävä Ankin muistiinpanotyyppi. Muistiinpanotyyppi määrittää kortin ”mallin” ja ”näkymän”, eli kortin kentät sekä HTML-mallin, joka määrittää kenttien esitystavan kortin etu- ja kääntöpuolella.
 
-### Card Fields {#card-fields}
+### Korttikentät {#card-fields}
 
-Each card field setting determines what content gets mapped to which field of the configured note type. The **field label** - Sentence, Definition, Word, Image, Audio, or URL - is the **content** - and the **field value** is the **field inside the note type**.
+Kukin korttikentän asetus määrittää, mikä sisältö liitetään määritetyn muistiinpanotyypin kenttään. **Kentän otsikko** — Lause, Määritelmä, Sana, Kuva, Ääni tai URL — tarkoittaa **sisältöä**, ja **kentän arvo** on **muistiinpanotyypin kenttä**.
 
-Fields will appear in the **Anki Export Dialog** in the order that they appear in the settings. The order can be changed using the **⋮ menu** → **Move Down** or **Move Up**.
+Kentät näkyvät **Anki-vientivalintaikkunassa** samassa järjestyksessä kuin asetuksissa. Järjestystä voi muuttaa valitsemalla **⋮-valikosta** → **Siirrä alas** tai **Siirrä ylös**.
 
-| Field                 | Content                                            |
+| Kenttä                | Sisältö                                            |
 | --------------------- | -------------------------------------------------- |
-| Sentence (all tracks) | All subtitles at the mined timestamp               |
-| Definition            | The user-provided word definition                  |
-| Word                  | The user-provided word                             |
-| Audio                 | Audio recorded from video source                   |
-| Image                 | Screenshot of video source                         |
-| Source                | Subtitle file or video name and timestamp          |
-| URL                   | Current URL if card was mined from streaming video |
-| Subtitle Track 1      | Subtitles from track 1 at the mined timestamp      |
-| Subtitle Track 2      | Subtitles from track 2 at the mined timestamp      |
-| Subtitle Track 3      | Subtitles from track 3 at the mined timestamp      |
-| Custom Fields         | User-provided values                               |
+| Lause (kaikki raidat) | Kaikki tekstitykset louhintahetkellä                |
+| Määritelmä            | Käyttäjän antama sanan määritelmä                  |
+| Sana                  | Käyttäjän antama sana                              |
+| Ääni                  | Videolähteestä tallennettu ääni                    |
+| Kuva                  | Kuvakaappaus videolähteestä                        |
+| Lähde                 | Tekstitystiedoston tai videon nimi ja aikaleima    |
+| URL                   | Nykyinen URL-osoite, jos kortti louhittiin suoratoistovideosta |
+| Tekstitysraita 1      | Raidan 1 tekstitykset louhintahetkellä              |
+| Tekstitysraita 2      | Raidan 2 tekstitykset louhintahetkellä              |
+| Tekstitysraita 3      | Raidan 3 tekstitykset louhintahetkellä              |
+| Mukautetut kentät     | Käyttäjän antamat arvot                            |
 
-### Tags {#tags}
+### Tunnisteet {#tags}
 
-Default tags to supply with each card.
+Jokaisen kortin mukana lisättävät oletustunnisteet.
 
-## <a href={new URL('?view=settings#mining-settings', project.urls.app).href}>Mining</a> {#mining}
+## <a href={new URL('?view=settings#mining-settings', project.urls.app).href}>Louhinta</a> {#mining}
 
-### Mining button default action {#mining-button-default-action}
+### Louhintapainikkeen oletustoiminto {#mining-button-default-action}
 
-"Mining button" <NoteAddIcon/> refers to the leftmost button that appears in the **Overlay UI**, and the button that appears next to subtitles in the **Subtitle List**. This setting configures what those buttons do.
+”Louhintapainike” <NoteAddIcon/> tarkoittaa **peittokuvan käyttöliittymän** vasemmanpuoleisinta painiketta ja **tekstityslistassa** tekstitysten vieressä näkyvää painiketta. Tällä asetuksella määritetään niiden toiminto.
 
-| Setting                 | Behavior                                                                                                                                                                                               |
+| Asetus                  | Toiminta                                                                                                                                                                                               |
 | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Show Anki dialog        | Record target subtitle in mining history and show **Anki Export Dialog**                                                                                                                               |
-| Update last card        | Record target subtitle in mining history and update the last card in the configured deck with all asbplayer-provided context - all fields except the user-provided definition, word, and custom fields |
-| Show update card dialog | Record target subtitle in mining history and show the dialog for updating the last card with asbplayer-provided context                                                                                |
-| Export card             | Record target subtitle in mining history and export a card _only_ with asbplayer-provided context - all fields except the user-provided definition, word, and custom fields                            |
-| None                    | Record target subtitle in mining history                                                                                                                                                               |
+| Näytä Anki-valintaikkuna | Tallenna kohdetekstitys louhintahistoriaan ja näytä **Anki-vientivalintaikkuna**                                                           |
+| Päivitä viimeisin kortti | Tallenna kohdetekstitys louhintahistoriaan ja päivitä määritetyn pakan viimeisin kortti kaikella asbplayerin tarjoamalla kontekstilla — paitsi käyttäjän antamalla määritelmällä, sanalla ja mukautetuilla kentillä |
+| Näytä kortin päivitysvalintaikkuna | Tallenna kohdetekstitys louhintahistoriaan ja näytä valintaikkuna, jossa viimeisin kortti päivitetään asbplayerin tarjoamalla kontekstilla |
+| Vie kortti              | Tallenna kohdetekstitys louhintahistoriaan ja vie kortti _vain_ asbplayerin tarjoamalla kontekstilla — paitsi käyttäjän antamalla määritelmällä, sanalla ja mukautetuilla kentillä |
+| Ei mitään               | Tallenna kohdetekstitys louhintahistoriaan                                                                                                   |
 
-### Post-mining playback state {#post-mining-playback-state}
+### Toistotila louhinnan jälkeen {#post-mining-playback-state}
 
-Configures the desired playback state after triggering a mining action.
+Määrittää halutun toistotilan louhintatoiminnon jälkeen.
 
-### Copy mined subtitles to clipboard {#copy-mined-subtitles-to-clipboard}
+### Kopioi louhitut tekstitykset leikepöydälle {#copy-mined-subtitles-to-clipboard}
 
-If enabled, copies the target subtitle to clipboard anytime mining action is triggered.
+Kun tämä on käytössä, kohdetekstitys kopioidaan leikepöydälle aina louhintatoiminnon yhteydessä.
 
-### Always use subtitle text for sentence field {#always-use-subtitle-text-for-sentence-field}
+### Käytä lausekentässä aina tekstitystekstiä {#always-use-subtitle-text-for-sentence-field}
 
-When enabled, fills the Sentence field with the mined subtitle text from all tracks, even if an external application supplies different sentence text. This is useful when [mining with Yomitan](../guides/one-click-mining.md).
+Kun tämä on käytössä, Lause-kenttään lisätään louhintahetken tekstitysteksti kaikilta raidoilta, vaikka ulkoinen sovellus tarjoaisi eri lausetekstin. Tämä on hyödyllistä, kun [louhit kortteja Yomitanilla](../guides/one-click-mining.md).
 
-### When updating last card, also update image/audio for cards that have the same subtitle text" {#update-all-cards-with-the-same-subtitle-text}
+### Päivitä viimeisimmän kortin lisäksi kuvat ja äänet korteista, joissa on sama tekstitys {#update-all-cards-with-the-same-subtitle-text}
 
-When enabled, the **Update last card** mining action also updates the audio and image fields on consecutively created notes from the same subtitle line. Each preceding note keeps its sentence, word, definition, and custom fields. Matching ignores sentence markup and allows the sentence to be part of the mined subtitle context.
+Kun tämä on käytössä, **Päivitä viimeisin kortti** -louhintatoiminto päivittää myös samasta tekstitysrivistä peräkkäin luotujen muistiinpanojen ääni- ja kuvakentät. Kunkin edeltävän muistiinpanon lause, sana, määritelmä ja mukautetut kentät säilyvät. Vastaavuuden haussa ohitetaan lauseen merkkaus, ja lause voi olla osa louhittua tekstityskontekstia.
 
-The search includes notes added within the last two Anki days and stops at the first different or missing sentence. A sentence field must be configured. This setting is disabled by default and does not affect updates to a specifically selected card.
+Haku sisältää kahden viimeisen Anki-päivän aikana lisätyt muistiinpanot ja päättyy ensimmäiseen erilaiseen tai puuttuvaan lauseeseen. Lausekenttä on määritettävä. Asetus on oletuksena poissa käytöstä, eikä se vaikuta erikseen valitun kortin päivitykseen.
 
-### Play audio while recording from local video {#play-audio-while-recording-from-local-video}
+### Toista ääntä tallennettaessa paikallisesta videosta {#play-audio-while-recording-from-local-video}
 
-asbplayer uses the browser's built-in [MediaRecorder](https://developer.mozilla.org/ja/docs/Web/API/MediaRecorder) API to record audio from local video files. This setting configures whether sound should play during recording.
+asbplayer tallentaa paikallisten videotiedostojen ääntä selaimen sisäänrakennetulla [MediaRecorder](https://developer.mozilla.org/ja/docs/Web/API/MediaRecorder)-rajapinnalla. Tällä asetuksella määritetään, toistetaanko ääntä tallennuksen aikana.
 
-### Re-encode audio as mp3 {#re-encode-audio-as-mp3}
+### Koodaa ääni uudelleen mp3-muotoon {#re-encode-audio-as-mp3}
 
-Recorded audio is not encoded as an `mp3` by default. This setting will cause audio to be re-encoded as an `mp3`. In general there's no reason to turn this setting off, especially for users who want to review their cards on iOS.
+Tallennettua ääntä ei oletuksena koodata `mp3`-muotoon. Tämä asetus koodaa äänen uudelleen `mp3`-muotoon. Yleensä tätä asetusta ei ole syytä poistaa käytöstä, varsinkaan jos haluat kerrata kortteja iOS-laitteella.
 
-### Audio padding start {#audio-padding-start}
+### Äänen alkuun lisättävä aika {#audio-padding-start}
 
-How many milliseconds **before** the target subtitle to start recording audio.
+Kuinka monta millisekuntia ennen kohdetekstitystä äänen tallennus aloitetaan.
 
-### Audio padding end {#audio-padding-end}
+### Äänen loppuun lisättävä aika {#audio-padding-end}
 
-How many milliseconds **after** the target subtitle to stop recording audio.
+Kuinka monta millisekuntia kohdetekstityksen jälkeen äänen tallennus lopetetaan.
 
-### Image capture format (website only) {#image-capture-format}
+### Kuvan kaappausmuoto (vain verkkosivusto) {#image-capture-format}
 
-Specifies the image capture format for mined cards. Only available on the website for local video files where the only additional option is "video clip."
+Määrittää louhittujen korttien kuvan kaappausmuodon. Saatavilla vain verkkosivustolla paikallisille videotiedostoille, jolloin ainoa lisävaihtoehto on ”videoleike”.
 
-### Max capture width/height {#max-capture-dimensions}
+### Kuvan kaappauksen enimmäisleveys ja -korkeus {#max-capture-dimensions}
 
-Max width/height in pixels of screenshots. `0` means "no limit."
+Kuvakaappausten enimmäisleveys ja -korkeus pikseleinä. `0` tarkoittaa, ettei rajaa ole.
 
-### Trim black bars from screenshots {#trim-black-bars-from-screenshots}
+### Rajaa mustat palkit kuvakaappauksista {#trim-black-bars-from-screenshots}
 
-When enabled, trims black bars due to letterboxing from screenshots.
+Kun tämä on käytössä, kuvakaappauksista rajataan pois mustat palkit, jotka johtuvat kuvan sovittamisesta kuvasuhteeseen.
 
-### Clip trim start/end {#clip-trim-start-end}
+### Leikkeen alun ja lopun rajaus {#clip-trim-start-end}
 
-Specifies how much time to trim off the start and end of a subtitle's time interval when determining the default time interval for the video clip. Only available when the video clip image capture format is selected.
+Määrittää, kuinka paljon aikaa tekstityksen aikavälin alusta ja lopusta rajataan pois, kun videoleikkeen oletusaikaväliä lasketaan. Saatavilla vain, kun kuvan kaappausmuodoksi on valittu videoleike.
 
-### Max clip length {#max-clip-length}
+### Leikkeen enimmäiskesto {#max-clip-length}
 
-Specifies the max video clip length. Only available when video clip image capture format is selected.
+Määrittää videoleikkeen enimmäiskeston. Saatavilla vain, kun kuvan kaappausmuodoksi on valittu videoleike.
 
-### Screenshot capture delay {#screenshot-capture-delay}
+### Kuvakaappauksen viive {#screenshot-capture-delay}
 
-How long to wait after the target subtitle appears before taking the screenshot.
+Kuinka kauan odotetaan kohdetekstityksen ilmestymisen jälkeen ennen kuvakaappauksen ottamista.
 
-### Surrounding subtitles count radius {#surrounding-subtitles-count-radius}
+### Ympäröivien tekstitysten lukumäärä {#surrounding-subtitles-count-radius}
 
-At the bottom of **Anki Export Dialog** there's a slider which can be used to adjust the selected time interval. The slider includes surrounding subtitles as additional context. This setting controls limits the number of those surrounding subtitles.
+**Anki-vientivalintaikkunan** alareunassa oleva liukusäädin muuttaa valittua aikaväliä. Säätimellä voi sisällyttää ympäröiviä tekstityksiä lisäkontekstiksi. Tämä asetus rajoittaa mukaan otettavien ympäröivien tekstitysten määrää.
 
-### Surrounding subtitles time radius {#surrounding-subtitles-time-radius}
+### Ympäröivien tekstitysten aikaväli {#surrounding-subtitles-time-radius}
 
-At the bottom of **Anki Export Dialog** there's a slider which can be used to adjust the selected time interval. The slider includes surrounding subtitles as additional context. This setting controls the size of the allowed time interval around the target subtitle, for those surrounding subtitles.
+**Anki-vientivalintaikkunan** alareunassa oleva liukusäädin muuttaa valittua aikaväliä. Säätimellä voi sisällyttää ympäröiviä tekstityksiä lisäkontekstiksi. Tämä asetus määrittää kohdetekstityksen ympärille sallittavan aikavälin näille tekstityksille.
 
-## <a href={new URL('?view=settings#subtitle-appearance', project.urls.app).href}>Subtitle appearance</a> {#subtitle-appearance}
+## <a href={new URL('?view=settings#subtitle-appearance', project.urls.app).href}>Tekstitysten ulkoasu</a> {#subtitle-appearance}
 
-### Subtitle track {#subtitle-appearance-track}
+### Tekstitysraita {#subtitle-appearance-track}
 
-asbplayer can load multiple subtitle tracks simultaneously. This dropdown selects the track(s) to which the settings below will apply. The default selection is "All." Modifying any appearance setting with "All" selected, modifies that setting for all tracks simultaneously. When you configure a track-specific value for a setting, that setting disappears from the "All" page.
+asbplayer voi ladata useita tekstitysraitoja samanaikaisesti. Tästä avattavasta valikosta valitaan raita tai raidat, joihin alla olevia asetuksia sovelletaan. Oletusvalinta on ”Kaikki”. Kun ”Kaikki” on valittuna, ulkoasuasetuksen muuttaminen muuttaa sen arvoa kaikilla raidoilla. Kun asetukselle määritetään raidakohtainen arvo, kyseinen asetus poistuu ”Kaikki”-sivulta.
 
-### Subtitle preview {#subtitle-preview}
+### Tekstityksen esikatselu {#subtitle-preview}
 
-Preview and edit the subtitle text used to show the effect of the appearance settings.
+Esikatsele ja muokkaa tekstitystekstiä, jolla ulkoasuasetusten vaikutusta näytetään.
 
-### Styling {#styling}
+### Tyyli {#styling}
 
-| Setting                           | Description                                                                          | CSS property                |
+| Asetus                            | Kuvaus                                                                               | CSS-ominaisuus              |
 | --------------------------------- | ------------------------------------------------------------------------------------ | --------------------------- |
-| Subtitle color                    | Color                                                                                | `color`                     |
-| Subtitle size                     | Size in `px`                                                                         | `font-size`                 |
-| Subtitle font thickness           | Font thickness                                                                       | `font-weight`               |
-| Subtitle outline color            | Color of the stroke                                                                  | `-webkit-text-stroke-color` |
-| Subtitle outline thickness        | Thickness of the stroke                                                              | `-webkit-text-stroke-width` |
-| Subtitle shadow color             | Color of the shadow                                                                  | `text-shadow`               |
-| Subtitle shadow thickness         | Thickness of the shadow                                                              | `text-shadow`               |
-| Subtitle background color         | Background color                                                                     | `background-color`          |
-| Subtitle background opacity       | Background opacity                                                                   | `background`                |
-| Subtitle font family              | Font. A dropdown of available fonts appears when local font access is granted.       | `font-family`               |
-| CSS:\<style key\>                 | String value of any custom CSS property added using the **Add Custom CSS** dropdown. | Custom property             |
-| Subtitle blur                     | Applies a blur effect to subtitles. Unblurs on hover.                                | `filter:blur(...)`          |
-| Image-based subtitle scale factor | Scales image-based subtitles.                                                        | —                           |
+| Tekstityksen väri                 | Väri                                                                                 | `color`                     |
+| Tekstityksen koko                 | Koko `px`-yksikköinä                                                                 | `font-size`                 |
+| Tekstityksen fontin paksuus       | Fontin paksuus                                                                       | `font-weight`               |
+| Tekstityksen ääriviivan väri      | Ääriviivan väri                                                                      | `-webkit-text-stroke-color` |
+| Tekstityksen ääriviivan paksuus   | Ääriviivan paksuus                                                                   | `-webkit-text-stroke-width` |
+| Tekstityksen varjon väri          | Varjon väri                                                                          | `text-shadow`               |
+| Tekstityksen varjon paksuus       | Varjon paksuus                                                                       | `text-shadow`               |
+| Tekstityksen taustaväri           | Taustaväri                                                                           | `background-color`          |
+| Tekstityksen taustan peittävyys   | Taustan peittävyys                                                                   | `background`                |
+| Tekstityksen fonttiperhe          | Fontti. Käytettävissä olevat fontit näytetään avattavassa valikossa, kun paikallisten fonttien käyttö on sallittu. | `font-family` |
+| CSS:\<tyylin avain\>             | Merkkijonoarvo mille tahansa mukautetulle CSS-ominaisuudelle, joka on lisätty **Lisää mukautettu CSS** -valikosta. | Mukautettu ominaisuus |
+| Tekstityksen sumennus             | Sumennustehoste tekstityksille. Teksti tarkentuu, kun osoitin viedään sen päälle.    | `filter:blur(...)`          |
+| Kuvapohjaisen tekstityksen skaalauskerroin | Muuttaa kuvapohjaisen tekstityksen kokoa.                                    | —                           |
 
-### Layout {#layout}
+### Asettelu {#layout}
 
-| Setting                              | Description                                                                  |
+| Asetus                               | Kuvaus                                                                       |
 | ------------------------------------ | ---------------------------------------------------------------------------- |
-| Subtitle alignment                   | Whether to place subtitles at the top or bottom of the video element.        |
-| Subtitle position offset from bottom | Distance from the bottom of the video element of all bottom subtitle tracks. |
-| Subtitle position offset from top    | Distance from the top of the video element of all top subtitle tracks.       |
-| Subtitles width                      | Width of subtitle container, in `%` or pixels.                               |
+| Tekstityksen tasaus                  | Sijoitetaanko tekstitys videoelementin ylä- vai alareunaan.                  |
+| Tekstityksen sijainnin siirtymä alhaalta | Kaikkien alareunan tekstitysraitojen etäisyys videoelementin alareunasta. |
+| Tekstityksen sijainnin siirtymä ylhäältä | Kaikkien yläreunan tekstitysraitojen etäisyys videoelementin yläreunasta. |
+| Tekstityksen leveys                  | Tekstityssäiliön leveys prosentteina (`%`) tai pikseleinä.                    |
 
-## <a href={new URL('?view=settings#keyboard-shortcuts', project.urls.app).href}>Keyboard shortcuts</a> {#keyboard-shortcuts}
+## <a href={new URL('?view=settings#keyboard-shortcuts', project.urls.app).href}>Pikanäppäimet</a> {#keyboard-shortcuts}
 
-Keyboard shortcuts can be used to access most of asbplayer's features.
+Useimpia asbplayerin ominaisuuksia voi käyttää pikanäppäimillä.
 
-### <a href={new URL('?view=settings#subtitle-appearance', project.urls.app).href}>Subtitles</a> keyboard shortcuts {#subtitles-keyboard-shortcuts}
+### <a href={new URL('?view=settings#subtitle-appearance', project.urls.app).href}>Tekstitysten</a> pikanäppäimet {#subtitles-keyboard-shortcuts}
 
-| Behavior                             | Default shortcut |
+| Toiminto                             | Oletuspikanäppäin |
 | ------------------------------------ | ---------------- |
-| Select subtitle tracks to load.      | Ctrl + Shift + F |
-| Toggle subtitles                     | ↓                |
-| Toggle subtitle track 1 in video     | 1                |
-| Toggle subtitle track 2 in video     | 2                |
-| Toggle subtitle track 3 in video     | 3                |
-| Toggle subtitle track 1 in asbplayer | W + 1            |
-| Toggle subtitle track 2 in asbplayer | W + 2            |
-| Toggle subtitle track 3 in asbplayer | W + 3            |
-| Unblur subtitle track 1 in asbplayer | B + 1            |
-| Unblur subtitle track 2 in asbplayer | B + 2            |
-| Unblur subtitle track 3 in asbplayer | B + 3            |
-| Move bottom subtitles up             |                  |
-| Move bottom subtitles down           |                  |
-| Move top subtitles up                |                  |
-| Move top subtitles down              |                  |
+| Valitse ladattavat tekstitysraidat.  | Ctrl + Shift + F |
+| Näytä/piilota tekstitykset           | ↓                |
+| Näytä/piilota videon tekstitysraita 1 | 1               |
+| Näytä/piilota videon tekstitysraita 2 | 2               |
+| Näytä/piilota videon tekstitysraita 3 | 3               |
+| Näytä/piilota asbplayerin tekstitysraita 1 | W + 1        |
+| Näytä/piilota asbplayerin tekstitysraita 2 | W + 2        |
+| Näytä/piilota asbplayerin tekstitysraita 3 | W + 3        |
+| Poista asbplayerin tekstitysraidan 1 sumennus | B + 1     |
+| Poista asbplayerin tekstitysraidan 2 sumennus | B + 2     |
+| Poista asbplayerin tekstitysraidan 3 sumennus | B + 3     |
+| Siirrä alareunan tekstityksiä ylös   |                  |
+| Siirrä alareunan tekstityksiä alas   |                  |
+| Siirrä yläreunan tekstityksiä ylös   |                  |
+| Siirrä yläreunan tekstityksiä alas   |                  |
 
-### <a href={new URL('?view=settings#mining-settings', project.urls.app).href}>Mining</a> keyboard shortcuts {#mining-keyboard-shortcuts}
+### <a href={new URL('?view=settings#mining-settings', project.urls.app).href}>Louhinnan</a> pikanäppäimet {#mining-keyboard-shortcuts}
 
-| Behavior                                                                             | Default shortcut           |
+| Toiminto                                                                            | Oletuspikanäppäin           |
 | ------------------------------------------------------------------------------------ | -------------------------- |
-| Mine current subtitle                                                                | Ctrl + Shift + Z (website) |
-| Mine current subtitle and open Anki dialog                                           | Ctrl + Shift + X           |
-| Update last-created Anki card with asbplayer-captured screenshot, audio, etc.        | Ctrl + Shift + U           |
-| Export card to Anki, bypassing dialog.                                               |                            |
-| Manually take screenshot, overriding the one that is automatically taken when mining | Ctrl + Shift + V (website) |
-| Manually start/stop audio recording, even when a subtitle file is loaded.            | Ctrl + Shift + R (website) |
+| Lähetä nykyinen tekstitys                                                             | Ctrl + Shift + Z (verkkosivusto) |
+| Lähetä nykyinen tekstitys Anki-valintaikkunaan                                        | Ctrl + Shift + X           |
+| Päivitä viimeksi luotu Anki-kortti asbplayerin ottamalla kuvakaappauksella, äänellä jne. | Ctrl + Shift + U        |
+| Vie kortti Ankiin ohittaen valintaikkunan.                                           |                            |
+| Ota kuvakaappaus manuaalisesti automaattisesti otettavan kuvan sijaan                | Ctrl + Shift + V (verkkosivusto) |
+| Käynnistä tai lopeta äänen tallennus manuaalisesti myös tekstitystiedoston ollessa ladattuna. | Ctrl + Shift + R (verkkosivusto) |
 
-### <a href={new URL('?view=settings#playback', project.urls.app).href}>Playback</a> keyboard shortcuts {#playback-keyboard-shortcuts}
+### <a href={new URL('?view=settings#playback', project.urls.app).href}>Toiston</a> pikanäppäimet {#playback-keyboard-shortcuts}
 
-| Behavior                        | Default shortcut |
+| Toiminto                        | Oletuspikanäppäin |
 | ------------------------------- | ---------------- |
-| Toggle side panel               | \`               |
-| Play/pause                      | Space            |
-| Toggle auto-pause               | Shift + P        |
-| Toggle condensed playback       | Shift + O        |
-| Toggle fast forward playback    | Shift + F        |
-| Toggle repeat mode              | Shift + R        |
-| Toggle when subtitles are shown |                  |
-| Cycle auto-pause resume mode    |                  |
-| Cycle through recipes forward   |                  |
-| Cycle through recipes backward  |                  |
-| Toggle recipe 1                 |                  |
-| Toggle recipe 2                 |                  |
-| Toggle recipe 3                 |                  |
-| Toggle recipe 4                 |                  |
-| Toggle recipe 5                 |                  |
-| Toggle recipe 6                 |                  |
-| Toggle recipe 7                 |                  |
-| Toggle recipe 8                 |                  |
-| Toggle recipe 9                 |                  |
-| Toggle recipe 10                |                  |
+| Näytä/piilota sivupaneeli       | \`               |
+| Toista/tauko                    | Välilyönti       |
+| Näytä/piilota automaattipysäytys   | Shift + P        |
+| Näytä/piilota tiivistetty toisto | Shift + O       |
+| Näytä/piilota pikakelaus        | Shift + F        |
+| Näytä/piilota uudelleentoisto   | Shift + R        |
+| Vaihda tekstitysten näyttötapaa |                  |
+| Selaa automaattipysäytyksen jatkamistiloja |              |
+| Siirry seuraavaan reseptiin     |                  |
+| Siirry edelliseen reseptiin     |                  |
+| Ota resepti 1 käyttöön/pois käytöstä |              |
+| Ota resepti 2 käyttöön/pois käytöstä |              |
+| Ota resepti 3 käyttöön/pois käytöstä |              |
+| Ota resepti 4 käyttöön/pois käytöstä |              |
+| Ota resepti 5 käyttöön/pois käytöstä |              |
+| Ota resepti 6 käyttöön/pois käytöstä |              |
+| Ota resepti 7 käyttöön/pois käytöstä |              |
+| Ota resepti 8 käyttöön/pois käytöstä |              |
+| Ota resepti 9 käyttöön/pois käytöstä |              |
+| Ota resepti 10 käyttöön/pois käytöstä |             |
 
-### <a href={new URL('?view=settings#playback', project.urls.app).href}>Seek</a> keyboard shortcuts {#seek-keyboard-shortcuts}
+### <a href={new URL('?view=settings#playback', project.urls.app).href}>Siirtymisen</a> pikanäppäimet {#seek-keyboard-shortcuts}
 
-| Behavior                                                                  | Default shortcut |
+| Toiminto                                                                  | Oletuspikanäppäin |
 | ------------------------------------------------------------------------- | ---------------- |
-| Seek backward (default 3 seconds, [configurable](#seek-interval-seconds)) | A                |
-| Seek forward (default 3 seconds, [configurable](#seek-interval-seconds))  | D                |
-| Seek to previous subtitle                                                 | ←                |
-| Seek to next subtitle                                                     | →                |
-| Seek to beginning of current/previous subtitle                            | ↑                |
+| Siirry taaksepäin (oletus 3 sekuntia, [määritettävissä](#seek-interval-seconds)) | A          |
+| Siirry eteenpäin (oletus 3 sekuntia, [määritettävissä](#seek-interval-seconds)) | D          |
+| Siirry edelliseen tekstitykseen                                           | ←                |
+| Siirry seuraavaan tekstitykseen                                           | →                |
+| Siirry nykyisen tai edellisen tekstityksen alkuun                         | ↑                |
 
-### <a href={new URL('?view=settings#playback', project.urls.app).href}>Playback rate</a> keyboard shortcuts {#playback-rate-keyboard-shortcuts}
+### <a href={new URL('?view=settings#playback', project.urls.app).href}>Toistonopeuden</a> pikanäppäimet {#playback-rate-keyboard-shortcuts}
 
-| Behavior               | Default shortcut |
+| Toiminto               | Oletuspikanäppäin |
 | ---------------------- | ---------------- |
-| Increase playback rate | Ctrl + Shift + ] |
-| Decrease playback rate | Ctrl + Shift + [ |
+| Nosta toistonopeutta   | Ctrl + Shift + ] |
+| Laske toistonopeutta   | Ctrl + Shift + [ |
 
-### <a href={new URL('?view=settings#playback', project.urls.app).href}>Subtitle offset</a> keyboard shortcuts {#subtitle-offset-keyboard-shortcuts}
+### <a href={new URL('?view=settings#playback', project.urls.app).href}>Tekstityksen siirtymän</a> pikanäppäimet {#subtitle-offset-keyboard-shortcuts}
 
-| Behavior                                                                 | Default shortcut |
+| Toiminto                                                                 | Oletuspikanäppäin |
 | ------------------------------------------------------------------------ | ---------------- |
-| Adjust subtitle offset so that previous subtitle is at current timestamp | Ctrl + ←         |
-| Adjust subtitle offset so that next subtitle is at current timestamp     | Ctrl + →         |
-| Adjust subtitle offset by +100ms                                         | Ctrl + Shift + ← |
-| Adjust subtitle offset by -100ms                                         | Ctrl + Shift + → |
-| Reset subtitle offset                                                    | Ctrl + Shift + ↓ |
+| Säädä tekstityksen siirtymää niin, että edellinen tekstitys osuu nykyiseen aikaleimaan | Ctrl + ← |
+| Säädä tekstityksen siirtymää niin, että seuraava tekstitys osuu nykyiseen aikaleimaan | Ctrl + → |
+| Siirrä tekstitystä +100 ms                                                | Ctrl + Shift + ← |
+| Siirrä tekstitystä -100 ms                                                | Ctrl + Shift + → |
+| Palauta tekstityksen siirtymä                                             | Ctrl + Shift + ↓ |
 
-### <a href={new URL('?view=settings#annotation', project.urls.app).href}>Annotation</a> keyboard shortcuts {#annotation-keyboard-shortcuts}
+### <a href={new URL('?view=settings#annotation', project.urls.app).href}>Annotoinnin</a> pikanäppäimet {#annotation-keyboard-shortcuts}
 
-| Behavior                          | Default shortcut |
+| Toiminto                          | Oletuspikanäppäin |
 | --------------------------------- | ---------------- |
-| Open statistics                   | Q + S            |
-| Jump to next word                 | Q + E            |
-| Jump to previous word             | Q + W            |
-| Mark hovered word as Mature       | Q + 5            |
-| Jump to next Mature word          |                  |
-| Jump to previous Mature word      |                  |
-| Mark hovered word as Young        | Q + 4            |
-| Jump to next Young word           |                  |
-| Jump to previous Young word       |                  |
-| Mark hovered word as Graduated    | Q + 3            |
-| Jump to next Graduated word       |                  |
-| Jump to previous Graduated word   |                  |
-| Mark hovered word as Learning     | Q + 2            |
-| Jump to next Learning word        |                  |
-| Jump to previous Learning word    |                  |
-| Mark hovered word as Unknown      | Q + 1            |
-| Jump to next Unknown word         |                  |
-| Jump to previous Unknown word     |                  |
-| Mark hovered word as Uncollected  | Q + 0            |
-| Jump to next Uncollected word     |                  |
-| Jump to previous Uncollected word |                  |
-| Toggle hovered word as Ignored    | Q + I            |
-| Jump to next Ignored word         |                  |
-| Jump to previous Ignored word     |                  |
+| Avaa tilastot                     | Q + S            |
+| Siirry seuraavaan sanaan          | Q + E            |
+| Siirry edelliseen sanaan          | Q + W            |
+| Merkitse osoittimen alla oleva sana kypsäksi | Q + 5 |
+| Siirry seuraavaan kypsään sanaan  |                  |
+| Siirry edelliseen kypsään sanaan  |                  |
+| Merkitse osoittimen alla oleva sana nuoreksi | Q + 4 |
+| Siirry seuraavaan nuoreen sanaan  |                  |
+| Siirry edelliseen nuoreen sanaan  |                  |
+| Merkitse osoittimen alla oleva sana valmistuneeksi | Q + 3 |
+| Siirry seuraavaan valmistuneeseen sanaan |              |
+| Siirry edelliseen valmistuneeseen sanaan |              |
+| Merkitse osoittimen alla oleva sana opittavaksi | Q + 2 |
+| Siirry seuraavaan opittavaan sanaan |                  |
+| Siirry edelliseen opittavaan sanaan |                 |
+| Merkitse osoittimen alla oleva sana tuntemattomaksi | Q + 1 |
+| Siirry seuraavaan tuntemattomaan sanaan |               |
+| Siirry edelliseen tuntemattomaan sanaan |               |
+| Merkitse osoittimen alla oleva sana keräämättömäksi | Q + 0 |
+| Siirry seuraavaan keräämättömään sanaan |               |
+| Siirry edelliseen keräämättömään sanaan |               |
+| Merkitse osoittimen alla oleva sana ohitetuksi | Q + I |
+| Siirry seuraavaan ohitettuun sanaan |                  |
+| Siirry edelliseen ohitettuun sanaan |                 |
 
-### Seek interval (seconds) {#seek-interval-seconds}
+### Siirtymän pituus (sekuntia) {#seek-interval-seconds}
 
-Controls the interval used by the [Seek keyboard shortcuts](#seek-keyboard-shortcuts).
+Määrittää [siirtymisen pikanäppäimissä](#seek-keyboard-shortcuts) käytettävän aikavälin.
 
-### Always play after invoking 'Seek to beginning of current/previous subtitle' {#always-play-on-subtitle-seek}
+### Aloita toisto aina käytettäessä toimintoa ”Siirry nykyisen/edellisen tekstityksen alkuun” {#always-play-on-subtitle-seek}
 
-Instead of retaining the current playback state, always play when using the [Seek keyboard shortcut](#seek-keyboard-shortcuts) that seeks to the beginning of the current/previous subtitle. Saves a keypress.
+Nykyisen toistotilan säilyttämisen sijaan aloita aina toisto, kun käytät [siirtymisen pikanäppäintä](#seek-keyboard-shortcuts), jolla siirrytään nykyisen tai edellisen tekstityksen alkuun. Tämä säästää yhden näppäinpainalluksen.
 
-### Playback speed adjust step {#playback-speed-adjust-step}
+### Toistonopeuden säätöaskel {#playback-speed-adjust-step}
 
-Increment to use when using the "increase/decrease playback rate" [keyboard shortcuts](#playback-rate-keyboard-shortcuts).
+Muutosaskel, jota käytetään [toistonopeuden lisäämisen ja vähentämisen pikanäppäimillä](#playback-rate-keyboard-shortcuts).
 
-### Extension shortcuts {#extension-shortcuts}
+### Laajennuksen pikanäppäimet {#extension-shortcuts}
 
-When the browser extension is installed, some mining shortcuts (e.g. mine current subtitle, mine current subtitle and open Anki dialog) are implemented as browser commands rather than vanilla key event listeners, and can only be edited in the browser's extension shortcuts editor.
+Kun selainlaajennus on asennettu, jotkin louhinnan pikanäppäimet (esimerkiksi nykyisen tekstityksen louhinta ja nykyisen tekstityksen louhinta Anki-valintaikkunaan) toteutetaan selaimen komentoina tavallisten näppäintapahtumien kuuntelijoiden sijaan. Niitä voi muokata vain selaimen laajennusten pikanäppäineditorissa.
 
 - Chrome: `chrome://extensions/shortcuts`
-- Firefox: `about:addons` → `Manage Extension Shortcuts`
+- Firefox: `about:addons` → `Hallitse laajennusten pikanäppäimiä`
 
-## <a href={new URL('?view=settings#annotation', project.urls.app).href}>Annotation</a> {#annotation}
+## <a href={new URL('?view=settings#annotation', project.urls.app).href}>Annotointi</a> {#annotation}
 
-### Word Browser {#word-browser}
+### Sanat selain {#word-browser}
 
 :::info
-Only local words can be edited/deleted, external sources are read-only and can only update through [syncing](#re-build-anki-word-database).
+Vain paikallisia sanoja voi muokata tai poistaa. Ulkoisista lähteistä tuodut sanat ovat vain luettavissa, ja ne päivittyvät vain [synkronoinnin](#re-build-anki-word-database) kautta.
 :::
 
-Opens the Word Browser, where you can view and manage all words in your local word database and Anki-synced word database.
+Avaa Sanat selaimen, jossa voit tarkastella ja hallita paikallisen sanatietokannan sanoja sekä Ankin kanssa synkronoituja sanoja.
 
 :::tip
-You can lookup words in any script of the language (e.g romaji/hiragana/katakana/kanji for Japanese).
+Voit etsiä sanoja millä tahansa kielen kirjoitusjärjestelmällä (esimerkiksi japanissa romajilla, hiraganalla, katakanalla tai kanjilla).
 
-There are also some other common QOL substitutions, such as `e -> é` or `ss -> ß` done automatically.
+Lisäksi tehdään automaattisesti joitakin yleisiä elämänlaatua parantavia korvauksia, kuten `e -> é` tai `ss -> ß`.
 :::
 
-### Import Words {#import-words}
+### Tuo sanoja {#import-words}
 
-Imports words into asbplayer's **local word database**.
+Tuo sanoja asbplayerin **paikalliseen sanatietokantaan**.
 
-Imported words are considered local and take priority over the external sources when determining word status.
+Tuotuja sanoja käsitellään paikallisina, ja niiden tietoja käytetään ulkoisten lähteiden sijaan sanan tilaa määritettäessä.
 
-The import dialog supports pasting arbitrary text (asbplayer will tokenize it) and importing previously-exported files.
+Tuontivalintaikkunassa voi liittää mitä tahansa tekstiä (asbplayer jakaa sen sanoiksi) tai tuoda aiemmin vietyjä tiedostoja.
 
 :::tip
-You can hover over words and use the [Annotation keyboard shortcuts](#annotation-keyboard-shortcuts) to change their status locally.
+Voit viedä osoittimen sanojen päälle ja muuttaa niiden paikallista tilaa [annotoinnin pikanäppäimillä](#annotation-keyboard-shortcuts).
 :::
 
-### Export Words {#export-words}
+### Vie sanoja {#export-words}
 
-Exports your local word database so it can be backed up, moved to another device, or shared between the website and extension.
+Vie paikallisen sanatietokantasi, jotta voit varmuuskopioida sen, siirtää sen toiseen laitteeseen tai jakaa sen verkkosivuston ja laajennuksen välillä.
 
-### Re-Build Anki word database {#re-build-anki-word-database}
+### Rakenna Ankin sanatietokanta uudelleen {#re-build-anki-word-database}
 
-Builds (or rebuilds) the local cache of word-status information sourced from Anki.
+Luo tai rakentaa uudelleen Ankista haettujen sanatilatietojen paikallisen välimuistin.
 
 :::tip
-The cache is also updated automatically during playback when a track is enabled and Anki is connectable.
+Välimuisti päivittyy automaattisesti toiston aikana, kun raita on käytössä ja Ankiin saa yhteyden.
 
-This button is disabled unless your annotation settings [benefit from Anki integration](../common-issues.md#enable-or-disable-annotation-for-a-track).
+Painike ei ole käytössä, elleivät annotointiasetuksesi [hyödy Anki-integraatiosta](../common-issues.md#enable-or-disable-annotation-for-a-track).
 
-To clear the Anki word database entries for a track, [follow these steps](../common-issues.md#clear-anki-word-database).
+Tyhjennä raidan Ankin sanatietokannan merkinnät [näiden ohjeiden avulla](../common-issues.md#clear-anki-word-database).
 :::
 
-### Re-Build WaniKani word database {#re-build-wanikani-word-database}
+### Rakenna WaniKanin sanatietokanta uudelleen {#re-build-wanikani-word-database}
 
-Builds (or rebuilds) the local cache of vocabulary information sourced from WaniKani.
+Luo tai rakentaa uudelleen WaniKanista haettujen sanastotietojen paikallisen välimuistin.
 
 :::tip
-The cache is also updated automatically during playback when a track is enabled and a token is configured.
+Välimuisti päivittyy automaattisesti toiston aikana, kun raita on käytössä ja tunniste on määritetty.
 
-This button is disabled unless your annotation settings [benefit from WaniKani integration](../common-issues.md#enable-or-disable-annotation-for-a-track).
+Painike ei ole käytössä, elleivät annotointiasetuksesi [hyödy WaniKani-integraatiosta](../common-issues.md#enable-or-disable-annotation-for-a-track).
 
-To clear the WaniKani word database entries for a track, [follow these steps](../common-issues.md#clear-wanikani-word-database).
+Tyhjennä raidan WaniKanin sanatietokannan merkinnät [näiden ohjeiden avulla](../common-issues.md#clear-wanikani-word-database).
 :::
 
-### Subtitle track {#annotation-track}
+### Tekstitysraita {#annotation-track}
 
-Selects which subtitle track these annotation settings apply to.
+Valitsee tekstitysraidan, johon näitä annotointiasetuksia sovelletaan.
 
-### Colorize subtitles based on known words {#colorize-subtitles-based-on-known-words}
+### Väritä tekstitykset tunnettujen sanojen mukaan {#colorize-subtitles-based-on-known-words}
 
-Enables word-status styling (uncollected/unknown/learning/etc.). Styling uses the configured [**Word color style**](#word-color-style) and [**Word status colors**](#word-status-colors).
+Ottaa käyttöön sanojen tilaan perustuvan tyylin (ei kerätty, tuntematon, opettelussa jne.). Tyyli käyttää määritettyjä [**sanan väritapoja**](#word-color-style) ja [**sanojen tilavärejä**](#word-status-colors).
 
-### Generate statistics automatically {#generate-statistics-automatically}
+### Luo tilastot automaattisesti {#generate-statistics-automatically}
 
-Automatically generate statistics for the current media upon load. This will also enable the statistics overlay. The [Open statistics keyboard shortcut](#annotation-keyboard-shortcuts) is in the Annotation group.
+Luo nykyisestä mediasta tilastot automaattisesti latauksen yhteydessä. Tämä ottaa käyttöön myös tilastojen peittokuvan. [Tilastojen avaamisen pikanäppäin](#annotation-keyboard-shortcuts) löytyy Annotointi-ryhmästä.
 
-### Display word readings {#display-word-readings}
+### Näytä sanojen lukutavat {#display-word-readings}
 
-Shows readings (e.g. furigana) above words based on the word status and states.
+Näyttää sanojen yläpuolella lukutavat (esimerkiksi furiganan) sanan tilan ja tilamerkintöjen perusteella.
 
-### Display word frequency {#display-word-frequency}
+### Näytä sanojen yleisyys {#display-word-frequency}
 
-Shows a rank-based frequency value below words (when available) based on status and states. This is useful for prioritizing which words are worth spending time learning.
+Näyttää sijoitukseen perustuvan yleisyysarvon sanojen alapuolella (kun se on saatavilla) tilan ja tilamerkintöjen mukaan. Tämä auttaa priorisoimaan, mitkä sanat kannattaa opetella.
 
 :::tip
-Frequency information requires at least one rank-based frequency dictionary to be available in your Yomitan instance. If a frequency dictionary doesn't declare its mode, asbplayer will try to infer whether it is rank-based and use it accordingly.
+Yleisyystiedot vaativat, että Yomitan-asennuksessa on käytettävissä vähintään yksi sijoitukseen perustuva yleisyyssanakirja. Jos sanakirja ei ilmoita toimintatapaansa, asbplayer yrittää päätellä, perustuuko se sijoitukseen, ja käyttää sitä sen mukaisesti.
 
-If multiple frequency numbers are available for a word, the lowest (most frequent) number is used.
+Jos sanalle on saatavilla useita yleisyyslukuja, käytetään pienintä eli yleisintä lukua.
 :::
 
-### Display pitch accent (Japanese) {#display-pitch-accent-japanese}
+### Näytä korkoaksentti (japani) {#display-pitch-accent-japanese}
 
 :::note
-Too see the pitch accent on furigana, it must be enabled via [**Display word readings**](#display-word-readings).
+Jos haluat nähdä korkoaksentin furiganassa, ota se käyttöön asetuksella [**Näytä sanojen lukutavat**](#display-word-readings).
 :::
 
-Shows pitch accent on furigana or the kana itself based on status and states.
+Näyttää korkoaksentin furiganassa tai itse kanassa sanan tilan ja tilamerkintöjen mukaan.
 
 :::info
-The attaching particle's pitch accent following a word is determined by the pitch accent of the word, if the data is available.
+Sanaa seuraavan liitepartikkelin korkoaksentti määräytyy sanan korkoaksentin perusteella, jos tieto on saatavilla.
 
-Typically only kanji would receive furigana readings but with this feature enabled all characters in a word will receive furigana readings if at least one character is kanji. This makes it easier to reading the pitch accent for compound words.
+Tavallisesti furigana lisätään vain kanjeihin, mutta tämän ominaisuuden ollessa käytössä kaikki sanan merkit saavat furigana-lukemistavan, jos vähintään yksi merkki on kanji. Näin yhdyssanojen korkoaksenttia on helpompi lukea.
 :::
 
-### Display word definitions {#display-word-definitions}
+### Näytä sanojen määritelmät {#display-word-definitions}
 
-Controls whether short definitions or explanations are displayed for each word based on the word status and states.
+Määrittää, näytetäänkö kunkin sanan lyhyt määritelmä tai selitys sanan tilan ja tilamerkintöjen perusteella.
 
-### Word field search strategy {#word-field-search-strategy}
+### Sanakentän hakustrategia {#word-field-search-strategy}
 
-Controls how asbplayer matches a subtitle word against your known words.
+Määrittää, miten asbplayer vertaa tekstityksen sanoja tunnettuihin sanoihisi.
 
-- **Exact form collected**: the field must contain the exact surface form from the subtitle (running -> running).
-- **Lemma form collected**: you must have the lemma/base form collected (running -> run).
-- **Lemma or exact form collected**: treat the word as collected if either lemma or exact form matches (any of the above).
-- **Any form collected**: treat the word as collected if any related form matches (running -> run, ran, runs, etc.).
+- **Tarkka muoto kerätty**: kentän on sisällettävä tekstityksessä esiintyvä tarkka taivutusmuoto (running -> running).
+- **Perusmuoto kerätty**: perusmuodon on oltava kerättynä (running -> run).
+- **Perusmuoto tai tarkka muoto kerätty**: sana katsotaan kerätyksi, jos joko perusmuoto tai tarkka muoto vastaa (jompikumpi yllä olevista).
+- **Mikä tahansa muoto kerätty**: sana katsotaan kerätyksi, jos jokin siihen liittyvä muoto vastaa (running -> run, ran, runs jne.).
 
-When **Lemma form collected**, **Lemma or exact form collected**, or **Any form collected** is selected, [**Match across language scripts**](#match-across-language-scripts) controls whether lemma-based matching may cross between different scripts for a language (e.g Kanji, Hiragana, Katakana).
+Kun valittuna on **Perusmuoto kerätty**, **Perusmuoto tai tarkka muoto kerätty** tai **Mikä tahansa muoto kerätty**, asetuksella [**Täsmää kielten eri kirjoitusjärjestelmien välillä**](#match-across-language-scripts) määritetään, voiko perusmuotoon perustuva vastaavuus ylittää kielen eri kirjoitusjärjestelmien rajat (esimerkiksi kanjin, hiraganan ja katakanan).
 
-### Card choice priority {#card-choice-priority}
+### Kortin valintaprioriteetti {#card-choice-priority}
 
-If multiple Anki cards match a word, this controls which card is used to determine the word's status:
+Jos sanaa vastaa useita Anki-kortteja, tällä määritetään, mitä korttia käytetään sanan tilan määrittämiseen:
 
-- **Field contains exact form** (fallback to best known card if multiple)
-- **Field contains lemma** (fallback to best known card if multiple)
-- **Best known card**
-- **Least known card**
+- **Kentässä on tarkka muoto** (jos sopivia kortteja on useita, käytä parhaiten tunnettua)
+- **Kentässä on perusmuoto** (jos sopivia kortteja on useita, käytä parhaiten tunnettua)
+- **Parhaiten tunnettu kortti**
+- **Vähiten tunnettu kortti**
 
-### Sentence field search strategy {#sentence-field-search-strategy}
+### Lausekentän hakustrategia {#sentence-field-search-strategy}
 
-Controls how asbplayer searches your configured [**Anki sentence fields**](#anki-sentence-fields), it has the same options as [**Word field search strategy**](#word-field-search-strategy).
+Määrittää, miten asbplayer hakee määrittämistäsi [**Ankin lausekentistä**](#anki-sentence-fields). Käytettävissä ovat samat vaihtoehdot kuin [**sanakentän hakustrategiassa**](#word-field-search-strategy).
 
-When **Lemma form collected**, **Lemma or exact form collected**, or **Any form collected** is selected, [**Match across language scripts**](#match-across-language-scripts) controls whether lemma-based matching may cross between different scripts for a language (e.g Kanji, Hiragana, Katakana).
+Kun valittuna on **Perusmuoto kerätty**, **Perusmuoto tai tarkka muoto kerätty** tai **Mikä tahansa muoto kerätty**, asetuksella [**Täsmää kielten eri kirjoitusjärjestelmien välillä**](#match-across-language-scripts) määritetään, voiko perusmuotoon perustuva vastaavuus ylittää kielen eri kirjoitusjärjestelmien rajat (esimerkiksi kanjin, hiraganan ja katakanan).
 
 :::tip
-Since sentences will contain multiple words thus diluting the relevance of the card state to any individual word, it's best to keep this as **Exact form collected** unless you only have sentence cards.
+Koska lauseissa on useita sanoja, kortin tilan merkitys yksittäisen sanan kannalta heikkenee. Siksi tämä kannattaa jättää arvoon **Tarkka muoto kerätty**, paitsi jos käytössäsi on vain lausekortteja.
 :::
 
-### Match across language scripts {#match-across-language-scripts}
+### Täsmää kielten eri kirjoitusjärjestelmien välillä {#match-across-language-scripts}
 
-Controls whether lemma-based matching may cross between different scripts for a language (e.g Kanji, Hiragana, Katakana).
+Määrittää, voiko perusmuotoon perustuva vastaavuus ylittää kielen eri kirjoitusjärjestelmien rajat (esimerkiksi kanjin, hiraganan ja katakanan).
 
 ```
 if true:
@@ -449,524 +449,524 @@ if false:
   - Essentially a strict mode where the you need to collect all script forms of a word.
 ```
 
-### Yomitan API URL {#yomitan-api-url}
+### Yomitan API -URL {#yomitan-api-url}
 
-The URL for the Yomitan API endpoint. If the URL is unreachable or invalid, asbplayer will show an error.
+Yomitan API -päätepisteen URL-osoite. Jos osoite on virheellinen tai siihen ei saada yhteyttä, asbplayer näyttää virheen.
 
 :::tip
-You will need a configured [Yomitan](https://yomitan.wiki/) instance and the [yomitan-api](https://github.com/yomidevs/yomitan-api).
+Tarvitset määritetyn [Yomitan](https://yomitan.wiki/)-asennuksen ja [yomitan-api](https://github.com/yomidevs/yomitan-api)-rajapinnan.
 :::
 
-### Yomitan parser {#yomitan-parser}
+### Yomitan-jäsennin {#yomitan-parser}
 
-Selects which Yomitan parser to use for tokenizing subtitle text:
+Valitsee tekstitystekstin sanastamiseen käytettävän Yomitan-jäsentimen:
 
-- **Scanning Parser (All languages)**: Yomitan's internal parser that matches the longest words from your dictionaries.
-- **MeCab (Japanese)**: Uses MeCab to parse Japanese text. Requires Yomitan to be configured with MeCab support, preferably with at least one UniDic dictionary.
+- **Skannausjäsennin (kaikki kielet)**: Yomitanin sisäinen jäsennin, joka etsii pisimmät sanakirjoistasi löytyvät sanat.
+- **MeCab (japani)**: Jäsentää japaninkielisen tekstin MeCabilla. Vaatii, että Yomitan on määritetty tukemaan MeCabia. Suosittelemme vähintään yhtä UniDic-sanakirjaa.
 
-### Max word length {#max-word-length}
+### Sanan enimmäispituus {#max-word-length}
 
 :::info
-This setting only applies to the Scanning Parser.
+Tämä asetus koskee vain skannausjäsennintä.
 :::
 
-Limits the maximum word length that asbplayer will try to scan/tokenize for annotation.
+Rajoittaa niiden sanojen enimmäispituutta, joita asbplayer yrittää etsiä ja sanastaa annotointia varten.
 
 :::tip
-Setting this too low will miss longer words, setting it too high may cause performance issues.
+Aivan liian pieni arvo jättää pidempiä sanoja tunnistamatta, ja liian suuri arvo voi aiheuttaa suorituskykyongelmia.
 :::
 
-### Anki decks (optional) {#anki-decks}
+### Anki-pakat (valinnainen) {#anki-decks}
 
-Restricts Anki searches to the selected decks. If left empty, asbplayer searches across all decks.
+Rajaa Anki-haut valittuihin pakkoihin. Jos tämä jätetään tyhjäksi, asbplayer hakee kaikista pakoista.
 
-### Anki word fields {#anki-word-fields}
+### Ankin sanakentät {#anki-word-fields}
 
-Anki note fields that contain _only_ the target word. This is the recommended way to source known-status information from Anki.
+Anki-muistiinpanon kentät, jotka sisältävät _vain_ kohdesanan. Tämä on suositeltu tapa hakea Ankin kautta tietoa sanojen tunnettuudesta.
 
-### Anki sentence fields {#anki-sentence-fields}
+### Ankin lausekentät {#anki-sentence-fields}
 
-Anki note fields that contain a sentence (commonly used for sentence decks). This will be used as a fallback if there are no cards with the target word in [**Anki word fields**](#anki-word-fields).
+Anki-muistiinpanon kentät, jotka sisältävät lauseen (käytetään yleensä lausepakoissa). Näitä käytetään varalla, jos [**Ankin sanakentistä**](#anki-word-fields) ei löydy kohdesanaa sisältäviä kortteja.
 
-### Mature Anki stability/interval (days) {#mature-anki-stability-interval}
+### Kypsän Anki-kortin vakaus tai väli (päivää) {#mature-anki-stability-interval}
 
-Controls the cutoff (in days) for treating an Anki card as **Mature** versus lower maturity statuses.
+Määrittää päivärajat, joiden perusteella Anki-kortti luokitellaan **Kypsäksi** tai alempaan kypsyystilaan.
 
-- **Uncollected**: not found in Anki.
-- **Unknown**: found in Anki with `is:new`.
-- **Learning**: found in Anki with `is:learn`.
-- **Graduated**: found in Anki with `-is:new -is:learn prop:s<{ceil(cutoff / 2)}`.
-- **Young**: found in Anki with `-is:new -is:learn prop:s>=${ceil(cutoff / 2)} prop:s<${cutoff}`.
-- **Mature**: found in Anki with `-is:new -is:learn prop:s>=${cutoff}`.
+- **Ei kerätty**: ei löydy Ankista.
+- **Tuntematon**: löytyy Ankin haulla `is:new`.
+- **Opettelussa**: löytyy Ankin haulla `is:learn`.
+- **Valmistunut**: löytyy Ankin haulla `-is:new -is:learn prop:s<{ceil(cutoff / 2)}`.
+- **Nuori**: löytyy Ankin haulla `-is:new -is:learn prop:s>=${ceil(cutoff / 2)} prop:s<${cutoff}`.
+- **Kypsä**: löytyy Ankin haulla `-is:new -is:learn prop:s>=${cutoff}`.
 
 :::tip
-If a card has its FSRS stability available (last review of the card was with FSRS enabled), it will be used instead of the interval.
+Jos kortin FSRS-vakaus on saatavilla (kortti kerrattiin viimeksi FSRS:n ollessa käytössä), sitä käytetään aikavälin sijaan.
 
-For more information on word statuses, see [**Word status colors**](#word-status-colors).
+Lisätietoja sanojen tiloista on kohdassa [**Sanojen tilavärit**](#word-status-colors).
 :::
 
-### Treat suspended Anki cards as {#treat-suspended-anki-cards-as}
+### Käsittele hyllytetyt Anki-kortit tilana {#treat-suspended-anki-cards-as}
 
-Controls how **suspended** cards are treated when building word status from Anki:
+Määrittää, miten **hyllytettyjä** kortteja käsitellään muodostettaessa sanojen tiloja Ankin perusteella:
 
-- **Normal**: use Anki status as-is.
-- Or choose a specific word status (e.g. **Mature**, **Unknown**, etc.) to force suspended cards to be treated as that status.
+- **Normaali**: käytä Ankin tilaa sellaisenaan.
+- Valitse jokin tietty sanan tila (esimerkiksi **Kypsä**, **Tuntematon** jne.), jos haluat käsitellä hyllytettyjä kortteja kyseisenä tilana.
 
 :::tip
-If only some of the cards for a word are suspended, the suspended cards will be filtered out and the word status will be based on the unsuspended cards.
+Jos vain osa sanan korteista on hyllytetty, hyllytetyt kortit suodatetaan pois ja sanan tila määräytyy muiden korttien perusteella.
 
-For more information on word statuses, see [**Word status colors**](#word-status-colors).
+Lisätietoja sanojen tiloista on kohdassa [**Sanojen tilavärit**](#word-status-colors).
 :::
 
-### WaniKani API token {#wanikani-api-token}
+### WaniKani API -tunniste {#wanikani-api-token}
 
-Use the WaniKani API token to sync your known words from WaniKani. For setup, follow the instructions in the [annotations guide](../guides/annotation.md#setup).
+Synkronoi WaniKanin tunnetut sanasi WaniKani API -tunnisteella. Katso määritysohjeet [annotointioppaasta](../guides/annotation.md#setup).
 
-For asbplayer, we only use the `vocabulary` and `kana_vocabulary` subject types to determine known words. Statuses are determined based on the SRS stage based on the configured [spaced repetition system](https://docs.api.wanikani.com/20170710/#spaced-repetition-system) for that subject. WaniKani statuses are determined as follows:
+asbplayer käyttää tunnettujen sanojen määrittämiseen vain aihetyyppejä `vocabulary` ja `kana_vocabulary`. Tilat määräytyvät aiheen SRS-vaiheen ja määritetyn [kertaamisjärjestelmän](https://docs.api.wanikani.com/20170710/#spaced-repetition-system) perusteella seuraavasti:
 
-- **Uncollected**: not found in WaniKani.
-- **Unknown**: found in WaniKani with an SRS stage below `Starting stage`.
-- **Learning**: found in WaniKani with an SRS stage at or above `Starting stage` and below `Passing stage`.
-- **Graduated**: found in WaniKani with an SRS stage in the lower half of the stages between `Passing stage` and `Burning stage`.
-- **Young**: found in WaniKani with an SRS stage in the upper half of the stages between `Passing stage` and `Burning stage`.
-- **Mature**: found in WaniKani with an SRS stage at or above `Burning stage`.
+- **Ei kerätty**: ei löydy WaniKanista.
+- **Tuntematon**: löytyy WaniKanista, ja sen SRS-vaihe on ennen vaihetta `Starting stage`.
+- **Opettelussa**: löytyy WaniKanista, ja sen SRS-vaihe on vähintään `Starting stage` mutta ennen vaihetta `Passing stage`.
+- **Valmistunut**: löytyy WaniKanista, ja sen SRS-vaihe on vaiheiden `Passing stage` ja `Burning stage` välisen alueen alemmalla puoliskolla.
+- **Nuori**: löytyy WaniKanista, ja sen SRS-vaihe on vaiheiden `Passing stage` ja `Burning stage` välisen alueen ylemmällä puoliskolla.
+- **Kypsä**: löytyy WaniKanista, ja sen SRS-vaihe on vähintään `Burning stage`.
 
 :::tip
-For more information on word statuses, see [**Word status colors**](#word-status-colors).
+Lisätietoja sanojen tiloista on kohdassa [**Sanojen tilavärit**](#word-status-colors).
 :::
 
-### Word color style {#word-color-style}
+### Sanan väritapa {#word-color-style}
 
-Controls how status colors are applied to words for [**Colorize subtitles based on known words**](#colorize-subtitles-based-on-known-words):
+Määrittää, miten tilavärejä käytetään sanoihin asetuksella [**Väritä tekstitykset tunnettujen sanojen mukaan**](#colorize-subtitles-based-on-known-words):
 
-- **Text**: color of the word is changed.
-- **Background**: color behind the word is changed.
-- **Underline**: underline the word with the status color.
-- **Overline**: overline the word with the status color.
-- **Outline**: outline the word with the status color.
+- **Teksti**: sanan väriä muutetaan.
+- **Tausta**: sanan taustaväriä muutetaan.
+- **Alleviivaus**: alleviivaa sana tilavärillä.
+- **Yliviivaus yläpuolelta**: lisää sanan yläpuolelle tilavärisen viivan.
+- **Ääriviiva**: lisää sanalle tilavärisen ääriviivan.
 
 :::tip
-When using **Outline**, you may need to set [**Subtitle outline thickness**](#subtitle-appearance-track) to `0` for the best results.
+Kun käytät **Ääriviiva**-tyyliä, paras tulos voi edellyttää, että asetat [**Tekstityksen ääriviivan paksuudeksi**](#subtitle-appearance-track) `0`.
 :::
 
-### Thickness {#thickness}
+### Paksuus {#thickness}
 
-Controls the thickness (in pixels) of **Underline**, **Overline**, and **Outline** styling.
+Määrittää **Alleviivaus**-, **Yliviivaus yläpuolelta-** ja **Ääriviiva**-tyylien paksuuden pikseleinä.
 
-### Highlight words on hover {#highlight-words-on-hover}
+### Korosta sanoja osoittimen alla {#highlight-words-on-hover}
 
 :::info
-This highlight reflects the focus asbplayer has to register keyboard shortcuts. If the highlight does not appear, you may need to click on the player to focus it. Keyboard shortcuts only work for either the video or the subtitle list (but not both at the same time) depending on where the focus is.
+Korostus osoittaa, missä asbplayerin kohdistuksen on oltava pikanäppäinten tunnistamista varten. Jos korostus ei näy, napsauta soitinta kohdistaaksesi sen. Pikanäppäimet toimivat joko videossa tai tekstityslistassa sen mukaan, kumpaan kohdistus on asetettu, mutta eivät molemmissa yhtä aikaa.
 
-The highlight exists primarily to help you understand which word you're hovering over for collection. As such it requires that the hover target must be a word and that you have coloring enabled.
+Korostuksen tarkoitus on auttaa näkemään, minkä sanan olet valinnut kerättäväksi osoittamalla sitä. Siksi osoittimen alla täytyy olla sana ja väritys on otettava käyttöön.
 :::
 
-If enabled, hovering a word will highlight it which helps you understand how yomitan has tokenized it.
+Kun tämä on käytössä, osoittimen alla oleva sana korostetaan, mikä auttaa hahmottamaan, miten Yomitan on sanastanut sen.
 
-### Only display word color on hover {#only-display-word-color-on-hover}
+### Näytä sanan väri vain osoittimen alla {#only-display-word-color-on-hover}
 
 :::note
-This setting only applies if [**Colorize subtitles based on known words**](#colorize-subtitles-based-on-known-words) is enabled.
+Tämä asetus koskee vain tilannetta, jossa [**Väritä tekstitykset tunnettujen sanojen mukaan**](#colorize-subtitles-based-on-known-words) on käytössä.
 :::
 
-If enabled for video or subtitle list, word colors are hidden by default and only appear when you hover over the subtitle text in the video or subtitle list respectively.
+Kun asetus on käytössä videolle tai tekstityslistalle, sanojen värit ovat oletuksena piilossa ja näkyvät vain, kun osoitin viedään vastaavasti videon tai tekstityslistan tekstitystekstin päälle.
 
-### Only display word reading on hover {#only-display-word-reading-on-hover}
+### Näytä sanan lukutapa vain osoittimen alla {#only-display-word-reading-on-hover}
 
 :::note
-This setting only applies if [**Display word readings**](#display-word-readings) is enabled.
+Tämä asetus koskee vain tilannetta, jossa [**Näytä sanojen lukutavat**](#display-word-readings) on käytössä.
 :::
 
-If enabled for video or subtitle list, word readings are hidden by default and only appear when you hover over the subtitle text in the video or subtitle list respectively.
+Kun asetus on käytössä videolle tai tekstityslistalle, sanojen lukutavat ovat oletuksena piilossa ja näkyvät vain, kun osoitin viedään vastaavasti videon tai tekstityslistan tekstitystekstin päälle.
 
-### Only display word frequency on hover {#only-display-word-frequency-on-hover}
+### Näytä sanan yleisyys vain osoittimen alla {#only-display-word-frequency-on-hover}
 
 :::note
-This setting only applies if [**Display word frequency**](#display-word-frequency) is enabled.
+Tämä asetus koskee vain tilannetta, jossa [**Näytä sanojen yleisyys**](#display-word-frequency) on käytössä.
 :::
 
-If enabled for video or subtitle list, word frequency is hidden by default and only appears when you hover over the subtitle text in the video or subtitle list respectively.
+Kun asetus on käytössä videolle tai tekstityslistalle, sanojen yleisyys on oletuksena piilossa ja näkyy vain, kun osoitin viedään vastaavasti videon tai tekstityslistan tekstitystekstin päälle.
 
-### Only display word definitions on hover {#only-display-word-definitions-on-hover}
+### Näytä sanan määritelmä vain osoittimen alla {#only-display-word-definitions-on-hover}
 
 :::note
-This setting only applies if [**Display word definitions**](#display-word-definitions) is enabled.
+Tämä asetus koskee vain tilannetta, jossa [**Näytä sanojen määritelmät**](#display-word-definitions) on käytössä.
 :::
 
-If enabled for video or subtitle list, word definitions are hidden by default and only appear when you hover over the subtitle text in the video or subtitle list respectively.
+Kun asetus on käytössä videolle tai tekstityslistalle, sanojen määritelmät ovat oletuksena piilossa ja näkyvät vain, kun osoitin viedään vastaavasti videon tai tekstityslistan tekstitystekstin päälle.
 
-### Only display pitch accent on hover {#only-display-pitch-accent-on-hover}
+### Näytä korkoaksentti vain osoittimen alla {#only-display-pitch-accent-on-hover}
 
 :::note
-This setting only applies if [**Display pitch accent (Japanese)**](#display-pitch-accent-japanese) is enabled.
+Tämä asetus koskee vain tilannetta, jossa [**Näytä korkoaksentti (japani)**](#display-pitch-accent-japanese) on käytössä.
 :::
 
-If enabled for video or subtitle list, pitch accent is hidden by default and only appears when you hover over the subtitle text in the video or subtitle list respectively.
+Kun asetus on käytössä videolle tai tekstityslistalle, korkoaksentti on oletuksena piilossa ja näkyy vain, kun osoitin viedään vastaavasti videon tai tekstityslistan tekstitystekstin päälle.
 
-### Word reading size {#word-reading-size}
+### Sanan lukutavan koko {#word-reading-size}
 
-Controls the size of word readings (furigana) in em units (% of subtitle font size).
+Määrittää sanojen lukutapojen (furiganan) koon em-yksikköinä (prosentteina tekstityksen fonttikoosta).
 
-### Word frequency size {#word-frequency-size}
+### Sanan yleisyyden koko {#word-frequency-size}
 
-Controls the size of word frequency in em units (% of subtitle font size).
+Määrittää sanan yleisyyden koon em-yksikköinä (prosentteina tekstityksen fonttikoosta).
 
-### Word definition size {#word-definition-size}
+### Sanan määritelmän koko {#word-definition-size}
 
-Controls the size of word definitions in em units (% of subtitle font size).
+Määrittää sanan määritelmän koon em-yksikköinä (prosentteina tekstityksen fonttikoosta).
 
-### Pitch accent size {#pitch-accent-size}
+### Korkoaksentin koko {#pitch-accent-size}
 
-Controls the size of pitch accent in em units (% of subtitle font size).
+Määrittää korkoaksentin koon em-yksikköinä (prosentteina tekstityksen fonttikoosta).
 
-### Word status colors {#word-status-colors}
+### Sanojen tilavärit {#word-status-colors}
 
-Each status has a configurable color and transparency used by [**Word color style**](#word-color-style) which can be individually enabled or disabled.
+Kullekin tilalle voi määrittää värin ja läpinäkyvyyden, joita käytetään asetuksessa [**Sanan väritapa**](#word-color-style). Kukin tila voidaan ottaa käyttöön tai poistaa käytöstä erikseen.
 
-- **Uncollected**: Word is not present in your asbplayer database.
-- **Unknown**: Word is present but considered unknown.
-- **Learning**: Word is currently learning.
-- **Graduated**: Word has graduated from learning.
-- **Young**: Word is known, but not yet mature.
-- **Mature**: Word is fully known (mature).
+- **Ei kerätty**: sanaa ei ole asbplayerin tietokannassa.
+- **Tuntematon**: sana on tietokannassa, mutta se katsotaan tuntemattomaksi.
+- **Opettelussa**: sanaa opetellaan parhaillaan.
+- **Valmistunut**: sanan opettelu on päättynyt.
+- **Nuori**: sana tunnetaan, mutta se ei ole vielä kypsä.
+- **Kypsä**: sana tunnetaan täysin.
 
 :::tip
-You can disable status stylings per your liking, e.g. disabling **Mature** to reduce clutter.
+Voit poistaa tilojen tyylit käytöstä mieltymystesi mukaan; voit esimerkiksi poistaa **Kypsä**-tilan käytöstä näkymän selkeyttämiseksi.
 
-You can reuse colors (e.g. **Graduated** and **Young**) if you don't want to differentiate between certain statuses.
+Voit käyttää samaa väriä eri tiloille (esimerkiksi **Valmistunut** ja **Nuori**), jos et halua erotella niitä toisistaan.
 
-For how Anki Card statuses are determined, see [**Mature Anki stability/interval (days)**](#mature-anki-stability-interval).
-For how WaniKani statuses are determined, see [**WaniKani API token**](#wanikani-api-token).
+Katso, miten Anki-korttien tilat määräytyvät kohdasta [**Kypsän Anki-kortin vakaus tai väli (päivää)**](#mature-anki-stability-interval).
+Katso, miten WaniKani-tilat määräytyvät kohdasta [**WaniKani API -tunniste**](#wanikani-api-token).
 :::
 
-## <a href={new URL('?view=settings#playback', project.urls.app).href}>Playback</a> {#playback}
+## <a href={new URL('?view=settings#playback', project.urls.app).href}>Toisto</a> {#playback}
 
-### Subtitle tracks affected by playback modes and keyboard shortcuts {#playback-subtitle-tracks}
+### Toistotilojen ja pikanäppäinten käyttämät tekstitysraidat {#playback-subtitle-tracks}
 
-Specifies which tracks will be considered when using the [Subtitles](#subtitles-keyboard-shortcuts) and [Seek](#seek-keyboard-shortcuts) keyboard shortcuts, or when using playback modes. For example, when condensed mode is enabled, blank space to be automatically skipped, is considered to be any part of the timeline without subtitles in the tracks specified by this option.
+Määrittää, mitkä raidat huomioidaan [tekstitysten](#subtitles-keyboard-shortcuts) ja [siirtymisen](#seek-keyboard-shortcuts) pikanäppäimissä sekä toistotiloissa. Kun esimerkiksi tiivistetty toisto on käytössä, automaattisesti ohitettavaksi tyhjäksi kohdaksi lasketaan mikä tahansa tämän asetuksen raidoista kohta, jossa ei ole tekstityksiä.
 
-### Auto-pause when mousing over subtitles {#auto-pause-when-mousing-over-subtitles}
+### Automaattipysäytys osoitettaessa tekstityksiä {#auto-pause-when-mousing-over-subtitles}
 
-Auto-pause behavior when mousing over subtitles. "Enabled with auto-resume" means that playback will automatically resume when mousing off of subtitles.
+Määrittää automaattipysäytyksen toiminnan, kun osoitin viedään tekstitysten päälle. ”Käytössä automaattisella jatkamisella” tarkoittaa, että toisto jatkuu automaattisesti, kun osoitin siirretään pois tekstityksistä.
 
-### Playback modes {#playback-modes}
+### Toistotilat {#playback-modes}
 
-Playback modes can be toggled with the [Playback keyboard shortcuts](#playback-keyboard-shortcuts).
+Toistotiloja voi vaihtaa [toiston pikanäppäimillä](#playback-keyboard-shortcuts).
 
-### Playback rate {#playback-rate}
+### Toistonopeus {#playback-rate}
 
-Controls the normal media playback speed, including the speed used inside subtitles while fast-forward is enabled. New playback always starts at this rate. Use the [Playback rate keyboard shortcuts](#playback-rate-keyboard-shortcuts) to adjust it while watching.
+Määrittää median normaalin toistonopeuden, myös tekstitysten aikana käytettävän nopeuden pikakelauksen ollessa käytössä. Uusi toisto alkaa aina tällä nopeudella. Voit muuttaa nopeutta katselun aikana [toistonopeuden pikanäppäimillä](#playback-rate-keyboard-shortcuts).
 
-### Show playback rate notification {#show-playback-rate-notification}
+### Näytä ilmoitus toistonopeudesta {#show-playback-rate-notification}
 
-Shows a notification when the playback rate changes outside fast-forward playback.
+Näyttää ilmoituksen, kun toistonopeus muuttuu muulloin kuin pikakelauksessa.
 
-### Auto-pause preference {#auto-pause-preference}
+### Automaattipysäytyksen asetus {#auto-pause-preference}
 
-When auto-pause is enabled, whether to auto-pause at the start, end, or both edges of subtitles. When both edges and repeat are enabled, repeats pauses at the end before repeating, but the start pause is skipped to prevent double pausing.
+Määrittää, pysäytetäänkö toisto automaattisesti tekstityksen alussa, lopussa vai molemmissa kohdissa automaattipysäytyksen ollessa käytössä. Kun molemmat kohdat ja toisto ovat käytössä, tekstitys pysähtyy lopussa ennen uudelleentoistoa, mutta alun tauko ohitetaan kaksoistauon välttämiseksi.
 
-### Repeat count preference {#repeat-count-preference}
+### Uudelleentoistojen määrä {#repeat-count-preference}
 
-Controls how many times each subtitle repeats before playback continues. A value of `0` repeats indefinitely.
+Määrittää, kuinka monta kertaa kukin tekstitys toistetaan ennen toiston jatkumista. Arvo `0` toistaa rajattomasti.
 
-### Repeats before showing subtitles {#repeats-before-showing-subtitles}
+### Toistot ennen tekstitysten näyttämistä {#repeats-before-showing-subtitles}
 
-Suppress subtitles in a repeating segment until it has repeated this many times. `0` adds no suppression, `1` removes suppression from the first repeat.
+Piilottaa tekstitykset toistettavassa kohdassa, kunnes se on toistettu näin monta kertaa. `0` ei piilota tekstityksiä, `1` poistaa piilotuksen ensimmäiseltä uudelleentoistolta.
 
-### Subtitle trigger start and end offsets {#subtitle-trigger-start-and-end-offsets}
+### Tekstityksen käynnistyskohtien alku- ja loppusiirtymät {#subtitle-trigger-start-and-end-offsets}
 
-Offsets the subtitle start and end triggers used by auto-pause and repeat in milliseconds. These offsets are applied after the global subtitle offset. Start and end offsets can be configured independently; positive values trigger playback effects later, while negative values trigger them earlier. Each shifted edge is limited by the media and neighboring subtitle-event boundaries. If the shifted start and end cross, their chronological roles are swapped.
+Siirtää automaattipysäytyksen ja uudelleentoiston käyttämiä tekstityksen alku- ja loppukäynnistimiä millisekunteina. Siirtymät lisätään tekstityksen yleisen siirtymän jälkeen. Alku- ja loppusiirtymät voi määrittää erikseen: positiiviset arvot käynnistävät toistotoiminnot myöhemmin ja negatiiviset aiemmin. Median ja viereisten tekstitystapahtumien rajat rajoittavat siirrettyjä kohtia. Jos siirretty alku ja loppu menevät ristiin, niiden aikajärjestys vaihdetaan.
 
-### Fast-forward minimum skip interval {#fast-forward-minimum-skip-interval}
+### Pikakelauksen vähimmäisohitusväli {#fast-forward-minimum-skip-interval}
 
-Fast-forward for the full gap between subtitles when the gap is at least this long. Shorter gaps stay at the normal playback rate.
+Kelaa tekstitysten välinen koko tyhjä kohta, jos se on vähintään tämän pituinen. Lyhyemmät välit toistetaan normaalinopeudella.
 
-### Fast-forward playback rate {#fast-forward-playback-rate}
+### Pikakelauksen nopeus {#fast-forward-playback-rate}
 
-How fast to fast-forward when fast-forward mode is enabled.
+Määrittää pikakelauksen nopeuden pikakelaustilan ollessa käytössä.
 
-### Condensed playback minimum skip interval {#condensed-playback-minimum-skip-interval}
+### Tiivistetyn toiston vähimmäisohitusväli {#condensed-playback-minimum-skip-interval}
 
-When condensed playback is enabled, skip to the next subtitle only if the next subtitle is at least this amount of time away.
+Tiivistetyn toiston ollessa käytössä siirrytään seuraavaan tekstitykseen vain, jos siihen on vähintään tämän verran aikaa.
 
-### Subtitle gap trigger start and end offsets {#subtitle-gap-trigger-start-and-end-offsets}
+### Tekstitysaukkojen käynnistimien alku- ja loppusiirtymät {#subtitle-gap-trigger-start-and-end-offsets}
 
-Offsets the subtitle gap triggers used by fast-forward and condensed playback. The gap start offset is non-negative and moves the trigger later from the moment the subtitle ends; the gap end offset is non-positive and moves the trigger earlier from the moment before the next subtitle. Each gap is limited by the media and neighboring subtitle-event boundaries.
+Siirtää pikakelauksen ja tiivistetyn toiston käyttämiä tekstitysaukkojen käynnistimiä. Aukon alun siirtymä ei voi olla negatiivinen, ja se siirtää käynnistintä myöhemmäksi tekstityksen päättymisestä. Aukon lopun siirtymä ei voi olla positiivinen, ja se siirtää käynnistintä aiemmaksi ennen seuraavaa tekstitystä. Median ja viereisten tekstitystapahtumien rajat rajoittavat kutakin aukkoa.
 
-### Auto-pause resume mode {#auto-pause-resume-mode}
+### Automaattipysäytyksen jatkamistapa {#auto-pause-resume-mode}
 
-Controls how an automatic pause finishes.
+Määrittää, miten automaattipysäytys päättyy.
 
-- **Manual**: Playback stays paused until you resume it.
+- **Manuaalinen**: toisto pysyy tauolla, kunnes jatkat sitä.
 
-- **Fixed**: Every automatic pause lasts for the same configured time.
-  - Controls [Fixed pause duration](#fixed-pause-duration) and [Resume delay after auto-pause](#resume-delay-after-auto-pause).
+- **Kiinteä**: jokainen automaattipysäytys kestää saman määritetyn ajan.
+  - Määrittää [kiinteän tauon keston](#fixed-pause-duration) ja [jatkamisviiveen automaattipysäytyksen jälkeen](#resume-delay-after-auto-pause).
 
-- **Subtitle length**: The pause duration is calculated from the subtitle's character count. Only subtitles on seekable tracks are counted, so a translation track loaded alongside the target language does not inflate the pause.
-  - Controls [Minimum pause duration](#minimum-pause-duration), [Maximum pause duration](#maximum-pause-duration), [Pause time per character](#pause-time-per-character), and [Resume delay after auto-pause](#resume-delay-after-auto-pause).
+- **Tekstityksen pituus**: tauon kesto lasketaan tekstityksen merkkimäärästä. Mukaan lasketaan vain siirrettävillä raidoilla olevat tekstitykset, joten kohdekielen rinnalle ladattu käännösraita ei pidennä taukoa.
+  - Määrittää [tauon vähimmäiskeston](#minimum-pause-duration), [tauon enimmäiskeston](#maximum-pause-duration), [taukoajan merkkiä kohden](#pause-time-per-character) ja [jatkamisviiveen automaattipysäytyksen jälkeen](#resume-delay-after-auto-pause).
 
-### Fixed pause duration {#fixed-pause-duration}
+### Kiinteän tauon kesto {#fixed-pause-duration}
 
-The amount of time an automatic pause lasts in **Fixed** mode.
+Automaattipysäytyksen kesto **Kiinteä**-tilassa.
 
-### Minimum pause duration {#minimum-pause-duration}
+### Tauon vähimmäiskesto {#minimum-pause-duration}
 
-The shortest pause allowed in **Subtitle length** mode, regardless of the subtitle's character count.
+Tauon lyhin mahdollinen kesto **Tekstityksen pituus** -tilassa tekstityksen merkkimäärästä riippumatta.
 
-### Maximum pause duration {#maximum-pause-duration}
+### Tauon enimmäiskesto {#maximum-pause-duration}
 
-The longest pause allowed in **Subtitle length** mode. A value of `0` means there is no upper limit. A nonzero maximum cannot be lower than the minimum pause duration.
+Tauon pisin mahdollinen kesto **Tekstityksen pituus** -tilassa. Arvo `0` tarkoittaa, ettei ylärajaa ole. Nollasta poikkeava enimmäiskesto ei voi olla lyhyempi kuin tauon vähimmäiskesto.
 
-### Pause time per character {#pause-time-per-character}
+### Taukoaika merkkiä kohden {#pause-time-per-character}
 
-The number of milliseconds assigned to each character in **Subtitle length** mode. The character count multiplied by this value is clamped between the minimum and maximum pause durations.
+**Tekstityksen pituus** -tilassa kullekin merkille varattava aika millisekunteina. Merkkimäärä kerrottuna tällä arvolla rajataan tauon vähimmäis- ja enimmäiskestojen väliin.
 
-### Resume delay after auto-pause {#resume-delay-after-auto-pause}
+### Jatkamisviive automaattipysäytyksen jälkeen {#resume-delay-after-auto-pause}
 
-In **Fixed** and **Subtitle length** modes, an automatic pause runs in two phases: the subtitle is shown for the configured pause duration, then hidden while playback stays paused for the resume delay. This setting controls the length of that second phase.
+**Kiinteä**- ja **Tekstityksen pituus** -tiloissa automaattipysäytyksessä on kaksi vaihetta: tekstitys näytetään määritetyn tauon ajan, minkä jälkeen se piilotetaan ja toisto pysyy tauolla jatkamisviiveen ajan. Tämä asetus määrittää toisen vaiheen keston.
 
-### Show subtitles {#show-subtitles}
+### Näytä tekstitykset {#show-subtitles}
 
-- **When due**: Subtitles appear while their timing is active.
+- **Ajankohtana**: tekstitykset näkyvät niiden ajoituksen ollessa aktiivinen.
 
-- **While paused**: Subtitles appear only when they are due and playback is paused.
+- **Tauolla**: tekstitykset näkyvät vain niiden ollessa ajankohtaisia ja toiston ollessa tauolla.
 
-- **While manually paused**: Subtitles appear only when they are due and playback is manually paused.
+- **Manuaalisen tauon aikana**: tekstitykset näkyvät vain niiden ollessa ajankohtaisia ja toiston ollessa manuaalisesti tauotettu.
 
-## <a href={new URL('?view=settings#playback', project.urls.app).href}>Playback > Annotation</a> {#playback-annotation}
+## <a href={new URL('?view=settings#playback', project.urls.app).href}>Toisto > Annotointi</a> {#playback-annotation}
 
-These settings use the word statuses, states, and frequencies from [Annotation](#annotation) for the selected subtitle track. The auto-pause, condensed, fast-forward, and repeat rules take effect while their playback modes are on. **No word filter** means no statuses or states are selected for that track. Rules apply per track: a seekable track without statuses or states selected for one of those modes keeps that mode's usual behavior, even when it plays alongside a track that has rules.
+Näissä asetuksissa käytetään valitun tekstitysraidan [annotoinnin](#annotation) sanan tiloja, tilamerkintöjä ja yleisyyksiä. Automaattipysäytyksen, tiivistetyn toiston, pikakelauksen ja uudelleentoiston säännöt vaikuttavat, kun vastaava toistotila on käytössä. **Ei sanarajauksia** tarkoittaa, ettei kyseiselle raidalle ole valittu tiloja tai tilamerkintöjä. Säännöt koskevat kutakin raitaa erikseen: siirrettävä raita, jolle ei ole valittu tiloja kyseiseen tilaan, säilyttää toistotilan tavallisen toiminnan, vaikka rinnalla toistettaisiin sääntöjä käyttävää raitaa.
 
-### Subtitle track {#playback-annotation-track}
+### Tekstitysraita {#playback-annotation-track}
 
-Selects the subtitle track whose annotation playback settings you are editing. The selected track is shared with the Annotation tab.
+Valitsee tekstitysraidan, jonka annotoinnin toistoasetuksia muokkaat. Valittu raita on sama kuin Annotointi-välilehdellä.
 
-### Select first matching word on pause {#select-first-matching-word-on-pause}
+### Valitse tauolla ensimmäinen vastaava sana {#select-first-matching-word-on-pause}
 
-Selects the first word matching any chosen status or state whenever playback pauses, including manual pauses, and after seeking while paused. Leave the selection empty to disable this behavior. Selection happens in the video player, or in the subtitle player when no video is loaded or connected.
+Valitsee ensimmäisen valittua tilaa tai tilamerkintää vastaavan sanan aina, kun toisto pysähtyy, myös manuaalisen tauon aikana ja tauolla tehdyn siirtymisen jälkeen. Poista valinta käytöstä jättämällä valinta tyhjäksi. Sana valitaan videosoittimessa tai tekstityssoittimessa, jos videota ei ole ladattu tai yhdistetty.
 
-When an [annotation-based auto-pause rule](#auto-pause-subtitles-containing-these-words) causes the pause, its matching word is selected instead. This dropdown continues to control selection on manual pauses.
+Kun tauko johtuu [annotointiin perustuvasta automaattipysäytyssäännöstä](#auto-pause-subtitles-containing-these-words), valitaan sen vastaava sana. Tämä avattava valikko määrittää edelleen manuaalisen tauon aikana tehtävän valinnan.
 
-Each of the word rules below has its own status and state selection, word-count limit, and frequency limit. A word must have a selected status or state and satisfy both limits.
+Kullakin alla olevalla sanarajauksella on omat tila- ja tilamerkintävalintansa sekä sana- ja yleisyysrajansa. Sanan on oltava valitussa tilassa tai tilamerkinnässä ja täytettävä molemmat rajat.
 
-### Auto-pause subtitles containing these words {#auto-pause-subtitles-containing-these-words}
+### Pysäytä automaattisesti näitä sanoja sisältävät tekstitykset {#auto-pause-subtitles-containing-these-words}
 
-When auto-pause mode is on, pause only on subtitles containing a matching word and select the first matching word. This takes precedence over [**Select first matching word on pause**](#select-first-matching-word-on-pause) for automatic pauses; that dropdown still applies on manual pauses.
+Automaattipysäytyksen ollessa käytössä pysäytä toisto vain tekstitysten kohdalla, jotka sisältävät vastaavan sanan, ja valitse ensimmäinen vastaava sana. Automaattisissa tauoissa tämä ohittaa asetuksen [**Valitse tauolla ensimmäinen vastaava sana**](#select-first-matching-word-on-pause); kyseinen asetus vaikuttaa edelleen manuaalisiin taukoihin.
 
-### Repeat subtitles containing these words {#repeat-subtitles-containing-these-words}
+### Toista uudelleen näitä sanoja sisältävät tekstitykset {#repeat-subtitles-containing-these-words}
 
-When repeat mode is on, repeat only subtitles containing a matching word.
+Uudelleentoiston ollessa käytössä toista uudelleen vain tekstitykset, jotka sisältävät vastaavan sanan.
 
-### Play subtitles containing these words in condensed mode {#play-subtitles-containing-these-words-in-condensed-mode}
+### Toista tiivistetyssä tilassa näitä sanoja sisältävät tekstitykset {#play-subtitles-containing-these-words-in-condensed-mode}
 
-When condensed mode is on, keep subtitles containing a matching word in the condensed timeline. Skip through other subtitles.
+Tiivistetyn toiston ollessa käytössä säilytä vastaavan sanan sisältävät tekstitykset tiivistetyllä aikajanalla. Ohita muut tekstitykset.
 
-### Play subtitles containing these words at normal speed in fast-forward mode {#play-subtitles-containing-these-words-at-normal-speed-in-fast-forward-mode}
+### Toista normaalinopeudella pikakelauksessa näitä sanoja sisältävät tekstitykset {#play-subtitles-containing-these-words-at-normal-speed-in-fast-forward-mode}
 
-When fast-forward mode is on, play subtitles containing a matching word at the normal playback rate. Fast-forward through other subtitles.
+Pikakelauksen ollessa käytössä toista vastaavan sanan sisältävät tekstitykset normaalilla toistonopeudella. Kelaa muut tekstitykset nopeasti eteenpäin.
 
-### Adjust fast-forward rate by comprehension {#adjust-fast-forward-rate-by-comprehension}
+### Säädä pikakelausnopeutta ymmärtämisen perusteella {#adjust-fast-forward-rate-by-comprehension}
 
-While fast-forward mode is on, use the sentence comprehension score to choose the rate within a subtitle.
+Pikakelauksen ollessa käytössä valitse tekstityksen aikainen toistonopeus lauseen ymmärtämispisteiden perusteella.
 
-At or below [**Minimum comprehension**](#minimum-comprehension), use the normal playback rate; at 100%, use the configured fast-forward rate. Rates between those points are interpolated.
+Käytä normaalia toistonopeutta, kun ymmärtämispisteet ovat enintään [**Ymmärtämisen vähimmäistasolla**](#minimum-comprehension), ja määritettyä pikakelausnopeutta 100 %:n kohdalla. Näiden pisteiden välinen nopeus lasketaan interpoloimalla.
 
-Changing the speed in a comprehension-controlled subtitle changes the configured fast-forward rate, then recalculates the applied rate from comprehension. This also applies when comprehension keeps the subtitle at normal speed. Keyboard shortcuts and player speed controls use the same behavior; the normal rate is unchanged.
+Nopeuden muuttaminen ymmärtämisen perusteella ohjatussa tekstityksessä muuttaa määritettyä pikakelausnopeutta, minkä jälkeen käytettävä nopeus lasketaan uudelleen ymmärtämispisteiden perusteella. Tämä koskee myös tilannetta, jossa tekstitystä toistetaan ymmärtämispisteiden vuoksi normaalinopeudella. Pikanäppäimet ja soittimen nopeussäätimet toimivat samalla tavalla; normaali nopeus ei muutu.
 
-### Minimum comprehension {#minimum-comprehension}
+### Ymmärtämisen vähimmäistaso {#minimum-comprehension}
 
-Sets the percentage where acceleration starts (0–99%, default 60%).
+Asettaa prosenttirajan, jonka ylityttyä nopeutta aletaan kasvattaa (0–99 %, oletus 60 %).
 
-### Show these words during playback {#show-these-words-during-playback}
+### Näytä nämä sanat toiston aikana {#show-these-words-during-playback}
 
-Select the statuses and states whose words should remain visible.
+Valitse tilat ja tilamerkinnät, joiden sanat pidetään näkyvissä.
 
-### Hide the entire subtitle when at least this percentage of words would be hidden {#whole-subtitle-hidden-percentage}
+### Piilota koko tekstitys, jos vähintään tämä osuus sanoista piilotettaisiin {#whole-subtitle-hidden-percentage}
 
-Hide the whole subtitle when at least this percentage of its words would be hidden by the show rule. For example, at **80%**, if four words in a five-word subtitle would be hidden, the entire subtitle is hidden, including the one word selected to show. Punctuation and other non-letter characters do not count.
+Piilota koko tekstitys, jos näyttösääntö piilottaisi vähintään tämän prosenttiosuuden sen sanoista. Jos arvo on esimerkiksi **80 %**, viisisanaisesta tekstityksestä piilotetaan koko tekstitys, jos neljä sanaa piilotettaisiin, myös yksi sana, joka on valittu näytettäväksi. Välimerkkejä ja muita merkkejä, jotka eivät ole kirjaimia, ei lasketa mukaan.
 
-### Hide non-matching words individually {#hide-non-matching-words-individually}
+### Piilota ehdot täyttämättömät sanat yksitellen {#hide-non-matching-words-individually}
 
-When enabled, words that do not meet the show rule are hidden individually while the subtitle is below the whole-subtitle threshold. When disabled, the subtitle stays fully visible until the threshold is reached.
+Kun tämä on käytössä, näyttösäännön ehtoja täyttämättömät sanat piilotetaan yksitellen niin kauan kuin tekstitys jää koko tekstityksen piilotuskynnyksen alapuolelle. Kun asetus ei ole käytössä, tekstitys pysyy kokonaan näkyvissä kynnyksen ylittymiseen asti.
 
-### Minimum words per selected category {#minimum-words-per-selected-category}
+### Sanojen vähimmäismäärä valitussa luokassa {#minimum-words-per-selected-category}
 
-Each selected category (such as **Uncollected** or **Ignored**) is counted separately within a subtitle. If its count is below this limit, words in that category do not trigger the rule. `0` disables the limit.
+Kukin valittu luokka (kuten **Ei kerätty** tai **Ohitettu**) lasketaan tekstityksessä erikseen. Jos sanoja on tätä rajaa vähemmän, kyseisen luokan sanat eivät käynnistä sääntöä. `0` poistaa rajan käytöstä.
 
-### Maximum words per selected category {#maximum-words-per-selected-category}
+### Sanojen enimmäismäärä valitussa luokassa {#maximum-words-per-selected-category}
 
-Each selected category (such as **Uncollected** or **Ignored**) is counted separately within a subtitle. If its count exceeds this limit, words in that category do not trigger the rule. `0` disables the limit.
+Kukin valittu luokka (kuten **Ei kerätty** tai **Ohitettu**) lasketaan tekstityksessä erikseen. Jos sanoja on tätä rajaa enemmän, kyseisen luokan sanat eivät käynnistä sääntöä. `0` poistaa rajan käytöstä.
 
-### Only when word frequency is at least {#only-when-word-frequency-is-at-least}
+### Vain jos sanan yleisyys on vähintään {#only-when-word-frequency-is-at-least}
 
-A matching word must have a frequency at or above this value. Missing frequency counts as `1`. `0` disables the limit.
+Vastaavan sanan yleisyyden on oltava vähintään tämä arvo. Puuttuva yleisyys lasketaan arvoksi `1`. `0` poistaa rajan käytöstä.
 
-### Only when word frequency is at most {#only-when-word-frequency-is-at-most}
+### Vain jos sanan yleisyys on enintään {#only-when-word-frequency-is-at-most}
 
-A matching word must have a frequency at or below this value. Missing frequency counts as `1`. `0` disables the limit.
+Vastaavan sanan yleisyyden on oltava enintään tämä arvo. Puuttuva yleisyys lasketaan arvoksi `1`. `0` poistaa rajan käytöstä.
 
-## <a href={new URL('?view=settings#streaming-video', project.urls.app).href}>Streaming video</a> (extension only) {#streaming-video}
+## <a href={new URL('?view=settings#streaming-video', project.urls.app).href}>Suoratoistovideo</a> (vain laajennus) {#streaming-video}
 
-Streaming video settings are available only when the browser extension is installed.
+Suoratoistovideon asetukset ovat käytettävissä vain, kun selainlaajennus on asennettu.
 
-### When loading subtitles, also open subtitle list via the app in a separate tab {#open-subtitle-list-in-tab}
+### Avaa tekstitysten lataamisen yhteydessä tekstityslista sovelluksessa uuteen välilehteen {#open-subtitle-list-in-tab}
 
-Anytime subtitles are loaded into a video element, opens the website, and syncs the loaded subtitles with the website in a separate tab.
+Kun tekstitykset ladataan videoelementtiin, avaa verkkosivuston ja synkronoi ladatut tekstitykset siihen erillisessä välilehdessä.
 
-### App URL {#app-url}
+### Sovelluksen URL {#app-url}
 
-Determines where the extension fetches some configuration, and what URL to open when syncing subtitles to the website running in a separate tab. Essentially the website URL.
+Määrittää, mistä laajennus noutaa joitakin asetuksia ja minkä URL-osoitteen se avaa synkronoidessaan tekstitykset erillisessä välilehdessä toimivaan verkkosovellukseen. Käytännössä tämä on verkkosivuston URL-osoite.
 
-### Enable controls overlay {#enable-controls-overlay}
+### Ota säätimien peittokuva käyttöön {#enable-controls-overlay}
 
-Display the overlay UI on video elements with loaded subtitles.
+Näyttää peittokuvan käyttöliittymän videoelementeissä, joihin on ladattu tekstityksiä.
 
-### Display subtitles {#display-subtitles}
+### Näytä tekstitykset {#display-subtitles}
 
-Display loaded subtitles on video elements.
+Näyttää ladatut tekstitykset videoelementeissä.
 
-### Record audio when mining {#record-audio-when-mining}
+### Tallenna ääni louhittaessa {#record-audio-when-mining}
 
-When mining a subtitle, record the audio covered by the subtitle for inclusion in the flashcard.
+Tallentaa tekstityksen kattaman äänen muistikorttiin lisättäväksi, kun tekstitystä louhitaan.
 
-### Take screenshot when mining {#take-screenshot-when-mining}
+### Ota kuvakaappaus louhittaessa {#take-screenshot-when-mining}
 
-When mining a subtitle, take a screenshot for inclusion in the flashcard.
+Ottaa kuvakaappauksen muistikorttiin lisättäväksi, kun tekstitystä louhitaan.
 
-### Clean screenshot when mining {#clean-screenshot-when-mining}
+### Siisti kuvakaappaus louhittaessa {#clean-screenshot-when-mining}
 
-When mining a subtitle and screenshots are enabled, keep the screenshot "clean" by removing any HTML elements on top of the video element before taking the screenshot.
+Kun tekstitystä louhitaan ja kuvakaappaukset ovat käytössä, siisti kuvakaappaus poistamalla videon päällä olevat HTML-elementit ennen kuvan ottamista.
 
-### Crop screenshot when mining {#crop-screenshot-when-mining}
+### Rajaa kuvakaappaus louhittaessa {#crop-screenshot-when-mining}
 
-When mining a subtitle, crop the screenshot to the video element.
+Rajaa kuvakaappaus videoelementin kokoiseksi, kun tekstitystä louhitaan.
 
-### Image capture format {#streaming-image-capture-format}
+### Kuvan kaappausmuoto {#streaming-image-capture-format}
 
-Specifies the image capture format for cards mined from streaming video. The additional option is "Animated WebP," which captures the video playing in the tab for the subtitle's time interval - including the audio padding - and saves it as an animated image, instead of a single screenshot.
+Määrittää suoratoistovideosta louhittujen korttien kuvan kaappausmuodon. Lisävaihtoehto on ”Animoitu WebP”, joka tallentaa välilehdellä toistuvan videon tekstityksen aikaväliltä, äänen lisäajat mukaan lukien, ja tallentaa sen animoituna kuvana yksittäisen kuvakaappauksen sijaan.
 
-Animated WebP is only used while [recording audio when mining](#record-audio-when-mining) is enabled, and otherwise a screenshot is taken as usual. It applies to every way of mining that records media, including manual recording started and stopped with the record keyboard shortcut, which captures everything up to the moment recording is stopped (up to 30 seconds). Only one recording can run at a time. Animated WebP is not available in Firefox, and videos protected by DRM can't be captured. The tab has to stay visible while the clip is being captured, since Chrome stops rendering hidden tabs.
+Animoitua WebP-muotoa käytetään vain, kun [äänen tallennus louhittaessa](#record-audio-when-mining) on käytössä. Muussa tapauksessa otetaan tavallinen kuvakaappaus. Asetus koskee kaikkia mediaa tallentavia louhintatapoja, myös manuaalista tallennusta, joka aloitetaan ja lopetetaan tallennuksen pikanäppäimellä. Se tallentaa kaiken tallennuksen lopettamiseen asti, enintään 30 sekuntia. Vain yksi tallennus voi olla käynnissä kerrallaan. Animoitu WebP ei ole käytettävissä Firefoxissa, eikä DRM-suojattuja videoita voi tallentaa. Välilehden on pysyttävä näkyvissä leikkeen tallennuksen ajan, koska Chrome lakkaa renderöimästä piilotettuja välilehtiä.
 
-### Animated image FPS {#animated-image-fps}
+### Animoidun kuvan kuvataajuus {#animated-image-fps}
 
-How many frames per second to capture for animated WebP images. Longer clips automatically use fewer frames to keep the card small. Only available when the Animated WebP image capture format is selected.
+Animoituihin WebP-kuviin sekunnissa tallennettavien kuvien määrä. Pidemmissä leikkeissä tallennetaan automaattisesti vähemmän kuvia, jotta kortin koko pysyy pienenä. Käytettävissä vain, kun kuvan kaappausmuodoksi on valittu Animoitu WebP.
 
-### Animated image quality {#animated-image-quality}
+### Animoidun kuvan laatu {#animated-image-quality}
 
-Quality of each frame of animated WebP images, from `0.1` to `1`. Higher is better looking but results in a larger file. Only available when the Animated WebP image capture format is selected.
+Animoitujen WebP-kuvien kunkin ruudun laatu välillä `0.1`–`1`. Suurempi arvo parantaa kuvan laatua mutta kasvattaa tiedostoa. Käytettävissä vain, kun kuvan kaappausmuodoksi on valittu Animoitu WebP.
 
-### Allow subtitle file drag-and-drop {#allow-subtitle-file-drag-and-drop}
+### Salli tekstitystiedostojen vetäminen ja pudottaminen {#allow-subtitle-file-drag-and-drop}
 
-Allow subtitle files to be drag-and-dropped into video elements.
+Sallii tekstitystiedostojen vetämisen ja pudottamisen videoelementteihin.
 
-### Auto-load detected subtitles {#auto-load-detected-subtitles}
+### Lataa tunnistetut tekstitykset automaattisesti {#auto-load-detected-subtitles}
 
-If subtitle auto-detection is supported on the current website, load them automatically. If multiple tracks are detected, load the track for the preferred language. The preferred language is the one that was last loaded with the "remember these track choices" box checked.
+Jos tekstitysten automaattista tunnistusta tuetaan nykyisellä verkkosivustolla, lataa tunnistetut tekstitykset automaattisesti. Jos raitoja tunnistetaan useita, lataa ensisijaisen kielen raita. Ensisijainen kieli on se, joka ladattiin viimeksi, kun ”Muista nämä raitavalinnat” -ruutu oli valittuna.
 
-### Prompt when auto-loading detected subtitles fails {#prompt-on-subtitle-autoload-failure}
+### Kysy, kun tunnistettujen tekstitysten automaattinen lataus epäonnistuu {#prompt-on-subtitle-autoload-failure}
 
-When automatic subtitle loading fails, prompt before trying to load detected subtitles.
+Jos tekstitysten automaattinen lataus epäonnistuu, pyydä vahvistus ennen tunnistettujen tekstitysten lataamisen yrittämistä.
 
-## <a href={new URL('?view=settings#streaming-video', project.urls.app).href}>Streaming video > Pages</a> {#pages}
+## <a href={new URL('?view=settings#streaming-video', project.urls.app).href}>Suoratoistovideo > Sivut</a> {#pages}
 
-Settings for page-specific integrations like YouTube, Netflix, etc. asbplayer has pre-configured default settings for each page. The pages section allows those defaults to be modified.
+Sivukohtaisten integraatioiden asetukset esimerkiksi YouTubea ja Netflixiä varten. asbplayerissa on kullekin sivulle valmiit oletusasetukset, joita voi muokata Sivut-osiossa.
 
-### Target language codes for machine translation (YouTube only) {#youtube-translation-languages}
+### Konekäännöksen kohdekielten koodit (vain YouTube) {#youtube-translation-languages}
 
-Specifies which target languages to use for YouTube's machine translation. When languages are specified here, additional tracks for each target language appear in the subtitle track selector.
+Määrittää YouTuben konekäännöksessä käytettävät kohdekielet. Kun kielet määritetään tässä, kukin niistä näkyy lisäraitana tekstitysraitojen valitsimessa.
 
-## <a href={new URL('?view=settings#misc-settings', project.urls.app).href}>Misc</a> {#misc}
+## <a href={new URL('?view=settings#misc-settings', project.urls.app).href}>Muut</a> {#misc}
 
-### Import/export settings {#import-export-settings}
+### Tuo tai vie asetukset {#import-export-settings}
 
-Imports or exports settings as a `json` file.
+Tuo tai vie asetukset `json`-tiedostona.
 
-### Theme {#theme}
+### Teema {#theme}
 
-Display all asbplayer in a light or dark theme.
+Näyttää asbplayerin vaalealla tai tummalla teemalla.
 
-### Language {#language}
+### Kieli {#language}
 
-Language to display UI in.
+Käyttöliittymän kieli.
 
-Note: not all strings have been localized in every language that asbplayer supports. Unlocalized will be displayed in English. Feel free to help out with localization at the [Crowdin project](https://crowdin.com/project/asbplayer).
+Huomaa, ettei kaikkia merkkijonoja ole käännetty kaikille asbplayerin tukemille kielille. Kääntämättömät merkkijonot näytetään englanniksi. Voit osallistua kääntämiseen [Crowdin-projektissa](https://crowdin.com/project/asbplayer).
 
-### Auto-maximize local video {#auto-maximize-local-video}
+### Suurenna paikallinen video automaattisesti {#auto-maximize-local-video}
 
-Automatically maximize the local video when the subtitle panel is opened.
+Suurentaa paikallisen videon automaattisesti, kun tekstityspaneeli avataan.
 
-### Show mining button in subtitle list {#show-mining-button-in-subtitle-list}
+### Näytä louhintapainike tekstityslistassa {#show-mining-button-in-subtitle-list}
 
-When enabled, shows a mining button next to each subtitle in the subtitle list.
+Kun tämä on käytössä, tekstityslistan jokaisen tekstityksen vieressä näkyy louhintapainike.
 
-### Subtitle list timestamps {#subtitle-list-timestamps}
+### Tekstityslistan aikaleimat {#subtitle-list-timestamps}
 
-Controls how timestamps are displayed in the subtitle list.
+Määrittää, miten aikaleimat näytetään tekstityslistassa.
 
-- **Hidden**: Not shown.
-- **Start**: Shows subtitle's start timestamp only.
-- **Start and end**: Shows both start and end timestamps of the subtitle.
+- **Piilotettu**: ei näytetä.
+- **Alku**: näyttää vain tekstityksen alkamisajan.
+- **Alku ja loppu**: näyttää tekstityksen alkamis- ja päättymisajat.
 
-### Remember subtitle offset {#remember-subtitle-offset}
+### Muista tekstityksen siirtymä {#remember-subtitle-offset}
 
-When enabled, timing offset is "sticky." Subtitles are loaded with the last-used offset.
+Kun tämä on käytössä, ajoituksen siirtymä säilyy. Tekstitykset ladataan viimeksi käytetyllä siirtymällä.
 
-### Remember last playback rate {#remember-last-playback-rate}
+### Muista viimeisin toistonopeus {#remember-last-playback-rate}
 
-Updates the playback rate setting when the rate is changed on a video. When disabled, playback still starts at the configured playback rate, but changes made while watching remain temporary.
+Päivittää toistonopeusasetuksen, kun nopeutta muutetaan videon aikana. Kun tämä ei ole käytössä, toisto alkaa silti määritetyllä nopeudella, mutta katselun aikana tehdyt muutokset ovat tilapäisiä.
 
-### Remember last playback modes {#remember-last-playback-modes}
+### Muista viimeisimmät toistotilat {#remember-last-playback-modes}
 
-Restores the last enabled playback modes when loading playback again. When disabled, playback starts in normal mode.
+Palauttaa viimeksi käytössä olleet toistotilat, kun toisto ladataan uudelleen. Kun tämä ei ole käytössä, toisto alkaa normaalitilassa.
 
-### Auto-copy current subtitle to clipboard {#auto-copy-current-subtitle-to-clipboard}
+### Kopioi nykyinen tekstitys automaattisesti leikepöydälle {#auto-copy-current-subtitle-to-clipboard}
 
-Automatically copies subtitle to clipboard when it appears on screen. Useful for sending subtitles to apps that can monitor the clipboard.
+Kopioi tekstityksen automaattisesti leikepöydälle, kun se ilmestyy näytölle. Tämä on hyödyllistä, kun haluat lähettää tekstityksiä sovelluksiin, jotka voivat seurata leikepöytää.
 
-### Subtitle tracks eligible for auto-copy {#subtitle-tracks-eligible-for-auto-copy}
+### Automaattisesti kopioitavat tekstitysraidat {#subtitle-tracks-eligible-for-auto-copy}
 
-Specifies which tracks will be auto-copied when the [Auto-copy current subtitle to clipboard](#auto-copy-current-subtitle-to-clipboard) setting is enabled.
+Määrittää, mitkä raidat kopioidaan automaattisesti, kun asetus [Kopioi nykyinen tekstitys automaattisesti leikepöydälle](#auto-copy-current-subtitle-to-clipboard) on käytössä.
 
-### Show preview thumbnails {#show-preview-thumbnails}
+### Näytä esikatselupikkukuvat {#show-preview-thumbnails}
 
-Shows preview thumbnails in the subtitle list.
+Näyttää esikatselupikkukuvat tekstityslistassa.
 
-### Subtitle above thumbnail {#subtitle-above-thumbnail}
+### Näytä tekstitys pikkukuvan yläpuolella {#subtitle-above-thumbnail}
 
-Shows the subtitle above the preview thumbnail in the subtitle list.
+Näyttää tekstityksen tekstityslistan esikatselupikkukuvan yläpuolella.
 
-### Subtitle regex filter {#subtitle-regex-filter}
+### Tekstityksen Regex-suodatin {#subtitle-regex-filter}
 
-Substrings matched by this regex will be replaced by the value of [Subtitle regex filter text replacement](#subtitle-regex-filter-text-replacement)
+Tähän Regexiin vastaavat merkkijonon osat korvataan asetuksen [Tekstityksen Regex-suodattimen tekstikorvaus](#subtitle-regex-filter-text-replacement) arvolla.
 
-### Subtitle regex filter text replacement {#subtitle-regex-filter-text-replacement}
+### Tekstityksen Regex-suodattimen tekstikorvaus {#subtitle-regex-filter-text-replacement}
 
-Substrings matched by the regex above are replaced with the value of this setting. If left empty, matched substrings are simply removed.
+Yllä olevaan Regexiin vastaavat merkkijonon osat korvataan tämän asetuksen arvolla. Jos arvo jätetään tyhjäksi, vastaavat osat poistetaan.
 
-### Subtitle HTML {#subtitle-html}
+### Tekstityksen HTML {#subtitle-html}
 
-How to handle HTML that appears in subtitle files.
+Määrittää, miten tekstitystiedostoissa esiintyvää HTML-koodia käsitellään.
 
-### Detect and Display Ruby {#detect-and-display-ruby}
+### Tunnista ja näytä Ruby-merkinnät {#detect-and-display-ruby}
 
-When enabled, asbplayer will automatically detect Netflix-style word readings and display them stylistically using `ruby` tags. Netflix-style readings frequently appear in Japanese subtitles and look like `花子（はなこ）` where a reading in parentheses follows a word.
+Kun tämä on käytössä, asbplayer tunnistaa automaattisesti Netflix-tyyliset sanojen lukutavat ja näyttää ne tyyliteltyinä `ruby`-tageilla. Tällaisia lukutapoja esiintyy usein japaninkielisissä tekstityksissä. Esimerkiksi `花子（はなこ）`, jossa sanan jälkeen on sulkeissa sen lukutapa.
 
-### Enable WebSocket client {#enable-websocket-client}
+### Ota WebSocket-asiakas käyttöön {#enable-websocket-client}
 
-Enables the WebSocket client. Allows asbplayer to be controlled using the WebSocket interface.
+Ottaa WebSocket-asiakkaan käyttöön. asbplayeria voi tällöin ohjata WebSocket-käyttöliittymän kautta.
 
-### WebSocket Server URL {#websocket-server-url}
+### WebSocket-palvelimen URL {#websocket-server-url}
 
-The URL of the WebSocket server to connect to when enabling the WebSocket client. Usually this would be a locally-running instance of the [pre-packaged WebSocket server](../guides/web-socket-server.md).
+WebSocket-palvelimen URL-osoite, johon yhdistetään, kun WebSocket-asiakas otetaan käyttöön. Yleensä kyseessä on paikallisesti käynnissä oleva [valmiiksi pakattu WebSocket-palvelin](../guides/web-socket-server.md).
 
-### Mining history storage limit {#mining-history-storage-limit}
+### Louhintahistorian tallennusraja {#mining-history-storage-limit}
 
-Limits the number of cards that can be saved in the mining history.
+Rajoittaa louhintahistoriaan tallennettavien korttien määrää.
 
-### Name of the tab {#name-of-the-tab}
+### Välilehden nimi {#name-of-the-tab}
 
-The name to use for the app tab.
+Sovelluksen välilehdessä käytettävä nimi.
 
-## Profiles {#profiles}
+## Profiilit {#profiles}
 
-A settings profile is a completely different set of settings values. The active settings profile can be changed from the settings UI or from the **Load Subtitles** and **Anki Export** dialogs.
+Asetusprofiili sisältää erilliset asetusarvot. Aktiivisen asetusprofiilin voi vaihtaa asetuskäyttöliittymästä tai **Lataa tekstitykset**- ja **Anki-vienti**-valintaikkunoista.

@@ -4,48 +4,48 @@ sidebar_position: 1
 
 import project from '@site/src/project';
 
-# Annotation {#annotation}
+# Annotointi {#annotation}
 
-asbplayer can annotate subtitles to better assist with language learning. Annotation features include:
+asbplayer voi annotoida tekstityksiä ja auttaa näin kielten oppimisessa. Annotointiominaisuuksia ovat:
 
-- **Word Styling**: color/underline/outline, etc. based on a word's status
-    - known status can be sourced from and synced with Anki, WaniKani, and/or tracked locally in asbplayer (includes import/export features to help seed known words)
-- **Reading Annotation**: readings displayed above each word or based on status
-- **Frequency Annotation**: rank-based frequency displayed below each word or based on status (requires at least on rank-based frequency dictionary)
-- **Pitch Accent Annotation**: accent patterns displayed on furigana or kana words (requires at least one pitch accent dictionary)
-- **Glossary Annotation**: short definitions or explanations displayed for each word
-- **Statistics and Comprehension**: provides insights into your known words for the current media.
-- **Adaptive Playback**: uses playback modes and annotation data to optimize your learning experience.
-- **Word Browser**: manage local and view words synced from external sources.
-- **Many more features for future releases!**
+- **Sanojen tyyli**: väri, alleviivaus, ääriviiva ja muut tyylit sanan tilan perusteella
+    - Tunnettujen sanojen tiedot voidaan hakea ja synkronoida Ankista tai WaniKanista ja/tai tallentaa paikallisesti asbplayeriin (sisältää tuonti- ja vientiominaisuudet tunnettujen sanojen lisäämiseksi).
+- **Lukutapojen annotointi**: lukutavat näytetään kunkin sanan yläpuolella tai sanan tilan perusteella.
+- **Yleisyysannotointi**: yleisyys sijoituksen perusteella näytetään kunkin sanan alapuolella tai sanan tilan perusteella (vaatii vähintään yhden sijoitukseen perustuvan yleisyyssanakirjan).
+- **Korkoaksentin annotointi**: aksenttikuviot näytetään furiganassa tai kana-merkkisissä sanoissa (vaatii vähintään yhden korkoaksenttisanakirjan).
+- **Sanastoannotointi**: kunkin sanan lyhyt määritelmä tai selitys.
+- **Tilastot ja ymmärtäminen**: tietoa nykyisen median tunnetuista sanoistasi.
+- **Mukautuva toisto**: optimoi oppimiskokemusta toistotilojen ja annotointitietojen avulla.
+- **Sanat selain**: hallitse paikallisia sanoja ja tarkastele ulkoisista lähteistä synkronoituja sanoja.
+- **Paljon muita ominaisuuksia on tulossa!**
 
 :::info
-Annotation requires a configured [Yomitan](https://yomitan.wiki/) instance and the [yomitan-api](https://github.com/yomidevs/yomitan-api).
+Annotointi vaatii määritetyn [Yomitan](https://yomitan.wiki/)-asennuksen ja [yomitan-api](https://github.com/yomidevs/yomitan-api)-rajapinnan.
 
-If you rely on the **local word database**, installing the asbplayer browser extension is recommended so your browser is less likely to delete stored words. If you can’t install the extension, consider periodically exporting your settings and/or local words as a backup.
+Jos käytät **paikallista sanatietokantaa**, suosittelemme asentamaan asbplayerin selainlaajennuksen, jotta selaimesi ei todennäköisesti poista tallennettuja sanoja. Jos laajennuksen asentaminen ei onnistu, harkitse asetusten ja/tai paikallisten sanojen säännöllistä vientiä varmuuskopioksi.
 :::
 
-## Setup {#setup}
+## Käyttöönotto {#setup}
 
-1. Open asbplayer **Settings**.
-2. Go to the **Annotation** section.
-3. Select the track you want to configure.
-4. Configure the **Yomitan URL** for that track.
-    - You will need a configured [Yomitan](https://yomitan.wiki/) instance and the [yomitan-api](https://github.com/yomidevs/yomitan-api).
-    - If the URL is invalid or unreachable, asbplayer will show an error next to the setting.
-    - Frequency information requires at least one rank-based frequency dictionary to be available in your Yomitan instance.
-5. (Anki users) Configure which cards to source known status information from
-    - [`Anki decks`](../reference/settings.md#anki-decks) should typically be left blank to source from all decks, filtering by the fields is usually sufficient.
-    - [`Anki word fields`](../reference/settings.md#anki-word-fields) correspond to the field on the Anki note that contains only the target word.
-    - [`Anki sentence fields`](../reference/settings.md#anki-sentence-fields) should only be used for Anki notes that do not have a dedicated word field (such as sentence decks). These words are treated as a fallback if a word isn't present in the Anki word fields.
-    - To populate the database, use [`Re-build Anki word database`](../reference/settings.md#re-build-anki-word-database) after configuring these fields.
-6. (WaniKani users) Visit [WaniKani > Settings > API Tokens](https://www.wanikani.com/settings/personal_access_tokens) to create a token for asbplayer.
-    - In the `Token Description` field enter `asbplayer`, leave all `Permissions` unchecked, asbplayer only needs read access to your WaniKani account.
-    - Click `Generate token` and copy the generated token into [`WaniKani API token`](../reference/settings.md#wanikani-api-token).
-    - To populate the database, use [`Re-build WaniKani word database`](../reference/settings.md#re-build-wanikani-word-database) after configuring the API token.
-7. Enable your desired annotation features (styling, reading, frequency, pitch accent, etc.) for that track. Customize other settings as desired.
-8. For detailed explanations of each option, see the [Annotation](../reference/settings.md#annotation) section of the settings reference. Keyboard actions are listed in the [Annotation keyboard shortcuts](../reference/settings.md#annotation-keyboard-shortcuts) group.
+1. Avaa asbplayerin **Asetukset**.
+2. Siirry **Annotointi**-osioon.
+3. Valitse määritettävä raita.
+4. Määritä raidan **Yomitan-URL**.
+    - Tarvitset määritetyn [Yomitan](https://yomitan.wiki/)-asennuksen ja [yomitan-api](https://github.com/yomidevs/yomitan-api)-rajapinnan.
+    - Jos URL-osoite on virheellinen tai siihen ei saada yhteyttä, asbplayer näyttää asetuksen vieressä virheilmoituksen.
+    - Yleisyystiedot vaativat, että Yomitan-asennuksessa on käytettävissä vähintään yksi sijoitukseen perustuva yleisyyssanakirja.
+5. (Ankin käyttäjät) Määritä, mistä korteista tunnettujen sanojen tilatiedot haetaan.
+    - [`Anki-pakat`](../reference/settings.md#anki-decks) kannattaa yleensä jättää tyhjäksi, jotta tiedot haetaan kaikista pakoista; kenttien suodatus riittää tavallisesti.
+    - [`Ankin sanakentät`](../reference/settings.md#anki-word-fields) viittaavat Anki-muistiinpanon kenttään, joka sisältää vain kohdesanan.
+    - [`Ankin lausekenttiä`](../reference/settings.md#anki-sentence-fields) tulee käyttää vain Anki-muistiinpanoissa, joissa ei ole erillistä sanakenttää (kuten lausepakoissa). Näitä sanoja käytetään varalla, jos sanaa ei löydy Ankin sanakentistä.
+    - Täytä tietokanta käyttämällä [`Rakenna Ankin sanatietokanta uudelleen`](../reference/settings.md#re-build-anki-word-database), kun olet määrittänyt kentät.
+6. (WaniKanin käyttäjät) Luo asbplayerille tunniste sivulla [WaniKani > Asetukset > API-tunnisteet](https://www.wanikani.com/settings/personal_access_tokens).
+    - Kirjoita `Token Description` -kenttään `asbplayer` ja jätä kaikki `Permissions`-kohdat valitsematta; asbplayer tarvitsee vain lukuoikeuden WaniKani-tilillesi.
+    - Valitse `Generate token` ja kopioi luotu tunniste kohtaan [`WaniKani API -tunniste`](../reference/settings.md#wanikani-api-token).
+    - Täytä tietokanta käyttämällä [`Rakenna WaniKanin sanatietokanta uudelleen`](../reference/settings.md#re-build-wanikani-word-database), kun olet määrittänyt API-tunnisteen.
+7. Ota raidan haluamasi annotointiominaisuudet käyttöön (tyyli, lukutavat, yleisyys, korkoaksentti jne.). Muokkaa muita asetuksia tarpeen mukaan.
+8. Katso kunkin asetuksen tarkemmat kuvaukset asetusoppaan [Annotointi](../reference/settings.md#annotation)-osiosta. Näppäintoiminnot löytyvät [annotoinnin pikanäppäimet](../reference/settings.md#annotation-keyboard-shortcuts) -ryhmästä.
 
-## Troubleshooting {#troubleshooting}
+## Vianmääritys {#troubleshooting}
 
-Please refer to the [common issues](../common-issues.md#annotation) section of the docs for troubleshooting annotation issues. If you can't find a solution there, please reach out on <a href={project.urls.discord}>Discord</a> or submit a <a href={`${project.urls.repo}/issues`}>bug report</a> with detailed information about your issue and steps to reproduce it.
+Katso annotointiin liittyvien ongelmien vianmääritys dokumentaation [yleiset ongelmat](../common-issues.md#annotation)-osiosta. Jos et löydä sieltä ratkaisua, ota yhteyttä <a href={project.urls.discord}>Discordissa</a> tai lähetä <a href={`${project.urls.repo}/issues`}>virheraportti</a>, jossa kuvaat ongelman yksityiskohtaisesti ja kerrot, miten sen voi toistaa.

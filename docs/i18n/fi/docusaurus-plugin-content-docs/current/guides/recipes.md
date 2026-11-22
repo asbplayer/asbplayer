@@ -1,6 +1,6 @@
 ---
 sidebar_position: 1.5
-title: Recipes
+title: Reseptit
 ---
 
 import project from '@site/src/project';
@@ -67,41 +67,41 @@ export const unfamiliarWordRepeatSettings = {
   subtitleTriggerEndOffset: 0,
 };
 
-# Recipes
+# Reseptit
 
-Recipes combine playback modes and playback settings so you can switch between learning activities. Choose a recipe in **Settings > Playback**, beside the playback modes in the player controls, or in the mobile overlay. Choose **Disabled** to return to your underlying settings. Your saved playback settings, remembered playback rate, and remembered modes are preserved while a recipe is active.
+Reseptit yhdistävät toistotiloja ja toistoasetuksia, jotta voit vaihtaa oppimistehtävästä toiseen. Valitse resepti kohdassa **Asetukset > Toisto**, soittimen säätimissä toistotilojen vieressä tai mobiilin peittokuvan käyttöliittymässä. Palaa käyttämiisi asetuksiin valitsemalla **Ei käytössä**. Tallennetut toistoasetukset, muistiin tallennettu toistonopeus ja toistotilat säilyvät reseptin ollessa käytössä.
 
-## Create and edit a recipe
+## Reseptin luominen ja muokkaaminen
 
-Select **Edit Recipe** in the Playback tab. If a recipe is selected, you start with that recipe; otherwise you start with your current playback settings. Choose the playback modes and change the settings you want to include. These changes stay in a draft and do not affect playback until saved.
+Valitse Toisto-välilehdellä **Muokkaa reseptiä**. Jos resepti on valittuna, aloitat sen pohjalta; muussa tapauksessa käytössä ovat nykyiset toistoasetuksesi. Valitse toistotilat ja muuta mukaan haluamiasi asetuksia. Muutokset pysyvät luonnoksessa eivätkä vaikuta toistoon ennen tallentamista.
 
-Select **Save Recipe** to review the settings and enter a name of up to 100 characters. You can remove individual settings from the preview; omitted settings use your underlying settings. Playback modes are always specified as a complete combination.
+Valitse **Tallenna resepti** tarkistaaksesi asetukset ja kirjoittaaksesi enintään 100 merkin nimen. Voit poistaa yksittäisiä asetuksia esikatselusta; pois jätetyissä asetuksissa käytetään omia asetuksiasi. Toistotilat määritetään aina kokonaisena yhdistelmänä.
 
-When editing an existing recipe, leaving its name untouched updates it. Typing in the name field creates a new recipe, even if you return to the original name. Select **Cancel** to discard the draft.
+Kun muokkaat olemassa olevaa reseptiä etkä muuta sen nimeä, päivität kyseisen reseptin. Nimikenttään kirjoittaminen luo uuden reseptin, vaikka palauttaisit alkuperäisen nimen. Hylkää luonnos valitsemalla **Peruuta**.
 
-## Import and share
+## Tuonti ja jakaminen
 
-Select **Import Recipe**, paste the recipe's JSON, review its settings, and confirm. You can change its name and remove settings before importing. Imported recipes are appended to your list and selected. Unknown settings and invalid setting values are ignored. The name and playback modes must be valid.
+Valitse **Tuo resepti**, liitä reseptin JSON, tarkista sen asetukset ja vahvista. Voit muuttaa nimeä ja poistaa asetuksia ennen tuontia. Tuodut reseptit lisätään luettelon loppuun ja valitaan käyttöön. Tuntemattomat asetukset ja virheelliset asetusarvot ohitetaan. Nimen ja toistotilojen on oltava kelvollisia.
 
-You can also open an import link. It opens the web app with the Playback tab and import preview ready; the recipe takes effect after you confirm the import.
+Voit myös avata tuontilinkin. Se avaa verkkosovelluksen Toisto-välilehdelle, jossa tuonnin esikatselu on valmiina. Resepti otetaan käyttöön, kun vahvistat tuonnin.
 
-Open a recipe's preview icon in the dropdown to copy its JSON or share its import URL. The same preview lets you delete the recipe with confirmation. Move recipes with the up/down buttons or drag them in the dropdown. Selection follows a recipe when it moves; deleting the selected recipe disables recipes.
+Avaa reseptin esikatselukuvake avattavassa valikossa kopioidaksesi sen JSONin tai jakaaksesi sen tuonti-URL-osoitteen. Esikatselussa voit myös poistaa reseptin vahvistuksen jälkeen. Siirrä reseptejä ylös- ja alas-painikkeilla tai vedä ne haluamaasi kohtaan valikossa. Valinta seuraa reseptiä sen siirtyessä; valitun reseptin poistaminen poistaa reseptit käytöstä.
 
-## Keyboard shortcuts
+## Pikanäppäimet
 
-Configure **Cycle through recipes forward**, **Cycle through recipes backwards**, and **Toggle recipe #1** through **#10** under **Keyboard Shortcuts > Playback**. Toggling the active recipe disables recipes. Cycling follows the list order and includes **Disabled**. Playback setting and mode shortcuts show a notification while a recipe is active; edit or disable the recipe to change those settings.
+Määritä **Selaa reseptejä eteenpäin**, **Selaa reseptejä taaksepäin** ja **Vaihda reseptiä #1** – **#10** kohdassa **Pikanäppäimet > Toisto**. Aktiivisen reseptin vaihtaminen poistaa reseptit käytöstä. Selaaminen noudattaa luettelon järjestystä ja sisältää **Ei käytössä** -vaihtoehdon. Toistoasetusten ja -tilojen pikanäppäimet näyttävät ilmoituksen reseptin ollessa aktiivinen. Muokkaa reseptiä tai poista se käytöstä muuttaaksesi kyseisiä asetuksia.
 
-## Common recipes
+## Yleisiä reseptejä
 
-These contain some useful preset recipes for common learning activities. If you have any that you want to share or need a missing feature to create the perfect recipe, you can request them on <a href={project.urls.discord}>Discord</a> or on <a href={`${project.urls.repo}/issues/new/choose`}>GitHub</a>.
+Alla on hyödyllisiä valmiita reseptejä tavallisiin oppimistehtäviin. Jos haluat jakaa omia reseptejäsi tai tarvitset puuttuvan ominaisuuden täydellisen reseptin luomiseen, voit pyytää niitä <a href={project.urls.discord}>Discordissa</a> tai <a href={`${project.urls.repo}/issues/new/choose`}>GitHubissa</a>.
 
-### Normal mode
+### Normaalitila
 
-Use your usual playback settings without an automatic learning mode. We recommend keeping your non-recipe settings as plain as possible so that `Disabled` maps to normal playback behavior.
+Käytä tavallisia toistoasetuksia ilman automaattista oppimistilaa. Suosittelemme pitämään reseptien ulkopuoliset asetukset mahdollisimman yksinkertaisina, jotta `Ei käytössä` vastaa normaalia toistoa.
 
-### Dialogue focus
+### Keskity vuoropuheluun
 
-Focus on dialogue by combining condensed playback with fast-forward. Skip gaps using a 5-second minimum skip interval and fast-forward remaining qualifying gaps at 3× with a 1-second minimum interval. Keep 150 ms of context on either side of each gap, with dialogue at your underlying playback speed.
+Keskity vuoropuheluun yhdistämällä tiivistetty toisto ja pikakelaus. Ohita aukot, joiden vähimmäispituus on 5 sekuntia, ja kelaa muut ehdot täyttävät aukot 3-kertaisella nopeudella, kun niiden pituus on vähintään sekunti. Säilytä aukon kummallakin puolella 150 ms kontekstia ja toista vuoropuhelu käyttäen normaalia toistonopeutta.
 
 <RecipePreset
   recipe={{
@@ -113,9 +113,9 @@ Focus on dialogue by combining condensed playback with fast-forward. Skip gaps u
   }}
 />
 
-### Gap fast-forward
+### Aukkojen pikakelaus
 
-Watch the entire video while fast-forwarding qualifying gaps at 3× with a 1-second minimum interval. Keep 150 ms of context on either side of each gap, with dialogue at your underlying playback speed.
+Katso koko video ja kelaa ehdot täyttävät aukot 3-kertaisella nopeudella, kun niiden pituus on vähintään sekunti. Säilytä aukon kummallakin puolella 150 ms kontekstia ja toista vuoropuhelu käyttäen normaalia toistonopeutta.
 
 <RecipePreset
   recipe={{
@@ -127,9 +127,9 @@ Watch the entire video while fast-forwarding qualifying gaps at 3× with a 1-sec
   }}
 />
 
-### Reading mode
+### Lukutila
 
-Pause at the start of each subtitle to read and look up words, then resume manually to hear the audio with subtitles visible. Hovering over subtitles during playback also pauses the video; moving away resumes it.
+Pysäytä toisto jokaisen tekstityksen alussa, jotta voit lukea sen ja etsiä sanoja. Jatka sitten toistoa manuaalisesti kuullaksesi äänen tekstitysten näkyessä. Osoittimen vieminen tekstitysten päälle pysäyttää videon myös toiston aikana; osoittimen siirtäminen pois jatkaa toistoa.
 
 <RecipePreset
   gapVariants
@@ -148,9 +148,9 @@ Pause at the start of each subtitle to read and look up words, then resume manua
   }}
 />
 
-### Listening mode
+### Kuuntelutila
 
-Listen without subtitles, then pause automatically at the end of each subtitle to reveal the text and check your understanding. Resume manually when ready.
+Kuuntele ilman tekstityksiä. Pysähdy sitten automaattisesti kunkin tekstityksen lopussa nähdäksesi tekstin ja tarkistaaksesi ymmärtämisesi. Jatka toistoa, kun olet valmis.
 
 <RecipePreset
   gapVariants
@@ -168,9 +168,9 @@ Listen without subtitles, then pause automatically at the end of each subtitle t
   }}
 />
 
-### Audio only
+### Pelkkä ääni
 
-Listen continuously with subtitles hidden during playback. Manually pause to reveal the current subtitle when you need help.
+Kuuntele keskeytyksettä tekstitysten ollessa piilossa. Pysäytä toisto manuaalisesti nähdäksesi nykyisen tekstityksen, kun tarvitset apua.
 
 <RecipePreset
   gapVariants
@@ -184,9 +184,9 @@ Listen continuously with subtitles hidden during playback. Manually pause to rev
   }}
 />
 
-### Intensive listening
+### Tehokuuntelu
 
-Listen to each subtitle three times, with a 1-second pause after each pass. Subtitles stay hidden for the first two passes and appear on the final replay to check your understanding. Playback resumes automatically after each pause, customize the 1s pause duration as needed.
+Kuuntele kukin tekstitys kolmesti ja pidä kuuntelukertojen välissä sekunnin tauko. Tekstitykset pysyvät piilossa kahdella ensimmäisellä kerralla ja näkyvät viimeisellä kerralla, jolloin voit tarkistaa ymmärtämisesi. Toisto jatkuu automaattisesti jokaisen tauon jälkeen; muuta sekunnin tauon kestoa tarpeen mukaan.
 
 <RecipePreset
   gapVariants
@@ -208,11 +208,11 @@ Listen to each subtitle three times, with a 1-second pause after each pass. Subt
   }}
 />
 
-### Primed listening
+### Valmistava kuuntelu
 
-Pause at the start of each subtitle to read it in your native language, let it disappear, then listen to the audio without subtitles. Reading time is 80 ms per character, with a minimum of 1 second and a maximum of 6 seconds. After the text disappears, playback stays paused for another 500 ms before resuming automatically. You can adjust these timings when editing the recipe.
+Pysäytä toisto jokaisen tekstityksen alussa ja lue se omalla äidinkielelläsi. Anna tekstityksen kadota ja kuuntele sitten ääntä ilman tekstityksiä. Lukuaika on 80 ms merkkiä kohden, vähintään sekunti ja enintään kuusi sekuntia. Kun teksti katoaa, toisto pysyy tauolla vielä 500 ms ennen automaattista jatkumista. Voit muuttaa näitä aikoja reseptiä muokatessasi.
 
-Choose the tracks used to calculate reading time under **Subtitle tracks affected by playback modes and keyboard shortcuts**.
+Valitse lukuaikaan käytettävät raidat kohdassa **Toistotilojen ja pikanäppäinten käyttämät tekstitysraidat**.
 
 <RecipePreset
   gapVariants
@@ -234,9 +234,9 @@ Choose the tracks used to calculate reading time under **Subtitle tracks affecte
   }}
 />
 
-### Read aloud
+### Lue ääneen
 
-Read each subtitle aloud before hearing the original audio, then compare your pronunciation and rhythm. Playback pauses at the start with subtitles visible and resumes automatically after 80 ms per character, bounded to 1–6 seconds. Each subtitle repeats once. Adjust the pause timings to give yourself enough speaking time.
+Lue kukin tekstitys ääneen ennen alkuperäisen äänen kuulemista ja vertaa sitten ääntämystäsi ja rytmiäsi. Toisto pysähtyy alussa tekstitysten ollessa näkyvissä ja jatkuu automaattisesti 80 ms:n kuluttua merkkiä kohden, kuitenkin 1–6 sekunnin rajoissa. Kukin tekstitys toistetaan kerran. Muuta tauon kestoa, jotta ehdit puhua.
 
 <RecipePreset
   gapVariants
@@ -260,9 +260,9 @@ Read each subtitle aloud before hearing the original audio, then compare your pr
   }}
 />
 
-### Shadowing
+### Varjostusharjoittelu
 
-Speak alongside or slightly behind the original audio, matching its rhythm and pronunciation with subtitles visible. Each subtitle repeats once, with a 1-second pause at the end of each pass before playback resumes automatically.
+Puhu alkuperäisen äänen kanssa tai hieman sen jäljessä ja jäljittele sen rytmiä ja ääntämystä tekstitysten näkyessä. Kukin tekstitys toistetaan kerran, ja jokaisen toistokerran lopussa on sekunnin tauko ennen toiston automaattista jatkumista.
 
 <RecipePreset
   gapVariants
@@ -284,9 +284,9 @@ Speak alongside or slightly behind the original audio, matching its rhythm and p
   }}
 />
 
-### Recall
+### Palautus mieleen
 
-Listen to the audio, then reproduce the line aloud from memory during the automatic pause at its end. Subtitles stay hidden during playback and automatic pauses. Speaking time is 80 ms per character, bounded to 1–6 seconds, and each subtitle repeats once. Adjust the pause timings as needed; manually pause during a replay to reveal the text when you need help.
+Kuuntele ääntä ja toista vuorosanat sitten ääneen muistista automaattisen lopputauon aikana. Tekstitykset pysyvät piilossa toiston ja automaattipysäytysjen aikana. Puheaika on 80 ms merkkiä kohden, 1–6 sekunnin rajoissa, ja kukin tekstitys toistetaan kerran. Muuta taukoaikoja tarpeen mukaan. Pysäytä toisto manuaalisesti uudelleentoiston aikana, jos haluat nähdä tekstin.
 
 <RecipePreset
   gapVariants
@@ -309,15 +309,15 @@ Listen to the audio, then reproduce the line aloud from memory during the automa
   }}
 />
 
-## Annotation Recipes
+## Annotointireseptit
 
-These presets require [Annotation](./annotation.md) to be enabled as they use its data. If you have any that you want to share or need a missing feature to create the perfect recipe, you can request them on <a href={project.urls.discord}>Discord</a> or on <a href={`${project.urls.repo}/issues/new/choose`}>GitHub</a>.
+Nämä valmiit reseptit edellyttävät, että [annotointi](./annotation.md) on käytössä, koska ne hyödyntävät sen tietoja. Jos haluat jakaa omia reseptejäsi tai tarvitset puuttuvan ominaisuuden täydellisen reseptin luomiseen, voit pyytää niitä <a href={project.urls.discord}>Discordissa</a> tai <a href={`${project.urls.repo}/issues/new/choose`}>GitHubissa</a>.
 
-Load your target-language subtitles as **Track 1**. These presets use that track for playback and word selection. **Unfamiliar** means **Uncollected** or **Unknown**. Other annotation display preferences, such as readings and colors, use your underlying settings.
+Lataa kohdekieliset tekstitykset **Raidalle 1**. Nämä reseptit käyttävät tätä raitaa toistoon ja sanojen valintaan. **Ennestään tuntematon** tarkoittaa tilaa **Ei kerätty** tai **Tuntematon**. Muissa annotoinnin näyttöasetuksissa, kuten lukutavoissa ja väreissä, käytetään omia asetuksiasi.
 
-### Unfamiliar-word rescue
+### Ennestään tuntemattomien sanojen pelastus
 
-Watch with subtitles visible. When a line contains an unfamiliar word, pause for 1 second at its end, then replay it once. Other lines continue uninterrupted. The first unfamiliar word is selected during the pause for lookup. Adjust the pause duration if you need more time.
+Katso tekstitykset näkyvissä. Jos rivillä on ennestään tuntematon sana, pysäytä toisto sen lopussa sekunniksi ja toista rivi kerran uudelleen. Muut rivit toistetaan keskeytyksettä. Tauon aikana valitaan ensimmäinen ennestään tuntematon sana, jotta voit etsiä sen. Muuta tauon kestoa, jos tarvitset enemmän aikaa.
 
 <RecipePreset
   gapVariants
@@ -334,11 +334,11 @@ Watch with subtitles visible. When a line contains an unfamiliar word, pause for
   }}
 />
 
-### i+1 mining
+### i+1-louhinta
 
-Focus on subtitles containing exactly one Uncollected token. Condensed playback skips between qualifying lines, and playback pauses at each line's end until you resume manually, selecting the Uncollected token for inspection or mining.
+Keskity tekstityksiin, joissa on täsmälleen yksi **Ei kerätty** -token. Tiivistetty toisto siirtyy ehtoja täyttävältä riviltä toiselle. Toisto pysähtyy kunkin rivin lopussa, kunnes jatkat sitä manuaalisesti; samalla valitaan tarkasteltava tai louhittava **Ei kerätty** -token.
 
-This finds i+1 candidates rather than guaranteeing that every other word is known: a line can also contain Unknown words, and repeated occurrences of the same Uncollected word count separately. Mining remains a manual action.
+Tämä etsii i+1-ehdokkaita, mutta ei takaa, että kaikki muut sanat tunnetaan: rivillä voi olla myös **Tuntemattomia** sanoja, ja saman **Ei kerätty** -sanan toistuvat esiintymät lasketaan erikseen. Louhinta tehdään edelleen manuaalisesti.
 
 <RecipePreset
   recipe={{
@@ -362,9 +362,9 @@ This finds i+1 candidates rather than guaranteeing that every other word is know
   }}
 />
 
-### Unfamiliar-word hints
+### Ennestään tuntemattomien sanojen vihjeet
 
-Listen with unfamiliar words visible and familiar words hidden. Lines containing unfamiliar words pause for 1 second at their end, revealing the full text, then replay once with the hints restored. The first unfamiliar word is selected during the pause for lookup. Lines with no unfamiliar words have no caption when fully tokenized.
+Kuuntele niin, että ennestään tuntemattomat sanat näkyvät ja tutut sanat on piilotettu. Ennestään tuntemattomia sanoja sisältävät rivit pysähtyvät sekunniksi lopussa, jolloin koko teksti paljastuu, ja toistetaan sitten kerran vihjeet palautettuina. Tauon aikana valitaan ensimmäinen ennestään tuntematon sana sen etsimistä varten. Täysin sanastetuilla riveillä, joissa ei ole ennestään tuntemattomia sanoja, ei näytetä tekstitystä.
 
 <RecipePreset
   gapVariants
@@ -386,9 +386,9 @@ Listen with unfamiliar words visible and familiar words hidden. Lines containing
   }}
 />
 
-### Unfamiliar-word cloze
+### Ennestään tuntemattomien sanojen aukkotehtävä
 
-Read the familiar parts of each subtitle while unfamiliar words remain hidden, and try supplying the missing words from the audio and context. Lines containing unfamiliar words pause for 1 second at their end to reveal the full text, then replay once with the gaps restored. Ignored words remain visible.
+Lue kunkin tekstityksen tutut osat, kun ennestään tuntemattomat sanat ovat piilossa, ja yritä täydentää puuttuvat sanat äänen ja asiayhteyden perusteella. Ennestään tuntemattomia sanoja sisältävät rivit pysähtyvät sekunniksi lopussa koko tekstin paljastamiseksi ja toistetaan sitten kerran aukot palautettuina. Ohitetut sanat pysyvät näkyvissä.
 
 <RecipePreset
   gapVariants
@@ -410,11 +410,11 @@ Read the familiar parts of each subtitle while unfamiliar words remain hidden, a
   }}
 />
 
-### Adaptive listening pace
+### Mukautuva kuuntelutahti
 
-Play dialogue at 1× when its estimated comprehension is 60% or lower, increasing gradually to 1.8× at 100%. Condensed playback skips gaps using a 1-second minimum interval, keeping 150 ms of context on either side. Qualifying gaps that remain play at 1.8×.
+Toista vuoropuhelu 1-kertaisella nopeudella, kun sen arvioitu ymmärrettävyys on enintään 60 %. Kasvata nopeutta vähitellen 1,8-kertaiseksi 100 %:n kohdalla. Tiivistetty toisto ohittaa vähintään sekunnin mittaiset aukot ja säilyttää niiden molemmilla puolilla 150 ms kontekstia. Jäljelle jäävät ehdot täyttävät aukot toistetaan 1,8-kertaisella nopeudella.
 
-Adjust the base and fast-forward speeds when editing the recipe, keeping the fast-forward speed higher than the base speed.
+Muuta perusnopeutta ja pikakelausnopeutta reseptiä muokatessasi. Pikakelausnopeuden on oltava perusnopeutta suurempi.
 
 <RecipePreset
   recipe={{

@@ -4,15 +4,15 @@ sidebar_position: 9.5
 
 import project from '@site/src/project';
 
-# External extensions {#external-extensions}
+# Ulkoiset laajennukset {#external-extensions}
 
-As of v1.23, asbplayer exposes a way for other browser extensions to communicate with it. Any extension that connects to asbplayer via [browser.runtime.connect](https://developer.chrome.com/docs/extensions/reference/api/runtime#method-connect), and receives user approval, can issue [commands](../reference/external-api.md) through the connection.
+Versiosta v1.23 alkaen muut selainlaajennukset voivat viestiä asbplayerin kanssa. Mikä tahansa laajennus, joka muodostaa yhteyden asbplayeriin [browser.runtime.connect](https://developer.chrome.com/docs/extensions/reference/api/runtime#method-connect)-kutsulla ja saa käyttäjältä hyväksynnän, voi lähettää yhteyden kautta [komentoja](../reference/external-api.md).
 
-A template implementation of an extension that integrates with asbplayer in this way is provided <a href={`${project.urls.externalExtensionTemplateRepo}`}>here</a>.
+Tällä tavalla asbplayeriin integroituvan laajennuksen mallipohja on saatavilla <a href={`${project.urls.externalExtensionTemplateRepo}`}>täällä</a>.
 
-## Connecting and obtaining user approval
+## Yhteyden muodostaminen ja käyttäjän hyväksynnän saaminen
 
-Any extension wishing to communicate with asbplayer must first connect using code like below. asbplayer's extension ID can be obtained from the browser's extension manager (on Chrome `chrome://extensions`, on Firefox `about:addons`).
+asbplayerin kanssa viestiä haluavan laajennuksen on ensin muodostettava yhteys alla olevan esimerkin kaltaisella koodilla. asbplayerin laajennustunnuksen saa selaimen laajennusten hallinnasta (Chromessa `chrome://extensions`, Firefoxissa `about:addons`).
 
 ```typescript
 const port = browser.runtime.connect(<asbplayer extension ID>, {
@@ -20,7 +20,7 @@ const port = browser.runtime.connect(<asbplayer extension ID>, {
 });
 ```
 
-Request approval with `initialize`, which answers immediately with the current state.
+Pyydä hyväksyntää `initialize`-komennolla, joka palauttaa heti nykyisen tilan.
 
 ```typescript
 port.postMessage({
@@ -34,7 +34,7 @@ port.postMessage({
 });
 ```
 
-If the extension is not approved, asbplayer registers the connection as pending, prompts the user, and responds:
+Jos laajennusta ei ole hyväksytty, asbplayer merkitsee yhteyden odottavaksi, pyytää käyttäjältä hyväksyntää ja vastaa näin:
 
 ```json
 {
@@ -44,7 +44,7 @@ If the extension is not approved, asbplayer registers the connection as pending,
 }
 ```
 
-Poll `approval-state` to see if the user has approved the connection request.
+Tarkista `approval-state`-komennolla, onko käyttäjä hyväksynyt yhteyspyynnön.
 
 ```json
 {
@@ -55,9 +55,9 @@ Poll `approval-state` to see if the user has approved the connection request.
 }
 ```
 
-Once approved, `approval-state` will return `{ "state": "approved" }` and the connection can issue commands. If denied, `approval-state` returns `{ "state": "denied" }` once. asbplayer then closes the port. Once denied, the requesting extension cannot request approval for 24 hours.
+Hyväksynnän jälkeen `approval-state` palauttaa `{ "state": "approved" }` ja yhteyden kautta voi lähettää komentoja. Jos pyyntö hylätään, `approval-state` palauttaa kerran `{ "state": "denied" }`. Tämän jälkeen asbplayer sulkee portin. Hylätty laajennus ei voi pyytää hyväksyntää uudelleen 24 tuntiin.
 
-Commands can be issued as [documented](../reference/external-api.md). For example:
+Komentoja voi lähettää [ohjeissa kuvatulla tavalla](../reference/external-api.md). Esimerkki:
 
 ```typescript
 port.postMessage({
@@ -68,4 +68,4 @@ port.postMessage({
 });
 ```
 
-asbplayer answers with `{ jsonrpc, id, result }` on success or `{ jsonrpc, id, error }` on failure.
+asbplayer vastaa onnistuneessa pyynnössä muodossa `{ jsonrpc, id, result }` ja epäonnistuessa muodossa `{ jsonrpc, id, error }`.

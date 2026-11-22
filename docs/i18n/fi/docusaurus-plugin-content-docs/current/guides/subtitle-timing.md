@@ -2,27 +2,27 @@
 sidebar_position: 2
 ---
 
-# Subtitle timing {#subtitle-timing}
+# Tekstityksen ajoitus {#subtitle-timing}
 
-Subtitle files will very often not be aligned to the video source you load them into. To work around this, asbplayer provides ways to manually adjust subtitle timing.
+Tekstitystiedostot eivät useinkaan ole ajoitettu lataamaasi videolähteeseen. asbplayer tarjoaa tapoja säätää tekstityksen ajoitusta manuaalisesti.
 
-## Keyboard shortcuts {#keyboard-shortcuts}
+## Pikanäppäimet {#keyboard-shortcuts}
 
-The fastest way to fix subtitle timing is with the [Subtitle offset keyboard shortcuts](../reference/settings.md#subtitle-offset-keyboard-shortcuts). There are two sets of shortcuts for adjusting subtitle offset:
+Nopein tapa korjata tekstityksen ajoitus on käyttää [tekstityksen siirtymän pikanäppäimiä](../reference/settings.md#subtitle-offset-keyboard-shortcuts). Siirtymän säätämiseen on kaksi pikanäppäinsarjaa:
 
-- `Ctrl + Left/Right` or `Shift + Left/Right`: Align the current timestamp to the left or right subtitle.
-- `Ctrl + Shift + Left/Right`: Move the current timestamp `100ms` to the left or right.
+- `Ctrl + Left/Right` tai `Shift + Left/Right`: kohdista nykyinen aikaleima vasempaan tai oikeaan tekstitykseen.
+- `Ctrl + Shift + Left/Right`: siirrä nykyistä aikaleimaa `100ms` vasemmalle tai oikealle.
 
-Most often, finding the correct offset will look like this:
+Useimmiten oikea siirtymä löytyy näin:
 
-1. Wait for a character to start talking.
-2. `Ctrl + Left/Right` until the subtitle matching the character's dialog appears on screen.
-3. `Ctrl + Shift + Right/Left` until the subtitle timing precisely matches the dialog.
+1. Odota, että hahmo alkaa puhua.
+2. Paina `Ctrl + Left/Right`, kunnes hahmon puhetta vastaava tekstitys näkyy näytöllä.
+3. Paina `Ctrl + Shift + Right/Left`, kunnes tekstityksen ajoitus vastaa tarkasti puhetta.
 
-## Overlay UI {#overlay-ui}
+## Päällekkäiskäyttöliittymä {#overlay-ui}
 
-The overlay UI provides buttons that perform the same functions as the keyboard shortcuts above.
+Päällekkäiskäyttöliittymän painikkeet suorittavat samat toiminnot kuin yllä mainitut pikanäppäimet.
 
-1. Scroll the rightmost section to the **middle** control.
-2. Click the left or right button to align the left or right subtitle to the current timestamp.
-3. Click and **hold** the left or right button to move the current timestamp `100ms` to the left or right.
+1. Selaa oikeanpuoleisessa osiossa **keskimmäisen** säätimen kohdalle.
+2. Kohdista vasen tai oikea tekstitys nykyiseen aikaleimaan napsauttamalla vasenta tai oikeaa painiketta.
+3. Siirrä nykyistä aikaleimaa `100ms` vasemmalle tai oikealle napsauttamalla vasenta tai oikeaa painiketta ja **pitämällä sitä painettuna**.

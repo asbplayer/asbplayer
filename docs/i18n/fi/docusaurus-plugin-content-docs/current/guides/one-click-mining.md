@@ -4,44 +4,44 @@ sidebar_position: 8
 
 import project, { ankiConnectUrl, webSocketUrl } from '@site/src/project';
 
-# One-click mining {#one-click-mining}
+# Louhinta yhdellä napsautuksella {#one-click-mining}
 
-asbplayer is great at connecting subtitle and video content to AnkiConnect, but is not able to automatically provide word definitions on its own. For this reason, most sentence mining flows require at two or three mouse or keyboard inputs from the user.
+asbplayer yhdistää tekstitykset ja videon sisällön AnkiConnectiin, mutta se ei pysty itse lisäämään sanojen määritelmiä automaattisesti. Siksi useimmat lauseiden louhintatavat vaativat käyttäjältä kaksi tai kolme hiiren tai näppäimistön syötettä.
 
-One-click mining is possible if asbplayer is combined with another application that:
+Louhinta yhdellä napsautuksella onnistuu, kun asbplayeria käytetään yhdessä toisen sovelluksen kanssa, joka:
 
-- supplies the missing word definition information, and
-- already integrates with AnkiConnect.
+- tarjoaa puuttuvat sanamääritelmät ja
+- integroituu jo AnkiConnectiin.
 
-[Yomitan](https://yomitan.wiki/) is an example of one such application.
+[Yomitan](https://yomitan.wiki/) on esimerkki tällaisesta sovelluksesta.
 
-## Install and configure Yomitan {#install-and-configure-yomitan}
+## Yomitanin asentaminen ja määrittäminen {#install-and-configure-yomitan}
 
-Follow the directions on [Yomitan's website](https://yomitan.wiki/) to install Yomitan and configure it with a dictionary for your target language. You will also need to add [AnkiConnect](https://ankiweb.net/shared/info/2055492159) to Anki if you haven't done so already.
+Asenna Yomitan ja määritä siihen kohdekielesi sanakirja [Yomitanin verkkosivuston](https://yomitan.wiki/) ohjeiden mukaan. Lisää myös [AnkiConnect](https://ankiweb.net/shared/info/2055492159) Ankiin, jos et ole vielä tehnyt niin.
 
-In Yomitan's Anki settings:
+Määritä Yomitanin Anki-asetuksissa seuraavat:
 
-- The AnkiConnect server address should be the default (<code>{ankiConnectUrl}</code>).
-- Yomitan should be using the same **Note Type** as asbplayer.
+- AnkiConnect-palvelimen osoitteena tulee olla oletusarvo (<code>{ankiConnectUrl}</code>).
+- Yomitanin tulee käyttää samaa **muistiinpanotyyppiä** kuin asbplayer.
 
-## Install the asbplayer Anki add-on {#install-the-asbplayer-anki-add-on}
+## asbplayerin Anki-lisäosan asentaminen {#install-the-asbplayer-anki-add-on}
 
-The add-on requires at least Anki 25.02. It is not yet available on AnkiWeb, so it has to be installed from a file:
+Lisäosa vaatii vähintään Ankin version 25.02. Se ei ole vielä saatavilla AnkiWebissä, joten se on asennettava tiedostosta:
 
-1. Download the latest `.ankiaddon` file from the <a href={`${project.urls.repo}/releases?q=${encodeURIComponent(project.releases.ankiAddon.releaseTitlePrefix)}`}>releases page</a>.
-2. Open the file and press **Yes** on the popup.
-3. Restart Anki.
+1. Lataa uusin `.ankiaddon`-tiedosto <a href={`${project.urls.repo}/releases?q=${encodeURIComponent(project.releases.ankiAddon.releaseTitlePrefix)}`}>julkaisusivulta</a>.
+2. Avaa tiedosto ja valitse ponnahdusikkunasta **Kyllä**.
+3. Käynnistä Anki uudelleen.
 
-## Connect asbplayer to the add-on {#connect-asbplayer-to-the-add-on}
+## asbplayerin yhdistäminen lisäosaan {#connect-asbplayer-to-the-add-on}
 
-Enable the WebSocket client in the <a href={new URL('?view=settings#misc-settings', project.urls.app).href}>misc settings</a> of the asbplayer extension (near the bottom). Keep the default WebSocket server URL (<code>{webSocketUrl}</code>), which matches the add-on's default.
+Ota WebSocket-asiakas käyttöön asbplayer-laajennuksen <a href={new URL('?view=settings#misc-settings', project.urls.app).href}>muissa asetuksissa</a> (lähellä sivun alaosaa). Käytä WebSocket-palvelimen oletusosoitetta (<code>{webSocketUrl}</code>), joka vastaa lisäosan oletusarvoa.
 
-## Mine with **Yomitan** as usual {#mine-with-yomitan-as-usual}
+## Louhi kortteja **Yomitanilla** tavalliseen tapaan {#mine-with-yomitan-as-usual}
 
-Mining sentences using Yomitan will create cards with word definition, image, and audio already provided.
+Kun louhit lauseita Yomitanilla, kortteihin lisätään valmiiksi sanan määritelmä, kuva ja ääni.
 
-To always use asbplayer's subtitle text for the Sentence field, enable [**Always use subtitle text for sentence field**](../reference/settings#always-use-subtitle-text-for-sentence-field) under **Mining** settings. This replaces the sentence text supplied by Yomitan with the mined subtitle text from all tracks.
+Jos haluat käyttää Lause-kentässä aina asbplayerin tekstitystekstiä, ota **Louhinta**-asetuksissa käyttöön [**Käytä tekstitystekstiä aina lausekentässä**](../reference/settings#always-use-subtitle-text-for-sentence-field). Se korvaa Yomitanin lisäämän lausetekstin kaikilta raidoilta louhitulla tekstitystekstillä.
 
-## Add-on Settings
+## Lisäosan asetukset
 
-The add-on's settings can be changed in Anki from **Tools > Add-ons** by selecting the add-on and pressing **Config**. `postMineAction` is the action asbplayer takes after Yomitan adds a card (default: <code>{project.services.webSocket.postMineAction}</code>). Set it to `2` (update last card) for the one-click mining flow. If `port` is changed, asbplayer's WebSocket server URL needs to be changed to match.
+Lisäosan asetuksia voi muuttaa Ankissa valitsemalla **Työkalut > Lisäosat**, valitsemalla lisäosan ja napsauttamalla **Määritä**. `postMineAction` määrittää, mitä asbplayer tekee sen jälkeen, kun Yomitan lisää kortin (oletus: <code>{project.services.webSocket.postMineAction}</code>). Aseta arvoksi `2` (päivitä viimeisin kortti), jotta voit louhia kortteja yhdellä napsautuksella. Jos muutat `port`-arvoa, muuta asbplayerin WebSocket-palvelimen URL-osoite vastaamaan sitä.

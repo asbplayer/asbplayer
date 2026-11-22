@@ -6,43 +6,43 @@ import project from '@site/src/project';
 
 # Android {#android}
 
-While the UX is worse, it's possible to use asbplayer on Android devices.
+asbplayeriä voi käyttää myös Android-laitteilla, vaikka käyttökokemus ei ole yhtä hyvä.
 
-## Website {#website}
+## Verkkosivusto {#website}
 
-The website can be used as-is. The **Overlay UI** will be displayed instead of the default, desktop-optimized video controls.
+Verkkosivustoa voi käyttää sellaisenaan. Oletusarvoisten työpöytäkäyttöön optimoitujen videosäätimien sijaan näytetään **peittokuvan käyttöliittymä**.
 
-### Add to home screen {#add-to-home-screen}
+### Lisää aloitusnäyttöön {#add-to-home-screen}
 
-As a progressive web app, the website can be added to the home screen of your Android device. From the browser menu, tap "add to home screen."
+Progressiivisena verkkosovelluksena verkkosivuston voi lisätä Android-laitteen aloitusnäyttöön. Valitse selaimen valikosta ”Lisää aloitusnäyttöön”.
 
-## Extension {#extension}
+## Selainlaajennus {#extension}
 
 :::warning
-**Many features are missing**: the **side panel**, **screenshots**, and the **WebSocket interface**. See the [compatibility](../compatibility.md#browsers-and-features) section for a table of supported and unsupported features on each browser.
+**Monia ominaisuuksia puuttuu**: **sivupaneeli**, **kuvakaappaukset** ja **WebSocket-käyttöliittymä**. Katso [yhteensopivuus](../compatibility.md#browsers-and-features)-osiosta kunkin selaimen tuettujen ja puuttuvien ominaisuuksien taulukko.
 :::
 
-As with the website, the primary way to interact with asbplayer extension is through the **Overlay UI**. The side panel is missing, so instead **subtitles are loaded by selecting the asbplayer button from the browser's extension menu.**. Using a (bluetooth) keyboard is not necessary but can be very useful for those who prefer to use the [keyboard shortcuts](../reference/settings.md#keyboard-shortcuts) with the extension.
+Kuten verkkosivustolla, ensisijainen tapa käyttää asbplayerin selainlaajennusta on **peittokuvan käyttöliittymä**. Sivupaneelia ei ole, joten **tekstitykset ladataan valitsemalla asbplayer-painike selaimen laajennusvalikosta.** Bluetooth-näppäimistöä ei tarvita, mutta siitä voi olla paljon hyötyä, jos haluat käyttää laajennuksen [pikanäppäimiä](../reference/settings.md#keyboard-shortcuts).
 
-Below are Android browsers where asbplayer can be installed.
+asbplayerin voi asentaa seuraaviin Android-selaimiin.
 
 ### Firefox for Android {#firefox-for-android}
 
-Install asbplayer from the <a href={project.extension.firefoxAndroid.storeUrl}>AMO page</a>. Firefox for Android suffers from the same limitations as Firefox - it's not possible to record audio from DRM-protected streams.
+Asenna asbplayer <a href={project.extension.firefoxAndroid.storeUrl}>AMO-sivulta</a>. Firefox for Androidissa on samat rajoitukset kuin Firefoxissa: ääntä ei voi tallentaa DRM-suojatuista suoratoistoista.
 
 ### Edge Canary {#edge-canary}
 
-Edge Canary is another Chromium-based mobile browser that can run extensions. As of this writing, asbplayer on Edge Canary does not support audio recording.
-To install asbplayer on Edge Canary:
+Edge Canary on toinen Chromium-pohjainen mobiiliselain, joka tukee laajennuksia. Tätä kirjoitettaessa asbplayer ei tue äänen tallentamista Edge Canaryssa.
+Asenna asbplayer Edge Canaryyn näin:
 
-1. Download the asbplayer `crx` file from the <a href={`${project.urls.repo}/releases/latest`}>releases page</a>.
-2. If not already, enable developer mode from the Edge Canary settings by going to "about Microsoft Edge" and tapping on the build version string several times.
-3. From **Developer Options** tap **Extension install by crx** and select the `crx` file you just downloaded.
+1. Lataa asbplayerin `crx`-tiedosto <a href={`${project.urls.repo}/releases/latest`}>julkaisusivulta</a>.
+2. Ota kehittäjätila käyttöön Edge Canaryn asetuksissa, jos se ei ole jo käytössä. Avaa ”Tietoja Microsoft Edgestä” ja napauta koontiversion merkkijonoa useita kertoja.
+3. Valitse **Developer Options** -kohdasta **Extension install by crx** ja valitse juuri lataamasi `crx`-tiedosto.
 
 ### Kiwi Browser (discontinued) {#kiwi-browser-discontinued}
 
-Kiwi Browser is a Chromium-based mobile browser that can run extensions. However, it's development has been discontinued and the only way to install it is from the [GitHub page](https://github.com/kiwibrowser/src.next/releases). Once Kiwi Browser is installed, asbplayer can be installed from the Chrome <a href={project.extension.chrome.storeUrl}>web store</a>.
+Kiwi Browser on Chromium-pohjainen mobiiliselain, joka tukee laajennuksia. Sen kehitys on kuitenkin lopetettu, ja sen voi asentaa vain [GitHub-sivulta](https://github.com/kiwibrowser/src.next/releases). Kun Kiwi Browser on asennettu, asbplayerin voi asentaa Chromen <a href={project.extension.chrome.storeUrl}>verkkokaupasta</a>.
 
-## Anki integration {#anki-integration}
+## Anki-integraatio {#anki-integration}
 
-Install [AnkiConnect Android](https://github.com/KamWithK/AnkiconnectAndroid) for Anki integration.
+Asenna [AnkiConnect Android](https://github.com/KamWithK/AnkiconnectAndroid) Anki-integraatiota varten.

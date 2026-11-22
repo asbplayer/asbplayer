@@ -6,18 +6,18 @@ import project from '@site/src/project';
 
 import CodeBlock from '@theme/CodeBlock'; // Empty fenced code blocks lose their title and copy button; CodeBlock preserves both.
 
-# Subtitle text filtering {#subtitle-text-filtering}
+# Tekstitystekstin suodatus {#subtitle-text-filtering}
 
-If you'd like to filter out specific instances subtitle text, one way to do so is by using a regular expression (regex). asbplayer can match any sequence following a specified regex pattern and remove the matches.
+Jos haluat suodattaa tiettyjä kohtia tekstitystekstistä, voit käyttää säännöllistä lauseketta (Regex). asbplayer voi etsiä määritettyä Regex-mallia vastaavat merkkijonot ja poistaa osumat.
 
-## Configure the regex filter {#configure-the-regex-filter}
+## Regex-suodattimen määrittäminen {#configure-the-regex-filter}
 
-Under the <a href={new URL('?view=settings#misc-settings', project.urls.app).href}>misc</a> section in asbplayer settings, locate the "Subtitle regex filter" textbox. Enter an appropriate regex to filter desired content.
-You can replace filtered content similarly by entering a string into the "Subtitle regex filter text replacement" textbox. Leaving this blank will simply remove the content.
+Etsi asbplayerin asetusten <a href={new URL('?view=settings#misc-settings', project.urls.app).href}>Muut</a>-osiosta ”Tekstityksen Regex-suodatin” -tekstikenttä. Suodata haluamasi sisältö kirjoittamalla kenttään sopiva Regex.
+Voit korvata suodatetun sisällön kirjoittamalla merkkijonon ”Tekstityksen Regex-suodattimen tekstikorvaus” -kenttään. Jos kenttä jätetään tyhjäksi, sisältö poistetaan.
 
-### Remove speaker names {#remove-speaker-names}
+### Poista puhujien nimet {#remove-speaker-names}
 
-Remove names enclosed by parenthesis to indicate speakers (e.g. "**（山田）**　元気ですか？")
+Poista sulkeissa olevat puhujien nimet (esimerkiksi ”**（山田）**　元気ですか？”).
 
 <details>
 <summary>Use this filter</summary>
@@ -32,11 +32,11 @@ Remove names enclosed by parenthesis to indicate speakers (e.g. "**（山田）*
 
 </details>
 
-### Preserve Japanese readings {#preserve-japanese-readings}
+### Säilytä japaninkieliset lukutavat {#preserve-japanese-readings}
 
-Remove parenthesized names or descriptions while keeping Japanese readings immediately after Japanese text. For example, `（山田）漢字(かんじ)を読む。` becomes `漢字(かんじ)を読む。`. Both `(かんじ)` and `（かんじ）` are preserved when immediately preceded by a character in the kanji, hiragana, or katakana ranges shown in the regex.
+Poista sulkeissa olevat nimet tai kuvaukset, mutta säilytä japaninkielisen tekstin jälkeen välittömästi tulevat lukutavat. Esimerkiksi `（山田）漢字(かんじ)を読む。` muuttuu muotoon `漢字(かんじ)を読む。`. Sekä `(かんじ)` että `（かんじ）` säilytetään, kun niitä edeltää välittömästi Regexissä määritettyyn kanji-, hiragana- tai katakana-alueeseen kuuluva merkki.
 
-This is a heuristic: it also keeps descriptions immediately after Japanese text, such as `こんにちは（笑）`, and removes readings separated from their base text by a space. It does not handle nested parentheses. Leave "Subtitle regex filter text replacement" blank.
+Tämä on heuristiikka: se säilyttää myös heti japaninkielisen tekstin jälkeiset kuvaukset, kuten `こんにちは（笑）`, ja poistaa lukutavat, joiden ja perusmuodon välissä on välilyönti. Sisäkkäisiä sulkeita ei käsitellä. Jätä ”Tekstityksen Regex-suodattimen tekstikorvaus” tyhjäksi.
 
 <details>
 <summary>Use this filter</summary>
@@ -51,11 +51,11 @@ This is a heuristic: it also keeps descriptions immediately after Japanese text,
 
 </details>
 
-### Merge subtitle lines {#merge-subtitle-lines}
+### Yhdistä tekstitysrivit {#merge-subtitle-lines}
 
-Some subtitles are split in several lines and this regex forces them into a single line. For this filter to work, you must also put `$1 $2` in the "Subtitle regex filter text replacement" field.
+Joissakin tekstityksissä teksti on jaettu useille riveille. Tämä Regex yhdistää ne yhdeksi riviksi. Suodatin toimii vain, jos kirjoitat myös `$1 $2` ”Tekstityksen Regex-suodattimen tekstikorvaus” -kenttään.
 
-When combining this pattern with others, keep it last so a more specific alternative can match first at the same position. Alternatives do not run as separate filtering passes. Every match uses the same replacement text, and adding capturing groups in other alternatives changes the numbers needed in `$1 $2`.
+Kun yhdistät tämän mallin muihin, sijoita se viimeiseksi, jotta tarkempi vaihtoehto voi osua ensin samassa kohdassa. Vaihtoehtoja ei suoriteta erillisinä suodatuskierroksina. Kaikki osumat käyttävät samaa korvaustekstiä, ja kaappausryhmien lisääminen muihin vaihtoehtoihin muuttaa `$1 $2` -viittauksissa tarvittavia numeroita.
 
 <details>
 <summary>Use this filter</summary>
@@ -70,9 +70,9 @@ $1 $2
 
 </details>
 
-### Remove newlines {#remove-newlines}
+### Poista rivinvaihdot {#remove-newlines}
 
-Remove all newline characters without inserting spaces. For example, two lines containing `こんにちは` and `世界` become `こんにちは世界`. Leave "Subtitle regex filter text replacement" blank. To insert a space between lines instead, use the [merge subtitle lines example](#merge-subtitle-lines).
+Poista kaikki rivinvaihtomerkit lisäämättä välilyöntejä. Esimerkiksi rivit `こんにちは` ja `世界` yhdistyvät muotoon `こんにちは世界`. Jätä ”Tekstityksen Regex-suodattimen tekstikorvaus” tyhjäksi. Jos haluat lisätä rivien väliin välilyönnin, käytä [tekstitysrivien yhdistämisesimerkkiä](#merge-subtitle-lines).
 
 <details>
 <summary>Use this filter</summary>
@@ -87,9 +87,9 @@ Remove all newline characters without inserting spaces. For example, two lines c
 
 </details>
 
-### Remove bracketed descriptions {#remove-bracketed-descriptions}
+### Poista hakasulkeissa olevat kuvaukset {#remove-bracketed-descriptions}
 
-Remove indications enclosed by square brackets that sound or music that is playing (e.g. "**\[PLAYFUL MUSIC]**" or "**\-[GASPS]**")
+Poista hakasulkeissa olevat kuvaukset, jotka kertovat soivista äänistä tai musiikista (esimerkiksi ”**\[LEIKKISÄÄ MUSIIKKIA]**” tai ”**\-[HENGÄHDYS]**”).
 
 <details>
 <summary>Use this filter</summary>
@@ -104,9 +104,9 @@ Remove indications enclosed by square brackets that sound or music that is playi
 
 </details>
 
-### Remove uppercase descriptions {#remove-uppercase-descriptions}
+### Poista suuraakkosilla kirjoitetut kuvaukset {#remove-uppercase-descriptions}
 
-As an alternative to the above, filter out descriptions written in capital letters, but without the square brackets (e.g. "**PLAYFUL MUSIC**"). If your language has additional letters with diacritics, you feel free to add them to this list.
+Voit vaihtoehtoisesti suodattaa suuraakkosilla kirjoitetut kuvaukset, joissa ei ole hakasulkeita (esimerkiksi ”**LEIKKISÄÄ MUSIIKKIA**”). Jos kielessäsi on muita tarkkeellisia kirjaimia, voit lisätä ne tähän luetteloon.
 
 <details>
 <summary>Use this filter</summary>
@@ -121,9 +121,9 @@ As an alternative to the above, filter out descriptions written in capital lette
 
 </details>
 
-### Remove music symbols {#remove-music-symbols}
+### Poista musiikkimerkit {#remove-music-symbols}
 
-Any combination of symbols on their own that represent playing music (e.g. `♪♬♪`)
+Poistaa kaikki yksinään esiintyvät musiikkia ilmaisevat merkit ja niiden yhdistelmät (esimerkiksi `♪♬♪`).
 
 <details>
 <summary>Use this filter</summary>
@@ -138,9 +138,9 @@ Any combination of symbols on their own that represent playing music (e.g. `♪�
 
 </details>
 
-### Remove sound effect cues {#remove-sound-effect-cues}
+### Poista äänitehostemerkinnät {#remove-sound-effect-cues}
 
-Remove subtitle cues consisting entirely of a bracketed description or music symbols, such as `[THUNDER RUMBLING]`, `-[GASPS]`, or `♪♬♪`. The `^` and `$` anchors require the entire subtitle text to match, so dialogue such as `Hello [GASPS]` or `♪ Hello ♪` is kept. Leave "Subtitle regex filter text replacement" blank.
+Poista tekstitykset, jotka sisältävät vain hakasulkeissa olevan kuvauksen tai musiikkimerkkejä, kuten `[UKKONEN JYRÄHTÄÄ]`, `-[HENGÄHDYS]` tai `♪♬♪`. Ankkurit `^` ja `$` vaativat, että koko tekstitys vastaa mallia, joten vuorosanat, kuten `Hello [GASPS]` tai `♪ Hello ♪`, säilytetään. Jätä ”Tekstityksen Regex-suodattimen tekstikorvaus” tyhjäksi.
 
 <details>
 <summary>Use this filter</summary>
@@ -155,9 +155,9 @@ Remove subtitle cues consisting entirely of a bracketed description or music sym
 
 </details>
 
-### Remove left-to-right marks {#remove-left-to-right-marks}
+### Poista vasemmalta oikealle -merkit {#remove-left-to-right-marks}
 
-Remove U+200E, the invisible left-to-right mark (LRM). For example, text containing `Hello`, an LRM, and `world` becomes `Helloworld`. Enter the literal escape `\u200E` in the regex field and leave "Subtitle regex filter text replacement" blank.
+Poista U+200E eli näkymätön vasemmalta oikealle -merkki (LRM). Esimerkiksi teksti `Hello`, LRM-merkki ja `world` muuttuvat muotoon `Helloworld`. Kirjoita Regex-kenttään escape-sekvenssi `\u200E` ja jätä ”Tekstityksen Regex-suodattimen tekstikorvaus” tyhjäksi.
 
 <details>
 <summary>Use this filter</summary>
@@ -172,9 +172,9 @@ Remove U+200E, the invisible left-to-right mark (LRM). For example, text contain
 
 </details>
 
-### Remove bidirectional controls {#remove-bidi-controls}
+### Poista kaksisuuntaisen tekstin ohjausmerkit {#remove-bidi-controls}
 
-Remove all Unicode bidirectional control characters, including the left-to-right mark (U+200E), right-to-left mark (U+200F), and embedding, override, and isolate controls. Leave "Subtitle regex filter text replacement" blank. These characters can affect the display order of right-to-left or mixed-direction text, so use this filter only when you want to remove them.
+Poista kaikki Unicode-kaksisuuntaisuuden ohjausmerkit, kuten vasemmalta oikealle -merkki (U+200E), oikealta vasemmalle -merkki (U+200F) sekä upotus-, ohitus- ja eristysmerkit. Jätä ”Tekstityksen Regex-suodattimen tekstikorvaus” tyhjäksi. Nämä merkit voivat vaikuttaa oikealta vasemmalle luettavan tai suunnaltaan vaihtelevan tekstin järjestykseen, joten käytä suodatinta vain, jos haluat poistaa ne.
 
 <details>
 <summary>Use this filter</summary>
@@ -189,15 +189,15 @@ Remove all Unicode bidirectional control characters, including the left-to-right
 
 </details>
 
-### Combining regexes {#combining-regexes}
+### Regexien yhdistäminen {#combining-regexes}
 
-Regular expressions can be combined with the character `|` (no spaces needed inbetween). E.g., if you want to use the two regexes from the list above, you can use `-?\[.*\]|[♪♬#～〜]+`. You can combine as many regexes as you wish this way.
+Säännölliset lausekkeet voi yhdistää merkillä `|` (välejä ei tarvita). Jos haluat esimerkiksi käyttää kahta yllä olevaa Regexiä, voit kirjoittaa `-?\[.*\]|[♪♬#～〜]+`. Voit yhdistää tällä tavoin niin monta Regexiä kuin haluat.
 
-### Remove parenthesized text and newlines {#remove-parenthesized-text-and-newlines}
+### Poista sulkeissa oleva teksti ja rivinvaihdot {#remove-parenthesized-text-and-newlines}
 
-To remove parenthesized text and all newlines together, use:
+Poista sulkeissa oleva teksti ja kaikki rivinvaihdot yhdessä näin:
 
-Leave "Subtitle regex filter text replacement" blank. For example, `（山田）こんにちは` followed by a newline and `世界` becomes `こんにちは世界`. This removes both ASCII and full-width parentheses and their contents, including Japanese readings, and joins lines without adding spaces. It does not handle nested parentheses; use the [speaker names example](#remove-speaker-names) for those.
+Jätä ”Tekstityksen Regex-suodattimen tekstikorvaus” tyhjäksi. Esimerkiksi rivinvaihdolla erotettu teksti `（山田）こんにちは` ja `世界` yhdistyy muotoon `こんにちは世界`. Tämä poistaa sekä ASCII- että täysleveät sulkeet sisältöineen, myös japaninkieliset lukutavat, ja yhdistää rivit lisäämättä välilyöntejä. Sisäkkäisiä sulkeita ei käsitellä; käytä niihin [puhujien nimien esimerkkiä](#remove-speaker-names).
 
 <details>
 <summary>Use this filter</summary>
@@ -212,11 +212,11 @@ Leave "Subtitle regex filter text replacement" blank. For example, `（山田）
 
 </details>
 
-### Combine all removal filters {#combine-all-removal-filters}
+### Yhdistä kaikki poistavat suodattimet {#combine-all-removal-filters}
 
-To also remove bidi controls, parenthesized speaker names (including nested parentheses), bracketed descriptions, and music symbols, use:
+Poista samalla myös kaksisuuntaisen tekstin ohjausmerkit, sulkeissa olevat puhujien nimet (myös sisäkkäiset), hakasulkeissa olevat kuvaukset ja musiikkimerkit näin:
 
-Leave "Subtitle regex filter text replacement" blank. This combines the removal examples above and joins lines without adding spaces. It removes Japanese readings too; use the [reading-preserving example](#preserve-japanese-readings) if you want to keep them.
+Jätä ”Tekstityksen Regex-suodattimen tekstikorvaus” tyhjäksi. Tämä yhdistää yllä olevat poistoesimerkit ja yhdistää rivit lisäämättä välilyöntejä. Se poistaa myös japaninkieliset lukutavat; käytä [lukutavat säilyttävää esimerkkiä](#preserve-japanese-readings), jos haluat pitää ne.
 
 <details>
 <summary>Use this filter</summary>
@@ -231,14 +231,14 @@ Leave "Subtitle regex filter text replacement" blank. This combines the removal 
 
 </details>
 
-## Invisible characters and blank subtitles {#invisible-characters}
+## Näkymättömät merkit ja tyhjät tekstitykset {#invisible-characters}
 
-An apparently empty subtitle can contain invisible characters such as an LRM. asbplayer drops text cues containing only whitespace, control characters, or default-ignorable Unicode characters after parsing and filtering. Direction marks within meaningful text are preserved unless your regex explicitly removes them.
+Tyhjältä näyttävä tekstitys voi sisältää näkymättömiä merkkejä, kuten LRM-merkin. asbplayer poistaa jäsennyksen ja suodatuksen jälkeen tekstitykset, joissa on vain välilyöntejä, ohjausmerkkejä tai oletusarvoisesti ohitettavia Unicode-merkkejä. Merkityksellisen tekstin sisällä olevat suunnan merkit säilytetään, ellei Regex poista niitä erikseen.
 
-Invisible characters at the beginning or end of a cue can prevent an anchored pattern such as `^\[.+\]$` from matching. If the pattern does not match, asbplayer retries it without surrounding whitespace and invisible controls, but only drops the cue if that retry leaves no meaningful text. For example, `[THUNDER]` followed by an LRM is removed with this pattern and an empty replacement. The retry preserves the original cue when its replacement would contain meaningful text.
+Tekstityksen alussa tai lopussa olevat näkymättömät merkit voivat estää ankkuroitua mallia, kuten `^\[.+\]$`, vastaamasta. Jos malli ei vastaa, asbplayer yrittää uudelleen ilman ympäröiviä välilyöntejä ja näkymättömiä ohjausmerkkejä, mutta poistaa tekstityksen vain, jos uudelleenyrityksessä ei jää merkityksellistä tekstiä. Esimerkiksi `[THUNDER]` ja sitä seuraava LRM poistetaan tällä mallilla, kun korvaus on tyhjä. Uudelleenyritys säilyttää alkuperäisen tekstityksen, jos korvauksessa olisi merkityksellistä tekstiä.
 
-When combining an anchored pattern with a bidi-removal alternative, remember that replacements happen in one pass. For example, `^\[.+\]$|\u200E` applied to `[THUNDER]` followed by an LRM removes the LRM, but does not retry the bracketed description afterward. To remove both in the same pass, use the unanchored `\[.+\]|\p{Bidi_Control}` with an empty replacement. This also removes bracketed descriptions within dialogue.
+Kun yhdistät ankkuroitua mallia kaksisuuntaisuuden merkkejä poistavaan vaihtoehtoon, muista, että korvaukset tehdään yhdellä kierroksella. Esimerkiksi malli `^\[.+\]$|\u200E` poistaa `[THUNDER]`-tekstin perässä olevan LRM-merkin, mutta ei yritä sen jälkeen uudelleen poistaa hakasulkeissa olevaa kuvausta. Poista molemmat samalla kierroksella käyttämällä ankkuroimatonta mallia `\[.+\]|\p{Bidi_Control}` tyhjällä korvaustekstillä. Tämä poistaa myös vuorosanojen sisällä olevat hakasulkeissa olevat kuvaukset.
 
-## Learn {#learn}
+## Opi lisää {#learn}
 
-Learn how to write and test custom regular expressions at [Regex Learn - Playground](https://regexlearn.com/playground).
+Opi kirjoittamaan ja testaamaan mukautettuja säännöllisiä lausekkeita sivustolla [Regex Learn - Playground](https://regexlearn.com/playground).

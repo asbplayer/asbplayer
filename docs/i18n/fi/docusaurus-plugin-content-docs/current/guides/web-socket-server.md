@@ -5,73 +5,73 @@ sidebar_position: 9
 import project, { webSocketHttpUrl } from '@site/src/project';
 import CodeBlock from '@theme/CodeBlock';
 
-# WebSocket server {#websocket-server}
+# WebSocket-palvelin {#websocket-server}
 
-asbplayer takes advantage of the two-way nature of WebSocket connections in order to expose an interface accessible from outside of the browser.
+asbplayer hyödyntää WebSocket-yhteyksien kaksisuuntaisuutta ja tarjoaa siten käyttöliittymän, johon pääsee selaimen ulkopuolelta.
 
-In this design, asbplayer is a **WebSocket client** that maintains a connection with a **WebSocket server** that runs locally on the user's computer. The server then exposes an HTTP interface that triggers commands to asbplayer, the client. A technical reference on the pre-packaged server is [here](../reference/external-api.md).
+Tässä ratkaisussa asbplayer on **WebSocket-asiakas**, joka ylläpitää yhteyttä käyttäjän tietokoneella paikallisesti toimivaan **WebSocket-palvelimeen**. Palvelin tarjoaa HTTP-käyttöliittymän, jonka kautta asiakasohjelmalle eli asbplayerille voi lähettää komentoja. Valmiiksi pakatun palvelimen tekninen kuvaus löytyy [täältä](../reference/external-api.md).
 
-The server was originally written to enable a one-click mining flow that enriches AnkiConnect `addNote` requests with asbplayer-supplied media, and so one of its primary functions is also as an **AnkiConnect proxy**.
+Palvelin kehitettiin alun perin mahdollistamaan yhden napsautuksen louhinta, jossa AnkiConnectin `addNote`-pyyntöihin lisätään asbplayerin tarjoamaa mediaa. Siksi yksi sen päätoiminnoista on myös toimia **AnkiConnect-välityspalvelimena**.
 
 :::note
-The preferred way to do one-click mining is with the [asbplayer Anki add-on](./one-click-mining.md#install-the-asbplayer-anki-add-on). The AnkiConnect proxy described below is an alternative.
+Suositeltu tapa louhia kortteja yhdellä napsautuksella on käyttää [asbplayerin Anki-lisäosaa](./one-click-mining.md#install-the-asbplayer-anki-add-on). Alla kuvattu AnkiConnect-välityspalvelin on vaihtoehtoinen tapa.
 :::
 
-## Run the server {#run-the-server}
+## Palvelimen käynnistäminen {#run-the-server}
 
-1. Clone the <a href={project.urls.repo}>asbplayer repo</a>.
+1. Kloonaa <a href={project.urls.repo}>asbplayer-arkisto</a>.
 
     <CodeBlock language="bash">{`git clone ${project.urls.repo}.git asbplayer`}</CodeBlock>
 
-2. If not already installed, install [Golang](https://go.dev/dl/).
-3. Run the server:
+2. Asenna [Golang](https://go.dev/dl/), jos sitä ei ole vielä asennettu.
+3. Käynnistä palvelin:
 
     ```
     cd asbplayer/scripts/web-socket-server
     go run .
     ```
 
-The proxy is very lightweight, so it's fine to leave it running in the background. On Windows, [RBTray](https://github.com/benbuck/rbtray) can be used to minimise it to the taskbar.
+Välityspalvelin on hyvin kevyt, joten sen voi jättää toimimaan taustalla. Windowsissa sen voi pienentää tehtäväpalkkiin [RBTray](https://github.com/benbuck/rbtray)-ohjelmalla.
 
-## Connect asbplayer to the server {#connect-asbplayer-to-the-server}
+## asbplayerin yhdistäminen palvelimeen {#connect-asbplayer-to-the-server}
 
-Configure and enable asbplayer's WebSocket client from the <a href={new URL('?view=settings#misc-settings', project.urls.app).href}>misc settings</a>. By default, asbplayer is already pointed at the WebSocket server's default IP address and port, and so in general all that's required is to enable the WebSocket client.
+Määritä ja ota asbplayerin WebSocket-asiakas käyttöön <a href={new URL('?view=settings#misc-settings', project.urls.app).href}>muissa asetuksissa</a>. Oletuksena asbplayer käyttää jo WebSocket-palvelimen IP-osoitetta ja porttia, joten yleensä riittää, että otat WebSocket-asiakkaan käyttöön.
 
-## One-click mining with the AnkiConnect proxy {#one-click-mining-with-the-ankiconnect-proxy}
+## Louhinta yhdellä napsautuksella AnkiConnect-välityspalvelimen avulla {#one-click-mining-with-the-ankiconnect-proxy}
 
-Follow the directions on [Yomitan's website](https://yomitan.wiki/) to install Yomitan and configure it with a dictionary for your target language.
+Asenna Yomitan ja määritä siihen kohdekielesi sanakirja [Yomitanin verkkosivuston](https://yomitan.wiki/) ohjeiden mukaan.
 
-Then configure Yomitan:
+Määritä sitten Yomitan näin:
 
-- The AnkiConnect URL should point at the AnkiConnect proxy rather than AnkiConnect. The default proxy URL is <code>{webSocketHttpUrl}</code>.
-- Yomitan should be using the same **Note Type** as asbplayer.
+- AnkiConnect-URL-osoitteen tulee osoittaa AnkiConnectin sijaan AnkiConnect-välityspalvelimeen. Välityspalvelimen oletusosoite on <code>{webSocketHttpUrl}</code>.
+- Yomitanin tulee käyttää samaa **muistiinpanotyyppiä** kuin asbplayer.
 
-Mining sentences using Yomitan will create cards with word definition, image, and audio already provided. A truly one-click mining flow can be achieved if the proxy's `POST_MINE_ACTION` is `2` (update last card). See the [server configuration](#server-configuration) for details.
+Kun louhit lauseita Yomitanilla, kortteihin lisätään valmiiksi sanan määritelmä, kuva ja ääni. Todellinen yhden napsautuksen louhinta onnistuu, jos välityspalvelimen `POST_MINE_ACTION` on `2` (päivitä viimeisin kortti). Katso lisätietoja [palvelimen määrityksistä](#server-configuration).
 
-To always use asbplayer's subtitle text for the Sentence field, enable [**Always use subtitle text for sentence field**](../reference/settings.md#always-use-subtitle-text-for-sentence-field) under **Mining** settings. This replaces the sentence text supplied by Yomitan with the mined subtitle text from all tracks.
+Jos haluat käyttää Lause-kentässä aina asbplayerin tekstitystekstiä, ota **Louhinta**-asetuksissa käyttöön [**Käytä tekstitystekstiä aina lausekentässä**](../reference/settings.md#always-use-subtitle-text-for-sentence-field). Se korvaa Yomitanin lisäämän lausetekstin kaikilta raidoilta louhitulla tekstitystekstillä.
 
-## API reference {#api-reference}
+## API-viite {#api-reference}
 
-See the [technical reference](../reference/external-api.md#commands) for a description of supported commands that can be sent to asbplayer over the WebSocket connection.
+Katso [teknisestä viitteestä](../reference/external-api.md#commands) kuvaus komennoista, joita asbplayerille voi lähettää WebSocket-yhteyden kautta.
 
-## HTTP-based API {#http-based-api}
+## HTTP-pohjainen API {#http-based-api}
 
-The WebSocket server implements an HTTP-based API which triggers the commands documented above.
+WebSocket-palvelin toteuttaa HTTP-pohjaisen API:n, jolla voi suorittaa yllä kuvattuja komentoja.
 
 - `POST asbplayer/load-subtitles` (optional `mediaId` in the request body) (<a href={`${project.urls.repo}/blob/main/scripts/web-socket-server/cli/load-subtitles`}>script</a>)
 - `POST asbplayer/seek` (optional `mediaId` in the request body) (<a href={`${project.urls.repo}/blob/main/scripts/web-socket-server/cli/seek`}>script</a>)
 - `GET asbplayer/bound-media` (<a href={`${project.urls.repo}/blob/main/scripts/web-socket-server/cli/bound-media`}>script</a>)
 - `GET asbplayer/subtitles` (optional `?mediaId=...&trackNumbers=0,1`) (<a href={`${project.urls.repo}/blob/main/scripts/web-socket-server/cli/subtitles`}>script</a>)
 
-## AnkiConnect proxy {#ankiconnect-proxy}
+## AnkiConnect-välityspalvelin {#ankiconnect-proxy}
 
-The WebSocket server also functions as an AnkiConnect proxy that allows `addNote` requests to be enriched with asbplayer-provided context, such as audio and screenshots.
+WebSocket-palvelin toimii myös AnkiConnect-välityspalvelimena, joka lisää `addNote`-pyyntöihin asbplayerin tarjoamaa kontekstia, kuten ääntä ja kuvakaappauksia.
 
-The proxy passes through all AnkiConnect requests as-is except for `addNote`. The proxy's specific behavior in the case of `addNote` depends on the value of `POST_MINE_ACTION` in the configuration documented below.
+Välityspalvelin välittää kaikki AnkiConnect-pyynnöt sellaisinaan `addNote`-pyyntöjä lukuun ottamatta. `addNote`-pyynnön yhteydessä välityspalvelimen toiminta määräytyy alla kuvatussa määrityksessä olevan `POST_MINE_ACTION`-arvon mukaan.
 
-## Server configuration {#server-configuration}
+## Palvelimen määritys {#server-configuration}
 
-The server is configured with an `.env` file placed next to it in the same directory. Below is an example file with explanation.
+Palvelin määritetään samaan hakemistoon sijoitettavalla `.env`-tiedostolla. Alla on esimerkkitiedosto selityksineen.
 
 ```
 # Port that the proxy will listen on
