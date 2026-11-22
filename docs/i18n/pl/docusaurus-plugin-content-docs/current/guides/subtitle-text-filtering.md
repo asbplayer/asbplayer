@@ -6,21 +6,21 @@ import project from '@site/src/project';
 
 import CodeBlock from '@theme/CodeBlock'; // Empty fenced code blocks lose their title and copy button; CodeBlock preserves both.
 
-# Subtitle text filtering {#subtitle-text-filtering}
+# Filtrowanie tekstu napisów {#subtitle-text-filtering}
 
-If you'd like to filter out specific instances subtitle text, one way to do so is by using a regular expression (regex). asbplayer can match any sequence following a specified regex pattern and remove the matches.
+Jeśli chcesz odfiltrować określone fragmenty tekstu napisów, możesz użyć wyrażenia regularnego (regexu). asbplayer dopasowuje sekwencje zgodne z podanym wzorcem i usuwa dopasowania.
 
-## Configure the regex filter {#configure-the-regex-filter}
+## Konfiguracja filtra wyrażeń regularnych {#configure-the-regex-filter}
 
-Under the <a href={new URL('?view=settings#misc-settings', project.urls.app).href}>misc</a> section in asbplayer settings, locate the "Subtitle regex filter" textbox. Enter an appropriate regex to filter desired content.
-You can replace filtered content similarly by entering a string into the "Subtitle regex filter text replacement" textbox. Leaving this blank will simply remove the content.
+W sekcji <a href={new URL('?view=settings#misc-settings', project.urls.app).href}>Różne</a> ustawień asbplayera znajdź pole „Filtr napisów wyrażeniem regularnym” i wpisz regex filtrujący wybraną treść.
+Możesz zastąpić odfiltrowaną treść, wpisując tekst w polu „Tekst zastępujący w filtrze napisów”. Jeśli pozostawisz je puste, treść zostanie usunięta.
 
-### Remove speaker names {#remove-speaker-names}
+### Usuwanie imion i nazwisk mówiących {#remove-speaker-names}
 
-Remove names enclosed by parenthesis to indicate speakers (e.g. "**（山田）**　元気ですか？")
+Usuń imiona i nazwiska mówiących zapisane w nawiasach (np. „**（山田）**　元気ですか？”).
 
 <details>
-<summary>Use this filter</summary>
+<summary>Użyj tego filtra</summary>
 
 ```text title="Subtitle regex filter"
 ([\(（]([^\(\)（）]|(([\(（][^\(\)（）]+[\)）])))+[\)）])
@@ -32,14 +32,14 @@ Remove names enclosed by parenthesis to indicate speakers (e.g. "**（山田）*
 
 </details>
 
-### Preserve Japanese readings {#preserve-japanese-readings}
+### Zachowywanie japońskich odczytów {#preserve-japanese-readings}
 
-Remove parenthesized names or descriptions while keeping Japanese readings immediately after Japanese text. For example, `（山田）漢字(かんじ)を読む。` becomes `漢字(かんじ)を読む。`. Both `(かんじ)` and `（かんじ）` are preserved when immediately preceded by a character in the kanji, hiragana, or katakana ranges shown in the regex.
+Usuń nazwy lub opisy w nawiasach, zachowując japońskie odczyty bezpośrednio po japońskim tekście. Na przykład `（山田）漢字(かんじ)を読む。` zmienia się w `漢字(かんじ)を読む。`. Zarówno `(かんじ)`, jak i `（かんじ）` zostają zachowane, jeśli poprzedza je znak z zakresu kanji, hiragany lub katakany wskazanego w regexie.
 
-This is a heuristic: it also keeps descriptions immediately after Japanese text, such as `こんにちは（笑）`, and removes readings separated from their base text by a space. It does not handle nested parentheses. Leave "Subtitle regex filter text replacement" blank.
+To heurystyka: zachowuje również opisy bezpośrednio po japońskim tekście, takie jak `こんにちは（笑）`, a usuwa odczyty oddzielone spacją od tekstu podstawowego. Nie obsługuje zagnieżdżonych nawiasów. Pozostaw pole „Tekst zastępujący w filtrze napisów” puste.
 
 <details>
-<summary>Use this filter</summary>
+<summary>Użyj tego filtra</summary>
 
 ```text title="Subtitle regex filter"
 (?<![一-龯ぁ-ゟ゠-ヿ])[\(（][^\)）]*[\)）]
@@ -51,14 +51,14 @@ This is a heuristic: it also keeps descriptions immediately after Japanese text,
 
 </details>
 
-### Merge subtitle lines {#merge-subtitle-lines}
+### Łączenie wierszy napisów {#merge-subtitle-lines}
 
-Some subtitles are split in several lines and this regex forces them into a single line. For this filter to work, you must also put `$1 $2` in the "Subtitle regex filter text replacement" field.
+Niektóre napisy są podzielone na kilka wierszy. Ten regex łączy je w jeden wiersz. Aby filtr działał, wpisz również `$1 $2` w polu „Tekst zastępujący w filtrze napisów”.
 
-When combining this pattern with others, keep it last so a more specific alternative can match first at the same position. Alternatives do not run as separate filtering passes. Every match uses the same replacement text, and adding capturing groups in other alternatives changes the numbers needed in `$1 $2`.
+Jeśli łączysz ten wzorzec z innymi, umieść go na końcu, aby bardziej szczegółowa alternatywa mogła najpierw dopasować ten sam fragment. Alternatywy nie są stosowane w osobnych przebiegach filtra. Każde dopasowanie używa tego samego tekstu zastępczego, a dodanie grup przechwytujących w innych alternatywach zmienia numery wymagane w `$1 $2`.
 
 <details>
-<summary>Use this filter</summary>
+<summary>Użyj tego filtra</summary>
 
 ```text title="Subtitle regex filter"
 (.*)\n+(?!-)(.*)
@@ -70,12 +70,12 @@ $1 $2
 
 </details>
 
-### Remove newlines {#remove-newlines}
+### Usuwanie znaków nowej linii {#remove-newlines}
 
-Remove all newline characters without inserting spaces. For example, two lines containing `こんにちは` and `世界` become `こんにちは世界`. Leave "Subtitle regex filter text replacement" blank. To insert a space between lines instead, use the [merge subtitle lines example](#merge-subtitle-lines).
+Usuń wszystkie znaki nowej linii bez wstawiania spacji. Na przykład dwa wiersze zawierające `こんにちは` i `世界` zmienią się w `こんにちは世界`. Pozostaw pole „Tekst zastępujący w filtrze napisów” puste. Aby zamiast tego wstawić spację między wierszami, użyj [przykładu łączenia wierszy napisów](#merge-subtitle-lines).
 
 <details>
-<summary>Use this filter</summary>
+<summary>Użyj tego filtra</summary>
 
 ```text title="Subtitle regex filter"
 \n
@@ -87,12 +87,12 @@ Remove all newline characters without inserting spaces. For example, two lines c
 
 </details>
 
-### Remove bracketed descriptions {#remove-bracketed-descriptions}
+### Usuwanie opisów w nawiasach kwadratowych {#remove-bracketed-descriptions}
 
-Remove indications enclosed by square brackets that sound or music that is playing (e.g. "**\[PLAYFUL MUSIC]**" or "**\-[GASPS]**")
+Usuń zapisy w nawiasach kwadratowych opisujące odtwarzany dźwięk lub muzykę (np. „**\[PLAYFUL MUSIC]**” lub „**\-[GASPS]**”).
 
 <details>
-<summary>Use this filter</summary>
+<summary>Użyj tego filtra</summary>
 
 ```text title="Subtitle regex filter"
 -?\[.*\]
@@ -104,12 +104,12 @@ Remove indications enclosed by square brackets that sound or music that is playi
 
 </details>
 
-### Remove uppercase descriptions {#remove-uppercase-descriptions}
+### Usuwanie opisów zapisanych wielkimi literami {#remove-uppercase-descriptions}
 
-As an alternative to the above, filter out descriptions written in capital letters, but without the square brackets (e.g. "**PLAYFUL MUSIC**"). If your language has additional letters with diacritics, you feel free to add them to this list.
+Zamiast powyższego możesz odfiltrować opisy zapisane wielkimi literami, ale bez nawiasów kwadratowych (np. „**PLAYFUL MUSIC**”). Jeśli Twój język zawiera dodatkowe litery ze znakami diakrytycznymi, możesz je dodać do tej listy.
 
 <details>
-<summary>Use this filter</summary>
+<summary>Użyj tego filtra</summary>
 
 ```text title="Subtitle regex filter"
 ^[\-\(\)\.\s\p{Lu}]+$
@@ -121,12 +121,12 @@ As an alternative to the above, filter out descriptions written in capital lette
 
 </details>
 
-### Remove music symbols {#remove-music-symbols}
+### Usuwanie symboli muzycznych {#remove-music-symbols}
 
-Any combination of symbols on their own that represent playing music (e.g. `♪♬♪`)
+Dowolna kombinacja symboli muzycznych bez dodatkowego tekstu (np. `♪♬♪`).
 
 <details>
-<summary>Use this filter</summary>
+<summary>Użyj tego filtra</summary>
 
 ```text title="Subtitle regex filter"
 [♪♬#～〜]+
@@ -138,12 +138,12 @@ Any combination of symbols on their own that represent playing music (e.g. `♪�
 
 </details>
 
-### Remove sound effect cues {#remove-sound-effect-cues}
+### Usuwanie opisów efektów dźwiękowych {#remove-sound-effect-cues}
 
-Remove subtitle cues consisting entirely of a bracketed description or music symbols, such as `[THUNDER RUMBLING]`, `-[GASPS]`, or `♪♬♪`. The `^` and `$` anchors require the entire subtitle text to match, so dialogue such as `Hello [GASPS]` or `♪ Hello ♪` is kept. Leave "Subtitle regex filter text replacement" blank.
+Usuń napisy zawierające wyłącznie opis w nawiasach lub symbole muzyczne, takie jak `[THUNDER RUMBLING]`, `-[GASPS]` lub `♪♬♪`. Kotwice `^` i `$` wymagają dopasowania całego tekstu napisu, dlatego dialogi takie jak `Hello [GASPS]` lub `♪ Hello ♪` pozostają. Pozostaw pole „Tekst zastępujący w filtrze napisów” puste.
 
 <details>
-<summary>Use this filter</summary>
+<summary>Użyj tego filtra</summary>
 
 ```text title="Subtitle regex filter"
 ^-?\[.+\]$|^[♪♬#～〜]+$
@@ -155,12 +155,12 @@ Remove subtitle cues consisting entirely of a bracketed description or music sym
 
 </details>
 
-### Remove left-to-right marks {#remove-left-to-right-marks}
+### Usuwanie znaków od lewej do prawej {#remove-left-to-right-marks}
 
-Remove U+200E, the invisible left-to-right mark (LRM). For example, text containing `Hello`, an LRM, and `world` becomes `Helloworld`. Enter the literal escape `\u200E` in the regex field and leave "Subtitle regex filter text replacement" blank.
+Usuń U+200E, niewidoczny znak od lewej do prawej (LRM). Na przykład tekst zawierający `Hello`, LRM i `world` zmieni się w `Helloworld`. Wpisz dosłowny ciąg ucieczki `\u200E` w polu regexu, a pole „Tekst zastępujący w filtrze napisów” pozostaw puste.
 
 <details>
-<summary>Use this filter</summary>
+<summary>Użyj tego filtra</summary>
 
 ```text title="Subtitle regex filter"
 \u200E
@@ -172,12 +172,12 @@ Remove U+200E, the invisible left-to-right mark (LRM). For example, text contain
 
 </details>
 
-### Remove bidirectional controls {#remove-bidi-controls}
+### Usuwanie znaków sterujących dwukierunkowością {#remove-bidi-controls}
 
-Remove all Unicode bidirectional control characters, including the left-to-right mark (U+200E), right-to-left mark (U+200F), and embedding, override, and isolate controls. Leave "Subtitle regex filter text replacement" blank. These characters can affect the display order of right-to-left or mixed-direction text, so use this filter only when you want to remove them.
+Usuń wszystkie znaki Unicode sterujące dwukierunkowością, w tym znak od lewej do prawej (U+200E), znak od prawej do lewej (U+200F) oraz znaki osadzania, nadpisywania i izolowania. Pozostaw pole „Tekst zastępujący w filtrze napisów” puste. Znaki te mogą wpływać na kolejność wyświetlania tekstu pisanego od prawej do lewej lub tekstu o mieszanym kierunku, dlatego używaj tego filtra tylko wtedy, gdy chcesz je usunąć.
 
 <details>
-<summary>Use this filter</summary>
+<summary>Użyj tego filtra</summary>
 
 ```text title="Subtitle regex filter"
 \p{Bidi_Control}
@@ -189,18 +189,18 @@ Remove all Unicode bidirectional control characters, including the left-to-right
 
 </details>
 
-### Combining regexes {#combining-regexes}
+### Łączenie regexów {#combining-regexes}
 
-Regular expressions can be combined with the character `|` (no spaces needed inbetween). E.g., if you want to use the two regexes from the list above, you can use `-?\[.*\]|[♪♬#～〜]+`. You can combine as many regexes as you wish this way.
+Wyrażenia regularne można łączyć znakiem `|` (spacje nie są potrzebne). Na przykład, aby użyć dwóch regexów z powyższej listy, wpisz `-?\[.*\]|[♪♬#～〜]+`. W ten sposób możesz połączyć dowolną liczbę wyrażeń regularnych.
 
-### Remove parenthesized text and newlines {#remove-parenthesized-text-and-newlines}
+### Usuwanie tekstu w nawiasach i znaków nowej linii {#remove-parenthesized-text-and-newlines}
 
-To remove parenthesized text and all newlines together, use:
+Aby jednocześnie usunąć tekst w nawiasach i wszystkie znaki nowej linii, użyj:
 
-Leave "Subtitle regex filter text replacement" blank. For example, `（山田）こんにちは` followed by a newline and `世界` becomes `こんにちは世界`. This removes both ASCII and full-width parentheses and their contents, including Japanese readings, and joins lines without adding spaces. It does not handle nested parentheses; use the [speaker names example](#remove-speaker-names) for those.
+Pozostaw pole „Tekst zastępujący w filtrze napisów” puste. Na przykład `（山田）こんにちは`, po którym następuje znak nowej linii i `世界`, zmieni się w `こんにちは世界`. Filtr usuwa nawiasy ASCII i nawiasy pełnej szerokości wraz z zawartością, w tym japońskimi odczytami, a następnie łączy wiersze bez wstawiania spacji. Nie obsługuje zagnieżdżonych nawiasów; w takim przypadku użyj [przykładu usuwania imion i nazwisk mówiących](#remove-speaker-names).
 
 <details>
-<summary>Use this filter</summary>
+<summary>Użyj tego filtra</summary>
 
 ```text title="Subtitle regex filter"
 [\(（][^\)）]*[\)）]|\n
@@ -212,14 +212,14 @@ Leave "Subtitle regex filter text replacement" blank. For example, `（山田）
 
 </details>
 
-### Combine all removal filters {#combine-all-removal-filters}
+### Łączenie wszystkich filtrów usuwających {#combine-all-removal-filters}
 
-To also remove bidi controls, parenthesized speaker names (including nested parentheses), bracketed descriptions, and music symbols, use:
+Aby dodatkowo usunąć znaki sterujące dwukierunkowością, imiona i nazwiska mówiących w nawiasach (również zagnieżdżonych), opisy w nawiasach kwadratowych i symbole muzyczne, użyj:
 
-Leave "Subtitle regex filter text replacement" blank. This combines the removal examples above and joins lines without adding spaces. It removes Japanese readings too; use the [reading-preserving example](#preserve-japanese-readings) if you want to keep them.
+Pozostaw pole „Tekst zastępujący w filtrze napisów” puste. Ten filtr łączy powyższe przykłady i scala wiersze bez wstawiania spacji. Usuwa również japońskie odczyty; jeśli chcesz je zachować, użyj [przykładu zachowywania odczytów](#preserve-japanese-readings).
 
 <details>
-<summary>Use this filter</summary>
+<summary>Użyj tego filtra</summary>
 
 ```text title="Subtitle regex filter"
 \p{Bidi_Control}|([\(（]([^\(\)（）]|(([\(（][^\(\)（）]+[\)）])))+[\)）])|-?\[.*\]|[♪♬#～〜]+|\n
@@ -231,14 +231,14 @@ Leave "Subtitle regex filter text replacement" blank. This combines the removal 
 
 </details>
 
-## Invisible characters and blank subtitles {#invisible-characters}
+## Niewidoczne znaki i puste napisy {#invisible-characters}
 
-An apparently empty subtitle can contain invisible characters such as an LRM. asbplayer drops text cues containing only whitespace, control characters, or default-ignorable Unicode characters after parsing and filtering. Direction marks within meaningful text are preserved unless your regex explicitly removes them.
+Pozornie pusty napis może zawierać niewidoczne znaki, takie jak LRM. Po parsowaniu i filtrowaniu asbplayer usuwa napisy zawierające wyłącznie białe znaki, znaki sterujące lub znaki Unicode domyślnie ignorowane. Znaki kierunku w treści zawierającej tekst są zachowywane, chyba że regex jawnie je usuwa.
 
-Invisible characters at the beginning or end of a cue can prevent an anchored pattern such as `^\[.+\]$` from matching. If the pattern does not match, asbplayer retries it without surrounding whitespace and invisible controls, but only drops the cue if that retry leaves no meaningful text. For example, `[THUNDER]` followed by an LRM is removed with this pattern and an empty replacement. The retry preserves the original cue when its replacement would contain meaningful text.
+Niewidoczne znaki na początku lub końcu napisu mogą uniemożliwić dopasowanie wzorca z kotwicami, takiego jak `^\[.+\]$`. Jeśli wzorzec nie pasuje, asbplayer ponawia próbę bez otaczających białych znaków i niewidocznych znaków sterujących, ale usuwa napis tylko wtedy, gdy po tej próbie nie pozostanie żadna znacząca treść. Na przykład `[THUNDER]` zakończone znakiem LRM zostanie usunięte przez ten wzorzec z pustym tekstem zastępczym. Ponowiona próba zachowuje oryginalny napis, jeśli tekst zastępczy zawierałby znaczącą treść.
 
-When combining an anchored pattern with a bidi-removal alternative, remember that replacements happen in one pass. For example, `^\[.+\]$|\u200E` applied to `[THUNDER]` followed by an LRM removes the LRM, but does not retry the bracketed description afterward. To remove both in the same pass, use the unanchored `\[.+\]|\p{Bidi_Control}` with an empty replacement. This also removes bracketed descriptions within dialogue.
+Łącząc wzorzec z kotwicami z alternatywą usuwającą znaki dwukierunkowości, pamiętaj, że zamiany odbywają się w jednym przebiegu. Na przykład zastosowanie `^\[.+\]$|\u200E` do `[THUNDER]` zakończonego znakiem LRM usunie LRM, ale nie ponowi potem dopasowania opisu w nawiasach. Aby usunąć oba elementy w jednym przebiegu, użyj wzorca bez kotwic `\[.+\]|\p{Bidi_Control}` i pustego tekstu zastępczego. Usunie on także opisy w nawiasach występujące w dialogach.
 
-## Learn {#learn}
+## Nauka {#learn}
 
-Learn how to write and test custom regular expressions at [Regex Learn - Playground](https://regexlearn.com/playground).
+Dowiedz się, jak pisać i testować własne wyrażenia regularne w [Regex Learn - Playground](https://regexlearn.com/playground).

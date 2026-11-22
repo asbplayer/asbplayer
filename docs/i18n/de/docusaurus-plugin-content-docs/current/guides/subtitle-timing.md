@@ -2,27 +2,27 @@
 sidebar_position: 2
 ---
 
-# Subtitle timing {#subtitle-timing}
+# Untertitel-Timing {#subtitle-timing}
 
-Subtitle files will very often not be aligned to the video source you load them into. To work around this, asbplayer provides ways to manually adjust subtitle timing.
+Untertiteldateien sind häufig nicht mit der Videoquelle synchronisiert, in die Sie sie laden. Um das auszugleichen, bietet asbplayer Möglichkeiten, das Timing der Untertitel manuell anzupassen.
 
-## Keyboard shortcuts {#keyboard-shortcuts}
+## Tastaturkürzel {#keyboard-shortcuts}
 
-The fastest way to fix subtitle timing is with the [Subtitle offset keyboard shortcuts](../reference/settings.md#subtitle-offset-keyboard-shortcuts). There are two sets of shortcuts for adjusting subtitle offset:
+Am schnellsten lässt sich das Untertitel-Timing mit den [Tastaturkürzeln für den Untertitelversatz](../reference/settings.md#subtitle-offset-keyboard-shortcuts) korrigieren. Es gibt zwei Gruppen von Kürzeln zum Anpassen des Untertitelversatzes:
 
-- `Ctrl + Left/Right` or `Shift + Left/Right`: Align the current timestamp to the left or right subtitle.
-- `Ctrl + Shift + Left/Right`: Move the current timestamp `100ms` to the left or right.
+- `Ctrl + Left/Right` oder `Shift + Left/Right`: Richtet den aktuellen Zeitstempel am linken oder rechten Untertitel aus.
+- `Ctrl + Shift + Left/Right`: Verschiebt den aktuellen Zeitstempel um `100ms` nach links oder rechts.
 
-Most often, finding the correct offset will look like this:
+Meist finden Sie den richtigen Versatz so:
 
-1. Wait for a character to start talking.
-2. `Ctrl + Left/Right` until the subtitle matching the character's dialog appears on screen.
-3. `Ctrl + Shift + Right/Left` until the subtitle timing precisely matches the dialog.
+1. Warten Sie, bis eine Figur zu sprechen beginnt.
+2. Drücken Sie `Ctrl + Left/Right`, bis der zur Äußerung der Figur passende Untertitel auf dem Bildschirm erscheint.
+3. Drücken Sie `Ctrl + Shift + Right/Left`, bis das Timing des Untertitels genau mit der Äußerung übereinstimmt.
 
-## Overlay UI {#overlay-ui}
+## Overlay-Oberfläche {#overlay-ui}
 
-The overlay UI provides buttons that perform the same functions as the keyboard shortcuts above.
+Die Overlay-Oberfläche bietet Schaltflächen mit denselben Funktionen wie die oben genannten Tastaturkürzel.
 
-1. Scroll the rightmost section to the **middle** control.
-2. Click the left or right button to align the left or right subtitle to the current timestamp.
-3. Click and **hold** the left or right button to move the current timestamp `100ms` to the left or right.
+1. Scrollen Sie im rechten Bereich zum **mittleren** Steuerelement.
+2. Klicken Sie auf die linke oder rechte Schaltfläche, um den linken oder rechten Untertitel am aktuellen Zeitstempel auszurichten.
+3. Klicken Sie auf die linke oder rechte Schaltfläche und **halten Sie sie gedrückt**, um den aktuellen Zeitstempel um `100ms` nach links oder rechts zu verschieben.

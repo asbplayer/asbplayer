@@ -5,73 +5,73 @@ sidebar_position: 9
 import project, { webSocketHttpUrl } from '@site/src/project';
 import CodeBlock from '@theme/CodeBlock';
 
-# WebSocket server {#websocket-server}
+# Servidor WebSocket {#websocket-server}
 
-asbplayer takes advantage of the two-way nature of WebSocket connections in order to expose an interface accessible from outside of the browser.
+asbplayer aprovecha la comunicación bidireccional de las conexiones WebSocket para ofrecer una interfaz accesible desde fuera del navegador.
 
-In this design, asbplayer is a **WebSocket client** that maintains a connection with a **WebSocket server** that runs locally on the user's computer. The server then exposes an HTTP interface that triggers commands to asbplayer, the client. A technical reference on the pre-packaged server is [here](../reference/external-api.md).
+En este diseño, asbplayer es un **cliente WebSocket** que mantiene una conexión con un **servidor WebSocket** que se ejecuta localmente en el ordenador del usuario. El servidor ofrece una interfaz HTTP que activa comandos en asbplayer, el cliente. Puedes consultar la referencia técnica del servidor incluido [aquí](../reference/external-api.md).
 
-The server was originally written to enable a one-click mining flow that enriches AnkiConnect `addNote` requests with asbplayer-supplied media, and so one of its primary functions is also as an **AnkiConnect proxy**.
+El servidor se creó originalmente para permitir un flujo de minado con un clic que enriquece las solicitudes `addNote` de AnkiConnect con contenido multimedia proporcionado por asbplayer. Por eso, una de sus funciones principales también es actuar como **proxy de AnkiConnect**.
 
 :::note
-The preferred way to do one-click mining is with the [asbplayer Anki add-on](./one-click-mining.md#install-the-asbplayer-anki-add-on). The AnkiConnect proxy described below is an alternative.
+La forma recomendada de minar con un clic es usar el [complemento de Anki de asbplayer](./one-click-mining.md#install-the-asbplayer-anki-add-on). El proxy de AnkiConnect que se describe a continuación es una alternativa.
 :::
 
-## Run the server {#run-the-server}
+## Ejecutar el servidor {#run-the-server}
 
-1. Clone the <a href={project.urls.repo}>asbplayer repo</a>.
+1. Clona el <a href={project.urls.repo}>repositorio de asbplayer</a>.
 
     <CodeBlock language="bash">{`git clone ${project.urls.repo}.git asbplayer`}</CodeBlock>
 
-2. If not already installed, install [Golang](https://go.dev/dl/).
-3. Run the server:
+2. Si aún no está instalado, instala [Golang](https://go.dev/dl/).
+3. Ejecuta el servidor:
 
     ```
     cd asbplayer/scripts/web-socket-server
     go run .
     ```
 
-The proxy is very lightweight, so it's fine to leave it running in the background. On Windows, [RBTray](https://github.com/benbuck/rbtray) can be used to minimise it to the taskbar.
+El proxy consume muy pocos recursos, así que puedes dejarlo ejecutándose en segundo plano. En Windows, puedes usar [RBTray](https://github.com/benbuck/rbtray) para minimizarlo en la bandeja del sistema.
 
-## Connect asbplayer to the server {#connect-asbplayer-to-the-server}
+## Conectar asbplayer al servidor {#connect-asbplayer-to-the-server}
 
-Configure and enable asbplayer's WebSocket client from the <a href={new URL('?view=settings#misc-settings', project.urls.app).href}>misc settings</a>. By default, asbplayer is already pointed at the WebSocket server's default IP address and port, and so in general all that's required is to enable the WebSocket client.
+Configura y activa el cliente WebSocket de asbplayer desde los <a href={new URL('?view=settings#misc-settings', project.urls.app).href}>ajustes varios</a>. De forma predeterminada, asbplayer ya está configurado con la dirección IP y el puerto predeterminados del servidor WebSocket, así que normalmente solo hace falta activar el cliente WebSocket.
 
-## One-click mining with the AnkiConnect proxy {#one-click-mining-with-the-ankiconnect-proxy}
+## Minar con un clic mediante el proxy de AnkiConnect {#one-click-mining-with-the-ankiconnect-proxy}
 
-Follow the directions on [Yomitan's website](https://yomitan.wiki/) to install Yomitan and configure it with a dictionary for your target language.
+Sigue las instrucciones del [sitio web de Yomitan](https://yomitan.wiki/) para instalarlo y configurarlo con un diccionario para el idioma que estás aprendiendo.
 
-Then configure Yomitan:
+Después, configura Yomitan:
 
-- The AnkiConnect URL should point at the AnkiConnect proxy rather than AnkiConnect. The default proxy URL is <code>{webSocketHttpUrl}</code>.
-- Yomitan should be using the same **Note Type** as asbplayer.
+- La URL de AnkiConnect debe apuntar al proxy de AnkiConnect, no directamente a AnkiConnect. La URL predeterminada del proxy es <code>{webSocketHttpUrl}</code>.
+- Yomitan debe usar el mismo **tipo de nota** que asbplayer.
 
-Mining sentences using Yomitan will create cards with word definition, image, and audio already provided. A truly one-click mining flow can be achieved if the proxy's `POST_MINE_ACTION` is `2` (update last card). See the [server configuration](#server-configuration) for details.
+Al minar oraciones con Yomitan, las tarjetas ya incluirán la definición de la palabra, la imagen y el audio. Para minar de verdad con un clic, configura `POST_MINE_ACTION` del proxy en `2` (actualizar la última tarjeta). Consulta la [configuración del servidor](#server-configuration) para obtener más información.
 
-To always use asbplayer's subtitle text for the Sentence field, enable [**Always use subtitle text for sentence field**](../reference/settings.md#always-use-subtitle-text-for-sentence-field) under **Mining** settings. This replaces the sentence text supplied by Yomitan with the mined subtitle text from all tracks.
+Para usar siempre el texto de los subtítulos de asbplayer en el campo Oración, activa [**Usar siempre el texto de los subtítulos en el campo de oración**](../reference/settings.md#always-use-subtitle-text-for-sentence-field) en los ajustes de **minado**. Esto reemplaza el texto de la oración proporcionado por Yomitan con el texto minado de todas las pistas.
 
-## API reference {#api-reference}
+## Referencia de la API {#api-reference}
 
-See the [technical reference](../reference/external-api.md#commands) for a description of supported commands that can be sent to asbplayer over the WebSocket connection.
+Consulta la [referencia técnica](../reference/external-api.md#commands) para ver una descripción de los comandos admitidos que se pueden enviar a asbplayer mediante la conexión WebSocket.
 
-## HTTP-based API {#http-based-api}
+## API basada en HTTP {#http-based-api}
 
-The WebSocket server implements an HTTP-based API which triggers the commands documented above.
+El servidor WebSocket implementa una API basada en HTTP que activa los comandos descritos anteriormente.
 
 - `POST asbplayer/load-subtitles` (optional `mediaId` in the request body) (<a href={`${project.urls.repo}/blob/main/scripts/web-socket-server/cli/load-subtitles`}>script</a>)
 - `POST asbplayer/seek` (optional `mediaId` in the request body) (<a href={`${project.urls.repo}/blob/main/scripts/web-socket-server/cli/seek`}>script</a>)
 - `GET asbplayer/bound-media` (<a href={`${project.urls.repo}/blob/main/scripts/web-socket-server/cli/bound-media`}>script</a>)
 - `GET asbplayer/subtitles` (optional `?mediaId=...&trackNumbers=0,1`) (<a href={`${project.urls.repo}/blob/main/scripts/web-socket-server/cli/subtitles`}>script</a>)
 
-## AnkiConnect proxy {#ankiconnect-proxy}
+## Proxy de AnkiConnect {#ankiconnect-proxy}
 
-The WebSocket server also functions as an AnkiConnect proxy that allows `addNote` requests to be enriched with asbplayer-provided context, such as audio and screenshots.
+El servidor WebSocket también funciona como proxy de AnkiConnect. Permite enriquecer las solicitudes `addNote` con contexto proporcionado por asbplayer, como audio y capturas de pantalla.
 
-The proxy passes through all AnkiConnect requests as-is except for `addNote`. The proxy's specific behavior in the case of `addNote` depends on the value of `POST_MINE_ACTION` in the configuration documented below.
+El proxy transmite sin cambios todas las solicitudes de AnkiConnect, excepto `addNote`. El comportamiento específico del proxy para `addNote` depende del valor de `POST_MINE_ACTION` en la configuración que se describe a continuación.
 
-## Server configuration {#server-configuration}
+## Configuración del servidor {#server-configuration}
 
-The server is configured with an `.env` file placed next to it in the same directory. Below is an example file with explanation.
+El servidor se configura con un archivo `.env` en el mismo directorio. A continuación se muestra un archivo de ejemplo con una explicación.
 
 ```
 # Port that the proxy will listen on

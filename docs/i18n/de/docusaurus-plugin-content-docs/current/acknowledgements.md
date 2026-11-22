@@ -4,18 +4,18 @@ sidebar_position: 7
 
 import project from '@site/src/project';
 
-# Acknowledgements {#acknowledgements}
+# Danksagungen {#acknowledgements}
 
-asbplayer would not be what it is today without the community around it. We thank all the people who have used and benefited from asbplayer, who have advocated for it, suggested features, reported bugs, and made contributions.
+asbplayer wäre ohne die Community, die sich darum gebildet hat, heute nicht das, was es ist. Wir danken allen, die asbplayer nutzen und davon profitieren, sich dafür einsetzen, Funktionen vorschlagen, Fehler melden und Beiträge leisten.
 
-We epecially acknowledge the wonderful humans below.
+Unser besonderer Dank gilt den wunderbaren Menschen unten.
 
-## Contributors {#contributors}
+## Mitwirkende {#contributors}
 
 [@Renji-XD](https://www.github.com/Renji-XD),
 [@MatiasIslaA](https://www.github.com/MatiasIslaA),
-[@cyphar](https://www.github.com/cyphar),
-[@alexbofa](https://www.github.com/alexbofa),
+[@cyphar](https://github.com/cyphar),
+[@alexbofa](https://github.com/alexbofa),
 [@Zyphdoz](https://github.com/Zyphdoz),
 [@artjomsR](https://github.com/artjomsR),
 [@iam6lake](https://github.com/iam6lake),
@@ -79,30 +79,30 @@ We epecially acknowledge the wonderful humans below.
 [@joaquinmuzzi](https://github.com/joaquinmuzzi),
 [@mvanhorn](https://github.com/mvanhorn)
 
-## Translators {#translators}
+## Übersetzer {#translators}
 
-**Mana Tsutsumi** (Japanese, initial translation),
-**kasader** (Japanese),
-**Kai Böse** (German),
-**Triline**, **[@nekorushi](https://github.com/nekorushi)** (Polish),
-**NeverWinterSwor** (Simplified Chinese),
-**[@AkihaZhang](https://github.com/AkihaZhang)** (Simplified Chinese),
-**senorli** (Simplified Chinese),
-**Yagxter**, **[@chatterine](https://github.com/chatterine)** (Brazilian Portuguese),
-**Leo Gonzalez** (Spanish),
-**[@NovaKing007](https://github.com/NovaKing007)** (Spanish),
-**Yuri ([@ganqqwerty](https://github.com/ganqqwerty))** (Russian),
-**Kellen (kputuhuk)** (Russian),
-**Vladislav Kochetkov (vakochetkov)** (Russian),
-**[@825i](https://github.com/825i)** (Finnish),
-**[@Jaybird1291](https://github.com/jaybird1291)** (French),
-**Tigerbabe aka Gyaru Jinsei Juku** (Korean),
-**[@yaaacha](https://github.com/yaaacha)** (Indonesian),
-**[@NeriSal](https://github.com/nerisal)** (Italian)
+**Mana Tsutsumi** (Japanisch, Erstübersetzung),
+**kasader** (Japanisch),
+**Kai Böse** (Deutsch),
+**Triline**, **[@nekorushi](https://github.com/nekorushi)** (Polnisch),
+**NeverWinterSwor** (Vereinfachtes Chinesisch),
+**[@AkihaZhang](https://github.com/AkihaZhang)** (Vereinfachtes Chinesisch),
+**senorli** (Vereinfachtes Chinesisch),
+**Yagxter**, **[@chatterine](https://github.com/chatterine)** (Brasilianisches Portugiesisch),
+**Leo Gonzalez** (Spanisch),
+**[@NovaKing007](https://github.com/NovaKing007)** (Spanisch),
+**Yuri ([@ganqqwerty](https://github.com/ganqqwerty))** (Russisch),
+**Kellen (kputuhuk)** (Russisch),
+**Vladislav Kochetkov (vakochetkov)** (Russisch),
+**[@825i](https://github.com/825i)** (Finnisch),
+**[@Jaybird1291](https://github.com/jaybird1291)** (Französisch),
+**Tigerbabe aka Gyaru Jinsei Juku** (Koreanisch),
+**[@yaaacha](https://github.com/yaaacha)** (Indonesisch),
+**[@NeriSal](https://github.com/nerisal)** (Italienisch)
 
-If you are a non-English native, and would like to help translate asbplayer, join the [Crowdin project](https://crowdin.com/project/asbplayer). If your language isn't there, feel free to create an issue on the <a href={`${project.urls.repo}/issues`}>issues page</a>.
+Wenn Englisch nicht Ihre Muttersprache ist und Sie asbplayer mitübersetzen möchten, treten Sie dem [Crowdin-Projekt](https://crowdin.com/project/asbplayer) bei. Wenn Ihre Sprache dort nicht aufgeführt ist, können Sie gerne ein Issue auf der <a href={`${project.urls.repo}/issues`}>Issue-Seite</a> erstellen.
 
-## Sponsors {#sponsors}
+## Sponsoren {#sponsors}
 
 [@vivekchoksi](https://www.github.com/vivekchoksi),
 [@nzarbayezid](https://www.github.com/nzarbayezid),
@@ -153,4 +153,4 @@ marcman3001,
 shiki,
 kansha-gratitude
 
-and those who have donated privately.
+und allen, die anonym gespendet haben.
