@@ -1,0 +1,105 @@
+/*
+ * Mimics asbplayer's SubtitlePlayer (MUI theme): Roboto-stack rows, 20px cue
+ * text, 14px #aaaaaa timestamps, 1px table-cell borders. The current cue gets
+ * MUI's selected-row background, a translucent tint of the app's primary
+ * color rather than a solid highlight.
+ *
+ * The active row sits directly under the hero logo. Rows above it pass behind
+ * the logo's frosted glass and clip off at the hero's top edge. Rows below it
+ * scroll behind the rest of the hero content, which has a higher z-index (see
+ * index.module.css). The component applies the spotlight alpha inline per
+ * row, fading rows out with distance from the active cue.
+ */
+.viewport {
+    --hero-cue-height: 56px;
+    position: relative;
+    z-index: 0;
+    height: var(--hero-cue-height);
+    /* Narrow, like the real subtitle panel, so the timestamp sits near the
+       cue text instead of out at the hero edge. */
+    width: 100%;
+    max-width: 37.5rem;
+    margin-inline: auto;
+    /* Hero controls above the stream stay clickable and selectable. */
+    pointer-events: none;
+}
+
+.column {
+    transition: transform 300ms ease-in-out;
+}
+
+/* Applied only for the seamless wrap from the last cue back to the first. */
+.snapping {
+    transition: none;
+}
+
+/* Colors mirror the app's MUI theme: text.primary, divider cell borders, and
+   a primary-tinted selected background at action.selectedOpacity. */
+.row {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: var(--hero-cue-height);
+    padding: 0 16px;
+    font-family: 'Roboto', 'Helvetica', 'Arial', sans-serif;
+    color: rgba(0, 0, 0, 0.87);
+    border-bottom: 1px solid #e0e0e0;
+    /* Fades in sync with the column slide when the active cue changes. */
+    transition: opacity 300ms ease-in-out;
+}
+
+[data-theme='dark'] .row {
+    color: #fff;
+    border-bottom-color: #525252;
+}
+
+/* Centered so the active cue is the visual anchor of the hero. */
+.text {
+    text-align: center;
+    font-size: 1.25rem;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+}
+
+/* Out of the flex flow so it never pushes the cue text off-center. */
+.timestamp {
+    position: absolute;
+    right: 15px;
+    font-size: 0.875rem;
+    color: #aaaaaa;
+    user-select: none;
+}
+
+.activeRow {
+    background: rgba(255, 63, 120, 0.08);
+    /* The row above is spotlight-dimmed, so its border-bottom can't frame the
+       top edge of the highlight; supply a full-opacity one here instead. */
+    border-top: 1px solid #e0e0e0;
+}
+
+[data-theme='dark'] .activeRow {
+    background: rgba(255, 63, 120, 0.16);
+    border-top-color: #525252;
+}
+
+@media screen and (max-width: 996px) {
+    .viewport {
+        --hero-cue-height: 64px;
+    }
+
+    /* Matches the app's compressed subtitle size on narrow screens. Long cues
+       wrap instead of overflowing the fixed row height; clip at two lines. The
+       timestamp is hidden on small screens, so the text gets the full width. */
+    .text {
+        font-size: 1rem;
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+        overflow: hidden;
+    }
+
+    .timestamp {
+        display: none;
+    }
+}
