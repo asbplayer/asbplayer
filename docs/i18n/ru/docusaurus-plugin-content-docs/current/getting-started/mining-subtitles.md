@@ -7,15 +7,15 @@ import CodeBlock from '@theme/CodeBlock';
 
 import NoteAddIcon from '@site/src/components/NoteAddIcon';
 
-# Mining subtitles {#mining-subtitles}
+# Майнинг субтитров {#mining-subtitles}
 
-**Sentence mining** is the act of creating flashcards out of sentences. asbplayer allows you to create high-quality sentence flashcards by combining video, audio, and subtitles into a single card. asbplayer integrates with **Anki**, a popular flashcard application.
+**Майнинг предложений** — создание карточек по предложениям. asbplayer позволяет создавать качественные карточки с предложениями, объединяя видео, аудио и субтитры. asbplayer интегрируется с **Anki** — популярным приложением для карточек.
 
-## Setup Anki {#setup-anki}
+## Настройка Anki {#setup-anki}
 
-1. Install [Anki](https://apps.ankiweb.net/).
-2. Add [AnkiConnect](https://ankiweb.net/shared/info/2055492159) to Anki.
-3. If mining from video files, add <code>{appOrigin}</code> to the `webCorsOriginList` in AnkiConnect's settings:
+1. Установите [Anki](https://apps.ankiweb.net/).
+2. Добавьте в Anki [AnkiConnect](https://ankiweb.net/shared/info/2055492159).
+3. Если вы майните по видеофайлам, добавьте <code>{appOrigin}</code> в `webCorsOriginList` в настройках AnkiConnect:
 
    <CodeBlock language="json">{JSON.stringify({
      apiKey: null,
@@ -26,25 +26,25 @@ import NoteAddIcon from '@site/src/components/NoteAddIcon';
      webCorsOriginList: [appOrigin],
    }, null, 2)}</CodeBlock>
 
-4. Add a **Deck**.
-5. Add a **Note Type**.
-   We encourage you to create your own note type or use a pre-made one. But if you'd like to just get started follow the steps below to create a basic note type:
-   1. Click Tools → Manage Note Types.
-   2. Add a "Basic" note type.
-   3. Configure **Fields**:
-      - Sentence
-      - Word
-      - Definition
-      - Image
-      - Audio
-      - Source
+4. Добавьте **колоду**.
+5. Добавьте **тип заметки**.
+   Рекомендуем создать собственный тип заметки или использовать готовый. Чтобы быстро начать, выполните следующие действия и создайте простой тип заметки:
+   1. Нажмите Инструменты → Управление типами заметок.
+   2. Добавьте тип заметки «Основная».
+   3. Настройте **Поля**:
+      - Предложение
+      - Слово
+      - Определение
+      - Изображение
+      - Аудио
+      - Источник
       - URL
-   4. Configure **Card**:
-      - Front:
+   4. Настройте **Карточку**:
+      - Лицевая сторона:
         ```
         {{Sentence}}
         ```
-      - Back:
+      - Оборотная сторона:
         ```
         {{FrontSide}}
         <hr id=answer>
@@ -61,21 +61,21 @@ import NoteAddIcon from '@site/src/components/NoteAddIcon';
         {{URL}}
         ```
 
-## Configure asbplayer {#configure-asbplayer}
+## Настройка asbplayer {#configure-asbplayer}
 
-1. Open <a href={new URL('?view=settings', project.urls.app).href}>asbplayer's settings</a>.
-2. Select the **Deck** and **Note Type** you just created.
-3. For each of the **Sentence**, **Definition**, **Word**, **Audio**, **Image**, **Source**, and **URL** fields, select the corresponding field in the note type.
+1. Откройте <a href={new URL('?view=settings', project.urls.app).href}>настройки asbplayer</a>.
+2. Выберите созданные **колоду** и **тип заметки**.
+3. Для каждого поля — **Предложение**, **Определение**, **Слово**, **Аудио**, **Изображение**, **Источник** и **URL** — выберите соответствующее поле типа заметки.
 
-## Install a dictionary app {#install-a-dictionary-app}
+## Установка словарного приложения {#install-a-dictionary-app}
 
-asbplayer does not have a built-in dictionary. We recommend installing a dictionary app to make it easy to fill out the **Definition** field of cards. Below are a couple popular ones:
+В asbplayer нет встроенного словаря. Рекомендуем установить словарное приложение, чтобы проще заполнять поле **Определение** в карточках. Вот несколько популярных вариантов:
 
-- [Yomitan](https://yomitan.wiki/) is a browser extension that allows you to lookup words by hovering over them. It was originally made for Japanese, but is beginning to support other languages as well.
-- [VocabSieve](https://docs.freelanguagetools.org/) is a standalone language-learning app with support for European languages.
+- [Yomitan](https://yomitan.wiki/) — расширение браузера, позволяющее находить слова при наведении на них. Изначально оно было создано для японского языка, но теперь начинает поддерживать и другие языки.
+- [VocabSieve](https://docs.freelanguagetools.org/) — отдельное приложение для изучения языков с поддержкой европейских языков.
 
-## Mine subtitles {#mine-subtitles}
+## Майнинг субтитров {#mine-subtitles}
 
-1. [Load subtitles](./loading-subtitles.md) onto any video source.
-2. Click the **Mine Subtitle** <NoteAddIcon /> button .
-3. Fill out the dialog that appears and click **Export**.
+1. [Загрузите субтитры](./loading-subtitles.md) к любому видео.
+2. Нажмите кнопку **Майнить субтитр** <NoteAddIcon />.
+3. Заполните появившийся диалог и нажмите **Экспортировать**.

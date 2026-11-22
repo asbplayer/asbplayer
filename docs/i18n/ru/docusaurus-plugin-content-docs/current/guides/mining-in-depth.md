@@ -5,80 +5,80 @@ sidebar_position: 3
 import NoteAddIcon from '@site/src/components/NoteAddIcon';
 import ImageIcon from '@site/src/components/ImageIcon';
 
-# Mining in-depth {#mining-in-depth}
+# Подробно о майнинге {#mining-in-depth}
 
-Sentence mining can be accomplished in a variety of ways, according to your needs and preferences, using asbplayer.
+С помощью asbplayer можно майнить предложения разными способами — выбирайте подходящий под ваши задачи и предпочтения.
 
-## Opening the Anki Export Dialog {#opening-the-anki-export-dialog}
+## Открытие диалога экспорта Anki {#opening-the-anki-export-dialog}
 
-There are multiple ways to open the **Anki Export Dialog**:
+Открыть **диалог экспорта Anki** можно несколькими способами:
 
-1. **Mine Subtitle** <NoteAddIcon /> button that can be found in the **Subtitle List** of the **Side Panel** or on the website.
-2. **Mine Subtitle** <NoteAddIcon /> button in the **Overlay UI** on streaming videos or on the mobile website.
-3. The **mine current subtitle and open Anki dialog** [Mining keyboard shortcut](../reference/settings.md#mining-keyboard-shortcuts) - `Ctrl + Shift + X` by default.
-4. Right-click → asbplayer → **Mine Subtitle** on streaming video.
+1. Кнопка **Майнить субтитр** <NoteAddIcon /> в **списке субтитров** **боковой панели** или на сайте.
+2. Кнопка **Майнить субтитр** <NoteAddIcon /> в **интерфейсе поверх видео** при просмотре потокового видео или на мобильной версии сайта.
+3. [Сочетание клавиш для майнинга](../reference/settings.md#mining-keyboard-shortcuts) **Майнить текущий субтитр и открыть диалог Anki** (по умолчанию — `Ctrl + Shift + X`).
+4. Щёлкните правой кнопкой мыши по потоковому видео и выберите asbplayer → **Майнить субтитр**.
 
 :::info
-Methods #1 and #2 will open the dialog only if the [mining button default action](../reference/settings#mining-button-default-action) is set to "Show Anki dialog."  
+Способы № 1 и 2 открывают диалог, только если для параметра [действие по умолчанию кнопки майнинга](../reference/settings#mining-button-default-action) выбрано значение «Показать диалог Anki».
 :::
 
 :::info
-When an _empty_ subtitle track is loaded, and audio recording is enabled, all of the above actions will start recording audio the first time they are triggered, and open the Anki dialog the second time they are triggered.
+Если загружена _пустая_ дорожка субтитров и включена запись аудио, первое выполнение любого из этих действий начнёт запись аудио, а повторное — откроет диалог Anki.
 :::
 
-## Adjusting cards {#adjusting-cards}
+## Изменение карточек {#adjusting-cards}
 
-Prior to being exported, cards can be adjusted from the dialog.
+Перед экспортом карточку можно изменить в диалоге.
 
-### Selected time range {#selected-time-range}
+### Выбранный временной интервал {#selected-time-range}
 
-A **slider** at the bottom of the dialog can be used to change the selected time range.
+Чтобы изменить выбранный временной интервал, используйте **ползунок** внизу диалога.
 
-- The **Sentence Field** will be automatically updated to match the selected time range, if it has not been manually edited already.
-- For local files, the audio clip will also be automatically updated.
-- For streaming video, the audio clip can be re-recorded with the selected time range.
+- Если вы не меняли его вручную, текст в поле **Предложение** автоматически обновится в соответствии с выбранным временным интервалом.
+- Для локальных файлов аудиофрагмент также обновится автоматически.
+- Для потокового видео аудиофрагмент можно перезаписать с выбранным временным интервалом.
 
-### Audio field {#audio-field}
+### Поле аудио {#audio-field}
 
-The **Audio Field** displays the recorded audio clip and provides three action buttons:
+В **поле аудио** отображается записанный аудиофрагмент и доступны три кнопки:
 
-- **Play/Pause** — preview the audio clip directly in the dialog.
-- **Re-record** — re-record the audio using the currently selected time range (streaming video only; shown when a re-record callback is available).
-- **Download** — download the audio clip as a file to your device.
+- **Воспроизведение/Пауза** — прослушать аудиофрагмент прямо в диалоге.
+- **Перезаписать** — записать аудио заново для выбранного временного интервала (только для потокового видео; отображается, если доступен обратный вызов перезаписи).
+- **Скачать** — скачать аудиофрагмент на устройство.
 
-### Text fields {#text-fields}
+### Текстовые поля {#text-fields}
 
-Any of the text fields - sentence, definition, word, custom fields, source, URL, tags - can be edited. Typically, a separate dictionary app is used to fill out the definition field.
+Можно изменить любое текстовое поле: предложение, определение, слово, пользовательские поля, источник, URL и теги. Обычно для заполнения поля определения используют отдельное словарное приложение.
 
-### Image field {#image-field}
+### Поле изображения {#image-field}
 
-For local files, clicking the **Preview Button** <ImageIcon /> on the **Image Field** can be used to change the video timestamp from which the screenshot is extracted.
+Для локальных файлов нажмите кнопку **Предпросмотр** <ImageIcon /> в **поле изображения**, чтобы изменить временную метку видео, по которой будет сделан снимок экрана.
 
-## Exporting cards {#exporting-cards}
+## Экспорт карточек {#exporting-cards}
 
-Use the buttons at the bottom of the dialog to finally export the card. There are three types of export:
+Чтобы экспортировать карточку, используйте кнопки внизу диалога. Доступны три варианта:
 
-1. **Export**: simply export a card with the dialog content.
-2. **Update last card**: update the last card in your Anki deck with the dialog content.
-3. **Open in Anki**: opens Anki's card creator prefilled with the dialog content.
+1. **Экспортировать**: экспортировать карточку с данными из диалога.
+2. **Обновить последнюю карточку**: обновить последнюю карточку в колоде Anki данными из диалога.
+3. **Открыть в Anki**: открыть создание карточки в Anki с уже заполненными данными из диалога.
 
-## Dialog-less mining flows {#dialog-less-mining-flows}
+## Майнинг без диалога {#dialog-less-mining-flows}
 
-Dialog-less mining flows that both include a word definition and skip the Anki dialog entirely can be achieved when asbplayer is used in combination with a dictionary app that also integrates with Anki. Currently, the most popular dictionary app that does this is [Yomitan](https://yomitan.wiki/).
+Майнить без диалога Anki и сразу добавлять определение слова можно, если использовать asbplayer вместе со словарным приложением, интегрированным с Anki. Сейчас самое популярное такое приложение — [Yomitan](https://yomitan.wiki/).
 
-### Update last card {#update-last-card}
+### Обновление последней карточки {#update-last-card}
 
-A dialog-less mining flow with Yomitan looks like this:
+Майнинг без диалога с помощью Yomitan работает так:
 
-1. Using Yomitan, highlight the word inside the subtitles that you would like to mine.
-2. Use Yomitan's card-creation button to create a card.
-3. Immediately use asbplayer's **update last card** [Mining keyboard shortcut](../reference/settings.md#mining-keyboard-shortcuts) - `Ctrl + Shift + U` - to update the card with asbplayer-supplied content.
+1. С помощью Yomitan выделите в субтитрах слово, которое хотите майнить.
+2. Нажмите в Yomitan кнопку создания карточки.
+3. Сразу нажмите [сочетание клавиш для майнинга](../reference/settings.md#mining-keyboard-shortcuts) **Обновить последнюю карточку** в asbplayer (по умолчанию — `Ctrl + Shift + U`), чтобы добавить в карточку данные из asbplayer.
 
-The disadvantage of this flow is that skipping the dialog means skipping the opportunity to modify the card. However, there are ways to work around this:
+Недостаток такого способа в том, что при пропуске диалога нельзя изменить карточку. Это можно обойти:
 
-- Instead of directly updating the last card at the final step, you can always use `Ctrl + Shift + X` instead to open the dialog, adjust the card, and finally **update last card** using the dialog GUI. With this method you still go through the dialog, but retain the benefit of Yomitan's automatically-supplied word definition.
-- The **Anki Export Dialog** can always be opened _after_ card creation with the **manually take screenshot** [Mining keyboard shortcut](../reference/settings.md#mining-keyboard-shortcuts) - `Ctrl + Shift + V` by default.
+- Вместо непосредственного обновления последней карточки нажмите `Ctrl + Shift + X`, чтобы открыть диалог, изменить карточку и затем выбрать **Обновить последнюю карточку** в диалоге. Так вы пройдёте через диалог, но сохраните автоматически добавленное Yomitan определение слова.
+- **Диалог экспорта Anki** можно открыть _после_ создания карточки с помощью сочетания клавиш для майнинга **Сделать снимок экрана вручную** (по умолчанию — `Ctrl + Shift + V`).
 
-### One click {#one-click}
+### Один клик {#one-click}
 
-See the [one-click mining](./one-click-mining.md) guide.
+См. руководство по [майнингу в один клик](./one-click-mining.md).
