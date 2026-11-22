@@ -5,80 +5,80 @@ sidebar_position: 3
 import NoteAddIcon from '@site/src/components/NoteAddIcon';
 import ImageIcon from '@site/src/components/ImageIcon';
 
-# Mining in-depth {#mining-in-depth}
+# 深入了解字幕挖掘 {#mining-in-depth}
 
-Sentence mining can be accomplished in a variety of ways, according to your needs and preferences, using asbplayer.
+使用 asbplayer 可以根据需求和偏好，采用多种方式挖掘句子。
 
-## Opening the Anki Export Dialog {#opening-the-anki-export-dialog}
+## 打开 Anki 导出对话框 {#opening-the-anki-export-dialog}
 
-There are multiple ways to open the **Anki Export Dialog**:
+有多种方式可以打开 **Anki 导出对话框**：
 
-1. **Mine Subtitle** <NoteAddIcon /> button that can be found in the **Subtitle List** of the **Side Panel** or on the website.
-2. **Mine Subtitle** <NoteAddIcon /> button in the **Overlay UI** on streaming videos or on the mobile website.
-3. The **mine current subtitle and open Anki dialog** [Mining keyboard shortcut](../reference/settings.md#mining-keyboard-shortcuts) - `Ctrl + Shift + X` by default.
-4. Right-click → asbplayer → **Mine Subtitle** on streaming video.
+1. **侧边栏**的**字幕列表**或网站上的**挖掘字幕** <NoteAddIcon /> 按钮。
+2. 流媒体视频或移动版网站**悬浮界面**中的**挖掘字幕** <NoteAddIcon /> 按钮。
+3. **挖掘当前字幕并打开 Anki 对话框**[挖掘键盘快捷键](../reference/settings.md#mining-keyboard-shortcuts)，默认为 `Ctrl + Shift + X`。
+4. 在流媒体视频上右键 → asbplayer → **挖掘字幕**。
 
 :::info
-Methods #1 and #2 will open the dialog only if the [mining button default action](../reference/settings#mining-button-default-action) is set to "Show Anki dialog."  
+只有将[挖掘按钮默认操作](../reference/settings#mining-button-default-action)设为“显示 Anki 对话框”，方法 1 和 2 才会打开对话框。  
 :::
 
 :::info
-When an _empty_ subtitle track is loaded, and audio recording is enabled, all of the above actions will start recording audio the first time they are triggered, and open the Anki dialog the second time they are triggered.
+加载了_空白_字幕轨道并启用录音时，首次触发上述任一操作会开始录音，第二次触发才会打开 Anki 对话框。
 :::
 
-## Adjusting cards {#adjusting-cards}
+## 调整卡片 {#adjusting-cards}
 
-Prior to being exported, cards can be adjusted from the dialog.
+导出前，可以在对话框中调整卡片。
 
-### Selected time range {#selected-time-range}
+### 选定时间范围 {#selected-time-range}
 
-A **slider** at the bottom of the dialog can be used to change the selected time range.
+可以使用对话框底部的**滑块**更改选定的时间范围。
 
-- The **Sentence Field** will be automatically updated to match the selected time range, if it has not been manually edited already.
-- For local files, the audio clip will also be automatically updated.
-- For streaming video, the audio clip can be re-recorded with the selected time range.
+- 如果尚未手动编辑，**句子字段**会自动更新为与所选时间范围对应的内容。
+- 对于本地文件，音频片段也会自动更新。
+- 对于流媒体视频，可以根据所选时间范围重新录制音频片段。
 
-### Audio field {#audio-field}
+### 音频字段 {#audio-field}
 
-The **Audio Field** displays the recorded audio clip and provides three action buttons:
+**音频字段**会显示录制的音频片段，并提供三个操作按钮：
 
-- **Play/Pause** — preview the audio clip directly in the dialog.
-- **Re-record** — re-record the audio using the currently selected time range (streaming video only; shown when a re-record callback is available).
-- **Download** — download the audio clip as a file to your device.
+- **播放/暂停** — 直接在对话框中试听音频片段。
+- **重新录制** — 使用当前选定的时间范围重新录制音频（仅限流媒体视频；有可用的重新录制回调时才会显示）。
+- **下载** — 将音频片段下载为文件到你的设备。
 
-### Text fields {#text-fields}
+### 文本字段 {#text-fields}
 
-Any of the text fields - sentence, definition, word, custom fields, source, URL, tags - can be edited. Typically, a separate dictionary app is used to fill out the definition field.
+可以编辑任何文本字段，包括句子、释义、单词、自定义字段、来源、URL 和标签。通常会使用单独的词典应用填写释义字段。
 
-### Image field {#image-field}
+### 图像字段 {#image-field}
 
-For local files, clicking the **Preview Button** <ImageIcon /> on the **Image Field** can be used to change the video timestamp from which the screenshot is extracted.
+对于本地文件，可以点击**图像字段**中的**预览按钮** <ImageIcon />，更改截取画面对应的视频时间戳。
 
-## Exporting cards {#exporting-cards}
+## 导出卡片 {#exporting-cards}
 
-Use the buttons at the bottom of the dialog to finally export the card. There are three types of export:
+使用对话框底部的按钮导出卡片。共有三种导出方式：
 
-1. **Export**: simply export a card with the dialog content.
-2. **Update last card**: update the last card in your Anki deck with the dialog content.
-3. **Open in Anki**: opens Anki's card creator prefilled with the dialog content.
+1. **导出**：直接使用对话框中的内容导出卡片。
+2. **更新上一张卡片**：使用对话框中的内容更新 Anki 牌组中的上一张卡片。
+3. **在 Anki 中打开**：打开 Anki 卡片创建器，并预先填入对话框中的内容。
 
-## Dialog-less mining flows {#dialog-less-mining-flows}
+## 无对话框的挖掘流程 {#dialog-less-mining-flows}
 
-Dialog-less mining flows that both include a word definition and skip the Anki dialog entirely can be achieved when asbplayer is used in combination with a dictionary app that also integrates with Anki. Currently, the most popular dictionary app that does this is [Yomitan](https://yomitan.wiki/).
+将 asbplayer 与同时集成 Anki 的词典应用搭配使用，就可以在提供单词释义的同时完全跳过 Anki 对话框。目前最常用的此类词典应用是 [Yomitan](https://yomitan.wiki/)。
 
-### Update last card {#update-last-card}
+### 更新上一张卡片 {#update-last-card}
 
-A dialog-less mining flow with Yomitan looks like this:
+使用 Yomitan 的无对话框挖掘流程如下：
 
-1. Using Yomitan, highlight the word inside the subtitles that you would like to mine.
-2. Use Yomitan's card-creation button to create a card.
-3. Immediately use asbplayer's **update last card** [Mining keyboard shortcut](../reference/settings.md#mining-keyboard-shortcuts) - `Ctrl + Shift + U` - to update the card with asbplayer-supplied content.
+1. 使用 Yomitan 高亮字幕中想要挖掘的单词。
+2. 使用 Yomitan 的制卡按钮创建卡片。
+3. 立即使用 asbplayer 的**更新上一张卡片**[挖掘键盘快捷键](../reference/settings.md#mining-keyboard-shortcuts)（`Ctrl + Shift + U`），将 asbplayer 提供的内容更新到卡片中。
 
-The disadvantage of this flow is that skipping the dialog means skipping the opportunity to modify the card. However, there are ways to work around this:
+这种流程的缺点是跳过对话框后，也就失去了修改卡片的机会。不过可以通过以下方式解决：
 
-- Instead of directly updating the last card at the final step, you can always use `Ctrl + Shift + X` instead to open the dialog, adjust the card, and finally **update last card** using the dialog GUI. With this method you still go through the dialog, but retain the benefit of Yomitan's automatically-supplied word definition.
-- The **Anki Export Dialog** can always be opened _after_ card creation with the **manually take screenshot** [Mining keyboard shortcut](../reference/settings.md#mining-keyboard-shortcuts) - `Ctrl + Shift + V` by default.
+- 在最后一步，不直接更新上一张卡片，而是使用 `Ctrl + Shift + X` 打开对话框、调整卡片，最后通过对话框界面**更新上一张卡片**。这种方式仍会经过对话框，但保留了 Yomitan 自动提供单词释义的优点。
+- 创建卡片_后_，也可以随时使用**手动截图**[挖掘键盘快捷键](../reference/settings.md#mining-keyboard-shortcuts)打开 **Anki 导出对话框**，该快捷键默认为 `Ctrl + Shift + V`。
 
-### One click {#one-click}
+### 一键挖掘 {#one-click}
 
-See the [one-click mining](./one-click-mining.md) guide.
+请参阅[一键挖掘](./one-click-mining.md)指南。

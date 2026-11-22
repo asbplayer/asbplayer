@@ -2,10 +2,10 @@
 sidebar_position: 10
 ---
 
-# Audio track selection {#audio-track-selection}
+# 选择音轨 {#audio-track-selection}
 
-Some video files have multiple audio tracks. On the website, an audio track selector is available when the **Experimental Web Platform features** flag is enabled from `chrome://flags` (or equivalent for the current browser).
+有些视频文件包含多个音轨。在网站上，从 `chrome://flags`（或当前浏览器的对应页面）启用 **Experimental Web Platform features** 标志后，即可使用音轨选择器。
 
 :::warning
-As of this writing **Experimental Web Platform features** completely breaks the browser extension for streaming video (on some websites, maybe all). Enable this flag at your own risk.
+截至本文撰写时，启用 **Experimental Web Platform features** 会导致浏览器扩展无法在流媒体视频上使用（可能影响部分或全部网站）。启用此标志的风险由你自行承担。
 :::
