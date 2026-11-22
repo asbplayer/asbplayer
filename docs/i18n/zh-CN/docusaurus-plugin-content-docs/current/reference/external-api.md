@@ -1,35 +1,35 @@
 ---
 sidebar_position: 2
-description: Technical reference for asbplayer’s external interface and the WebSocket server that implements it.
+description: asbplayer 外部接口及其 WebSocket 服务器的技术参考。
 ---
 
 import project, { ankiConnectUrl } from '@site/src/project';
 import CodeBlock from '@theme/CodeBlock';
 
-# External API {#external-api}
+# 外部 API {#external-api}
 
-This page is intended to be an technical reference on asbplayer's external interface. Below are ways to call the interface:
+本页是 asbplayer 外部接口的技术参考。可以通过以下方式调用该接口：
 
-- The <a href={`${project.urls.repo}/tree/main/scripts/web-socket-server`}>pre-packaged WebSocket server</a>. See the [guide](../guides/web-socket-server.md) for how to setup the WebSocket server.
-- (v1.23 and above) Using an extension-to-extension connection obtained from [browser.runtime.connect](https://developer.chrome.com/docs/extensions/reference/api/runtime#method-connect). See the [guide](../guides/external-extensions.md) for how to connect to asbplayer from another extension.
+- <a href={`${project.urls.repo}/tree/main/scripts/web-socket-server`}>预打包的 WebSocket 服务器</a>。如何设置 WebSocket 服务器，请参阅[指南](../guides/web-socket-server.md)。
+- （v1.23 及以上版本）使用通过 [browser.runtime.connect](https://developer.chrome.com/docs/extensions/reference/api/runtime#method-connect) 建立的扩展间连接。如何从其他扩展连接到 asbplayer，请参阅[指南](../guides/external-extensions.md)。
 
-## Commands {#commands}
+## 命令 {#commands}
 
-asbplayer responds to the following commands, represented as JSON-RPC messages. The OpenRPC schema can be found [here](https://github.com/asbplayer/asbplayer/blob/main/external-api/openrpc.json).
+asbplayer 会响应以下以 JSON-RPC 消息表示的命令。OpenRPC 架构见[此处](https://github.com/asbplayer/asbplayer/blob/main/external-api/openrpc.json)。
 
 :::info
-asbplayer extensions v1.22 and below support the schema `{ command, messageId, body }` instead of `{ method, id, params }`.
+asbplayer 扩展 v1.22 及以下版本使用 `{ command, messageId, body }` 架构，而不是 `{ method, id, params }`。
 :::
 
 ## `mine-subtitle` {#mine-subtitle}
 
-Mines from the active tab by default. Set `mediaId` to an ID returned by [`get-bound-media`](#get-bound-media) to target specific media. If the media is not found or has no subtitles, `published` is `false`.
+默认从活动标签页挖掘。将 `mediaId` 设为 [`get-bound-media`](#get-bound-media) 返回的 ID，即可指定媒体。如果找不到媒体或媒体没有字幕，`published` 会是 `false`。
 
-When `postMineAction` is `2`, `noteId` selects the Anki note to update. If omitted, the last-added note is updated. `noteId` applies to streaming media only and is ignored for local media.
+当 `postMineAction` 为 `2` 时，`noteId` 用于选择要更新的 Anki 笔记。省略该参数时，会更新最近添加的笔记。`noteId` 仅适用于流媒体；对于本地媒体会被忽略。
 
-> `mediaId` and `noteId` require extension v1.20.0 or later.
+> `mediaId` 和 `noteId` 需要扩展 v1.20.0 或更高版本。
 
-### Request {#mine-subtitle-request}
+### 请求 {#mine-subtitle-request}
 
     ```javascript
     {
@@ -52,7 +52,7 @@ When `postMineAction` is `2`, `noteId` selects the Anki note to update. If omitt
     }
     ```
 
-### Response {#mine-subtitle-response}
+### 响应 {#mine-subtitle-response}
 
     ```javascript
     {
@@ -68,11 +68,11 @@ When `postMineAction` is `2`, `noteId` selects the Anki note to update. If omitt
 
 ## `load-subtitles` {#load-subtitles}
 
-Loads the files into the active tab's media by default, showing the video selector when the tab has more than one video. Set `mediaId` to an ID returned by [`get-bound-media`](#get-bound-media) to load the files directly into that media.
+默认将文件加载到活动标签页的媒体中；如果标签页中有多个视频，则会显示视频选择器。将 `mediaId` 设为 [`get-bound-media`](#get-bound-media) 返回的 ID，可将文件直接加载到指定媒体。
 
-> `mediaId` requires extension v1.23.0 or later. Earlier versions load the files into every tab with a bound video
+> `mediaId` 需要扩展 v1.23.0 或更高版本。更早版本会将文件加载到所有已绑定视频的标签页中。
 
-### Request {#load-subtitles-request}
+### 请求 {#load-subtitles-request}
 
 ```javascript
 {
@@ -92,7 +92,7 @@ Loads the files into the active tab's media by default, showing the video select
 }
 ```
 
-### Response {#load-subtitles-response}
+### 响应 {#load-subtitles-response}
 
 ```javascript
 {
@@ -105,11 +105,11 @@ Loads the files into the active tab's media by default, showing the video select
 
 ## `seek-timestamp` {#seek-timestamp}
 
-Seeks the active tab's media by default. Set `mediaId` to an ID returned by [`get-bound-media`](#get-bound-media) to target specific media.
+默认在活动标签页的媒体中定位。将 `mediaId` 设为 [`get-bound-media`](#get-bound-media) 返回的 ID，即可指定媒体。
 
-> `mediaId` requires extension v1.20.0+. Seeking local media requires extension v1.23.0+
+> `mediaId` 需要扩展 v1.20.0 或更高版本。定位本地媒体需要扩展 v1.23.0 或更高版本。
 
-### Request {#seek-timestamp-request}
+### 请求 {#seek-timestamp-request}
 
 ```javascript
 {
@@ -125,7 +125,7 @@ Seeks the active tab's media by default. Set `mediaId` to an ID returned by [`ge
 }
 ```
 
-### Response {#seek-timestamp-response}
+### 响应 {#seek-timestamp-response}
 
 ```javascript
 {
@@ -138,11 +138,11 @@ Seeks the active tab's media by default. Set `mediaId` to an ID returned by [`ge
 
 ## `get-bound-media` {#get-bound-media}
 
-> Requires extension v1.20.0+
+> 需要扩展 v1.20.0 或更高版本。
 
-Returns the media asbplayer is currently tracking, including both `streaming` and `local` media.
+返回 asbplayer 当前正在追踪的媒体，包括 `streaming` 和 `local` 媒体。
 
-### Request {#get-bound-media-request}
+### 请求 {#get-bound-media-request}
 
 ```javascript
 {
@@ -153,7 +153,7 @@ Returns the media asbplayer is currently tracking, including both `streaming` an
 }
 ```
 
-### Response {#get-bound-media-response}
+### 响应 {#get-bound-media-response}
 
 ```javascript
 {
@@ -186,12 +186,12 @@ Returns the media asbplayer is currently tracking, including both `streaming` an
 
 ## `get-subtitles` {#get-subtitles}
 
-> Requires extension v1.20.0+
+> 需要扩展 v1.20.0 或更高版本。
 
-Returns the subtitles currently loaded for a piece of media. By default it targets the active tab's media; pass a `mediaId` from [`get-bound-media`](#get-bound-media) to target specific media.
-Returns an empty list when no matching media is found or no subtitles are loaded.
+返回当前为某个媒体加载的字幕。默认使用活动标签页的媒体；传入 [`get-bound-media`](#get-bound-media) 返回的 `mediaId` 可指定媒体。
+找不到匹配的媒体或没有加载字幕时，会返回空列表。
 
-### Request {#get-subtitles-request}
+### 请求 {#get-subtitles-request}
 
 ```javascript
 {
@@ -207,7 +207,7 @@ Returns an empty list when no matching media is found or no subtitles are loaded
 }
 ```
 
-### Response {#get-subtitles-response}
+### 响应 {#get-subtitles-response}
 
 ```javascript
 {
@@ -225,9 +225,9 @@ Returns an empty list when no matching media is found or no subtitles are loaded
 
 ## `client-info` {#client-info}
 
-Returns asbplayer client info, such as supported protocols. The latest versions of asbplayer support JSON-RPC.
+返回 asbplayer 客户端信息，例如支持的协议。最新版 asbplayer 支持 JSON-RPC。
 
-### Request {#client-info-request}
+### 请求 {#client-info-request}
 
 ```javascript
 {
@@ -239,7 +239,7 @@ Returns asbplayer client info, such as supported protocols. The latest versions 
 }
 ```
 
-### Response {#client-info-response}
+### 响应 {#client-info-response}
 
 ```javascript
 {
@@ -254,9 +254,9 @@ Returns asbplayer client info, such as supported protocols. The latest versions 
 
 ## `rpc.discover` {#rpc-discover}
 
-Returns the OpenRPC document for the running build. Use it to discover the current method names, params, results, and transport tags instead of hard-coding them.
+返回当前运行版本的 OpenRPC 文档。可以使用它获取当前的方法名称、参数、结果和传输标签，而不必将这些内容硬编码。
 
-### Request {#rpc-discover-request}
+### 请求 {#rpc-discover-request}
 
 ```javascript
 {
@@ -267,13 +267,13 @@ Returns the OpenRPC document for the running build. Use it to discover the curre
 }
 ```
 
-### Response {#rpc-discover-response}
+### 响应 {#rpc-discover-response}
 
-Returns the OpenRPC document describing the supported JSON-RPC methods. See [`external-api/openrpc.json`](https://github.com/asbplayer/asbplayer/blob/main/external-api/openrpc.json) for the full document.
+返回介绍受支持 JSON-RPC 方法的 OpenRPC 文档。完整文档见 [`external-api/openrpc.json`](https://github.com/asbplayer/asbplayer/blob/main/external-api/openrpc.json)。
 
 ## Error codes {#error-codes}
 
-Errors use the standard JSON-RPC error object:
+错误使用标准的 JSON-RPC 错误对象：
 
 ```javascript
 {
@@ -289,17 +289,17 @@ Errors use the standard JSON-RPC error object:
 }
 ```
 
-| Code     | Meaning          | Notes                                                           |
-| -------- | ---------------- | --------------------------------------------------------------- |
-| `-32700` | Parse error      | The frame is not valid JSON.                                    |
-| `-32600` | Invalid request  | The frame is not a valid JSON-RPC request.                      |
-| `-32601` | Method not found | Unknown method, or a method unavailable on that transport.      |
-| `-32602` | Invalid params   | The method's params failed schema validation.                   |
-| `-32603` | Internal error   | The handler failed or returned a result that failed validation. |
-| `-32000` | Request timeout  | A server did not receive a response from asbplayer in time.     |
-| `-32001` | No clients       | A server has no connected asbplayer to forward the request to.  |
-| `-32002` | Not approved     | An external extension sent a command before being approved.     |
+| 代码     | 含义       | 说明                                                           |
+| -------- | ---------- | -------------------------------------------------------------- |
+| `-32700` | 解析错误   | 消息帧不是有效的 JSON。                                         |
+| `-32600` | 请求无效   | 消息帧不是有效的 JSON-RPC 请求。                                |
+| `-32601` | 找不到方法 | 未知方法，或该传输方式不支持此方法。                             |
+| `-32602` | 参数无效   | 方法的参数未通过架构验证。                                      |
+| `-32603` | 内部错误   | 处理程序执行失败，或返回的结果未通过验证。                      |
+| `-32000` | 请求超时   | 服务器未能及时收到 asbplayer 的响应。                           |
+| `-32001` | 没有客户端 | 没有已连接的 asbplayer 可供服务器转发请求。                     |
+| `-32002` | 未获批准   | 外部扩展在获得批准前发送了命令。                                |
 
-Notifications are never answered, including when handling fails. A request with an unusable `id` receives an error response with `id: null`.
+通知不会收到响应，即使处理失败也是如此。对于 `id` 不可用的请求，错误响应中的 `id` 为 `null`。
 
-The Go server's HTTP bridge maps these errors to HTTP statuses; see [`external-api/README.md`](https://github.com/asbplayer/asbplayer/blob/main/external-api/README.md#error-codes).
+Go 服务器的 HTTP 桥接会将这些错误映射为 HTTP 状态码；请参阅 [`external-api/README.md`](https://github.com/asbplayer/asbplayer/blob/main/external-api/README.md#error-codes)。

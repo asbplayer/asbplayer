@@ -4,58 +4,58 @@ sidebar_position: 11
 
 import project from '@site/src/project';
 
-# Online subtitles {#online-subtitles}
+# 在线字幕 {#online-subtitles}
 
-Instead of hunting for subtitle files by hand, you can search for them and load them straight from asbplayer. Subtitles are provided by [Jimaku](https://jimaku.cc), a community subtitle site mostly covering anime and Japanese drama.
+你可以直接在 asbplayer 中搜索并加载字幕文件，无需手动寻找。字幕由 [Jimaku](https://jimaku.cc) 提供，这是一个以动漫和日剧为主的社区字幕网站。
 
-## Usage {#usage}
+## 使用方法 {#usage}
 
-1. Open the side panel on a page with a video, then click **Load Subtitles**.
-2. Click **Search online subtitles** (also available from the subtitle track dropdown).
-3. The search term is pre-filled from the page title. Adjust it if needed, pick **Anime** or **Drama**, and search.
-4. Click a search result to see its subtitle files, then click a file to load it.
+1. 在包含视频的页面上打开侧边栏，然后点击**加载字幕**。
+2. 点击**搜索在线字幕**（也可以从字幕轨道下拉菜单中打开）。
+3. 搜索词会根据页面标题自动填入。按需调整，选择**动漫**或**电视剧**，然后搜索。
+4. 点击搜索结果查看字幕文件，再点击文件即可加载。
 
-Only `.srt` and `.ass` files are listed. Works you opened recently show up under **Recent** so you can skip the search next time.
+列表中只会显示 `.srt` 和 `.ass` 文件。最近打开的作品会出现在**最近使用**下次可直接选择，无需重新搜索。
 
-## Getting a Jimaku API key {#api-key}
+## 获取 Jimaku API 密钥 {#api-key}
 
-Jimaku requires an API key to search and download.
+Jimaku 需要 API 密钥才能搜索和下载。
 
-1. Create an account at [jimaku.cc](https://jimaku.cc) and log in.
-2. Open your [account page](https://jimaku.cc/account) and generate an API key.
-3. Paste the key into the **Jimaku API key** field in the search dialog.
+1. 在 [jimaku.cc](https://jimaku.cc) 创建帐户并登录。
+2. 打开[帐户页面](https://jimaku.cc/account)并生成 API 密钥。
+3. 将密钥粘贴到搜索对话框中的 **Jimaku API 密钥**字段。
 
-The key is saved automatically, so you only need to do this once. It is hidden by default; use the eye icon to show it.
+密钥会自动保存，因此只需设置一次。密钥默认隐藏；点击眼睛图标即可显示。
 
-## Automatic episode detection {#episode-detection}
+## 自动检测集数 {#episode-detection}
 
-For series, asbplayer tries to read the episode number from the page title (for example `S01E05`, `EP05`, or `第5話`/`第五集`). If one is found:
+对于剧集，asbplayer 会尝试从页面标题中读取集数（例如 `S01E05`、`EP05`、`第5話`或`第五集`）。如果找到集数：
 
-- the episode marker is removed from the search term, so you search for the series name only;
-- the file list is filtered to that episode, shown as an **EP N** chip. Click the chip's ✕ to see all files.
+- 搜索词中会移除集数标记，因此只搜索剧名；
+- 文件列表会筛选到对应集数，并显示为 **EP N** 标签。点击标签上的 ✕ 可查看所有文件。
 
-If the chosen episode has no usable subtitle files, the full list is shown instead.
+如果所选集数没有可用的字幕文件，则会显示完整列表。
 
-### Custom episode regex {#episode-regex}
+### 自定义集数正则表达式 {#episode-regex}
 
-Some websites use title formats that the built-in rules don't recognize, so no episode is detected and you see every file in the series. A custom regex teaches asbplayer how to read the episode on those sites.
+某些网站使用的标题格式无法被内置规则识别，因此系统检测不到集数，显示的是该剧的所有文件。自定义正则表达式可以让 asbplayer 识别这些网站上的集数。
 
-Once you've opened a series, click the gear icon next to the file list header to show the **Custom episode regex** field. The gear is highlighted while a regex is set.
+打开剧集后，点击文件列表标题旁的齿轮图标，即可显示**自定义集数正则表达式**字段。设置了正则表达式时，齿轮图标会高亮显示。
 
-- **Capture group 1** must be the episode number (arabic or kanji numerals both work).
-- Your regex is tried first. If it is empty, invalid, or doesn't match, the built-in rules are used as usual, so it can only add coverage.
-- Press **Enter** to re-filter the current series. The search term picks up the change the next time you open the dialog.
+- **捕获组 1**必须是集数（阿拉伯数字和汉字数字均可）。
+- 系统会先尝试你的正则表达式。如果表达式为空、无效或不匹配，则照常使用内置规则，因此自定义规则只会扩大支持范围。
+- 按 **Enter** 重新筛选当前剧集。下次打开对话框时，搜索词会采用新的设置。
 
 :::tip
-The built-in rules were only tested on the few websites the feature's author uses. If a site's title format isn't recognized, please <a href={`${project.urls.repo}/issues`}>open an issue</a> with an example page title (or a PR on `common/subtitle-sources/jimaku-episode-patterns.ts`) so the built-in rules can be extended.
+内置规则只在功能作者使用的少数网站上测试过。如果无法识别某个网站的标题格式，请附上页面标题示例<a href={`${project.urls.repo}/issues`}>提交问题</a>（或为 `common/subtitle-sources/jimaku-episode-patterns.ts` 提交 PR），以便扩展内置规则。
 :::
 
-For example, if a site titles its pages `Some Show - Chapter 07 | SiteName`, use:
+例如，如果网站的页面标题格式为 `Some Show - Chapter 07 | SiteName`，可以使用：
 
 ```
 Chapter (\d+)
 ```
 
-## Acknowledgements {#jimaku-acknowledgements}
+## 致谢 {#jimaku-acknowledgements}
 
-Huge thanks to [Rapptz](https://github.com/Rapptz), who built and maintains [Jimaku](https://github.com/Rapptz/jimaku) and provides the API that makes this feature possible. If you find it useful, please consider supporting the site and uploading your own subtitles.
+非常感谢 [Rapptz](https://github.com/Rapptz) 创建并维护 [Jimaku](https://github.com/Rapptz/jimaku)，并提供 API 使此功能成为可能。如果你觉得这项服务有用，请考虑支持该网站并上传自己的字幕。

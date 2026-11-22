@@ -4,33 +4,33 @@ sidebar_position: 1
 
 import project from '@site/src/project';
 
-# Loading subtitles {#loading-subtitles}
+# Carregar legendas {#loading-subtitles}
 
-The first step to using asbplayer is to load subtitles onto a video source.
+O primeiro passo para usar o asbplayer é carregar legendas em uma fonte de vídeo.
 
-## Streaming video {#streaming-video}
+## Vídeo em streaming {#streaming-video}
 
-### Chrome (or other Chromium-based browsers) {#chromium}
+### Chrome (ou outros navegadores baseados no Chromium) {#chromium}
 
-1. Install the Chrome extension from Google's <a href={project.extension.chrome.storeUrl}>web store</a> or from the <a href={`${project.urls.repo}/releases/latest`}>GitHub release</a>.
-2. Click 🧩 icon in browser toolbar → asbplayer → **Open Side Panel**
-3. Click **Load Subtitles** to load subtitles onto any video on the current page.
+1. Instale a extensão do Chrome pela <a href={project.extension.chrome.storeUrl}>loja virtual</a> do Google ou pela <a href={`${project.urls.repo}/releases/latest`}>versão no GitHub</a>.
+2. Clique no ícone 🧩 na barra de ferramentas do navegador → asbplayer → **Abrir painel lateral**
+3. Clique em **Carregar legendas** para carregá-las em qualquer vídeo da página atual.
 
 ### Firefox {#firefox}
 
 :::warning
-asbplayer is missing some features on Firefox. See the [Compatibility](../compatibility.md#extension) section.  
+O asbplayer não tem alguns recursos no Firefox. Consulte a seção [Compatibilidade](../compatibility.md#extension).
 :::
 
-1. Install the the Firefox addon from the Mozilla <a href={project.extension.firefox.storeUrl}>addon store</a> or from the <a href={`${project.urls.repo}/releases/latest`}>GitHub release</a>.
-2. Click 🧩 icon in browser toolbar → asbplayer → **Open Side Panel**
-3. Click **Load Subtitles** to load subtitles onto any video on the current page.
+1. Instale o complemento do Firefox pela <a href={project.extension.firefox.storeUrl}>loja de complementos</a> da Mozilla ou pela <a href={`${project.urls.repo}/releases/latest`}>versão no GitHub</a>.
+2. Clique no ícone 🧩 na barra de ferramentas do navegador → asbplayer → **Abrir painel lateral**
+3. Clique em **Carregar legendas** para carregá-las em qualquer vídeo da página atual.
 
 ### Android {#android}
 
-See the [Android guide](../guides/android.md).
+Consulte o [guia para Android](../guides/android.md).
 
-## Video files {#video-files}
+## Arquivos de vídeo {#video-files}
 
-1. Open the <a href={project.urls.app}>website</a>.
-2. Drag-and-drop video and subtitle files into the website.
+1. Abra o <a href={project.urls.app}>site</a>.
+2. Arraste os arquivos de vídeo e legenda para o site.

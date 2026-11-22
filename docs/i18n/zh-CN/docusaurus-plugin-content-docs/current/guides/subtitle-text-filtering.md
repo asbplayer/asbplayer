@@ -6,21 +6,21 @@ import project from '@site/src/project';
 
 import CodeBlock from '@theme/CodeBlock'; // Empty fenced code blocks lose their title and copy button; CodeBlock preserves both.
 
-# Subtitle text filtering {#subtitle-text-filtering}
+# 筛选字幕文本 {#subtitle-text-filtering}
 
-If you'd like to filter out specific instances subtitle text, one way to do so is by using a regular expression (regex). asbplayer can match any sequence following a specified regex pattern and remove the matches.
+如果想筛除特定字幕文本，可以使用正则表达式（regex）。asbplayer 可以匹配符合指定正则表达式的任意字符序列，并移除匹配内容。
 
-## Configure the regex filter {#configure-the-regex-filter}
+## 配置正则表达式筛选器 {#configure-the-regex-filter}
 
-Under the <a href={new URL('?view=settings#misc-settings', project.urls.app).href}>misc</a> section in asbplayer settings, locate the "Subtitle regex filter" textbox. Enter an appropriate regex to filter desired content.
-You can replace filtered content similarly by entering a string into the "Subtitle regex filter text replacement" textbox. Leaving this blank will simply remove the content.
+在 asbplayer 设置的<a href={new URL('?view=settings#misc-settings', project.urls.app).href}>杂项</a>部分，找到“字幕正则筛选器”文本框。输入合适的正则表达式，以筛除所需内容。
+也可以在“字幕正则筛选器文本替换”文本框中输入字符串，替换筛选出的内容。留空则会直接移除内容。
 
-### Remove speaker names {#remove-speaker-names}
+### 移除说话人姓名 {#remove-speaker-names}
 
-Remove names enclosed by parenthesis to indicate speakers (e.g. "**（山田）**　元気ですか？")
+移除用括号标出的说话人姓名（例如“**（山田）**　元気ですか？”）
 
 <details>
-<summary>Use this filter</summary>
+<summary>使用此筛选器</summary>
 
 ```text title="Subtitle regex filter"
 ([\(（]([^\(\)（）]|(([\(（][^\(\)（）]+[\)）])))+[\)）])
@@ -32,14 +32,14 @@ Remove names enclosed by parenthesis to indicate speakers (e.g. "**（山田）*
 
 </details>
 
-### Preserve Japanese readings {#preserve-japanese-readings}
+### 保留日语读音 {#preserve-japanese-readings}
 
-Remove parenthesized names or descriptions while keeping Japanese readings immediately after Japanese text. For example, `（山田）漢字(かんじ)を読む。` becomes `漢字(かんじ)を読む。`. Both `(かんじ)` and `（かんじ）` are preserved when immediately preceded by a character in the kanji, hiragana, or katakana ranges shown in the regex.
+移除括号中的姓名或描述，同时保留紧跟在日语文本后的日语读音。例如，`（山田）漢字(かんじ)を読む。` 会变为 `漢字(かんじ)を読む。`。当 `(かんじ)` 和 `（かんじ）` 前面紧邻正则表达式所示范围内的汉字、平假名或片假名时，二者都会保留。
 
-This is a heuristic: it also keeps descriptions immediately after Japanese text, such as `こんにちは（笑）`, and removes readings separated from their base text by a space. It does not handle nested parentheses. Leave "Subtitle regex filter text replacement" blank.
+这是一种启发式规则：它也会保留紧跟在日语文本后的描述，例如 `こんにちは（笑）`，并移除与原文之间隔有空格的读音。它无法处理嵌套括号。请将“字幕正则筛选器文本替换”留空。
 
 <details>
-<summary>Use this filter</summary>
+<summary>使用此筛选器</summary>
 
 ```text title="Subtitle regex filter"
 (?<![一-龯ぁ-ゟ゠-ヿ])[\(（][^\)）]*[\)）]
@@ -51,14 +51,14 @@ This is a heuristic: it also keeps descriptions immediately after Japanese text,
 
 </details>
 
-### Merge subtitle lines {#merge-subtitle-lines}
+### 合并字幕行 {#merge-subtitle-lines}
 
-Some subtitles are split in several lines and this regex forces them into a single line. For this filter to work, you must also put `$1 $2` in the "Subtitle regex filter text replacement" field.
+有些字幕被拆分成多行，此正则表达式可以将它们合并为一行。要使用此筛选器，还必须在“字幕正则筛选器文本替换”字段中填入 `$1 $2`。
 
-When combining this pattern with others, keep it last so a more specific alternative can match first at the same position. Alternatives do not run as separate filtering passes. Every match uses the same replacement text, and adding capturing groups in other alternatives changes the numbers needed in `$1 $2`.
+将此模式与其他模式组合时，请将其放在最后，以便同一位置上更具体的分支优先匹配。各分支不会分开执行筛选。所有匹配都使用相同的替换文本，而且在其他分支中添加捕获组会改变 `$1 $2` 中需要使用的编号。
 
 <details>
-<summary>Use this filter</summary>
+<summary>使用此筛选器</summary>
 
 ```text title="Subtitle regex filter"
 (.*)\n+(?!-)(.*)
@@ -70,12 +70,12 @@ $1 $2
 
 </details>
 
-### Remove newlines {#remove-newlines}
+### 移除换行符 {#remove-newlines}
 
-Remove all newline characters without inserting spaces. For example, two lines containing `こんにちは` and `世界` become `こんにちは世界`. Leave "Subtitle regex filter text replacement" blank. To insert a space between lines instead, use the [merge subtitle lines example](#merge-subtitle-lines).
+移除所有换行符，不插入空格。例如，包含 `こんにちは` 和 `世界` 的两行会变为 `こんにちは世界`。请将“字幕正则筛选器文本替换”留空。若要在行与行之间插入空格，请使用[合并字幕行示例](#merge-subtitle-lines)。
 
 <details>
-<summary>Use this filter</summary>
+<summary>使用此筛选器</summary>
 
 ```text title="Subtitle regex filter"
 \n
@@ -87,12 +87,12 @@ Remove all newline characters without inserting spaces. For example, two lines c
 
 </details>
 
-### Remove bracketed descriptions {#remove-bracketed-descriptions}
+### 移除方括号描述 {#remove-bracketed-descriptions}
 
-Remove indications enclosed by square brackets that sound or music that is playing (e.g. "**\[PLAYFUL MUSIC]**" or "**\-[GASPS]**")
+移除方括号内表示声音或音乐的提示（例如“**\[PLAYFUL MUSIC]**”或“**\-[GASPS]**”）。
 
 <details>
-<summary>Use this filter</summary>
+<summary>使用此筛选器</summary>
 
 ```text title="Subtitle regex filter"
 -?\[.*\]
@@ -104,12 +104,12 @@ Remove indications enclosed by square brackets that sound or music that is playi
 
 </details>
 
-### Remove uppercase descriptions {#remove-uppercase-descriptions}
+### 移除大写描述 {#remove-uppercase-descriptions}
 
-As an alternative to the above, filter out descriptions written in capital letters, but without the square brackets (e.g. "**PLAYFUL MUSIC**"). If your language has additional letters with diacritics, you feel free to add them to this list.
+作为上述方法的替代方案，筛除未使用方括号、但以大写字母书写的描述（例如“**PLAYFUL MUSIC**”）。如果你的语言有带附加符号的字母，也可以将它们添加到此列表。
 
 <details>
-<summary>Use this filter</summary>
+<summary>使用此筛选器</summary>
 
 ```text title="Subtitle regex filter"
 ^[\-\(\)\.\s\p{Lu}]+$
@@ -121,12 +121,12 @@ As an alternative to the above, filter out descriptions written in capital lette
 
 </details>
 
-### Remove music symbols {#remove-music-symbols}
+### 移除音乐符号 {#remove-music-symbols}
 
-Any combination of symbols on their own that represent playing music (e.g. `♪♬♪`)
+移除单独出现、表示正在播放音乐的任意符号组合（例如 `♪♬♪`）。
 
 <details>
-<summary>Use this filter</summary>
+<summary>使用此筛选器</summary>
 
 ```text title="Subtitle regex filter"
 [♪♬#～〜]+
@@ -138,12 +138,12 @@ Any combination of symbols on their own that represent playing music (e.g. `♪�
 
 </details>
 
-### Remove sound effect cues {#remove-sound-effect-cues}
+### 移除音效提示 {#remove-sound-effect-cues}
 
-Remove subtitle cues consisting entirely of a bracketed description or music symbols, such as `[THUNDER RUMBLING]`, `-[GASPS]`, or `♪♬♪`. The `^` and `$` anchors require the entire subtitle text to match, so dialogue such as `Hello [GASPS]` or `♪ Hello ♪` is kept. Leave "Subtitle regex filter text replacement" blank.
+移除完全由方括号描述或音乐符号组成的字幕提示，例如 `[THUNDER RUMBLING]`、`-[GASPS]` 或 `♪♬♪`。`^` 和 `$` 锚点要求整个字幕文本都匹配，因此 `Hello [GASPS]` 或 `♪ Hello ♪` 这样的对话会保留。请将“字幕正则筛选器文本替换”留空。
 
 <details>
-<summary>Use this filter</summary>
+<summary>使用此筛选器</summary>
 
 ```text title="Subtitle regex filter"
 ^-?\[.+\]$|^[♪♬#～〜]+$
@@ -155,12 +155,12 @@ Remove subtitle cues consisting entirely of a bracketed description or music sym
 
 </details>
 
-### Remove left-to-right marks {#remove-left-to-right-marks}
+### 移除从左到右标记 {#remove-left-to-right-marks}
 
-Remove U+200E, the invisible left-to-right mark (LRM). For example, text containing `Hello`, an LRM, and `world` becomes `Helloworld`. Enter the literal escape `\u200E` in the regex field and leave "Subtitle regex filter text replacement" blank.
+移除 U+200E，即不可见的从左到右标记（LRM）。例如，包含 `Hello`、LRM 和 `world` 的文本会变为 `Helloworld`。在正则表达式字段中输入字面转义序列 `\u200E`，并将“字幕正则筛选器文本替换”留空。
 
 <details>
-<summary>Use this filter</summary>
+<summary>使用此筛选器</summary>
 
 ```text title="Subtitle regex filter"
 \u200E
@@ -172,12 +172,12 @@ Remove U+200E, the invisible left-to-right mark (LRM). For example, text contain
 
 </details>
 
-### Remove bidirectional controls {#remove-bidi-controls}
+### 移除双向文本控制字符 {#remove-bidi-controls}
 
-Remove all Unicode bidirectional control characters, including the left-to-right mark (U+200E), right-to-left mark (U+200F), and embedding, override, and isolate controls. Leave "Subtitle regex filter text replacement" blank. These characters can affect the display order of right-to-left or mixed-direction text, so use this filter only when you want to remove them.
+移除所有 Unicode 双向文本控制字符，包括从左到右标记（U+200E）、从右到左标记（U+200F），以及嵌入、覆盖和隔离控制字符。请将“字幕正则筛选器文本替换”留空。这些字符可能影响从右到左或混合方向文本的显示顺序，因此只有在你确实要移除它们时才使用此筛选器。
 
 <details>
-<summary>Use this filter</summary>
+<summary>使用此筛选器</summary>
 
 ```text title="Subtitle regex filter"
 \p{Bidi_Control}
@@ -189,18 +189,18 @@ Remove all Unicode bidirectional control characters, including the left-to-right
 
 </details>
 
-### Combining regexes {#combining-regexes}
+### 组合正则表达式 {#combining-regexes}
 
-Regular expressions can be combined with the character `|` (no spaces needed inbetween). E.g., if you want to use the two regexes from the list above, you can use `-?\[.*\]|[♪♬#～〜]+`. You can combine as many regexes as you wish this way.
+可以使用字符 `|` 组合正则表达式（之间无需空格）。例如，若要使用上面列表中的两个正则表达式，可以输入 `-?\[.*\]|[♪♬#～〜]+`。可以按需组合任意数量的正则表达式。
 
-### Remove parenthesized text and newlines {#remove-parenthesized-text-and-newlines}
+### 移除括号文本和换行符 {#remove-parenthesized-text-and-newlines}
 
-To remove parenthesized text and all newlines together, use:
+要同时移除括号文本和所有换行符，请使用：
 
-Leave "Subtitle regex filter text replacement" blank. For example, `（山田）こんにちは` followed by a newline and `世界` becomes `こんにちは世界`. This removes both ASCII and full-width parentheses and their contents, including Japanese readings, and joins lines without adding spaces. It does not handle nested parentheses; use the [speaker names example](#remove-speaker-names) for those.
+请将“字幕正则筛选器文本替换”留空。例如，`（山田）こんにちは` 后面跟着换行符和 `世界`，结果会变为 `こんにちは世界`。此模式会移除半角和全角括号及其中的内容（包括日语读音），并将各行直接连接，不添加空格。它无法处理嵌套括号；遇到这种情况请使用[说话人姓名示例](#remove-speaker-names)。
 
 <details>
-<summary>Use this filter</summary>
+<summary>使用此筛选器</summary>
 
 ```text title="Subtitle regex filter"
 [\(（][^\)）]*[\)）]|\n
@@ -212,14 +212,14 @@ Leave "Subtitle regex filter text replacement" blank. For example, `（山田）
 
 </details>
 
-### Combine all removal filters {#combine-all-removal-filters}
+### 合并所有移除筛选器 {#combine-all-removal-filters}
 
-To also remove bidi controls, parenthesized speaker names (including nested parentheses), bracketed descriptions, and music symbols, use:
+要同时移除双向文本控制字符、括号中的说话人姓名（包括嵌套括号）、方括号描述和音乐符号，请使用：
 
-Leave "Subtitle regex filter text replacement" blank. This combines the removal examples above and joins lines without adding spaces. It removes Japanese readings too; use the [reading-preserving example](#preserve-japanese-readings) if you want to keep them.
+请将“字幕正则筛选器文本替换”留空。此模式组合了上面的移除示例，并将各行直接连接，不添加空格。它也会移除日语读音；如果要保留读音，请使用[保留日语读音示例](#preserve-japanese-readings)。
 
 <details>
-<summary>Use this filter</summary>
+<summary>使用此筛选器</summary>
 
 ```text title="Subtitle regex filter"
 \p{Bidi_Control}|([\(（]([^\(\)（）]|(([\(（][^\(\)（）]+[\)）])))+[\)）])|-?\[.*\]|[♪♬#～〜]+|\n
@@ -231,14 +231,14 @@ Leave "Subtitle regex filter text replacement" blank. This combines the removal 
 
 </details>
 
-## Invisible characters and blank subtitles {#invisible-characters}
+## 不可见字符和空白字幕 {#invisible-characters}
 
-An apparently empty subtitle can contain invisible characters such as an LRM. asbplayer drops text cues containing only whitespace, control characters, or default-ignorable Unicode characters after parsing and filtering. Direction marks within meaningful text are preserved unless your regex explicitly removes them.
+看似空白的字幕可能包含 LRM 等不可见字符。解析和筛选后，asbplayer 会丢弃只包含空白、控制字符或默认可忽略 Unicode 字符的文本提示。除非正则表达式明确移除方向标记，否则有实际内容的文本中的方向标记会保留。
 
-Invisible characters at the beginning or end of a cue can prevent an anchored pattern such as `^\[.+\]$` from matching. If the pattern does not match, asbplayer retries it without surrounding whitespace and invisible controls, but only drops the cue if that retry leaves no meaningful text. For example, `[THUNDER]` followed by an LRM is removed with this pattern and an empty replacement. The retry preserves the original cue when its replacement would contain meaningful text.
+提示开头或结尾的不可见字符可能会导致 `^\[.+\]$` 这样的锚定模式无法匹配。如果模式不匹配，asbplayer 会移除前后空白和不可见控制字符后重试，但只有重试后不剩有意义的文本时才丢弃提示。例如，`[THUNDER]` 后面跟着 LRM 时，使用此模式和空替换文本即可移除该提示。如果替换结果会留下有意义的文本，重试则会保留原始提示。
 
-When combining an anchored pattern with a bidi-removal alternative, remember that replacements happen in one pass. For example, `^\[.+\]$|\u200E` applied to `[THUNDER]` followed by an LRM removes the LRM, but does not retry the bracketed description afterward. To remove both in the same pass, use the unanchored `\[.+\]|\p{Bidi_Control}` with an empty replacement. This also removes bracketed descriptions within dialogue.
+将锚定模式与移除双向控制字符的分支组合时，请记住替换只会执行一轮。例如，对后接 LRM 的 `[THUNDER]` 使用 `^\[.+\]$|\u200E` 会移除 LRM，但之后不会再次匹配方括号描述。若要在同一轮中移除两者，请使用非锚定模式 `\[.+\]|\p{Bidi_Control}`，并将替换文本留空。此模式也会移除对话中的方括号描述。
 
-## Learn {#learn}
+## 学习 {#learn}
 
-Learn how to write and test custom regular expressions at [Regex Learn - Playground](https://regexlearn.com/playground).
+请在 [Regex Learn - Playground](https://regexlearn.com/playground) 学习如何编写和测试自定义正则表达式。

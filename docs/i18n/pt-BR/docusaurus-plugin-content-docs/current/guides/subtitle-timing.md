@@ -2,27 +2,27 @@
 sidebar_position: 2
 ---
 
-# Subtitle timing {#subtitle-timing}
+# Sincronização de legendas {#subtitle-timing}
 
-Subtitle files will very often not be aligned to the video source you load them into. To work around this, asbplayer provides ways to manually adjust subtitle timing.
+Muitas vezes, os arquivos de legenda não ficam sincronizados com a fonte de vídeo em que são carregados. Para corrigir isso, o asbplayer oferece maneiras de ajustar manualmente a sincronização das legendas.
 
-## Keyboard shortcuts {#keyboard-shortcuts}
+## Atalhos de teclado {#keyboard-shortcuts}
 
-The fastest way to fix subtitle timing is with the [Subtitle offset keyboard shortcuts](../reference/settings.md#subtitle-offset-keyboard-shortcuts). There are two sets of shortcuts for adjusting subtitle offset:
+A maneira mais rápida de corrigir a sincronização das legendas é usar os [atalhos de teclado para atraso das legendas](../reference/settings.md#subtitle-offset-keyboard-shortcuts). Há dois conjuntos de atalhos para ajustar o atraso das legendas:
 
-- `Ctrl + Left/Right` or `Shift + Left/Right`: Align the current timestamp to the left or right subtitle.
-- `Ctrl + Shift + Left/Right`: Move the current timestamp `100ms` to the left or right.
+- `Ctrl + Left/Right` ou `Shift + Left/Right`: alinhe o horário atual à legenda anterior ou seguinte.
+- `Ctrl + Shift + Left/Right`: mova o horário atual `100ms` para trás ou para frente.
 
-Most often, finding the correct offset will look like this:
+Na maioria das vezes, o ajuste do atraso correto é assim:
 
-1. Wait for a character to start talking.
-2. `Ctrl + Left/Right` until the subtitle matching the character's dialog appears on screen.
-3. `Ctrl + Shift + Right/Left` until the subtitle timing precisely matches the dialog.
+1. Espere uma personagem começar a falar.
+2. Pressione `Ctrl + Left/Right` até a legenda correspondente à fala aparecer na tela.
+3. Pressione `Ctrl + Shift + Right/Left` até a legenda ficar perfeitamente sincronizada com a fala.
 
-## Overlay UI {#overlay-ui}
+## Interface sobreposta {#overlay-ui}
 
-The overlay UI provides buttons that perform the same functions as the keyboard shortcuts above.
+A interface sobreposta oferece botões com as mesmas funções dos atalhos de teclado acima.
 
-1. Scroll the rightmost section to the **middle** control.
-2. Click the left or right button to align the left or right subtitle to the current timestamp.
-3. Click and **hold** the left or right button to move the current timestamp `100ms` to the left or right.
+1. Role até o controle **do meio** na seção mais à direita.
+2. Clique no botão esquerdo ou direito para alinhar a legenda anterior ou seguinte ao horário atual.
+3. Clique e **segure** o botão esquerdo ou direito para mover o horário atual `100ms` para trás ou para frente.

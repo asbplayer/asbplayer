@@ -7,15 +7,15 @@ import CodeBlock from '@theme/CodeBlock';
 
 import NoteAddIcon from '@site/src/components/NoteAddIcon';
 
-# Mining subtitles {#mining-subtitles}
+# Minerar legendas {#mining-subtitles}
 
-**Sentence mining** is the act of creating flashcards out of sentences. asbplayer allows you to create high-quality sentence flashcards by combining video, audio, and subtitles into a single card. asbplayer integrates with **Anki**, a popular flashcard application.
+**Mineração de frases** é o processo de criar cartões de memorização a partir de frases. O asbplayer permite criar cartões de frases de alta qualidade combinando vídeo, áudio e legendas em um único cartão. O asbplayer se integra ao **Anki**, um aplicativo popular de cartões de memorização.
 
-## Setup Anki {#setup-anki}
+## Configurar o Anki {#setup-anki}
 
-1. Install [Anki](https://apps.ankiweb.net/).
-2. Add [AnkiConnect](https://ankiweb.net/shared/info/2055492159) to Anki.
-3. If mining from video files, add <code>{appOrigin}</code> to the `webCorsOriginList` in AnkiConnect's settings:
+1. Instale o [Anki](https://apps.ankiweb.net/).
+2. Adicione o [AnkiConnect](https://ankiweb.net/shared/info/2055492159) ao Anki.
+3. Se for minerar a partir de arquivos de vídeo, adicione <code>{appOrigin}</code> a `webCorsOriginList` nas configurações do AnkiConnect:
 
    <CodeBlock language="json">{JSON.stringify({
      apiKey: null,
@@ -26,12 +26,12 @@ import NoteAddIcon from '@site/src/components/NoteAddIcon';
      webCorsOriginList: [appOrigin],
    }, null, 2)}</CodeBlock>
 
-4. Add a **Deck**.
-5. Add a **Note Type**.
-   We encourage you to create your own note type or use a pre-made one. But if you'd like to just get started follow the steps below to create a basic note type:
-   1. Click Tools → Manage Note Types.
-   2. Add a "Basic" note type.
-   3. Configure **Fields**:
+4. Adicione um **baralho**.
+5. Adicione um **tipo de nota**.
+   Recomendamos criar seu próprio tipo de nota ou usar um já pronto. Para começar rapidamente, siga as etapas abaixo para criar um tipo de nota básico:
+   1. Clique em Ferramentas → Gerenciar tipos de nota.
+   2. Adicione um tipo de nota "Básico".
+   3. Configure os **campos**:
       - Sentence
       - Word
       - Definition
@@ -39,12 +39,12 @@ import NoteAddIcon from '@site/src/components/NoteAddIcon';
       - Audio
       - Source
       - URL
-   4. Configure **Card**:
-      - Front:
+   4. Configure o **cartão**:
+      - Frente:
         ```
         {{Sentence}}
         ```
-      - Back:
+      - Verso:
         ```
         {{FrontSide}}
         <hr id=answer>
@@ -61,21 +61,21 @@ import NoteAddIcon from '@site/src/components/NoteAddIcon';
         {{URL}}
         ```
 
-## Configure asbplayer {#configure-asbplayer}
+## Configurar o asbplayer {#configure-asbplayer}
 
-1. Open <a href={new URL('?view=settings', project.urls.app).href}>asbplayer's settings</a>.
-2. Select the **Deck** and **Note Type** you just created.
-3. For each of the **Sentence**, **Definition**, **Word**, **Audio**, **Image**, **Source**, and **URL** fields, select the corresponding field in the note type.
+1. Abra as <a href={new URL('?view=settings', project.urls.app).href}>configurações do asbplayer</a>.
+2. Selecione o **baralho** e o **tipo de nota** que acabou de criar.
+3. Para cada campo — **Sentence**, **Definition**, **Word**, **Audio**, **Image**, **Source** e **URL** — selecione o campo correspondente no tipo de nota.
 
-## Install a dictionary app {#install-a-dictionary-app}
+## Instalar um aplicativo de dicionário {#install-a-dictionary-app}
 
-asbplayer does not have a built-in dictionary. We recommend installing a dictionary app to make it easy to fill out the **Definition** field of cards. Below are a couple popular ones:
+O asbplayer não tem um dicionário integrado. Recomendamos instalar um aplicativo de dicionário para facilitar o preenchimento do campo **Definition** dos cartões. Veja alguns aplicativos populares:
 
-- [Yomitan](https://yomitan.wiki/) is a browser extension that allows you to lookup words by hovering over them. It was originally made for Japanese, but is beginning to support other languages as well.
-- [VocabSieve](https://docs.freelanguagetools.org/) is a standalone language-learning app with support for European languages.
+- [Yomitan](https://yomitan.wiki/) é uma extensão para navegador que permite consultar palavras ao passar o cursor sobre elas. Foi criado originalmente para japonês, mas está começando a oferecer suporte a outros idiomas.
+- [VocabSieve](https://docs.freelanguagetools.org/) é um aplicativo independente para aprender idiomas, com suporte a idiomas europeus.
 
-## Mine subtitles {#mine-subtitles}
+## Minerar legendas {#mine-subtitles}
 
-1. [Load subtitles](./loading-subtitles.md) onto any video source.
-2. Click the **Mine Subtitle** <NoteAddIcon /> button .
-3. Fill out the dialog that appears and click **Export**.
+1. [Carregue legendas](./loading-subtitles.md) em qualquer fonte de vídeo.
+2. Clique no botão **Minerar legenda** <NoteAddIcon />.
+3. Preencha a caixa de diálogo que aparecer e clique em **Exportar**.

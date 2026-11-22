@@ -1,6 +1,6 @@
 ---
 sidebar_position: 1.5
-title: Recipes
+title: 学习方案
 ---
 
 import project from '@site/src/project';
@@ -67,41 +67,41 @@ export const unfamiliarWordRepeatSettings = {
   subtitleTriggerEndOffset: 0,
 };
 
-# Recipes
+# 学习方案
 
-Recipes combine playback modes and playback settings so you can switch between learning activities. Choose a recipe in **Settings > Playback**, beside the playback modes in the player controls, or in the mobile overlay. Choose **Disabled** to return to your underlying settings. Your saved playback settings, remembered playback rate, and remembered modes are preserved while a recipe is active.
+学习方案将播放模式和播放设置组合在一起，方便你在不同学习活动之间切换。可以在**设置 > 播放**、播放器控制栏的播放模式旁，或移动端悬浮界面中选择方案。选择**已禁用**可恢复到底层设置。方案启用期间，你保存的播放设置、记忆的播放速度和记忆的播放模式都会保留。
 
-## Create and edit a recipe
+## 创建和编辑方案
 
-Select **Edit Recipe** in the Playback tab. If a recipe is selected, you start with that recipe; otherwise you start with your current playback settings. Choose the playback modes and change the settings you want to include. These changes stay in a draft and do not affect playback until saved.
+在“播放”选项卡中选择**编辑方案**。如果已选中方案，就从该方案开始编辑；否则从当前播放设置开始。选择播放模式并修改要包含的设置。这些修改会保留在草稿中，保存后才会影响播放。
 
-Select **Save Recipe** to review the settings and enter a name of up to 100 characters. You can remove individual settings from the preview; omitted settings use your underlying settings. Playback modes are always specified as a complete combination.
+选择**保存方案**以检查设置并输入名称，最多 100 个字符。你可以在预览中移除单项设置；未包含的设置会使用底层设置。播放模式始终以完整组合的形式指定。
 
-When editing an existing recipe, leaving its name untouched updates it. Typing in the name field creates a new recipe, even if you return to the original name. Select **Cancel** to discard the draft.
+编辑现有方案时，保留原名称即可更新该方案。在名称字段中输入内容会创建新方案，即使之后将名称改回原来的名称也是如此。选择**取消**可丢弃草稿。
 
-## Import and share
+## 导入和分享
 
-Select **Import Recipe**, paste the recipe's JSON, review its settings, and confirm. You can change its name and remove settings before importing. Imported recipes are appended to your list and selected. Unknown settings and invalid setting values are ignored. The name and playback modes must be valid.
+选择**导入方案**，粘贴方案的 JSON，检查设置并确认。导入前可以更改名称和移除设置。导入的方案会添加到列表末尾并自动选中。未知设置和无效的设置值会被忽略。名称和播放模式必须有效。
 
-You can also open an import link. It opens the web app with the Playback tab and import preview ready; the recipe takes effect after you confirm the import.
+你也可以打开导入链接。链接会打开 Web 应用，并显示“播放”选项卡和导入预览；确认导入后方案才会生效。
 
-Open a recipe's preview icon in the dropdown to copy its JSON or share its import URL. The same preview lets you delete the recipe with confirmation. Move recipes with the up/down buttons or drag them in the dropdown. Selection follows a recipe when it moves; deleting the selected recipe disables recipes.
+点击下拉菜单中方案旁的预览图标，可以复制其 JSON 或分享导入 URL。在同一预览中也可以确认后删除方案。使用上下按钮或在下拉菜单中拖动即可移动方案。方案移动后仍会保持选中；删除当前选中的方案会禁用所有方案。
 
-## Keyboard shortcuts
+## 键盘快捷键
 
-Configure **Cycle through recipes forward**, **Cycle through recipes backwards**, and **Toggle recipe #1** through **#10** under **Keyboard Shortcuts > Playback**. Toggling the active recipe disables recipes. Cycling follows the list order and includes **Disabled**. Playback setting and mode shortcuts show a notification while a recipe is active; edit or disable the recipe to change those settings.
+在**键盘快捷键 > 播放**中配置**向前循环切换方案**、**向后循环切换方案**和**切换方案 #1** 至 **#10**。切换当前方案会禁用所有方案。循环顺序与列表一致，并包含**已禁用**。方案启用时，播放设置和播放模式快捷键会显示通知；要更改这些设置，请编辑或禁用方案。
 
-## Common recipes
+## 常用方案
 
-These contain some useful preset recipes for common learning activities. If you have any that you want to share or need a missing feature to create the perfect recipe, you can request them on <a href={project.urls.discord}>Discord</a> or on <a href={`${project.urls.repo}/issues/new/choose`}>GitHub</a>.
+以下是适用于常见学习活动的一些实用预设方案。如果你有想分享的方案，或需要某项功能来创建理想方案，可以在 <a href={project.urls.discord}>Discord</a> 或 <a href={`${project.urls.repo}/issues/new/choose`}>GitHub</a> 上提出。
 
-### Normal mode
+### 正常模式
 
-Use your usual playback settings without an automatic learning mode. We recommend keeping your non-recipe settings as plain as possible so that `Disabled` maps to normal playback behavior.
+使用常规播放设置，不启用自动学习模式。建议尽量简化方案之外的设置，这样 `Disabled` 就对应正常播放行为。
 
-### Dialogue focus
+### 对话专注
 
-Focus on dialogue by combining condensed playback with fast-forward. Skip gaps using a 5-second minimum skip interval and fast-forward remaining qualifying gaps at 3× with a 1-second minimum interval. Keep 150 ms of context on either side of each gap, with dialogue at your underlying playback speed.
+结合紧凑模式和快进模式来专注于对话。以 5 秒为最小跳过间隔跳过空白，并以 3× 倍速快进其余符合条件的空白，最小间隔为 1 秒。每段空白前后各保留 150 ms 的上下文，对话则按底层播放速度播放。
 
 <RecipePreset
   recipe={{
@@ -113,9 +113,9 @@ Focus on dialogue by combining condensed playback with fast-forward. Skip gaps u
   }}
 />
 
-### Gap fast-forward
+### 空白快进
 
-Watch the entire video while fast-forwarding qualifying gaps at 3× with a 1-second minimum interval. Keep 150 ms of context on either side of each gap, with dialogue at your underlying playback speed.
+完整观看视频，同时以 3× 倍速快进符合条件的空白，最小间隔为 1 秒。每段空白前后各保留 150 ms 的上下文，对话则按底层播放速度播放。
 
 <RecipePreset
   recipe={{
@@ -127,9 +127,9 @@ Watch the entire video while fast-forwarding qualifying gaps at 3× with a 1-sec
   }}
 />
 
-### Reading mode
+### 阅读模式
 
-Pause at the start of each subtitle to read and look up words, then resume manually to hear the audio with subtitles visible. Hovering over subtitles during playback also pauses the video; moving away resumes it.
+在每条字幕开始时暂停，以便阅读和查词；然后手动继续播放，在字幕可见时听音频。播放期间将鼠标悬停在字幕上也会暂停视频；移开鼠标后恢复播放。
 
 <RecipePreset
   gapVariants
@@ -148,9 +148,9 @@ Pause at the start of each subtitle to read and look up words, then resume manua
   }}
 />
 
-### Listening mode
+### 听力模式
 
-Listen without subtitles, then pause automatically at the end of each subtitle to reveal the text and check your understanding. Resume manually when ready.
+不显示字幕进行聆听，然后在每条字幕结束时自动暂停并显示文本，以检查理解情况。准备好后手动继续播放。
 
 <RecipePreset
   gapVariants
@@ -168,9 +168,9 @@ Listen without subtitles, then pause automatically at the end of each subtitle t
   }}
 />
 
-### Audio only
+### 仅音频
 
-Listen continuously with subtitles hidden during playback. Manually pause to reveal the current subtitle when you need help.
+连续聆听，播放时隐藏字幕。需要帮助时手动暂停，即可显示当前字幕。
 
 <RecipePreset
   gapVariants
@@ -184,9 +184,9 @@ Listen continuously with subtitles hidden during playback. Manually pause to rev
   }}
 />
 
-### Intensive listening
+### 精听
 
-Listen to each subtitle three times, with a 1-second pause after each pass. Subtitles stay hidden for the first two passes and appear on the final replay to check your understanding. Playback resumes automatically after each pause, customize the 1s pause duration as needed.
+每条字幕听三遍，每遍结束后暂停 1 秒。前两遍隐藏字幕，最后一遍重播时显示字幕，以检查理解情况。每次暂停后都会自动继续播放；可按需调整 1 秒的暂停时长。
 
 <RecipePreset
   gapVariants
@@ -208,11 +208,11 @@ Listen to each subtitle three times, with a 1-second pause after each pass. Subt
   }}
 />
 
-### Primed listening
+### 预读听力
 
-Pause at the start of each subtitle to read it in your native language, let it disappear, then listen to the audio without subtitles. Reading time is 80 ms per character, with a minimum of 1 second and a maximum of 6 seconds. After the text disappears, playback stays paused for another 500 ms before resuming automatically. You can adjust these timings when editing the recipe.
+在每条字幕开始时暂停，用母语阅读字幕；字幕消失后，再不看字幕聆听音频。阅读时间按每个字符 80 ms 计算，最短 1 秒，最长 6 秒。文本消失后还会继续暂停 500 ms，然后自动恢复播放。编辑方案时可以调整这些时间。
 
-Choose the tracks used to calculate reading time under **Subtitle tracks affected by playback modes and keyboard shortcuts**.
+在**受播放模式和键盘快捷键影响的字幕轨道**中选择用于计算阅读时间的轨道。
 
 <RecipePreset
   gapVariants
@@ -234,9 +234,9 @@ Choose the tracks used to calculate reading time under **Subtitle tracks affecte
   }}
 />
 
-### Read aloud
+### 朗读
 
-Read each subtitle aloud before hearing the original audio, then compare your pronunciation and rhythm. Playback pauses at the start with subtitles visible and resumes automatically after 80 ms per character, bounded to 1–6 seconds. Each subtitle repeats once. Adjust the pause timings to give yourself enough speaking time.
+先大声读出每条字幕，再听原始音频，对比自己的发音和节奏。播放会在字幕开始时暂停并显示字幕，然后按每个字符 80 ms 自动恢复，时长限制在 1–6 秒。每条字幕重复一次。调整暂停时间，为自己留出足够的朗读时间。
 
 <RecipePreset
   gapVariants
@@ -260,9 +260,9 @@ Read each subtitle aloud before hearing the original audio, then compare your pr
   }}
 />
 
-### Shadowing
+### 跟读
 
-Speak alongside or slightly behind the original audio, matching its rhythm and pronunciation with subtitles visible. Each subtitle repeats once, with a 1-second pause at the end of each pass before playback resumes automatically.
+字幕可见时，跟随原始音频或稍微滞后地朗读，模仿其节奏和发音。每条字幕重复一次，每遍结束后暂停 1 秒，再自动继续播放。
 
 <RecipePreset
   gapVariants
@@ -284,9 +284,9 @@ Speak alongside or slightly behind the original audio, matching its rhythm and p
   }}
 />
 
-### Recall
+### 回忆
 
-Listen to the audio, then reproduce the line aloud from memory during the automatic pause at its end. Subtitles stay hidden during playback and automatic pauses. Speaking time is 80 ms per character, bounded to 1–6 seconds, and each subtitle repeats once. Adjust the pause timings as needed; manually pause during a replay to reveal the text when you need help.
+聆听音频，然后在句末自动暂停时凭记忆大声复述。播放和自动暂停期间都会隐藏字幕。朗读时间按每个字符 80 ms 计算，限制在 1–6 秒；每条字幕重复一次。按需调整暂停时间；需要帮助时，可在重播期间手动暂停以显示文本。
 
 <RecipePreset
   gapVariants
@@ -309,15 +309,15 @@ Listen to the audio, then reproduce the line aloud from memory during the automa
   }}
 />
 
-## Annotation Recipes
+## 字幕词汇标注方案
 
-These presets require [Annotation](./annotation.md) to be enabled as they use its data. If you have any that you want to share or need a missing feature to create the perfect recipe, you can request them on <a href={project.urls.discord}>Discord</a> or on <a href={`${project.urls.repo}/issues/new/choose`}>GitHub</a>.
+这些预设会使用[字幕词汇标注](./annotation.md)数据，因此需要先启用该功能。如果你有想分享的方案，或需要某项功能来创建理想方案，可以在 <a href={project.urls.discord}>Discord</a> 或 <a href={`${project.urls.repo}/issues/new/choose`}>GitHub</a> 上提出。
 
-Load your target-language subtitles as **Track 1**. These presets use that track for playback and word selection. **Unfamiliar** means **Uncollected** or **Unknown**. Other annotation display preferences, such as readings and colors, use your underlying settings.
+将目标语言字幕加载为**轨道 1**。这些预设会使用该轨道进行播放和单词选择。**不熟悉**指**未收集**或**未知**。其他标注显示偏好（例如读音和颜色）使用底层设置。
 
-### Unfamiliar-word rescue
+### 生词补救
 
-Watch with subtitles visible. When a line contains an unfamiliar word, pause for 1 second at its end, then replay it once. Other lines continue uninterrupted. The first unfamiliar word is selected during the pause for lookup. Adjust the pause duration if you need more time.
+观看时显示字幕。含有不熟悉单词的字幕会在末尾暂停 1 秒，然后重播一次。其他字幕会连续播放。暂停期间会选中第一个不熟悉的单词，供你查询。如果需要更多时间，可以调整暂停时长。
 
 <RecipePreset
   gapVariants
@@ -334,11 +334,11 @@ Watch with subtitles visible. When a line contains an unfamiliar word, pause for
   }}
 />
 
-### i+1 mining
+### i+1 挖掘
 
-Focus on subtitles containing exactly one Uncollected token. Condensed playback skips between qualifying lines, and playback pauses at each line's end until you resume manually, selecting the Uncollected token for inspection or mining.
+专注于恰好包含一个未收集词元的字幕。紧凑模式会在符合条件的字幕之间跳过空白，并在每条字幕结束时暂停，直到你手动继续播放；同时选中该未收集词元，供你查看或挖掘。
 
-This finds i+1 candidates rather than guaranteeing that every other word is known: a line can also contain Unknown words, and repeated occurrences of the same Uncollected word count separately. Mining remains a manual action.
+此方案用于寻找 i+1 候选句，并不保证其他所有单词都已知：同一条字幕也可能包含未知单词，同一个未收集单词的重复出现会分别计数。挖掘仍需手动操作。
 
 <RecipePreset
   recipe={{
@@ -362,9 +362,9 @@ This finds i+1 candidates rather than guaranteeing that every other word is know
   }}
 />
 
-### Unfamiliar-word hints
+### 生词提示
 
-Listen with unfamiliar words visible and familiar words hidden. Lines containing unfamiliar words pause for 1 second at their end, revealing the full text, then replay once with the hints restored. The first unfamiliar word is selected during the pause for lookup. Lines with no unfamiliar words have no caption when fully tokenized.
+聆听时显示不熟悉的单词并隐藏熟悉的单词。含有不熟悉单词的字幕会在末尾暂停 1 秒并显示完整文本，然后恢复提示并重播一次。暂停期间会选中第一个不熟悉的单词，供你查询。完成分词后，不含不熟悉单词的字幕不会显示字幕文本。
 
 <RecipePreset
   gapVariants
@@ -386,9 +386,9 @@ Listen with unfamiliar words visible and familiar words hidden. Lines containing
   }}
 />
 
-### Unfamiliar-word cloze
+### 生词填空
 
-Read the familiar parts of each subtitle while unfamiliar words remain hidden, and try supplying the missing words from the audio and context. Lines containing unfamiliar words pause for 1 second at their end to reveal the full text, then replay once with the gaps restored. Ignored words remain visible.
+阅读每条字幕中熟悉的部分，同时根据音频和上下文尝试补出隐藏的不熟悉单词。含有不熟悉单词的字幕会在末尾暂停 1 秒并显示完整文本，然后恢复填空效果并重播一次。已忽略的单词仍会显示。
 
 <RecipePreset
   gapVariants
@@ -410,11 +410,11 @@ Read the familiar parts of each subtitle while unfamiliar words remain hidden, a
   }}
 />
 
-### Adaptive listening pace
+### 自适应听力速度
 
-Play dialogue at 1× when its estimated comprehension is 60% or lower, increasing gradually to 1.8× at 100%. Condensed playback skips gaps using a 1-second minimum interval, keeping 150 ms of context on either side. Qualifying gaps that remain play at 1.8×.
+对话的全文理解度估算不高于 60% 时以 1× 倍速播放，估算升至 100% 时逐渐加速至 1.8×。紧凑模式以 1 秒为最小间隔跳过空白，并在空白前后各保留 150 ms 的上下文。其余符合条件的空白以 1.8× 倍速播放。
 
-Adjust the base and fast-forward speeds when editing the recipe, keeping the fast-forward speed higher than the base speed.
+编辑方案时可以调整基础速度和快进速度，但快进速度应高于基础速度。
 
 <RecipePreset
   recipe={{

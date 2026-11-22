@@ -4,15 +4,15 @@ sidebar_position: 9.5
 
 import project from '@site/src/project';
 
-# External extensions {#external-extensions}
+# 外部扩展 {#external-extensions}
 
-As of v1.23, asbplayer exposes a way for other browser extensions to communicate with it. Any extension that connects to asbplayer via [browser.runtime.connect](https://developer.chrome.com/docs/extensions/reference/api/runtime#method-connect), and receives user approval, can issue [commands](../reference/external-api.md) through the connection.
+从 v1.23 开始，asbplayer 提供了与其他浏览器扩展通信的方式。任何通过 [browser.runtime.connect](https://developer.chrome.com/docs/extensions/reference/api/runtime#method-connect) 连接到 asbplayer 并获得用户批准的扩展，都可以通过连接发送[命令](../reference/external-api.md)。
 
-A template implementation of an extension that integrates with asbplayer in this way is provided <a href={`${project.urls.externalExtensionTemplateRepo}`}>here</a>.
+<a href={`${project.urls.externalExtensionTemplateRepo}`}>此处</a>提供了一个以这种方式与 asbplayer 集成的扩展示例模板。
 
-## Connecting and obtaining user approval
+## 连接并取得用户批准
 
-Any extension wishing to communicate with asbplayer must first connect using code like below. asbplayer's extension ID can be obtained from the browser's extension manager (on Chrome `chrome://extensions`, on Firefox `about:addons`).
+希望与 asbplayer 通信的扩展必须先使用类似以下代码建立连接。可以在浏览器的扩展管理器中查看 asbplayer 的扩展 ID（Chrome 中为 `chrome://extensions`，Firefox 中为 `about:addons`）。
 
 ```typescript
 const port = browser.runtime.connect(<asbplayer extension ID>, {
@@ -20,7 +20,7 @@ const port = browser.runtime.connect(<asbplayer extension ID>, {
 });
 ```
 
-Request approval with `initialize`, which answers immediately with the current state.
+使用 `initialize` 请求批准，该方法会立即返回当前状态。
 
 ```typescript
 port.postMessage({
@@ -34,7 +34,7 @@ port.postMessage({
 });
 ```
 
-If the extension is not approved, asbplayer registers the connection as pending, prompts the user, and responds:
+如果扩展尚未获批，asbplayer 会将连接登记为待处理、提示用户，并返回：
 
 ```json
 {
@@ -44,7 +44,7 @@ If the extension is not approved, asbplayer registers the connection as pending,
 }
 ```
 
-Poll `approval-state` to see if the user has approved the connection request.
+轮询 `approval-state`，查看用户是否已批准连接请求。
 
 ```json
 {
@@ -55,9 +55,9 @@ Poll `approval-state` to see if the user has approved the connection request.
 }
 ```
 
-Once approved, `approval-state` will return `{ "state": "approved" }` and the connection can issue commands. If denied, `approval-state` returns `{ "state": "denied" }` once. asbplayer then closes the port. Once denied, the requesting extension cannot request approval for 24 hours.
+获批后，`approval-state` 会返回 `{ "state": "approved" }`，连接即可发送命令。如果请求被拒绝，`approval-state` 会返回一次 `{ "state": "denied" }`，随后 asbplayer 会关闭端口。请求被拒绝后，该扩展在 24 小时内不能再次请求批准。
 
-Commands can be issued as [documented](../reference/external-api.md). For example:
+可以按[文档说明](../reference/external-api.md)发送命令。例如：
 
 ```typescript
 port.postMessage({
@@ -68,4 +68,4 @@ port.postMessage({
 });
 ```
 
-asbplayer answers with `{ jsonrpc, id, result }` on success or `{ jsonrpc, id, error }` on failure.
+成功时，asbplayer 会返回 `{ jsonrpc, id, result }`；失败时则返回 `{ jsonrpc, id, error }`。
