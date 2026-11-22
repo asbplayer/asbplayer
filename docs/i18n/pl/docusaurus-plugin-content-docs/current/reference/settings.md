@@ -6,439 +6,439 @@ import project from '@site/src/project';
 
 import NoteAddIcon from '@site/src/components/NoteAddIcon';
 
-# Settings {#settings}
+# Ustawienia {#settings}
 
 ## <a href={new URL('?view=settings#anki-settings', project.urls.app).href}>Anki</a> {#anki}
 
-### AnkiConnect URL {#ankiconnect-url}
+### URL AnkiConnect {#ankiconnect-url}
 
-URL to the AnkiConnect server running as on addon inside Anki.
+Adres URL serwera AnkiConnect działającego jako dodatek w Anki.
 
-### AnkiConnect API Key {#ankiconnect-api-key}
+### Klucz API AnkiConnect {#ankiconnect-api-key}
 
-API key configured in AnkiConnect when API key protection is enabled.
+Klucz API skonfigurowany w AnkiConnect, gdy włączono ochronę kluczem API.
 
-### Refresh Anki Card Browser after updating cards {#refresh-anki-card-browser}
+### Odświeżanie przeglądarki kart Anki po ich aktualizacji {#refresh-anki-card-browser}
 
-When enabled, refreshes the open Anki Card Browser after asbplayer updates a card so that its fields display their current values. This may bring the Card Browser window to the foreground. This setting is disabled by default.
+Po włączeniu tej opcji otwarta przeglądarka kart Anki zostaje odświeżona po aktualizacji karty przez asbplayera, dzięki czemu pola wyświetlają aktualne wartości. Okno przeglądarki kart może zostać przeniesione na pierwszy plan. Domyślnie ta opcja jest wyłączona.
 
-### Deck {#deck}
+### Talia {#deck}
 
-Anki deck where cards are sent.
+Talia Anki, do której są wysyłane karty.
 
-### Note Type {#note-type}
+### Typ notatki {#note-type}
 
-Anki note type to use for cards. A note type defines a "model" and a "view" for the cards. More specifically, a set of card fields, and an HTML template that determines how to render those fields on the card's front and back.
+Typ notatki Anki używany dla kart. Określa on „model” i „widok” kart, a dokładniej zestaw pól oraz szablon HTML decydujący o sposobie wyświetlania tych pól na przodzie i odwrocie karty.
 
-### Card Fields {#card-fields}
+### Pola karty {#card-fields}
 
-Each card field setting determines what content gets mapped to which field of the configured note type. The **field label** - Sentence, Definition, Word, Image, Audio, or URL - is the **content** - and the **field value** is the **field inside the note type**.
+Każde ustawienie pola karty określa, jaka treść trafia do danego pola skonfigurowanego typu notatki. **Etykieta pola** — Zdanie, Definicja, Słowo, Obraz, Dźwięk lub URL — oznacza **treść**, a **wartość pola** to **pole w typie notatki**.
 
-Fields will appear in the **Anki Export Dialog** in the order that they appear in the settings. The order can be changed using the **⋮ menu** → **Move Down** or **Move Up**.
+Pola pojawią się w **oknie dialogowym Eksport Anki** w takiej kolejności, w jakiej występują w ustawieniach. Możesz zmienić ich kolejność za pomocą **menu ⋮** → **Przenieś w dół** lub **Przenieś w górę**.
 
-| Field                 | Content                                            |
+| Pole                  | Zawartość                                          |
 | --------------------- | -------------------------------------------------- |
-| Sentence (all tracks) | All subtitles at the mined timestamp               |
-| Definition            | The user-provided word definition                  |
-| Word                  | The user-provided word                             |
-| Audio                 | Audio recorded from video source                   |
-| Image                 | Screenshot of video source                         |
-| Source                | Subtitle file or video name and timestamp          |
-| URL                   | Current URL if card was mined from streaming video |
-| Subtitle Track 1      | Subtitles from track 1 at the mined timestamp      |
-| Subtitle Track 2      | Subtitles from track 2 at the mined timestamp      |
-| Subtitle Track 3      | Subtitles from track 3 at the mined timestamp      |
-| Custom Fields         | User-provided values                               |
+| Zdanie (wszystkie ścieżki) | Wszystkie napisy z chwili kopania fiszki       |
+| Definicja             | Definicja słowa podana przez użytkownika            |
+| Słowo                 | Słowo podane przez użytkownika                     |
+| Dźwięk                | Dźwięk nagrany ze źródła wideo                     |
+| Obraz                 | Zrzut ekranu ze źródła wideo                       |
+| Źródło                | Plik z napisami lub nazwa i znacznik czasu wideo   |
+| URL                   | Bieżący URL, jeśli fiszka pochodzi z wideo strumieniowego |
+| Ścieżka napisów 1     | Napisy ze ścieżki 1 z chwili kopania fiszki      |
+| Ścieżka napisów 2     | Napisy ze ścieżki 2 z chwili kopania fiszki      |
+| Ścieżka napisów 3     | Napisy ze ścieżki 3 z chwili kopania fiszki      |
+| Pola niestandardowe   | Wartości podane przez użytkownika                  |
 
-### Tags {#tags}
+### Tagi {#tags}
 
-Default tags to supply with each card.
+Domyślne tagi dodawane do każdej karty.
 
-## <a href={new URL('?view=settings#mining-settings', project.urls.app).href}>Mining</a> {#mining}
+## <a href={new URL('?view=settings#mining-settings', project.urls.app).href}>Kopanie</a> {#mining}
 
-### Mining button default action {#mining-button-default-action}
+### Domyślna czynność przycisku kopania {#mining-button-default-action}
 
-"Mining button" <NoteAddIcon/> refers to the leftmost button that appears in the **Overlay UI**, and the button that appears next to subtitles in the **Subtitle List**. This setting configures what those buttons do.
+„Przycisk kopania fiszki” <NoteAddIcon/> oznacza skrajny lewy przycisk w **nakładce sterowania** oraz przycisk obok napisów na **liście napisów**. To ustawienie określa działanie tych przycisków.
 
-| Setting                 | Behavior                                                                                                                                                                                               |
+| Ustawienie             | Działanie                                                                                                                                                                                               |
 | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Show Anki dialog        | Record target subtitle in mining history and show **Anki Export Dialog**                                                                                                                               |
-| Update last card        | Record target subtitle in mining history and update the last card in the configured deck with all asbplayer-provided context - all fields except the user-provided definition, word, and custom fields |
-| Show update card dialog | Record target subtitle in mining history and show the dialog for updating the last card with asbplayer-provided context                                                                                |
-| Export card             | Record target subtitle in mining history and export a card _only_ with asbplayer-provided context - all fields except the user-provided definition, word, and custom fields                            |
-| None                    | Record target subtitle in mining history                                                                                                                                                               |
+| Pokaż okno Anki        | Zapisz wybrany napis w historii kopania i wyświetl **okno dialogowe Eksport Anki**                                                                                                                               |
+| Zaktualizuj ostatnią kartę | Zapisz wybrany napis w historii i uzupełnij ostatnią kartę w wybranej talii o kontekst z asbplayera — wszystkie pola poza definicją, słowem i polami niestandardowymi podanymi przez użytkownika |
+| Pokaż okno aktualizacji karty | Zapisz wybrany napis w historii i wyświetl okno aktualizacji ostatniej karty o kontekst z asbplayera                                                                                |
+| Eksportuj kartę         | Zapisz wybrany napis w historii i wyeksportuj kartę _tylko_ z kontekstem asbplayera — wszystkimi polami poza definicją, słowem i polami niestandardowymi podanymi przez użytkownika                            |
+| Brak                   | Zapisz wybrany napis w historii kopania                                                                                                                                                               |
 
-### Post-mining playback state {#post-mining-playback-state}
+### Stan odtwarzania po utworzeniu fiszki {#post-mining-playback-state}
 
-Configures the desired playback state after triggering a mining action.
+Określa żądany stan odtwarzania po uruchomieniu czynności kopania.
 
-### Copy mined subtitles to clipboard {#copy-mined-subtitles-to-clipboard}
+### Kopiowanie napisów do schowka podczas kopania {#copy-mined-subtitles-to-clipboard}
 
-If enabled, copies the target subtitle to clipboard anytime mining action is triggered.
+Po włączeniu tej opcji wybrany napis jest kopiowany do schowka przy każdym uruchomieniu czynności kopania.
 
-### Always use subtitle text for sentence field {#always-use-subtitle-text-for-sentence-field}
+### Zawsze używaj tekstu napisów w polu zdania {#always-use-subtitle-text-for-sentence-field}
 
-When enabled, fills the Sentence field with the mined subtitle text from all tracks, even if an external application supplies different sentence text. This is useful when [mining with Yomitan](../guides/one-click-mining.md).
+Po włączeniu tej opcji pole Zdanie jest wypełniane tekstem napisu ze wszystkich ścieżek, z którego tworzysz fiszkę, nawet jeśli aplikacja zewnętrzna dostarczy inny tekst zdania. Przydaje się to podczas [kopania z Yomitanem](../guides/one-click-mining.md).
 
-### When updating last card, also update image/audio for cards that have the same subtitle text" {#update-all-cards-with-the-same-subtitle-text}
+### Przy aktualizacji ostatniej karty aktualizuj też obraz i dźwięk kart z tym samym tekstem napisu {#update-all-cards-with-the-same-subtitle-text}
 
-When enabled, the **Update last card** mining action also updates the audio and image fields on consecutively created notes from the same subtitle line. Each preceding note keeps its sentence, word, definition, and custom fields. Matching ignores sentence markup and allows the sentence to be part of the mined subtitle context.
+Po włączeniu tej opcji czynność **Zaktualizuj ostatnią kartę** aktualizuje również pola dźwięku i obrazu w kolejnych notatkach utworzonych na podstawie tego samego wiersza napisów. Każda wcześniejsza notatka zachowuje swoje zdanie, słowo, definicję i pola niestandardowe. Podczas dopasowywania pomijane jest formatowanie zdania, a samo zdanie może stanowić część kontekstu napisu użytego do ukopania fiszki.
 
-The search includes notes added within the last two Anki days and stops at the first different or missing sentence. A sentence field must be configured. This setting is disabled by default and does not affect updates to a specifically selected card.
+Wyszukiwanie obejmuje notatki dodane w ciągu ostatnich dwóch dni Anki i kończy się na pierwszym innym lub brakującym zdaniu. Pole zdania musi być skonfigurowane. Domyślnie ta opcja jest wyłączona i nie wpływa na aktualizację konkretnej, wybranej karty.
 
-### Play audio while recording from local video {#play-audio-while-recording-from-local-video}
+### Odtwarzaj dźwięk podczas nagrywania z lokalnego wideo {#play-audio-while-recording-from-local-video}
 
-asbplayer uses the browser's built-in [MediaRecorder](https://developer.mozilla.org/ja/docs/Web/API/MediaRecorder) API to record audio from local video files. This setting configures whether sound should play during recording.
+asbplayer używa wbudowanego w przeglądarkę interfejsu API [MediaRecorder](https://developer.mozilla.org/ja/docs/Web/API/MediaRecorder) do nagrywania dźwięku z lokalnych plików wideo. To ustawienie określa, czy dźwięk ma być odtwarzany podczas nagrywania.
 
-### Re-encode audio as mp3 {#re-encode-audio-as-mp3}
+### Ponownie koduj dźwięk do formatu mp3 {#re-encode-audio-as-mp3}
 
-Recorded audio is not encoded as an `mp3` by default. This setting will cause audio to be re-encoded as an `mp3`. In general there's no reason to turn this setting off, especially for users who want to review their cards on iOS.
+Domyślnie nagrany dźwięk nie jest kodowany jako `mp3`. To ustawienie powoduje ponowne zakodowanie dźwięku do formatu `mp3`. Zwykle nie ma powodu, aby je wyłączać, zwłaszcza jeśli chcesz przeglądać karty na iOS.
 
-### Audio padding start {#audio-padding-start}
+### Początkowy margines dźwięku {#audio-padding-start}
 
-How many milliseconds **before** the target subtitle to start recording audio.
+Ile milisekund **przed** wybranym napisem należy rozpocząć nagrywanie dźwięku.
 
-### Audio padding end {#audio-padding-end}
+### Końcowy margines dźwięku {#audio-padding-end}
 
-How many milliseconds **after** the target subtitle to stop recording audio.
+Ile milisekund **po** wybranym napisie należy zakończyć nagrywanie dźwięku.
 
-### Image capture format (website only) {#image-capture-format}
+### Format przechwytywanego obrazu (tylko strona) {#image-capture-format}
 
-Specifies the image capture format for mined cards. Only available on the website for local video files where the only additional option is "video clip."
+Określa format obrazu przechwytywanego do tworzonych fiszek. Dostępne tylko na stronie dla lokalnych plików wideo. Jedyną dodatkową opcją jest „klip wideo”.
 
-### Max capture width/height {#max-capture-dimensions}
+### Maksymalna szerokość/wysokość przechwytywania {#max-capture-dimensions}
 
-Max width/height in pixels of screenshots. `0` means "no limit."
+Maksymalna szerokość i wysokość zrzutów ekranu w pikselach. `0` oznacza „bez limitu”.
 
-### Trim black bars from screenshots {#trim-black-bars-from-screenshots}
+### Przycinaj czarne pasy na zrzutach ekranu {#trim-black-bars-from-screenshots}
 
-When enabled, trims black bars due to letterboxing from screenshots.
+Po włączeniu tej opcji zrzuty ekranu są przycinane, aby usunąć czarne pasy dodane przy letterboxingu.
 
-### Clip trim start/end {#clip-trim-start-end}
+### Przycinanie początku/końca klipu {#clip-trim-start-end}
 
-Specifies how much time to trim off the start and end of a subtitle's time interval when determining the default time interval for the video clip. Only available when the video clip image capture format is selected.
+Określa, ile czasu odjąć od początku i końca przedziału czasowego napisu przy ustalaniu domyślnego czasu trwania klipu wideo. Dostępne tylko po wybraniu klipu wideo jako formatu przechwytywanego obrazu.
 
-### Max clip length {#max-clip-length}
+### Maksymalna długość klipu {#max-clip-length}
 
-Specifies the max video clip length. Only available when video clip image capture format is selected.
+Określa maksymalną długość klipu wideo. Dostępne tylko po wybraniu klipu wideo jako formatu przechwytywanego obrazu.
 
-### Screenshot capture delay {#screenshot-capture-delay}
+### Opóźnienie wykonywania zrzutu ekranu {#screenshot-capture-delay}
 
-How long to wait after the target subtitle appears before taking the screenshot.
+Jak długo odczekać od pojawienia się wybranego napisu do wykonania zrzutu ekranu.
 
-### Surrounding subtitles count radius {#surrounding-subtitles-count-radius}
+### Promień liczby sąsiednich napisów {#surrounding-subtitles-count-radius}
 
-At the bottom of **Anki Export Dialog** there's a slider which can be used to adjust the selected time interval. The slider includes surrounding subtitles as additional context. This setting controls limits the number of those surrounding subtitles.
+U dołu **okna eksportu Anki** znajduje się suwak do zmiany wybranego przedziału czasu. Suwak uwzględnia sąsiednie napisy jako dodatkowy kontekst. To ustawienie określa maksymalną liczbę tych napisów.
 
-### Surrounding subtitles time radius {#surrounding-subtitles-time-radius}
+### Promień czasu sąsiednich napisów {#surrounding-subtitles-time-radius}
 
-At the bottom of **Anki Export Dialog** there's a slider which can be used to adjust the selected time interval. The slider includes surrounding subtitles as additional context. This setting controls the size of the allowed time interval around the target subtitle, for those surrounding subtitles.
+U dołu **okna eksportu Anki** znajduje się suwak do zmiany wybranego przedziału czasu. Suwak uwzględnia sąsiednie napisy jako dodatkowy kontekst. To ustawienie określa dopuszczalny przedział czasu wokół wybranego napisu dla tych napisów.
 
-## <a href={new URL('?view=settings#subtitle-appearance', project.urls.app).href}>Subtitle appearance</a> {#subtitle-appearance}
+## <a href={new URL('?view=settings#subtitle-appearance', project.urls.app).href}>Wygląd napisów</a> {#subtitle-appearance}
 
-### Subtitle track {#subtitle-appearance-track}
+### Ścieżka napisów {#subtitle-appearance-track}
 
-asbplayer can load multiple subtitle tracks simultaneously. This dropdown selects the track(s) to which the settings below will apply. The default selection is "All." Modifying any appearance setting with "All" selected, modifies that setting for all tracks simultaneously. When you configure a track-specific value for a setting, that setting disappears from the "All" page.
+asbplayer może wczytać jednocześnie kilka ścieżek napisów. Ta lista pozwala wybrać ścieżkę lub ścieżki, do których będą stosowane poniższe ustawienia. Domyślnie wybrane są „Wszystkie”. Zmiana ustawienia wyglądu przy wybranej opcji „Wszystkie” modyfikuje je dla wszystkich ścieżek jednocześnie. Gdy ustawisz wartość dla konkretnej ścieżki, to ustawienie zniknie ze strony „Wszystkie”.
 
-### Subtitle preview {#subtitle-preview}
+### Podgląd napisów {#subtitle-preview}
 
-Preview and edit the subtitle text used to show the effect of the appearance settings.
+Wyświetl podgląd i edytuj tekst używany do prezentacji ustawień wyglądu napisów.
 
-### Styling {#styling}
+### Stylizacja {#styling}
 
-| Setting                           | Description                                                                          | CSS property                |
+| Ustawienie                        | Opis                                                                                 | Właściwość CSS              |
 | --------------------------------- | ------------------------------------------------------------------------------------ | --------------------------- |
-| Subtitle color                    | Color                                                                                | `color`                     |
-| Subtitle size                     | Size in `px`                                                                         | `font-size`                 |
-| Subtitle font thickness           | Font thickness                                                                       | `font-weight`               |
-| Subtitle outline color            | Color of the stroke                                                                  | `-webkit-text-stroke-color` |
-| Subtitle outline thickness        | Thickness of the stroke                                                              | `-webkit-text-stroke-width` |
-| Subtitle shadow color             | Color of the shadow                                                                  | `text-shadow`               |
-| Subtitle shadow thickness         | Thickness of the shadow                                                              | `text-shadow`               |
-| Subtitle background color         | Background color                                                                     | `background-color`          |
-| Subtitle background opacity       | Background opacity                                                                   | `background`                |
-| Subtitle font family              | Font. A dropdown of available fonts appears when local font access is granted.       | `font-family`               |
-| CSS:\<style key\>                 | String value of any custom CSS property added using the **Add Custom CSS** dropdown. | Custom property             |
-| Subtitle blur                     | Applies a blur effect to subtitles. Unblurs on hover.                                | `filter:blur(...)`          |
-| Image-based subtitle scale factor | Scales image-based subtitles.                                                        | —                           |
+| Kolor napisów                     | Kolor                                                                                | `color`                     |
+| Rozmiar napisów                   | Rozmiar w `px`                                                                         | `font-size`                 |
+| Grubość czcionki napisów          | Grubość czcionki                                                                       | `font-weight`               |
+| Kolor obramowania napisów         | Kolor obrysu                                                                  | `-webkit-text-stroke-color` |
+| Grubość obramowania napisów       | Grubość obrysu                                                              | `-webkit-text-stroke-width` |
+| Kolor cienia napisów              | Kolor cienia                                                                  | `text-shadow`               |
+| Grubość cienia napisów            | Grubość cienia                                                              | `text-shadow`               |
+| Kolor tła napisów                 | Kolor tła                                                                     | `background-color`          |
+| Krycie tła napisów                | Krycie tła                                                                   | `background`                |
+| Krój czcionki napisów             | Czcionka. Lista dostępnych czcionek pojawia się po przyznaniu dostępu do czcionek lokalnych.       | `font-family`               |
+| CSS:\<style key\>              | Wartość tekstowa niestandardowej właściwości CSS dodanej za pomocą listy **Dodaj własny CSS**. | Właściwość niestandardowa  |
+| Rozmycie napisów                  | Rozmywa napisy. Najechanie kursorem usuwa rozmycie.                                | `filter:blur(...)`          |
+| Współczynnik skali napisów obrazowych | Zmienia skalę napisów obrazowych.                                                        | —                           |
 
-### Layout {#layout}
+### Układ {#layout}
 
-| Setting                              | Description                                                                  |
+| Ustawienie                           | Opis                                                                  |
 | ------------------------------------ | ---------------------------------------------------------------------------- |
-| Subtitle alignment                   | Whether to place subtitles at the top or bottom of the video element.        |
-| Subtitle position offset from bottom | Distance from the bottom of the video element of all bottom subtitle tracks. |
-| Subtitle position offset from top    | Distance from the top of the video element of all top subtitle tracks.       |
-| Subtitles width                      | Width of subtitle container, in `%` or pixels.                               |
+| Wyrównanie napisów                  | Określa, czy napisy umieścić u góry, czy u dołu elementu wideo.        |
+| Przesunięcie napisów od dołu        | Odległość wszystkich dolnych ścieżek napisów od dołu elementu wideo. |
+| Przesunięcie napisów od góry        | Odległość wszystkich górnych ścieżek napisów od góry elementu wideo.       |
+| Szerokość napisów                   | Szerokość kontenera napisów w `%` lub pikselach.                               |
 
-## <a href={new URL('?view=settings#keyboard-shortcuts', project.urls.app).href}>Keyboard shortcuts</a> {#keyboard-shortcuts}
+## <a href={new URL('?view=settings#keyboard-shortcuts', project.urls.app).href}>Skróty klawiszowe</a> {#keyboard-shortcuts}
 
-Keyboard shortcuts can be used to access most of asbplayer's features.
+Skróty klawiszowe umożliwiają korzystanie z większości funkcji asbplayera.
 
-### <a href={new URL('?view=settings#subtitle-appearance', project.urls.app).href}>Subtitles</a> keyboard shortcuts {#subtitles-keyboard-shortcuts}
+### <a href={new URL('?view=settings#subtitle-appearance', project.urls.app).href}>Napisy</a> — skróty klawiszowe {#subtitles-keyboard-shortcuts}
 
-| Behavior                             | Default shortcut |
+| Działanie                            | Domyślny skrót     |
 | ------------------------------------ | ---------------- |
-| Select subtitle tracks to load.      | Ctrl + Shift + F |
-| Toggle subtitles                     | ↓                |
-| Toggle subtitle track 1 in video     | 1                |
-| Toggle subtitle track 2 in video     | 2                |
-| Toggle subtitle track 3 in video     | 3                |
-| Toggle subtitle track 1 in asbplayer | W + 1            |
-| Toggle subtitle track 2 in asbplayer | W + 2            |
-| Toggle subtitle track 3 in asbplayer | W + 3            |
-| Unblur subtitle track 1 in asbplayer | B + 1            |
-| Unblur subtitle track 2 in asbplayer | B + 2            |
-| Unblur subtitle track 3 in asbplayer | B + 3            |
-| Move bottom subtitles up             |                  |
-| Move bottom subtitles down           |                  |
-| Move top subtitles up                |                  |
-| Move top subtitles down              |                  |
+| Wybierz ścieżki napisów do wczytania. | Ctrl + Shift + F |
+| Przełącz napisy                      | ↓                |
+| Przełącz ścieżkę napisów 1 w wideo   | 1                |
+| Przełącz ścieżkę napisów 2 w wideo   | 2                |
+| Przełącz ścieżkę napisów 3 w wideo   | 3                |
+| Przełącz ścieżkę napisów 1 w asbplayerze | W + 1         |
+| Przełącz ścieżkę napisów 2 w asbplayerze | W + 2         |
+| Przełącz ścieżkę napisów 3 w asbplayerze | W + 3         |
+| Usuń rozmycie ścieżki napisów 1 w asbplayerze | B + 1    |
+| Usuń rozmycie ścieżki napisów 2 w asbplayerze | B + 2    |
+| Usuń rozmycie ścieżki napisów 3 w asbplayerze | B + 3    |
+| Przesuń dolne napisy w górę           |                  |
+| Przesuń dolne napisy w dół            |                  |
+| Przesuń górne napisy w górę           |                  |
+| Przesuń górne napisy w dół            |                  |
 
-### <a href={new URL('?view=settings#mining-settings', project.urls.app).href}>Mining</a> keyboard shortcuts {#mining-keyboard-shortcuts}
+### <a href={new URL('?view=settings#mining-settings', project.urls.app).href}>Kopanie</a> — skróty klawiszowe {#mining-keyboard-shortcuts}
 
-| Behavior                                                                             | Default shortcut           |
+| Działanie                                                                            | Domyślny skrót              |
 | ------------------------------------------------------------------------------------ | -------------------------- |
-| Mine current subtitle                                                                | Ctrl + Shift + Z (website) |
-| Mine current subtitle and open Anki dialog                                           | Ctrl + Shift + X           |
-| Update last-created Anki card with asbplayer-captured screenshot, audio, etc.        | Ctrl + Shift + U           |
-| Export card to Anki, bypassing dialog.                                               |                            |
-| Manually take screenshot, overriding the one that is automatically taken when mining | Ctrl + Shift + V (website) |
-| Manually start/stop audio recording, even when a subtitle file is loaded.            | Ctrl + Shift + R (website) |
+| Wykop bieżący napis                                                    | Ctrl + Shift + Z (strona)   |
+| Wykop bieżący napis i otwórz okno Anki                                 | Ctrl + Shift + X            |
+| Zaktualizuj ostatnią kartę Anki o zrzut ekranu, dźwięk itp. z asbplayera            | Ctrl + Shift + U            |
+| Wyeksportuj kartę do Anki bez otwierania okna dialogowego.                          |                             |
+| Ręcznie wykonaj zrzut ekranu zamiast zrzutu tworzonego automatycznie przy fiszce    | Ctrl + Shift + V (strona)   |
+| Ręcznie rozpocznij/zakończ nagrywanie dźwięku, nawet gdy wczytano plik z napisami.  | Ctrl + Shift + R (strona)   |
 
-### <a href={new URL('?view=settings#playback', project.urls.app).href}>Playback</a> keyboard shortcuts {#playback-keyboard-shortcuts}
+### <a href={new URL('?view=settings#playback', project.urls.app).href}>Odtwarzanie</a> — skróty klawiszowe {#playback-keyboard-shortcuts}
 
-| Behavior                        | Default shortcut |
+| Działanie                       | Domyślny skrót    |
 | ------------------------------- | ---------------- |
-| Toggle side panel               | \`               |
-| Play/pause                      | Space            |
-| Toggle auto-pause               | Shift + P        |
-| Toggle condensed playback       | Shift + O        |
-| Toggle fast forward playback    | Shift + F        |
-| Toggle repeat mode              | Shift + R        |
-| Toggle when subtitles are shown |                  |
-| Cycle auto-pause resume mode    |                  |
-| Cycle through recipes forward   |                  |
-| Cycle through recipes backward  |                  |
-| Toggle recipe 1                 |                  |
-| Toggle recipe 2                 |                  |
-| Toggle recipe 3                 |                  |
-| Toggle recipe 4                 |                  |
-| Toggle recipe 5                 |                  |
-| Toggle recipe 6                 |                  |
-| Toggle recipe 7                 |                  |
-| Toggle recipe 8                 |                  |
-| Toggle recipe 9                 |                  |
-| Toggle recipe 10                |                  |
+| Przełącz panel boczny           | \`               |
+| Odtwórz/wstrzymaj               | Spacja            |
+| Przełącz automatyczną pauzę     | Shift + P         |
+| Przełącz odtwarzanie skondensowane | Shift + O      |
+| Przełącz przyspieszone odtwarzanie | Shift + F      |
+| Przełącz tryb powtarzania       | Shift + R         |
+| Przełącz wyświetlanie napisów   |                   |
+| Zmień tryb wznawiania po automatycznej pauzie |       |
+| Przejdź do następnego przepisu  |                   |
+| Przejdź do poprzedniego przepisu |                  |
+| Przełącz przepis 1              |                   |
+| Przełącz przepis 2              |                   |
+| Przełącz przepis 3              |                   |
+| Przełącz przepis 4              |                   |
+| Przełącz przepis 5              |                   |
+| Przełącz przepis 6              |                   |
+| Przełącz przepis 7              |                   |
+| Przełącz przepis 8              |                   |
+| Przełącz przepis 9              |                   |
+| Przełącz przepis 10             |                   |
 
-### <a href={new URL('?view=settings#playback', project.urls.app).href}>Seek</a> keyboard shortcuts {#seek-keyboard-shortcuts}
+### <a href={new URL('?view=settings#playback', project.urls.app).href}>Przewijanie</a> — skróty klawiszowe {#seek-keyboard-shortcuts}
 
-| Behavior                                                                  | Default shortcut |
+| Działanie                                                                 | Domyślny skrót    |
 | ------------------------------------------------------------------------- | ---------------- |
-| Seek backward (default 3 seconds, [configurable](#seek-interval-seconds)) | A                |
-| Seek forward (default 3 seconds, [configurable](#seek-interval-seconds))  | D                |
-| Seek to previous subtitle                                                 | ←                |
-| Seek to next subtitle                                                     | →                |
-| Seek to beginning of current/previous subtitle                            | ↑                |
+| Przewiń wstecz (domyślnie 3 sekundy, [konfigurowalne](#seek-interval-seconds)) | A             |
+| Przewiń do przodu (domyślnie 3 sekundy, [konfigurowalne](#seek-interval-seconds)) | D          |
+| Przejdź do poprzedniego napisu                                             | ←                |
+| Przejdź do następnego napisu                                               | →                |
+| Przejdź do początku bieżącego/poprzedniego napisu                            | ↑                |
 
-### <a href={new URL('?view=settings#playback', project.urls.app).href}>Playback rate</a> keyboard shortcuts {#playback-rate-keyboard-shortcuts}
+### <a href={new URL('?view=settings#playback', project.urls.app).href}>Prędkość odtwarzania</a> — skróty klawiszowe {#playback-rate-keyboard-shortcuts}
 
-| Behavior               | Default shortcut |
+| Działanie              | Domyślny skrót    |
 | ---------------------- | ---------------- |
-| Increase playback rate | Ctrl + Shift + ] |
-| Decrease playback rate | Ctrl + Shift + [ |
+| Zwiększ prędkość odtwarzania | Ctrl + Shift + ] |
+| Zmniejsz prędkość odtwarzania | Ctrl + Shift + [ |
 
-### <a href={new URL('?view=settings#playback', project.urls.app).href}>Subtitle offset</a> keyboard shortcuts {#subtitle-offset-keyboard-shortcuts}
+### <a href={new URL('?view=settings#playback', project.urls.app).href}>Przesunięcie napisów</a> — skróty klawiszowe {#subtitle-offset-keyboard-shortcuts}
 
-| Behavior                                                                 | Default shortcut |
+| Działanie                                                                | Domyślny skrót    |
 | ------------------------------------------------------------------------ | ---------------- |
-| Adjust subtitle offset so that previous subtitle is at current timestamp | Ctrl + ←         |
-| Adjust subtitle offset so that next subtitle is at current timestamp     | Ctrl + →         |
-| Adjust subtitle offset by +100ms                                         | Ctrl + Shift + ← |
-| Adjust subtitle offset by -100ms                                         | Ctrl + Shift + → |
-| Reset subtitle offset                                                    | Ctrl + Shift + ↓ |
+| Dopasuj przesunięcie, aby poprzedni napis odpowiadał bieżącemu znacznikowi czasu | Ctrl + ← |
+| Dopasuj przesunięcie, aby następny napis odpowiadał bieżącemu znacznikowi czasu  | Ctrl + → |
+| Zwiększ przesunięcie napisów o +100ms                                     | Ctrl + Shift + ← |
+| Zmniejsz przesunięcie napisów o -100ms                                     | Ctrl + Shift + → |
+| Wyzeruj przesunięcie napisów                                              | Ctrl + Shift + ↓ |
 
-### <a href={new URL('?view=settings#annotation', project.urls.app).href}>Annotation</a> keyboard shortcuts {#annotation-keyboard-shortcuts}
+### <a href={new URL('?view=settings#annotation', project.urls.app).href}>Adnotacje</a> — skróty klawiszowe {#annotation-keyboard-shortcuts}
 
-| Behavior                          | Default shortcut |
+| Działanie                         | Domyślny skrót    |
 | --------------------------------- | ---------------- |
-| Open statistics                   | Q + S            |
-| Jump to next word                 | Q + E            |
-| Jump to previous word             | Q + W            |
-| Mark hovered word as Mature       | Q + 5            |
-| Jump to next Mature word          |                  |
-| Jump to previous Mature word      |                  |
-| Mark hovered word as Young        | Q + 4            |
-| Jump to next Young word           |                  |
-| Jump to previous Young word       |                  |
-| Mark hovered word as Graduated    | Q + 3            |
-| Jump to next Graduated word       |                  |
-| Jump to previous Graduated word   |                  |
-| Mark hovered word as Learning     | Q + 2            |
-| Jump to next Learning word        |                  |
-| Jump to previous Learning word    |                  |
-| Mark hovered word as Unknown      | Q + 1            |
-| Jump to next Unknown word         |                  |
-| Jump to previous Unknown word     |                  |
-| Mark hovered word as Uncollected  | Q + 0            |
-| Jump to next Uncollected word     |                  |
-| Jump to previous Uncollected word |                  |
-| Toggle hovered word as Ignored    | Q + I            |
-| Jump to next Ignored word         |                  |
-| Jump to previous Ignored word     |                  |
+| Otwórz statystyki                  | Q + S             |
+| Przejdź do następnego słowa         | Q + E             |
+| Przejdź do poprzedniego słowa       | Q + W             |
+| Oznacz wskazane słowo jako Dojrzałe | Q + 5             |
+| Przejdź do następnego Dojrzałego słowa |                |
+| Przejdź do poprzedniego Dojrzałego słowa |              |
+| Oznacz wskazane słowo jako Młode   | Q + 4             |
+| Przejdź do następnego Młodego słowa |                 |
+| Przejdź do poprzedniego Młodego słowa |               |
+| Oznacz wskazane słowo jako Ukończone | Q + 3           |
+| Przejdź do następnego Ukończonego słowa |              |
+| Przejdź do poprzedniego Ukończonego słowa |            |
+| Oznacz wskazane słowo jako W trakcie nauki | Q + 2       |
+| Przejdź do następnego słowa W trakcie nauki |             |
+| Przejdź do poprzedniego słowa W trakcie nauki |           |
+| Oznacz wskazane słowo jako Nieznane | Q + 1           |
+| Przejdź do następnego Nieznanego słowa |               |
+| Przejdź do poprzedniego Nieznanego słowa |             |
+| Oznacz wskazane słowo jako Niezebrane | Q + 0          |
+| Przejdź do następnego Niezebranego słowa |              |
+| Przejdź do poprzedniego Niezebranego słowa |            |
+| Przełącz status wskazanego słowa na Zignorowane | Q + I  |
+| Przejdź do następnego Zignorowanego słowa |              |
+| Przejdź do poprzedniego Zignorowanego słowa |            |
 
-### Seek interval (seconds) {#seek-interval-seconds}
+### Odstęp przewijania (sekundy) {#seek-interval-seconds}
 
-Controls the interval used by the [Seek keyboard shortcuts](#seek-keyboard-shortcuts).
+Określa odstęp używany przez [skróty klawiszowe przewijania](#seek-keyboard-shortcuts).
 
-### Always play after invoking 'Seek to beginning of current/previous subtitle' {#always-play-on-subtitle-seek}
+### Zawsze odtwarzaj po użyciu opcji „Przejdź do początku bieżącego/poprzedniego napisu” {#always-play-on-subtitle-seek}
 
-Instead of retaining the current playback state, always play when using the [Seek keyboard shortcut](#seek-keyboard-shortcuts) that seeks to the beginning of the current/previous subtitle. Saves a keypress.
+Po użyciu [skrótu przewijania](#seek-keyboard-shortcuts), który przechodzi do początku bieżącego lub poprzedniego napisu, zawsze rozpoczyna odtwarzanie zamiast zachowywać bieżący stan. Pozwala to oszczędzić jedno naciśnięcie klawisza.
 
-### Playback speed adjust step {#playback-speed-adjust-step}
+### Krok zmiany prędkości odtwarzania {#playback-speed-adjust-step}
 
-Increment to use when using the "increase/decrease playback rate" [keyboard shortcuts](#playback-rate-keyboard-shortcuts).
+Wartość zmiany prędkości używana przez [skróty klawiszowe](#playback-rate-keyboard-shortcuts) „Zwiększ/zmniejsz prędkość odtwarzania”.
 
-### Extension shortcuts {#extension-shortcuts}
+### Skróty rozszerzenia {#extension-shortcuts}
 
-When the browser extension is installed, some mining shortcuts (e.g. mine current subtitle, mine current subtitle and open Anki dialog) are implemented as browser commands rather than vanilla key event listeners, and can only be edited in the browser's extension shortcuts editor.
+Po zainstalowaniu rozszerzenia przeglądarki niektóre skróty kopania (np. kopanie fiszki z bieżącego napisu lub otwieranie okna Anki) są realizowane jako polecenia przeglądarki, a nie zwykłe nasłuchiwanie zdarzeń klawiatury. Można je edytować tylko w edytorze skrótów rozszerzeń przeglądarki.
 
 - Chrome: `chrome://extensions/shortcuts`
-- Firefox: `about:addons` → `Manage Extension Shortcuts`
+- Firefox: `about:addons` → `Zarządzaj skrótami rozszerzeń`
 
-## <a href={new URL('?view=settings#annotation', project.urls.app).href}>Annotation</a> {#annotation}
+## <a href={new URL('?view=settings#annotation', project.urls.app).href}>Adnotacje</a> {#annotation}
 
-### Word Browser {#word-browser}
+### Przeglądarka słów {#word-browser}
 
 :::info
-Only local words can be edited/deleted, external sources are read-only and can only update through [syncing](#re-build-anki-word-database).
+Można edytować i usuwać tylko słowa lokalne. Źródła zewnętrzne są tylko do odczytu i można je aktualizować wyłącznie przez [synchronizację](#re-build-anki-word-database).
 :::
 
-Opens the Word Browser, where you can view and manage all words in your local word database and Anki-synced word database.
+Otwiera przeglądarkę słów, w której można wyświetlać słowa z lokalnej bazy i bazy synchronizowanej z Anki oraz nimi zarządzać.
 
 :::tip
-You can lookup words in any script of the language (e.g romaji/hiragana/katakana/kanji for Japanese).
+Możesz wyszukiwać słowa zapisane dowolnym pismem używanym w danym języku (np. romaji, hiraganą, katakaną lub kanji w języku japońskim).
 
-There are also some other common QOL substitutions, such as `e -> é` or `ss -> ß` done automatically.
+Automatycznie wykonywane są też popularne zamiany poprawiające wygodę, takie jak `e -> é` lub `ss -> ß`.
 :::
 
-### Import Words {#import-words}
+### Importowanie słów {#import-words}
 
-Imports words into asbplayer's **local word database**.
+Importuje słowa do **lokalnej bazy słów** asbplayera.
 
-Imported words are considered local and take priority over the external sources when determining word status.
+Zaimportowane słowa są traktowane jako lokalne i podczas określania statusu mają pierwszeństwo przed źródłami zewnętrznymi.
 
-The import dialog supports pasting arbitrary text (asbplayer will tokenize it) and importing previously-exported files.
+Okno importowania umożliwia wklejenie dowolnego tekstu (asbplayer podzieli go na słowa) oraz zaimportowanie wcześniej wyeksportowanych plików.
 
 :::tip
-You can hover over words and use the [Annotation keyboard shortcuts](#annotation-keyboard-shortcuts) to change their status locally.
+Możesz najechać kursorem na słowa i zmienić ich lokalny status za pomocą [skrótów klawiszowych adnotacji](#annotation-keyboard-shortcuts).
 :::
 
-### Export Words {#export-words}
+### Eksportowanie słów {#export-words}
 
-Exports your local word database so it can be backed up, moved to another device, or shared between the website and extension.
+Eksportuje lokalną bazę słów, aby można ją było zarchiwizować, przenieść na inne urządzenie lub współdzielić między stroną a rozszerzeniem.
 
-### Re-Build Anki word database {#re-build-anki-word-database}
+### Odbuduj bazę słów Anki {#re-build-anki-word-database}
 
-Builds (or rebuilds) the local cache of word-status information sourced from Anki.
+Tworzy lub odbudowuje lokalną pamięć podręczną statusów słów pobranych z Anki.
 
 :::tip
-The cache is also updated automatically during playback when a track is enabled and Anki is connectable.
+Pamięć podręczna jest też automatycznie aktualizowana podczas odtwarzania, jeśli ścieżka jest włączona i można połączyć się z Anki.
 
-This button is disabled unless your annotation settings [benefit from Anki integration](../common-issues.md#enable-or-disable-annotation-for-a-track).
+Ten przycisk jest nieaktywny, chyba że ustawienia adnotacji [korzystają z integracji z Anki](../common-issues.md#enable-or-disable-annotation-for-a-track).
 
-To clear the Anki word database entries for a track, [follow these steps](../common-issues.md#clear-anki-word-database).
+Aby usunąć wpisy ścieżki z bazy słów Anki, [wykonaj te kroki](../common-issues.md#clear-anki-word-database).
 :::
 
-### Re-Build WaniKani word database {#re-build-wanikani-word-database}
+### Odbuduj bazę słów WaniKani {#re-build-wanikani-word-database}
 
-Builds (or rebuilds) the local cache of vocabulary information sourced from WaniKani.
+Tworzy lub odbudowuje lokalną pamięć podręczną słownictwa pobranego z WaniKani.
 
 :::tip
-The cache is also updated automatically during playback when a track is enabled and a token is configured.
+Pamięć podręczna jest też automatycznie aktualizowana podczas odtwarzania, jeśli ścieżka jest włączona i skonfigurowano token.
 
-This button is disabled unless your annotation settings [benefit from WaniKani integration](../common-issues.md#enable-or-disable-annotation-for-a-track).
+Ten przycisk jest nieaktywny, chyba że ustawienia adnotacji [korzystają z integracji z WaniKani](../common-issues.md#enable-or-disable-annotation-for-a-track).
 
-To clear the WaniKani word database entries for a track, [follow these steps](../common-issues.md#clear-wanikani-word-database).
+Aby usunąć wpisy ścieżki z bazy słów WaniKani, [wykonaj te kroki](../common-issues.md#clear-wanikani-word-database).
 :::
 
-### Subtitle track {#annotation-track}
+### Ścieżka napisów {#annotation-track}
 
-Selects which subtitle track these annotation settings apply to.
+Wybiera ścieżkę napisów, do której odnoszą się te ustawienia adnotacji.
 
-### Colorize subtitles based on known words {#colorize-subtitles-based-on-known-words}
+### Koloruj napisy na podstawie znanych słów {#colorize-subtitles-based-on-known-words}
 
-Enables word-status styling (uncollected/unknown/learning/etc.). Styling uses the configured [**Word color style**](#word-color-style) and [**Word status colors**](#word-status-colors).
+Włącza stylizację zależną od statusu słów (niezebrane, nieznane, w trakcie nauki itp.). Stylizacja korzysta z ustawień [**Styl koloru słów**](#word-color-style) i [**Kolory statusów słów**](#word-status-colors).
 
-### Generate statistics automatically {#generate-statistics-automatically}
+### Automatycznie generuj statystyki {#generate-statistics-automatically}
 
-Automatically generate statistics for the current media upon load. This will also enable the statistics overlay. The [Open statistics keyboard shortcut](#annotation-keyboard-shortcuts) is in the Annotation group.
+Automatycznie generuje statystyki bieżących multimediów po ich wczytaniu. Włącza też nakładkę statystyk. Skrót klawiszowy [Otwórz statystyki](#annotation-keyboard-shortcuts) znajduje się w grupie Adnotacje.
 
-### Display word readings {#display-word-readings}
+### Wyświetlaj odczyty słów {#display-word-readings}
 
-Shows readings (e.g. furigana) above words based on the word status and states.
+Wyświetla nad słowami odczyty (np. furiganę) zależnie od ich statusów i stanów.
 
-### Display word frequency {#display-word-frequency}
+### Wyświetlaj częstotliwość słów {#display-word-frequency}
 
-Shows a rank-based frequency value below words (when available) based on status and states. This is useful for prioritizing which words are worth spending time learning.
+Wyświetla pod słowami wartość częstotliwości opartą na rankingu (jeśli jest dostępna), zależnie od statusów i stanów. Pomaga to ustalić, których słów warto uczyć się w pierwszej kolejności.
 
 :::tip
-Frequency information requires at least one rank-based frequency dictionary to be available in your Yomitan instance. If a frequency dictionary doesn't declare its mode, asbplayer will try to infer whether it is rank-based and use it accordingly.
+Informacje o częstotliwości wymagają co najmniej jednego słownika częstotliwości opartego na rankingu w instancji Yomitan. Jeśli słownik nie określa swojego trybu, asbplayer spróbuje ustalić, czy jest oparty na rankingu, i odpowiednio go użyje.
 
-If multiple frequency numbers are available for a word, the lowest (most frequent) number is used.
+Jeśli dla słowa dostępnych jest kilka wartości częstotliwości, używana jest najniższa (czyli najczęściej występujące słowo).
 :::
 
-### Display pitch accent (Japanese) {#display-pitch-accent-japanese}
+### Wyświetlaj akcent wyrazowy (japoński) {#display-pitch-accent-japanese}
 
 :::note
-Too see the pitch accent on furigana, it must be enabled via [**Display word readings**](#display-word-readings).
+Aby zobaczyć akcent wyrazowy przy furiganie, włącz opcję [**Wyświetlaj odczyty słów**](#display-word-readings).
 :::
 
-Shows pitch accent on furigana or the kana itself based on status and states.
+Wyświetla akcent wyrazowy na furiganie lub samych znakach kana, zależnie od statusów i stanów.
 
 :::info
-The attaching particle's pitch accent following a word is determined by the pitch accent of the word, if the data is available.
+Jeśli dane są dostępne, akcent wyrazowy partykuły dołączonej do słowa jest określany na podstawie akcentu tego słowa.
 
-Typically only kanji would receive furigana readings but with this feature enabled all characters in a word will receive furigana readings if at least one character is kanji. This makes it easier to reading the pitch accent for compound words.
+Zazwyczaj furiganę otrzymują tylko znaki kanji, ale po włączeniu tej funkcji furiganę otrzymają wszystkie znaki słowa, jeśli przynajmniej jeden z nich jest kanji. Ułatwia to odczyt akcentu wyrazowego w złożonych słowach.
 :::
 
-### Display word definitions {#display-word-definitions}
+### Wyświetlaj definicje słów {#display-word-definitions}
 
-Controls whether short definitions or explanations are displayed for each word based on the word status and states.
+Określa, czy przy każdym słowie wyświetlać krótką definicję lub objaśnienie zależnie od jego statusu i stanów.
 
-### Word field search strategy {#word-field-search-strategy}
+### Strategia wyszukiwania w polu słowa {#word-field-search-strategy}
 
-Controls how asbplayer matches a subtitle word against your known words.
+Określa, jak asbplayer dopasowuje słowa z napisów do słów uznawanych za znane.
 
-- **Exact form collected**: the field must contain the exact surface form from the subtitle (running -> running).
-- **Lemma form collected**: you must have the lemma/base form collected (running -> run).
-- **Lemma or exact form collected**: treat the word as collected if either lemma or exact form matches (any of the above).
-- **Any form collected**: treat the word as collected if any related form matches (running -> run, ran, runs, etc.).
+- **Zebrana dokładna forma**: pole musi zawierać dokładną formę widoczną w napisach (running -> running).
+- **Zebrana forma podstawowa**: musi być zebrana forma podstawowa (running -> run).
+- **Zebrana forma podstawowa lub dokładna**: słowo uznaje się za zebrane, jeśli pasuje forma podstawowa lub dokładna (dowolna z powyższych).
+- **Zebrana dowolna forma**: słowo uznaje się za zebrane, jeśli pasuje dowolna powiązana forma (running -> run, ran, runs itp.).
 
-When **Lemma form collected**, **Lemma or exact form collected**, or **Any form collected** is selected, [**Match across language scripts**](#match-across-language-scripts) controls whether lemma-based matching may cross between different scripts for a language (e.g Kanji, Hiragana, Katakana).
+Po wybraniu **Zebrana forma podstawowa**, **Zebrana forma podstawowa lub dokładna** albo **Zebrana dowolna forma** ustawienie [**Dopasowuj między systemami pisma**](#match-across-language-scripts) określa, czy dopasowanie na podstawie formy podstawowej może obejmować różne systemy pisma danego języka (np. kanji, hiraganę i katakanę).
 
-### Card choice priority {#card-choice-priority}
+### Priorytet wyboru karty {#card-choice-priority}
 
-If multiple Anki cards match a word, this controls which card is used to determine the word's status:
+Jeśli do słowa pasuje kilka kart Anki, to ustawienie określa, która karta zostanie użyta do ustalenia statusu słowa:
 
-- **Field contains exact form** (fallback to best known card if multiple)
-- **Field contains lemma** (fallback to best known card if multiple)
-- **Best known card**
-- **Least known card**
+- **Pole zawiera dokładną formę** (jeśli jest ich kilka, użyj karty o najwyższym statusie)
+- **Pole zawiera formę podstawową** (jeśli jest ich kilka, użyj karty o najwyższym statusie)
+- **Karta o najwyższym statusie**
+- **Karta o najniższym statusie**
 
-### Sentence field search strategy {#sentence-field-search-strategy}
+### Strategia wyszukiwania w polu zdania {#sentence-field-search-strategy}
 
-Controls how asbplayer searches your configured [**Anki sentence fields**](#anki-sentence-fields), it has the same options as [**Word field search strategy**](#word-field-search-strategy).
+Określa sposób wyszukiwania przez asbplayera w skonfigurowanych [**polach zdań Anki**](#anki-sentence-fields). Dostępne opcje są takie same jak w ustawieniu [**Strategia wyszukiwania w polu słowa**](#word-field-search-strategy).
 
-When **Lemma form collected**, **Lemma or exact form collected**, or **Any form collected** is selected, [**Match across language scripts**](#match-across-language-scripts) controls whether lemma-based matching may cross between different scripts for a language (e.g Kanji, Hiragana, Katakana).
+Po wybraniu **Zebrana forma podstawowa**, **Zebrana forma podstawowa lub dokładna** albo **Zebrana dowolna forma** ustawienie [**Dopasowuj między systemami pisma**](#match-across-language-scripts) określa, czy dopasowanie na podstawie formy podstawowej może obejmować różne systemy pisma danego języka (np. kanji, hiraganę i katakanę).
 
 :::tip
-Since sentences will contain multiple words thus diluting the relevance of the card state to any individual word, it's best to keep this as **Exact form collected** unless you only have sentence cards.
+Ponieważ zdania zawierają wiele słów, status karty ma mniejsze znaczenie dla każdego z nich. Najlepiej pozostawić opcję **Zebrana dokładna forma**, chyba że masz wyłącznie karty ze zdaniami.
 :::
 
-### Match across language scripts {#match-across-language-scripts}
+### Dopasowuj między systemami pisma {#match-across-language-scripts}
 
-Controls whether lemma-based matching may cross between different scripts for a language (e.g Kanji, Hiragana, Katakana).
+Określa, czy dopasowanie na podstawie formy podstawowej może obejmować różne systemy pisma danego języka (np. kanji, hiraganę i katakanę).
 
 ```
 if true:
@@ -449,524 +449,524 @@ if false:
   - Essentially a strict mode where the you need to collect all script forms of a word.
 ```
 
-### Yomitan API URL {#yomitan-api-url}
+### URL API Yomitan {#yomitan-api-url}
 
-The URL for the Yomitan API endpoint. If the URL is unreachable or invalid, asbplayer will show an error.
+URL punktu końcowego API Yomitan. Jeśli URL jest nieprawidłowy lub niedostępny, asbplayer wyświetli błąd.
 
 :::tip
-You will need a configured [Yomitan](https://yomitan.wiki/) instance and the [yomitan-api](https://github.com/yomidevs/yomitan-api).
+Potrzebujesz skonfigurowanej instancji [Yomitan](https://yomitan.wiki/) i [yomitan-api](https://github.com/yomidevs/yomitan-api).
 :::
 
-### Yomitan parser {#yomitan-parser}
+### Parser Yomitan {#yomitan-parser}
 
-Selects which Yomitan parser to use for tokenizing subtitle text:
+Wybiera parser Yomitan używany do dzielenia tekstu napisów na tokeny:
 
-- **Scanning Parser (All languages)**: Yomitan's internal parser that matches the longest words from your dictionaries.
-- **MeCab (Japanese)**: Uses MeCab to parse Japanese text. Requires Yomitan to be configured with MeCab support, preferably with at least one UniDic dictionary.
+- **Parser skanujący (wszystkie języki)**: wewnętrzny parser Yomitan dopasowujący najdłuższe słowa ze słowników.
+- **MeCab (japoński)**: używa MeCab do analizowania japońskiego tekstu. Wymaga skonfigurowania obsługi MeCab w Yomitanie, najlepiej z co najmniej jednym słownikiem UniDic.
 
-### Max word length {#max-word-length}
+### Maksymalna długość słowa {#max-word-length}
 
 :::info
-This setting only applies to the Scanning Parser.
+To ustawienie dotyczy tylko parsera skanującego.
 :::
 
-Limits the maximum word length that asbplayer will try to scan/tokenize for annotation.
+Ogranicza maksymalną długość słowa, które asbplayer będzie próbował skanować lub tokenizować na potrzeby adnotacji.
 
 :::tip
-Setting this too low will miss longer words, setting it too high may cause performance issues.
+Zbyt niska wartość sprawi, że dłuższe słowa zostaną pominięte, a zbyt wysoka może obniżyć wydajność.
 :::
 
-### Anki decks (optional) {#anki-decks}
+### Talie Anki (opcjonalnie) {#anki-decks}
 
-Restricts Anki searches to the selected decks. If left empty, asbplayer searches across all decks.
+Ogranicza wyszukiwanie w Anki do wybranych talii. Jeśli pole pozostanie puste, asbplayer przeszuka wszystkie talie.
 
-### Anki word fields {#anki-word-fields}
+### Pola słów Anki {#anki-word-fields}
 
-Anki note fields that contain _only_ the target word. This is the recommended way to source known-status information from Anki.
+Pola notatek Anki zawierające _wyłącznie_ dane słowo. To zalecany sposób pobierania z Anki informacji o statusie znajomości słów.
 
-### Anki sentence fields {#anki-sentence-fields}
+### Pola zdań Anki {#anki-sentence-fields}
 
-Anki note fields that contain a sentence (commonly used for sentence decks). This will be used as a fallback if there are no cards with the target word in [**Anki word fields**](#anki-word-fields).
+Pola notatek Anki zawierające zdania (często używane w taliach ze zdaniami). Są używane zapasowo, gdy w [**polach słów Anki**](#anki-word-fields) nie ma kart z danym słowem.
 
-### Mature Anki stability/interval (days) {#mature-anki-stability-interval}
+### Stabilność/odstęp dojrzałej karty Anki (dni) {#mature-anki-stability-interval}
 
-Controls the cutoff (in days) for treating an Anki card as **Mature** versus lower maturity statuses.
+Określa próg (w dniach), od którego karta Anki otrzymuje status **Dojrzała**, zamiast niższego statusu.
 
-- **Uncollected**: not found in Anki.
-- **Unknown**: found in Anki with `is:new`.
-- **Learning**: found in Anki with `is:learn`.
-- **Graduated**: found in Anki with `-is:new -is:learn prop:s<{ceil(cutoff / 2)}`.
-- **Young**: found in Anki with `-is:new -is:learn prop:s>=${ceil(cutoff / 2)} prop:s<${cutoff}`.
-- **Mature**: found in Anki with `-is:new -is:learn prop:s>=${cutoff}`.
+- **Niezebrane**: nie znaleziono w Anki.
+- **Nieznane**: znaleziono w Anki z `is:new`.
+- **W trakcie nauki**: znaleziono w Anki z `is:learn`.
+- **Ukończone**: znaleziono w Anki z `-is:new -is:learn prop:s<{ceil(cutoff / 2)}`.
+- **Młode**: znaleziono w Anki z `-is:new -is:learn prop:s>=${ceil(cutoff / 2)} prop:s<${cutoff}`.
+- **Dojrzałe**: znaleziono w Anki z `-is:new -is:learn prop:s>=${cutoff}`.
 
 :::tip
-If a card has its FSRS stability available (last review of the card was with FSRS enabled), it will be used instead of the interval.
+Jeśli dostępna jest stabilność FSRS karty (ostatnią powtórkę wykonano przy włączonym FSRS), zostanie użyta zamiast odstępu.
 
-For more information on word statuses, see [**Word status colors**](#word-status-colors).
+Więcej informacji o statusach słów znajdziesz w sekcji [**Kolory statusów słów**](#word-status-colors).
 :::
 
-### Treat suspended Anki cards as {#treat-suspended-anki-cards-as}
+### Traktuj zawieszone karty Anki jako {#treat-suspended-anki-cards-as}
 
-Controls how **suspended** cards are treated when building word status from Anki:
+Określa, jak traktować **zawieszone** karty przy ustalaniu statusu słów na podstawie Anki:
 
-- **Normal**: use Anki status as-is.
-- Or choose a specific word status (e.g. **Mature**, **Unknown**, etc.) to force suspended cards to be treated as that status.
+- **Normalnie**: użyj statusu z Anki bez zmian.
+- Możesz też wybrać konkretny status słowa (np. **Dojrzałe**, **Nieznane** itd.), aby przypisać go zawieszonym kartom.
 
 :::tip
-If only some of the cards for a word are suspended, the suspended cards will be filtered out and the word status will be based on the unsuspended cards.
+Jeśli zawieszona jest tylko część kart danego słowa, zawieszone karty zostaną odfiltrowane, a status słowa będzie ustalany na podstawie pozostałych kart.
 
-For more information on word statuses, see [**Word status colors**](#word-status-colors).
+Więcej informacji o statusach słów znajdziesz w sekcji [**Kolory statusów słów**](#word-status-colors).
 :::
 
-### WaniKani API token {#wanikani-api-token}
+### Token API WaniKani {#wanikani-api-token}
 
-Use the WaniKani API token to sync your known words from WaniKani. For setup, follow the instructions in the [annotations guide](../guides/annotation.md#setup).
+Użyj tokenu API WaniKani, aby synchronizować znane słowa z WaniKani. Instrukcję konfiguracji znajdziesz w [przewodniku po adnotacjach](../guides/annotation.md#setup).
 
-For asbplayer, we only use the `vocabulary` and `kana_vocabulary` subject types to determine known words. Statuses are determined based on the SRS stage based on the configured [spaced repetition system](https://docs.api.wanikani.com/20170710/#spaced-repetition-system) for that subject. WaniKani statuses are determined as follows:
+asbplayer używa wyłącznie typów elementów `vocabulary` i `kana_vocabulary` do określania znanych słów. Statusy są ustalane na podstawie etapu SRS danego elementu zgodnie ze skonfigurowanym [systemem powtórek interwałowych](https://docs.api.wanikani.com/20170710/#spaced-repetition-system). Statusy WaniKani są przypisywane w następujący sposób:
 
-- **Uncollected**: not found in WaniKani.
-- **Unknown**: found in WaniKani with an SRS stage below `Starting stage`.
-- **Learning**: found in WaniKani with an SRS stage at or above `Starting stage` and below `Passing stage`.
-- **Graduated**: found in WaniKani with an SRS stage in the lower half of the stages between `Passing stage` and `Burning stage`.
-- **Young**: found in WaniKani with an SRS stage in the upper half of the stages between `Passing stage` and `Burning stage`.
-- **Mature**: found in WaniKani with an SRS stage at or above `Burning stage`.
+- **Niezebrane**: nie znaleziono w WaniKani.
+- **Nieznane**: znaleziono w WaniKani na etapie SRS poniżej `Starting stage`.
+- **W trakcie nauki**: znaleziono w WaniKani na etapie SRS równym lub wyższym niż `Starting stage`, ale niższym niż `Passing stage`.
+- **Ukończone**: znaleziono w WaniKani na etapie SRS w dolnej połowie etapów między `Passing stage` i `Burning stage`.
+- **Młode**: znaleziono w WaniKani na etapie SRS w górnej połowie etapów między `Passing stage` i `Burning stage`.
+- **Dojrzałe**: znaleziono w WaniKani na etapie SRS równym lub wyższym niż `Burning stage`.
 
 :::tip
-For more information on word statuses, see [**Word status colors**](#word-status-colors).
+Więcej informacji o statusach słów znajdziesz w sekcji [**Kolory statusów słów**](#word-status-colors).
 :::
 
-### Word color style {#word-color-style}
+### Styl koloru słów {#word-color-style}
 
-Controls how status colors are applied to words for [**Colorize subtitles based on known words**](#colorize-subtitles-based-on-known-words):
+Określa sposób stosowania kolorów statusów do słów w funkcji [**Koloruj napisy na podstawie znanych słów**](#colorize-subtitles-based-on-known-words):
 
-- **Text**: color of the word is changed.
-- **Background**: color behind the word is changed.
-- **Underline**: underline the word with the status color.
-- **Overline**: overline the word with the status color.
-- **Outline**: outline the word with the status color.
+- **Tekst**: zmienia się kolor słowa.
+- **Tło**: zmienia się kolor tła słowa.
+- **Podkreślenie**: podkreśla słowo kolorem statusu.
+- **Nadkreślenie**: dodaje nad słowem linię w kolorze statusu.
+- **Obramowanie**: dodaje wokół słowa obramowanie w kolorze statusu.
 
 :::tip
-When using **Outline**, you may need to set [**Subtitle outline thickness**](#subtitle-appearance-track) to `0` for the best results.
+Aby uzyskać najlepszy efekt przy opcji **Obramowanie**, może być konieczne ustawienie wartości `0` w polu [**Grubość obramowania napisów**](#subtitle-appearance-track).
 :::
 
-### Thickness {#thickness}
+### Grubość {#thickness}
 
-Controls the thickness (in pixels) of **Underline**, **Overline**, and **Outline** styling.
+Określa grubość (w pikselach) stylów **Podkreślenie**, **Nadkreślenie** i **Obramowanie**.
 
-### Highlight words on hover {#highlight-words-on-hover}
+### Podświetlaj słowa po najechaniu kursorem {#highlight-words-on-hover}
 
 :::info
-This highlight reflects the focus asbplayer has to register keyboard shortcuts. If the highlight does not appear, you may need to click on the player to focus it. Keyboard shortcuts only work for either the video or the subtitle list (but not both at the same time) depending on where the focus is.
+Podświetlenie wskazuje, czy asbplayer ma fokus potrzebny do obsługi skrótów klawiszowych. Jeśli się nie pojawia, kliknij odtwarzacz, aby ustawić na nim fokus. Skróty klawiszowe działają w danej chwili dla wideo albo listy napisów, zależnie od tego, który element ma fokus.
 
-The highlight exists primarily to help you understand which word you're hovering over for collection. As such it requires that the hover target must be a word and that you have coloring enabled.
+Podświetlenie pomaga rozpoznać słowo wskazane kursorem w celu oznaczenia go jako znane. Wymaga, aby kursor wskazywał słowo i aby kolorowanie było włączone.
 :::
 
-If enabled, hovering a word will highlight it which helps you understand how yomitan has tokenized it.
+Po włączeniu tej opcji wskazanie słowa kursorem podświetli je, pomagając zrozumieć, jak Yomitan podzielił je na tokeny.
 
-### Only display word color on hover {#only-display-word-color-on-hover}
+### Pokazuj kolor słowa tylko po najechaniu kursorem {#only-display-word-color-on-hover}
 
 :::note
-This setting only applies if [**Colorize subtitles based on known words**](#colorize-subtitles-based-on-known-words) is enabled.
+To ustawienie działa tylko wtedy, gdy włączono opcję [**Koloruj napisy na podstawie znanych słów**](#colorize-subtitles-based-on-known-words).
 :::
 
-If enabled for video or subtitle list, word colors are hidden by default and only appear when you hover over the subtitle text in the video or subtitle list respectively.
+Po włączeniu tej opcji kolory słów są domyślnie ukryte i pojawiają się po najechaniu kursorem na tekst napisów w wideo lub na liście napisów.
 
-### Only display word reading on hover {#only-display-word-reading-on-hover}
+### Pokazuj odczyt słowa tylko po najechaniu kursorem {#only-display-word-reading-on-hover}
 
 :::note
-This setting only applies if [**Display word readings**](#display-word-readings) is enabled.
+To ustawienie działa tylko wtedy, gdy włączono opcję [**Wyświetlaj odczyty słów**](#display-word-readings).
 :::
 
-If enabled for video or subtitle list, word readings are hidden by default and only appear when you hover over the subtitle text in the video or subtitle list respectively.
+Po włączeniu tej opcji odczyty słów są domyślnie ukryte i pojawiają się po najechaniu kursorem na tekst napisów w wideo lub na liście napisów.
 
-### Only display word frequency on hover {#only-display-word-frequency-on-hover}
+### Pokazuj częstotliwość słowa tylko po najechaniu kursorem {#only-display-word-frequency-on-hover}
 
 :::note
-This setting only applies if [**Display word frequency**](#display-word-frequency) is enabled.
+To ustawienie działa tylko wtedy, gdy włączono opcję [**Wyświetlaj częstotliwość słów**](#display-word-frequency).
 :::
 
-If enabled for video or subtitle list, word frequency is hidden by default and only appears when you hover over the subtitle text in the video or subtitle list respectively.
+Po włączeniu tej opcji częstotliwość słów jest domyślnie ukryta i pojawia się po najechaniu kursorem na tekst napisów w wideo lub na liście napisów.
 
-### Only display word definitions on hover {#only-display-word-definitions-on-hover}
+### Pokazuj definicje słów tylko po najechaniu kursorem {#only-display-word-definitions-on-hover}
 
 :::note
-This setting only applies if [**Display word definitions**](#display-word-definitions) is enabled.
+To ustawienie działa tylko wtedy, gdy włączono opcję [**Wyświetlaj definicje słów**](#display-word-definitions).
 :::
 
-If enabled for video or subtitle list, word definitions are hidden by default and only appear when you hover over the subtitle text in the video or subtitle list respectively.
+Po włączeniu tej opcji definicje słów są domyślnie ukryte i pojawiają się po najechaniu kursorem na tekst napisów w wideo lub na liście napisów.
 
-### Only display pitch accent on hover {#only-display-pitch-accent-on-hover}
+### Pokazuj akcent wyrazowy tylko po najechaniu kursorem {#only-display-pitch-accent-on-hover}
 
 :::note
-This setting only applies if [**Display pitch accent (Japanese)**](#display-pitch-accent-japanese) is enabled.
+To ustawienie działa tylko wtedy, gdy włączono opcję [**Wyświetlaj akcent wyrazowy (japoński)**](#display-pitch-accent-japanese).
 :::
 
-If enabled for video or subtitle list, pitch accent is hidden by default and only appears when you hover over the subtitle text in the video or subtitle list respectively.
+Po włączeniu tej opcji akcent wyrazowy jest domyślnie ukryty i pojawia się po najechaniu kursorem na tekst napisów w wideo lub na liście napisów.
 
-### Word reading size {#word-reading-size}
+### Rozmiar odczytu słów {#word-reading-size}
 
-Controls the size of word readings (furigana) in em units (% of subtitle font size).
+Określa rozmiar odczytów słów (furigany) w jednostkach em (procent rozmiaru czcionki napisów).
 
-### Word frequency size {#word-frequency-size}
+### Rozmiar częstotliwości słów {#word-frequency-size}
 
-Controls the size of word frequency in em units (% of subtitle font size).
+Określa rozmiar informacji o częstotliwości słów w jednostkach em (procent rozmiaru czcionki napisów).
 
-### Word definition size {#word-definition-size}
+### Rozmiar definicji słów {#word-definition-size}
 
-Controls the size of word definitions in em units (% of subtitle font size).
+Określa rozmiar definicji słów w jednostkach em (procent rozmiaru czcionki napisów).
 
-### Pitch accent size {#pitch-accent-size}
+### Rozmiar akcentu wyrazowego {#pitch-accent-size}
 
-Controls the size of pitch accent in em units (% of subtitle font size).
+Określa rozmiar akcentu wyrazowego w jednostkach em (procent rozmiaru czcionki napisów).
 
-### Word status colors {#word-status-colors}
+### Kolory statusów słów {#word-status-colors}
 
-Each status has a configurable color and transparency used by [**Word color style**](#word-color-style) which can be individually enabled or disabled.
+Każdy status ma konfigurowalny kolor i przezroczystość używane przez [**Styl koloru słów**](#word-color-style). Każdy status można włączyć lub wyłączyć osobno.
 
-- **Uncollected**: Word is not present in your asbplayer database.
-- **Unknown**: Word is present but considered unknown.
-- **Learning**: Word is currently learning.
-- **Graduated**: Word has graduated from learning.
-- **Young**: Word is known, but not yet mature.
-- **Mature**: Word is fully known (mature).
+- **Niezebrane**: słowa nie ma w bazie asbplayera.
+- **Nieznane**: słowo znajduje się w bazie, ale jest uznawane za nieznane.
+- **W trakcie nauki**: słowo jest obecnie przyswajane.
+- **Ukończone**: słowo zakończyło etap nauki.
+- **Młode**: słowo jest znane, ale nie jest jeszcze dojrzałe.
+- **Dojrzałe**: słowo jest w pełni znane (dojrzałe).
 
 :::tip
-You can disable status stylings per your liking, e.g. disabling **Mature** to reduce clutter.
+Możesz wyłączyć stylizację wybranych statusów, na przykład **Dojrzałe**, aby ograniczyć liczbę oznaczeń.
 
-You can reuse colors (e.g. **Graduated** and **Young**) if you don't want to differentiate between certain statuses.
+Możesz używać tych samych kolorów dla różnych statusów (np. **Ukończone** i **Młode**), jeśli nie chcesz ich rozróżniać.
 
-For how Anki Card statuses are determined, see [**Mature Anki stability/interval (days)**](#mature-anki-stability-interval).
-For how WaniKani statuses are determined, see [**WaniKani API token**](#wanikani-api-token).
+Informacje o sposobie ustalania statusów kart Anki znajdziesz w sekcji [**Stabilność/odstęp dojrzałej karty Anki (dni)**](#mature-anki-stability-interval).
+Informacje o sposobie ustalania statusów WaniKani znajdziesz w sekcji [**Token API WaniKani**](#wanikani-api-token).
 :::
 
-## <a href={new URL('?view=settings#playback', project.urls.app).href}>Playback</a> {#playback}
+## <a href={new URL('?view=settings#playback', project.urls.app).href}>Odtwarzanie</a> {#playback}
 
-### Subtitle tracks affected by playback modes and keyboard shortcuts {#playback-subtitle-tracks}
+### Ścieżki napisów używane przez tryby odtwarzania i skróty klawiszowe {#playback-subtitle-tracks}
 
-Specifies which tracks will be considered when using the [Subtitles](#subtitles-keyboard-shortcuts) and [Seek](#seek-keyboard-shortcuts) keyboard shortcuts, or when using playback modes. For example, when condensed mode is enabled, blank space to be automatically skipped, is considered to be any part of the timeline without subtitles in the tracks specified by this option.
+Określa, które ścieżki są uwzględniane przy używaniu skrótów klawiszowych [Napisów](#subtitles-keyboard-shortcuts) i [Przewijania](#seek-keyboard-shortcuts) oraz trybów odtwarzania. Na przykład w trybie skondensowanym pomijane są fragmenty osi czasu bez napisów na wybranych tu ścieżkach.
 
-### Auto-pause when mousing over subtitles {#auto-pause-when-mousing-over-subtitles}
+### Wstrzymuj automatycznie po najechaniu kursorem na napisy {#auto-pause-when-mousing-over-subtitles}
 
-Auto-pause behavior when mousing over subtitles. "Enabled with auto-resume" means that playback will automatically resume when mousing off of subtitles.
+Określa działanie automatycznej pauzy po najechaniu kursorem na napisy. „Włączone z automatycznym wznowieniem” oznacza, że odtwarzanie zostanie wznowione po przesunięciu kursora poza napisy.
 
-### Playback modes {#playback-modes}
+### Tryby odtwarzania {#playback-modes}
 
-Playback modes can be toggled with the [Playback keyboard shortcuts](#playback-keyboard-shortcuts).
+Tryby odtwarzania można przełączać za pomocą [skrótów klawiszowych odtwarzania](#playback-keyboard-shortcuts).
 
-### Playback rate {#playback-rate}
+### Prędkość odtwarzania {#playback-rate}
 
-Controls the normal media playback speed, including the speed used inside subtitles while fast-forward is enabled. New playback always starts at this rate. Use the [Playback rate keyboard shortcuts](#playback-rate-keyboard-shortcuts) to adjust it while watching.
+Określa normalną prędkość odtwarzania multimediów, także prędkość używaną podczas wyświetlania napisów w trybie przyspieszonym. Odtwarzanie zawsze rozpoczyna się z tą prędkością. Możesz ją zmienić podczas oglądania za pomocą [skrótów klawiszowych prędkości odtwarzania](#playback-rate-keyboard-shortcuts).
 
-### Show playback rate notification {#show-playback-rate-notification}
+### Pokazuj powiadomienie o prędkości odtwarzania {#show-playback-rate-notification}
 
-Shows a notification when the playback rate changes outside fast-forward playback.
+Wyświetla powiadomienie, gdy prędkość odtwarzania zmieni się poza trybem przyspieszonym.
 
-### Auto-pause preference {#auto-pause-preference}
+### Preferencje automatycznej pauzy {#auto-pause-preference}
 
-When auto-pause is enabled, whether to auto-pause at the start, end, or both edges of subtitles. When both edges and repeat are enabled, repeats pauses at the end before repeating, but the start pause is skipped to prevent double pausing.
+Określa, czy przy włączonej automatycznej pauzie zatrzymywać odtwarzanie na początku, końcu czy obu granicach napisu. Jeśli wybrano obie granice i włączono powtarzanie, odtwarzanie zatrzymuje się na końcu przed powtórzeniem, ale pomija pauzę na początku, aby nie wstrzymywać go dwukrotnie.
 
-### Repeat count preference {#repeat-count-preference}
+### Liczba powtórzeń {#repeat-count-preference}
 
-Controls how many times each subtitle repeats before playback continues. A value of `0` repeats indefinitely.
+Określa, ile razy powtórzyć każdy napis przed wznowieniem odtwarzania. Wartość `0` oznacza powtarzanie bez końca.
 
-### Repeats before showing subtitles {#repeats-before-showing-subtitles}
+### Liczba powtórzeń przed wyświetleniem napisów {#repeats-before-showing-subtitles}
 
-Suppress subtitles in a repeating segment until it has repeated this many times. `0` adds no suppression, `1` removes suppression from the first repeat.
+Ukrywa napisy w powtarzanym fragmencie do momentu, gdy zostanie on powtórzony wskazaną liczbę razy. `0` nie ukrywa napisów, a `1` pokazuje je już przy pierwszym powtórzeniu.
 
-### Subtitle trigger start and end offsets {#subtitle-trigger-start-and-end-offsets}
+### Przesunięcie początku i końca wyzwalania napisów {#subtitle-trigger-start-and-end-offsets}
 
-Offsets the subtitle start and end triggers used by auto-pause and repeat in milliseconds. These offsets are applied after the global subtitle offset. Start and end offsets can be configured independently; positive values trigger playback effects later, while negative values trigger them earlier. Each shifted edge is limited by the media and neighboring subtitle-event boundaries. If the shifted start and end cross, their chronological roles are swapped.
+Przesuwa w milisekundach wyzwalacze początku i końca napisów używane przez automatyczną pauzę i powtarzanie. Przesunięcia są stosowane po globalnym przesunięciu napisów. Początek i koniec można skonfigurować niezależnie: wartości dodatnie opóźniają efekty odtwarzania, a ujemne przyspieszają je. Przesunięte granice ograniczają granice multimediów i sąsiednich zdarzeń napisów. Jeśli przesunięty początek i koniec się zamienią miejscami, zamieniane są też ich role chronologiczne.
 
-### Fast-forward minimum skip interval {#fast-forward-minimum-skip-interval}
+### Minimalny odstęp pomijania w trybie przyspieszonym {#fast-forward-minimum-skip-interval}
 
-Fast-forward for the full gap between subtitles when the gap is at least this long. Shorter gaps stay at the normal playback rate.
+Przyspiesza cały odstęp między napisami, jeśli jest co najmniej tak długi. Krótsze odstępy są odtwarzane z normalną prędkością.
 
-### Fast-forward playback rate {#fast-forward-playback-rate}
+### Prędkość odtwarzania w trybie przyspieszonym {#fast-forward-playback-rate}
 
-How fast to fast-forward when fast-forward mode is enabled.
+Określa prędkość odtwarzania po włączeniu trybu przyspieszonego.
 
-### Condensed playback minimum skip interval {#condensed-playback-minimum-skip-interval}
+### Minimalny odstęp pomijania w trybie skondensowanym {#condensed-playback-minimum-skip-interval}
 
-When condensed playback is enabled, skip to the next subtitle only if the next subtitle is at least this amount of time away.
+W trybie skondensowanym przechodzi do następnego napisu tylko wtedy, gdy dzieli go od bieżącego co najmniej określony tu odstęp czasu.
 
-### Subtitle gap trigger start and end offsets {#subtitle-gap-trigger-start-and-end-offsets}
+### Przesunięcie początku i końca wyzwalania przerw między napisami {#subtitle-gap-trigger-start-and-end-offsets}
 
-Offsets the subtitle gap triggers used by fast-forward and condensed playback. The gap start offset is non-negative and moves the trigger later from the moment the subtitle ends; the gap end offset is non-positive and moves the trigger earlier from the moment before the next subtitle. Each gap is limited by the media and neighboring subtitle-event boundaries.
+Przesuwa wyzwalacze przerw między napisami używane w trybie przyspieszonym i skondensowanym. Przesunięcie początku przerwy jest nieujemne i opóźnia wyzwalacz względem końca napisu. Przesunięcie końca przerwy jest niedodatnie i przyspiesza wyzwalacz względem chwili przed następnym napisem. Każdą przerwę ograniczają granice multimediów i sąsiednich zdarzeń napisów.
 
-### Auto-pause resume mode {#auto-pause-resume-mode}
+### Tryb wznawiania po automatycznej pauzie {#auto-pause-resume-mode}
 
-Controls how an automatic pause finishes.
+Określa sposób zakończenia automatycznej pauzy.
 
-- **Manual**: Playback stays paused until you resume it.
+- **Ręczny**: odtwarzanie pozostaje wstrzymane do momentu wznowienia.
 
-- **Fixed**: Every automatic pause lasts for the same configured time.
-  - Controls [Fixed pause duration](#fixed-pause-duration) and [Resume delay after auto-pause](#resume-delay-after-auto-pause).
+- **Stały**: każda automatyczna pauza trwa tyle samo.
+  - Używa ustawień [Stały czas pauzy](#fixed-pause-duration) i [Opóźnienie wznowienia po automatycznej pauzie](#resume-delay-after-auto-pause).
 
-- **Subtitle length**: The pause duration is calculated from the subtitle's character count. Only subtitles on seekable tracks are counted, so a translation track loaded alongside the target language does not inflate the pause.
-  - Controls [Minimum pause duration](#minimum-pause-duration), [Maximum pause duration](#maximum-pause-duration), [Pause time per character](#pause-time-per-character), and [Resume delay after auto-pause](#resume-delay-after-auto-pause).
+- **Długość napisu**: czas pauzy jest obliczany na podstawie liczby znaków w napisie. Uwzględniane są tylko napisy ze ścieżek, po których można przewijać, więc ścieżka z tłumaczeniem wczytana obok języka docelowego nie wydłuża pauzy.
+  - Używa ustawień [Minimalny czas pauzy](#minimum-pause-duration), [Maksymalny czas pauzy](#maximum-pause-duration), [Czas pauzy na znak](#pause-time-per-character) i [Opóźnienie wznowienia po automatycznej pauzie](#resume-delay-after-auto-pause).
 
-### Fixed pause duration {#fixed-pause-duration}
+### Stały czas pauzy {#fixed-pause-duration}
 
-The amount of time an automatic pause lasts in **Fixed** mode.
+Czas trwania automatycznej pauzy w trybie **Stałym**.
 
-### Minimum pause duration {#minimum-pause-duration}
+### Minimalny czas pauzy {#minimum-pause-duration}
 
-The shortest pause allowed in **Subtitle length** mode, regardless of the subtitle's character count.
+Najkrótsza pauza dozwolona w trybie **Długość napisu**, niezależnie od liczby znaków w napisie.
 
-### Maximum pause duration {#maximum-pause-duration}
+### Maksymalny czas pauzy {#maximum-pause-duration}
 
-The longest pause allowed in **Subtitle length** mode. A value of `0` means there is no upper limit. A nonzero maximum cannot be lower than the minimum pause duration.
+Najdłuższa pauza dozwolona w trybie **Długość napisu**. Wartość `0` oznacza brak górnego limitu. Niezerowa wartość maksymalna nie może być mniejsza od minimalnego czasu pauzy.
 
-### Pause time per character {#pause-time-per-character}
+### Czas pauzy na znak {#pause-time-per-character}
 
-The number of milliseconds assigned to each character in **Subtitle length** mode. The character count multiplied by this value is clamped between the minimum and maximum pause durations.
+Liczba milisekund przypisana każdemu znakowi w trybie **Długość napisu**. Iloczyn liczby znaków i tej wartości jest ograniczany do przedziału między minimalnym a maksymalnym czasem pauzy.
 
-### Resume delay after auto-pause {#resume-delay-after-auto-pause}
+### Opóźnienie wznowienia po automatycznej pauzie {#resume-delay-after-auto-pause}
 
-In **Fixed** and **Subtitle length** modes, an automatic pause runs in two phases: the subtitle is shown for the configured pause duration, then hidden while playback stays paused for the resume delay. This setting controls the length of that second phase.
+W trybach **Stały** i **Długość napisu** automatyczna pauza składa się z dwóch etapów: napisy są widoczne przez ustawiony czas pauzy, a następnie znikają, podczas gdy odtwarzanie pozostaje wstrzymane przez czas opóźnienia wznowienia. To ustawienie określa długość drugiego etapu.
 
-### Show subtitles {#show-subtitles}
+### Wyświetlaj napisy {#show-subtitles}
 
-- **When due**: Subtitles appear while their timing is active.
+- **Gdy przypada ich czas**: napisy są wyświetlane w okresie, w którym powinny być widoczne.
 
-- **While paused**: Subtitles appear only when they are due and playback is paused.
+- **Podczas pauzy**: napisy są wyświetlane tylko wtedy, gdy przypada ich czas i odtwarzanie jest wstrzymane.
 
-- **While manually paused**: Subtitles appear only when they are due and playback is manually paused.
+- **Podczas ręcznej pauzy**: napisy są wyświetlane tylko wtedy, gdy przypada ich czas i odtwarzanie zostało ręcznie wstrzymane.
 
-## <a href={new URL('?view=settings#playback', project.urls.app).href}>Playback > Annotation</a> {#playback-annotation}
+## <a href={new URL('?view=settings#playback', project.urls.app).href}>Odtwarzanie > Adnotacje</a> {#playback-annotation}
 
-These settings use the word statuses, states, and frequencies from [Annotation](#annotation) for the selected subtitle track. The auto-pause, condensed, fast-forward, and repeat rules take effect while their playback modes are on. **No word filter** means no statuses or states are selected for that track. Rules apply per track: a seekable track without statuses or states selected for one of those modes keeps that mode's usual behavior, even when it plays alongside a track that has rules.
+Te ustawienia wykorzystują statusy, stany i częstotliwości słów z sekcji [Adnotacje](#annotation) dla wybranej ścieżki napisów. Reguły automatycznej pauzy, odtwarzania skondensowanego, przyspieszonego i powtarzania obowiązują, gdy włączono odpowiednie tryby. **Brak filtra słów** oznacza, że dla tej ścieżki nie wybrano żadnych statusów ani stanów. Reguły są stosowane osobno do każdej ścieżki: ścieżka z możliwością przewijania, dla której nie wybrano statusów ani stanów w danym trybie, zachowuje zwykłe działanie tego trybu, nawet jeśli jest odtwarzana razem ze ścieżką mającą reguły.
 
-### Subtitle track {#playback-annotation-track}
+### Ścieżka napisów {#playback-annotation-track}
 
-Selects the subtitle track whose annotation playback settings you are editing. The selected track is shared with the Annotation tab.
+Wybiera ścieżkę napisów, której dotyczą edytowane ustawienia odtwarzania adnotacji. Wybrana ścieżka jest wspólna z kartą Adnotacje.
 
-### Select first matching word on pause {#select-first-matching-word-on-pause}
+### Zaznacz pierwsze pasujące słowo po wstrzymaniu {#select-first-matching-word-on-pause}
 
-Selects the first word matching any chosen status or state whenever playback pauses, including manual pauses, and after seeking while paused. Leave the selection empty to disable this behavior. Selection happens in the video player, or in the subtitle player when no video is loaded or connected.
+Zaznacza pierwsze słowo pasujące do wybranego statusu lub stanu za każdym razem, gdy odtwarzanie zostanie wstrzymane, również ręcznie, a także po przewinięciu przy wstrzymanym odtwarzaniu. Pozostaw wybór pusty, aby wyłączyć tę funkcję. Słowo jest zaznaczane w odtwarzaczu wideo lub, jeśli nie wczytano ani nie podłączono wideo, w odtwarzaczu napisów.
 
-When an [annotation-based auto-pause rule](#auto-pause-subtitles-containing-these-words) causes the pause, its matching word is selected instead. This dropdown continues to control selection on manual pauses.
+Jeśli pauzę spowodowała [reguła automatycznej pauzy oparta na adnotacjach](#auto-pause-subtitles-containing-these-words), zaznaczane jest pasujące do niej słowo. Ta lista nadal określa, co zaznaczać przy ręcznym wstrzymaniu.
 
-Each of the word rules below has its own status and state selection, word-count limit, and frequency limit. A word must have a selected status or state and satisfy both limits.
+Każda z poniższych reguł słów ma osobne ustawienia wyboru statusu i stanu, limitu liczby słów oraz limitu częstotliwości. Słowo musi mieć wybrany status lub stan i spełniać oba limity.
 
-### Auto-pause subtitles containing these words {#auto-pause-subtitles-containing-these-words}
+### Wstrzymuj automatycznie napisy zawierające te słowa {#auto-pause-subtitles-containing-these-words}
 
-When auto-pause mode is on, pause only on subtitles containing a matching word and select the first matching word. This takes precedence over [**Select first matching word on pause**](#select-first-matching-word-on-pause) for automatic pauses; that dropdown still applies on manual pauses.
+Gdy włączono tryb automatycznej pauzy, zatrzymuje odtwarzanie tylko na napisach zawierających pasujące słowo i zaznacza pierwsze z nich. Przy automatycznej pauzie ma to pierwszeństwo przed opcją [**Zaznacz pierwsze pasujące słowo po wstrzymaniu**](#select-first-matching-word-on-pause). Ta lista nadal obowiązuje przy ręcznej pauzie.
 
-### Repeat subtitles containing these words {#repeat-subtitles-containing-these-words}
+### Powtarzaj napisy zawierające te słowa {#repeat-subtitles-containing-these-words}
 
-When repeat mode is on, repeat only subtitles containing a matching word.
+Gdy włączono tryb powtarzania, powtarza tylko napisy zawierające pasujące słowo.
 
-### Play subtitles containing these words in condensed mode {#play-subtitles-containing-these-words-in-condensed-mode}
+### Odtwarzaj napisy zawierające te słowa w trybie skondensowanym {#play-subtitles-containing-these-words-in-condensed-mode}
 
-When condensed mode is on, keep subtitles containing a matching word in the condensed timeline. Skip through other subtitles.
+Gdy włączono tryb skondensowany, zachowuje w skróconej osi czasu napisy zawierające pasujące słowo. Pozostałe napisy są pomijane.
 
-### Play subtitles containing these words at normal speed in fast-forward mode {#play-subtitles-containing-these-words-at-normal-speed-in-fast-forward-mode}
+### Odtwarzaj napisy zawierające te słowa z normalną prędkością w trybie przyspieszonym {#play-subtitles-containing-these-words-at-normal-speed-in-fast-forward-mode}
 
-When fast-forward mode is on, play subtitles containing a matching word at the normal playback rate. Fast-forward through other subtitles.
+Gdy włączono tryb przyspieszony, odtwarza napisy zawierające pasujące słowo z normalną prędkością. Pozostałe napisy są odtwarzane szybciej.
 
-### Adjust fast-forward rate by comprehension {#adjust-fast-forward-rate-by-comprehension}
+### Dostosuj prędkość przewijania do przodu do poziomu rozumienia {#adjust-fast-forward-rate-by-comprehension}
 
-While fast-forward mode is on, use the sentence comprehension score to choose the rate within a subtitle.
+W trybie przyspieszonym dobiera prędkość wewnątrz napisu na podstawie wyniku rozumienia zdania.
 
-At or below [**Minimum comprehension**](#minimum-comprehension), use the normal playback rate; at 100%, use the configured fast-forward rate. Rates between those points are interpolated.
+Przy wartości równej [**Minimalnemu poziomowi rozumienia**](#minimum-comprehension) lub niższej używa normalnej prędkości odtwarzania, a przy 100% — skonfigurowanej prędkości przyspieszonej. Wartości pośrednie są interpolowane.
 
-Changing the speed in a comprehension-controlled subtitle changes the configured fast-forward rate, then recalculates the applied rate from comprehension. This also applies when comprehension keeps the subtitle at normal speed. Keyboard shortcuts and player speed controls use the same behavior; the normal rate is unchanged.
+Zmiana prędkości w napisie sterowanym poziomem rozumienia zmienia skonfigurowaną prędkość przyspieszoną, po czym ponownie oblicza stosowaną prędkość na podstawie rozumienia. Działa to również wtedy, gdy poziom rozumienia utrzymuje napis przy normalnej prędkości. Skróty klawiszowe i elementy sterujące prędkością w odtwarzaczu działają tak samo; normalna prędkość pozostaje bez zmian.
 
-### Minimum comprehension {#minimum-comprehension}
+### Minimalny poziom rozumienia {#minimum-comprehension}
 
-Sets the percentage where acceleration starts (0–99%, default 60%).
+Określa wartość procentową, od której rozpoczyna się przyspieszanie (0–99%, domyślnie 60%).
 
-### Show these words during playback {#show-these-words-during-playback}
+### Pokazuj te słowa podczas odtwarzania {#show-these-words-during-playback}
 
-Select the statuses and states whose words should remain visible.
+Wybiera statusy i stany słów, które mają pozostać widoczne.
 
-### Hide the entire subtitle when at least this percentage of words would be hidden {#whole-subtitle-hidden-percentage}
+### Ukryj cały napis, gdy ta wartość procentowa słów byłaby ukryta {#whole-subtitle-hidden-percentage}
 
-Hide the whole subtitle when at least this percentage of its words would be hidden by the show rule. For example, at **80%**, if four words in a five-word subtitle would be hidden, the entire subtitle is hidden, including the one word selected to show. Punctuation and other non-letter characters do not count.
+Ukrywa cały napis, gdy reguła wyświetlania ukryłaby co najmniej określony procent zawartych w nim słów. Na przykład przy wartości **80%** w pięciowyrazowym napisie ukryte zostaną cztery słowa, więc zniknie cały napis, także jedno słowo wybrane do wyświetlania. Znaki interpunkcyjne i inne znaki niebędące literami nie są liczone.
 
-### Hide non-matching words individually {#hide-non-matching-words-individually}
+### Ukrywaj osobno niepasujące słowa {#hide-non-matching-words-individually}
 
-When enabled, words that do not meet the show rule are hidden individually while the subtitle is below the whole-subtitle threshold. When disabled, the subtitle stays fully visible until the threshold is reached.
+Po włączeniu tej opcji słowa niespełniające reguły wyświetlania są ukrywane pojedynczo, dopóki napis nie osiągnie progu ukrycia w całości. Po wyłączeniu napis pozostaje w pełni widoczny do osiągnięcia tego progu.
 
-### Minimum words per selected category {#minimum-words-per-selected-category}
+### Minimalna liczba słów w wybranej kategorii {#minimum-words-per-selected-category}
 
-Each selected category (such as **Uncollected** or **Ignored**) is counted separately within a subtitle. If its count is below this limit, words in that category do not trigger the rule. `0` disables the limit.
+Każda wybrana kategoria (np. **Niezebrane** lub **Zignorowane**) jest liczona osobno w obrębie napisu. Jeśli liczba słów w kategorii jest niższa niż ten limit, nie uruchamiają one reguły. `0` wyłącza limit.
 
-### Maximum words per selected category {#maximum-words-per-selected-category}
+### Maksymalna liczba słów w wybranej kategorii {#maximum-words-per-selected-category}
 
-Each selected category (such as **Uncollected** or **Ignored**) is counted separately within a subtitle. If its count exceeds this limit, words in that category do not trigger the rule. `0` disables the limit.
+Każda wybrana kategoria (np. **Niezebrane** lub **Zignorowane**) jest liczona osobno w obrębie napisu. Jeśli liczba słów w kategorii przekracza ten limit, nie uruchamiają one reguły. `0` wyłącza limit.
 
-### Only when word frequency is at least {#only-when-word-frequency-is-at-least}
+### Tylko gdy częstotliwość słowa wynosi co najmniej {#only-when-word-frequency-is-at-least}
 
-A matching word must have a frequency at or above this value. Missing frequency counts as `1`. `0` disables the limit.
+Częstotliwość pasującego słowa musi być równa tej wartości lub wyższa. Brak danych o częstotliwości jest traktowany jako `1`. `0` wyłącza limit.
 
-### Only when word frequency is at most {#only-when-word-frequency-is-at-most}
+### Tylko gdy częstotliwość słowa wynosi najwyżej {#only-when-word-frequency-is-at-most}
 
-A matching word must have a frequency at or below this value. Missing frequency counts as `1`. `0` disables the limit.
+Częstotliwość pasującego słowa musi być równa tej wartości lub niższa. Brak danych o częstotliwości jest traktowany jako `1`. `0` wyłącza limit.
 
-## <a href={new URL('?view=settings#streaming-video', project.urls.app).href}>Streaming video</a> (extension only) {#streaming-video}
+## <a href={new URL('?view=settings#streaming-video', project.urls.app).href}>Wideo strumieniowe</a> (tylko rozszerzenie) {#streaming-video}
 
-Streaming video settings are available only when the browser extension is installed.
+Ustawienia wideo strumieniowego są dostępne tylko po zainstalowaniu rozszerzenia przeglądarki.
 
-### When loading subtitles, also open subtitle list via the app in a separate tab {#open-subtitle-list-in-tab}
+### Podczas wczytywania napisów otwieraj też ich listę w osobnej karcie aplikacji {#open-subtitle-list-in-tab}
 
-Anytime subtitles are loaded into a video element, opens the website, and syncs the loaded subtitles with the website in a separate tab.
+Za każdym razem, gdy napisy zostaną wczytane do elementu wideo, otwiera stronę w osobnej karcie i synchronizuje z nią napisy.
 
-### App URL {#app-url}
+### URL aplikacji {#app-url}
 
-Determines where the extension fetches some configuration, and what URL to open when syncing subtitles to the website running in a separate tab. Essentially the website URL.
+Określa, skąd rozszerzenie pobiera część konfiguracji oraz jaki adres otworzyć podczas synchronizowania napisów ze stroną w osobnej karcie. Zasadniczo jest to adres URL strony.
 
-### Enable controls overlay {#enable-controls-overlay}
+### Włącz nakładkę sterowania {#enable-controls-overlay}
 
-Display the overlay UI on video elements with loaded subtitles.
+Wyświetla nakładkę sterowania na elementach wideo z wczytanymi napisami.
 
-### Display subtitles {#display-subtitles}
+### Wyświetlaj napisy {#display-subtitles}
 
-Display loaded subtitles on video elements.
+Wyświetla wczytane napisy na elementach wideo.
 
-### Record audio when mining {#record-audio-when-mining}
+### Nagrywaj dźwięk podczas kopania {#record-audio-when-mining}
 
-When mining a subtitle, record the audio covered by the subtitle for inclusion in the flashcard.
+Podczas kopania fiszki nagrywa dźwięk z okresu objętego napisem, aby dodać go do fiszki.
 
-### Take screenshot when mining {#take-screenshot-when-mining}
+### Wykonuj zrzut ekranu podczas kopania {#take-screenshot-when-mining}
 
-When mining a subtitle, take a screenshot for inclusion in the flashcard.
+Podczas kopania fiszki wykonuje zrzut ekranu, aby dodać go do fiszki.
 
-### Clean screenshot when mining {#clean-screenshot-when-mining}
+### Oczyść zrzut ekranu podczas kopania {#clean-screenshot-when-mining}
 
-When mining a subtitle and screenshots are enabled, keep the screenshot "clean" by removing any HTML elements on top of the video element before taking the screenshot.
+Podczas kopania fiszki i przy włączonych zrzutach ekranu usuwa elementy HTML nałożone na wideo, aby zrzut był „czysty”.
 
-### Crop screenshot when mining {#crop-screenshot-when-mining}
+### Przycinaj zrzut ekranu podczas kopania {#crop-screenshot-when-mining}
 
-When mining a subtitle, crop the screenshot to the video element.
+Podczas kopania fiszki przycina zrzut ekranu do elementu wideo.
 
-### Image capture format {#streaming-image-capture-format}
+### Format przechwytywanego obrazu {#streaming-image-capture-format}
 
-Specifies the image capture format for cards mined from streaming video. The additional option is "Animated WebP," which captures the video playing in the tab for the subtitle's time interval - including the audio padding - and saves it as an animated image, instead of a single screenshot.
+Określa format obrazu dla fiszek tworzonych z wideo strumieniowego. Dodatkową opcją jest „Animowany WebP”, który przechwytuje wideo odtwarzane na karcie przez czas trwania napisu — wraz z marginesem dźwięku — i zapisuje je jako animowany obraz zamiast pojedynczego zrzutu ekranu.
 
-Animated WebP is only used while [recording audio when mining](#record-audio-when-mining) is enabled, and otherwise a screenshot is taken as usual. It applies to every way of mining that records media, including manual recording started and stopped with the record keyboard shortcut, which captures everything up to the moment recording is stopped (up to 30 seconds). Only one recording can run at a time. Animated WebP is not available in Firefox, and videos protected by DRM can't be captured. The tab has to stay visible while the clip is being captured, since Chrome stops rendering hidden tabs.
+Animowany WebP jest używany tylko wtedy, gdy włączono opcję [Nagrywaj dźwięk podczas kopania](#record-audio-when-mining); w przeciwnym razie wykonywany jest zwykły zrzut ekranu. Dotyczy wszystkich sposobów kopania, które nagrywają multimedia, w tym ręcznego nagrywania rozpoczętego i zatrzymanego skrótem klawiszowym. Nagranie obejmuje cały materiał do chwili zatrzymania (maksymalnie 30 sekund). Jednocześnie może trwać tylko jedno nagranie. Animowany WebP nie jest dostępny w Firefoxie i nie można przechwytywać wideo chronionego DRM. Karta musi pozostać widoczna podczas przechwytywania klipu, ponieważ Chrome przestaje renderować ukryte karty.
 
-### Animated image FPS {#animated-image-fps}
+### Liczba klatek na sekundę animowanego obrazu {#animated-image-fps}
 
-How many frames per second to capture for animated WebP images. Longer clips automatically use fewer frames to keep the card small. Only available when the Animated WebP image capture format is selected.
+Liczba klatek na sekundę przechwytywanych do animowanych obrazów WebP. Dłuższe klipy automatycznie używają mniejszej liczby klatek, aby ograniczyć rozmiar karty. Dostępne tylko po wybraniu formatu Animowany WebP.
 
-### Animated image quality {#animated-image-quality}
+### Jakość animowanego obrazu {#animated-image-quality}
 
-Quality of each frame of animated WebP images, from `0.1` to `1`. Higher is better looking but results in a larger file. Only available when the Animated WebP image capture format is selected.
+Jakość każdej klatki animowanego obrazu WebP, od `0.1` do `1`. Wyższa wartość poprawia wygląd, ale zwiększa rozmiar pliku. Dostępne tylko po wybraniu formatu Animowany WebP.
 
-### Allow subtitle file drag-and-drop {#allow-subtitle-file-drag-and-drop}
+### Zezwalaj na przeciąganie i upuszczanie plików z napisami {#allow-subtitle-file-drag-and-drop}
 
-Allow subtitle files to be drag-and-dropped into video elements.
+Pozwala przeciągać pliki z napisami i upuszczać je na elementy wideo.
 
-### Auto-load detected subtitles {#auto-load-detected-subtitles}
+### Automatycznie wczytuj wykryte napisy {#auto-load-detected-subtitles}
 
-If subtitle auto-detection is supported on the current website, load them automatically. If multiple tracks are detected, load the track for the preferred language. The preferred language is the one that was last loaded with the "remember these track choices" box checked.
+Jeśli bieżąca strona obsługuje automatyczne wykrywanie napisów, wczytuje je automatycznie. Jeśli wykryto kilka ścieżek, wczytuje ścieżkę w preferowanym języku. Preferowany jest język ostatnio wczytany przy zaznaczonej opcji „Zapamiętaj wybrane ścieżki”.
 
-### Prompt when auto-loading detected subtitles fails {#prompt-on-subtitle-autoload-failure}
+### Pytaj, gdy automatyczne wczytywanie wykrytych napisów się nie powiedzie {#prompt-on-subtitle-autoload-failure}
 
-When automatic subtitle loading fails, prompt before trying to load detected subtitles.
+Jeśli automatyczne wczytanie napisów się nie powiedzie, przed próbą wczytania wykrytych napisów wyświetla pytanie.
 
-## <a href={new URL('?view=settings#streaming-video', project.urls.app).href}>Streaming video > Pages</a> {#pages}
+## <a href={new URL('?view=settings#streaming-video', project.urls.app).href}>Wideo strumieniowe > Strony</a> {#pages}
 
-Settings for page-specific integrations like YouTube, Netflix, etc. asbplayer has pre-configured default settings for each page. The pages section allows those defaults to be modified.
+Ustawienia integracji z konkretnymi stronami, takimi jak YouTube czy Netflix. asbplayer ma wstępnie skonfigurowane ustawienia domyślne dla każdej strony. W sekcji Strony można je zmienić.
 
-### Target language codes for machine translation (YouTube only) {#youtube-translation-languages}
+### Kody języków docelowych tłumaczenia maszynowego (tylko YouTube) {#youtube-translation-languages}
 
-Specifies which target languages to use for YouTube's machine translation. When languages are specified here, additional tracks for each target language appear in the subtitle track selector.
+Określa języki docelowe tłumaczenia maszynowego YouTube. Po wskazaniu języków w selektorze ścieżek napisów pojawią się dodatkowe ścieżki dla każdego z nich.
 
-## <a href={new URL('?view=settings#misc-settings', project.urls.app).href}>Misc</a> {#misc}
+## <a href={new URL('?view=settings#misc-settings', project.urls.app).href}>Różne</a> {#misc}
 
-### Import/export settings {#import-export-settings}
+### Importowanie/eksportowanie ustawień {#import-export-settings}
 
-Imports or exports settings as a `json` file.
+Importuje lub eksportuje ustawienia jako plik `json`.
 
-### Theme {#theme}
+### Motyw {#theme}
 
-Display all asbplayer in a light or dark theme.
+Wyświetla asbplayera w jasnym lub ciemnym motywie.
 
-### Language {#language}
+### Język {#language}
 
-Language to display UI in.
+Język interfejsu użytkownika.
 
-Note: not all strings have been localized in every language that asbplayer supports. Unlocalized will be displayed in English. Feel free to help out with localization at the [Crowdin project](https://crowdin.com/project/asbplayer).
+Uwaga: nie wszystkie teksty zostały przetłumaczone na każdy obsługiwany przez asbplayer język. Nieprzetłumaczone teksty będą wyświetlane po angielsku. Możesz pomóc w tłumaczeniu w [projekcie Crowdin](https://crowdin.com/project/asbplayer).
 
-### Auto-maximize local video {#auto-maximize-local-video}
+### Automatycznie maksymalizuj lokalne wideo {#auto-maximize-local-video}
 
-Automatically maximize the local video when the subtitle panel is opened.
+Automatycznie maksymalizuje lokalne wideo po otwarciu panelu napisów.
 
-### Show mining button in subtitle list {#show-mining-button-in-subtitle-list}
+### Pokazuj przycisk kopania na liście napisów {#show-mining-button-in-subtitle-list}
 
-When enabled, shows a mining button next to each subtitle in the subtitle list.
+Po włączeniu tej opcji obok każdego napisu na liście pojawia się przycisk kopania.
 
-### Subtitle list timestamps {#subtitle-list-timestamps}
+### Znaczniki czasu na liście napisów {#subtitle-list-timestamps}
 
-Controls how timestamps are displayed in the subtitle list.
+Określa sposób wyświetlania znaczników czasu na liście napisów.
 
-- **Hidden**: Not shown.
-- **Start**: Shows subtitle's start timestamp only.
-- **Start and end**: Shows both start and end timestamps of the subtitle.
+- **Ukryte**: nie są wyświetlane.
+- **Początek**: wyświetla tylko początkowy znacznik czasu napisu.
+- **Początek i koniec**: wyświetla początkowy i końcowy znacznik czasu napisu.
 
-### Remember subtitle offset {#remember-subtitle-offset}
+### Zapamiętuj przesunięcie napisów {#remember-subtitle-offset}
 
-When enabled, timing offset is "sticky." Subtitles are loaded with the last-used offset.
+Po włączeniu tej opcji przesunięcie czasu jest zapamiętywane. Napisy są wczytywane z ostatnio użytym przesunięciem.
 
-### Remember last playback rate {#remember-last-playback-rate}
+### Zapamiętuj ostatnią prędkość odtwarzania {#remember-last-playback-rate}
 
-Updates the playback rate setting when the rate is changed on a video. When disabled, playback still starts at the configured playback rate, but changes made while watching remain temporary.
+Aktualizuje ustawienie prędkości odtwarzania po jej zmianie w trakcie odtwarzania wideo. Gdy opcja jest wyłączona, odtwarzanie nadal rozpoczyna się z ustawioną prędkością, ale zmiany wprowadzone podczas oglądania są tymczasowe.
 
-### Remember last playback modes {#remember-last-playback-modes}
+### Zapamiętuj ostatnie tryby odtwarzania {#remember-last-playback-modes}
 
-Restores the last enabled playback modes when loading playback again. When disabled, playback starts in normal mode.
+Przy ponownym wczytaniu odtwarzania przywraca ostatnio włączone tryby odtwarzania. Gdy opcja jest wyłączona, odtwarzanie rozpoczyna się w trybie normalnym.
 
-### Auto-copy current subtitle to clipboard {#auto-copy-current-subtitle-to-clipboard}
+### Automatycznie kopiuj bieżący napis do schowka {#auto-copy-current-subtitle-to-clipboard}
 
-Automatically copies subtitle to clipboard when it appears on screen. Useful for sending subtitles to apps that can monitor the clipboard.
+Automatycznie kopiuje napis do schowka, gdy pojawi się na ekranie. Przydatne do przesyłania napisów do aplikacji monitorujących schowek.
 
-### Subtitle tracks eligible for auto-copy {#subtitle-tracks-eligible-for-auto-copy}
+### Ścieżki napisów kopiowane automatycznie {#subtitle-tracks-eligible-for-auto-copy}
 
-Specifies which tracks will be auto-copied when the [Auto-copy current subtitle to clipboard](#auto-copy-current-subtitle-to-clipboard) setting is enabled.
+Określa, które ścieżki będą kopiowane automatycznie po włączeniu opcji [Automatycznie kopiuj bieżący napis do schowka](#auto-copy-current-subtitle-to-clipboard).
 
-### Show preview thumbnails {#show-preview-thumbnails}
+### Pokazuj miniatury podglądu {#show-preview-thumbnails}
 
-Shows preview thumbnails in the subtitle list.
+Wyświetla miniatury podglądu na liście napisów.
 
-### Subtitle above thumbnail {#subtitle-above-thumbnail}
+### Napis nad miniaturą {#subtitle-above-thumbnail}
 
-Shows the subtitle above the preview thumbnail in the subtitle list.
+Wyświetla napis nad miniaturą podglądu na liście napisów.
 
-### Subtitle regex filter {#subtitle-regex-filter}
+### Filtr napisów wyrażeniem regularnym {#subtitle-regex-filter}
 
-Substrings matched by this regex will be replaced by the value of [Subtitle regex filter text replacement](#subtitle-regex-filter-text-replacement)
+Fragmenty tekstu pasujące do tego wyrażenia regularnego zostaną zastąpione wartością ustawienia [Tekst zastępujący w filtrze napisów](#subtitle-regex-filter-text-replacement).
 
-### Subtitle regex filter text replacement {#subtitle-regex-filter-text-replacement}
+### Tekst zastępujący w filtrze napisów {#subtitle-regex-filter-text-replacement}
 
-Substrings matched by the regex above are replaced with the value of this setting. If left empty, matched substrings are simply removed.
+Fragmenty pasujące do powyższego wyrażenia regularnego zostaną zastąpione wartością tego ustawienia. Jeśli pole pozostanie puste, pasujące fragmenty zostaną usunięte.
 
-### Subtitle HTML {#subtitle-html}
+### HTML w napisach {#subtitle-html}
 
-How to handle HTML that appears in subtitle files.
+Określa sposób obsługi kodu HTML występującego w plikach z napisami.
 
-### Detect and Display Ruby {#detect-and-display-ruby}
+### Wykrywaj i wyświetlaj ruby {#detect-and-display-ruby}
 
-When enabled, asbplayer will automatically detect Netflix-style word readings and display them stylistically using `ruby` tags. Netflix-style readings frequently appear in Japanese subtitles and look like `花子（はなこ）` where a reading in parentheses follows a word.
+Po włączeniu tej opcji asbplayer automatycznie wykrywa odczyty słów w stylu Netflixa i formatuje je za pomocą znaczników `ruby`. Często występują one w japońskich napisach w formie `花子（はなこ）`, gdzie odczyt w nawiasie następuje po słowie.
 
-### Enable WebSocket client {#enable-websocket-client}
+### Włącz klienta WebSocket {#enable-websocket-client}
 
-Enables the WebSocket client. Allows asbplayer to be controlled using the WebSocket interface.
+Włącza klienta WebSocket. Umożliwia sterowanie asbplayerem przez interfejs WebSocket.
 
-### WebSocket Server URL {#websocket-server-url}
+### URL serwera WebSocket {#websocket-server-url}
 
-The URL of the WebSocket server to connect to when enabling the WebSocket client. Usually this would be a locally-running instance of the [pre-packaged WebSocket server](../guides/web-socket-server.md).
+Adres URL serwera WebSocket, z którym łączy się klient po włączeniu. Zazwyczaj jest to lokalnie uruchomiona instancja [dołączonego serwera WebSocket](../guides/web-socket-server.md).
 
-### Mining history storage limit {#mining-history-storage-limit}
+### Limit historii kopania {#mining-history-storage-limit}
 
-Limits the number of cards that can be saved in the mining history.
+Ogranicza liczbę kart zapisywanych w historii kopania.
 
-### Name of the tab {#name-of-the-tab}
+### Nazwa karty {#name-of-the-tab}
 
-The name to use for the app tab.
+Nazwa wyświetlana na karcie aplikacji.
 
-## Profiles {#profiles}
+## Profile {#profiles}
 
-A settings profile is a completely different set of settings values. The active settings profile can be changed from the settings UI or from the **Load Subtitles** and **Anki Export** dialogs.
+Profil ustawień to osobny zestaw wartości ustawień. Aktywny profil można zmienić w interfejsie ustawień albo w oknach **Wczytaj napisy** i **Eksport Anki**.
