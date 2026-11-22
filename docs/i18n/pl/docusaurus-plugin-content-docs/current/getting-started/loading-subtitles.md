@@ -4,33 +4,33 @@ sidebar_position: 1
 
 import project from '@site/src/project';
 
-# Loading subtitles {#loading-subtitles}
+# Wczytywanie napisów {#loading-subtitles}
 
-The first step to using asbplayer is to load subtitles onto a video source.
+Pierwszym krokiem w korzystaniu z asbplayera jest wczytanie napisów do źródła wideo.
 
-## Streaming video {#streaming-video}
+## Wideo strumieniowe {#streaming-video}
 
-### Chrome (or other Chromium-based browsers) {#chromium}
+### Chrome (i inne przeglądarki oparte na Chromium) {#chromium}
 
-1. Install the Chrome extension from Google's <a href={project.extension.chrome.storeUrl}>web store</a> or from the <a href={`${project.urls.repo}/releases/latest`}>GitHub release</a>.
-2. Click 🧩 icon in browser toolbar → asbplayer → **Open Side Panel**
-3. Click **Load Subtitles** to load subtitles onto any video on the current page.
+1. Zainstaluj rozszerzenie Chrome z <a href={project.extension.chrome.storeUrl}>Chrome Web Store</a> lub z <a href={`${project.urls.repo}/releases/latest`}>wydania na GitHubie</a>.
+2. Kliknij ikonę 🧩 na pasku narzędzi przeglądarki → asbplayer → **Otwórz panel boczny**
+3. Kliknij **Wczytaj napisy**, aby wczytać je do dowolnego filmu na bieżącej stronie.
 
 ### Firefox {#firefox}
 
 :::warning
-asbplayer is missing some features on Firefox. See the [Compatibility](../compatibility.md#extension) section.  
+W Firefoxie asbplayer nie obsługuje niektórych funkcji. Zobacz sekcję [Zgodność](../compatibility.md#extension).
 :::
 
-1. Install the the Firefox addon from the Mozilla <a href={project.extension.firefox.storeUrl}>addon store</a> or from the <a href={`${project.urls.repo}/releases/latest`}>GitHub release</a>.
-2. Click 🧩 icon in browser toolbar → asbplayer → **Open Side Panel**
-3. Click **Load Subtitles** to load subtitles onto any video on the current page.
+1. Zainstaluj dodatek Firefoksa ze <a href={project.extension.firefox.storeUrl}>sklepu dodatków Mozilli</a> lub z <a href={`${project.urls.repo}/releases/latest`}>wydania na GitHubie</a>.
+2. Kliknij ikonę 🧩 na pasku narzędzi przeglądarki → asbplayer → **Otwórz panel boczny**
+3. Kliknij **Wczytaj napisy**, aby wczytać je do dowolnego filmu na bieżącej stronie.
 
 ### Android {#android}
 
-See the [Android guide](../guides/android.md).
+Zobacz [przewodnik po Androidzie](../guides/android.md).
 
-## Video files {#video-files}
+## Pliki wideo {#video-files}
 
-1. Open the <a href={project.urls.app}>website</a>.
-2. Drag-and-drop video and subtitle files into the website.
+1. Otwórz <a href={project.urls.app}>stronę</a>.
+2. Przeciągnij pliki wideo i napisów na stronę.

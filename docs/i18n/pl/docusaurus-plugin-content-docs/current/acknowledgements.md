@@ -4,13 +4,13 @@ sidebar_position: 7
 
 import project from '@site/src/project';
 
-# Acknowledgements {#acknowledgements}
+# Podziękowania {#acknowledgements}
 
-asbplayer would not be what it is today without the community around it. We thank all the people who have used and benefited from asbplayer, who have advocated for it, suggested features, reported bugs, and made contributions.
+Bez skupionej wokół niego społeczności asbplayer nie byłby dziś tym, czym jest. Dziękujemy wszystkim, którzy korzystali z asbplayera, czerpali z niego korzyści, polecali go, proponowali nowe funkcje, zgłaszali błędy i wnosili swój wkład w jego rozwój.
 
-We epecially acknowledge the wonderful humans below.
+Szczególne podziękowania kierujemy do wymienionych poniżej osób.
 
-## Contributors {#contributors}
+## Współtwórcy {#contributors}
 
 [@Renji-XD](https://www.github.com/Renji-XD),
 [@MatiasIslaA](https://www.github.com/MatiasIslaA),
@@ -79,7 +79,7 @@ We epecially acknowledge the wonderful humans below.
 [@joaquinmuzzi](https://github.com/joaquinmuzzi),
 [@mvanhorn](https://github.com/mvanhorn)
 
-## Translators {#translators}
+## Tłumacze {#translators}
 
 **Mana Tsutsumi** (Japanese, initial translation),
 **kasader** (Japanese),
@@ -100,9 +100,9 @@ We epecially acknowledge the wonderful humans below.
 **[@yaaacha](https://github.com/yaaacha)** (Indonesian),
 **[@NeriSal](https://github.com/nerisal)** (Italian)
 
-If you are a non-English native, and would like to help translate asbplayer, join the [Crowdin project](https://crowdin.com/project/asbplayer). If your language isn't there, feel free to create an issue on the <a href={`${project.urls.repo}/issues`}>issues page</a>.
+Jeśli Twoim językiem ojczystym nie jest angielski i chcesz pomóc w tłumaczeniu asbplayera, dołącz do [projektu Crowdin](https://crowdin.com/project/asbplayer). Jeśli nie ma tam Twojego języka, możesz zgłosić go na <a href={`${project.urls.repo}/issues`}>stronie zgłoszeń</a>.
 
-## Sponsors {#sponsors}
+## Sponsorzy {#sponsors}
 
 [@vivekchoksi](https://www.github.com/vivekchoksi),
 [@nzarbayezid](https://www.github.com/nzarbayezid),
@@ -153,4 +153,4 @@ marcman3001,
 shiki,
 kansha-gratitude
 
-and those who have donated privately.
+oraz wszystkim, którzy przekazali prywatne darowizny.
