@@ -4,140 +4,140 @@ sidebar_position: 5
 
 import project from '@site/src/project';
 
-# Common issues {#common-issues}
+# Problemas frecuentes {#common-issues}
 
 ## General {#general}
 
-### Subtitles aren't showing up {#subtitles-arent-showing-up}
+### No aparecen los subtítulos {#subtitles-arent-showing-up}
 
-It's possible to hide the subtitles in asbplayer through a few ways:
+Hay varias formas de ocultar los subtítulos en asbplayer:
 
-- The [`Toggle subtitles`](./reference/settings.md#subtitles-keyboard-shortcuts) keyboard shortcut.
-- The [`Toggle subtitle track X in video`](./reference/settings.md#subtitles-keyboard-shortcuts) keyboard shortcuts.
-- The [`Show subtitles`](./reference/settings.md#show-subtitles) option in `Playback > Playback modes`
+- El atajo de teclado [`Mostrar u ocultar subtítulos`](./reference/settings.md#subtitles-keyboard-shortcuts).
+- Los atajos de teclado [`Mostrar u ocultar la pista de subtítulos X del vídeo`](./reference/settings.md#subtitles-keyboard-shortcuts).
+- La opción [`Mostrar subtítulos`](./reference/settings.md#show-subtitles) en `Reproducción > Modos de reproducción`.
 
-### asbplayer can't connect to Anki. It shows an error message e.g. 'Failed to fetch.' {#anki-connection-failed}
+### asbplayer no puede conectarse a Anki y muestra un error como «Failed to fetch» {#anki-connection-failed}
 
-This can happen due to ad blockers:
+Esto puede deberse a los bloqueadores de anuncios:
 
-- If you're using Brave, make sure asbplayer isn't being blocked by Shield.
-- Check that your browser or an ad blocker isn't blocking the request. A good place to start is by opening your browser's developer console and looking for errors.
+- Si usas Brave, asegúrate de que Shield no esté bloqueando asbplayer.
+- Comprueba que el navegador o el bloqueador de anuncios no esté bloqueando la solicitud. Puedes empezar abriendo la consola de desarrollador del navegador y buscando errores.
 
-Misconfiguration:
+Una configuración incorrecta:
 
-- If using the website, make sure that asbplayer is allowed by AnkiConnect, as described [here](./getting-started/mining-subtitles.md).
+- Si usas el sitio web, comprueba que AnkiConnect permita el acceso de asbplayer, como se explica [aquí](./getting-started/mining-subtitles.md).
 
-Or bugs:
+O errores:
 
-- As of this writing enabling experimental web platform features is known to cause this issue. Try disabling this flag from `chrome://flags`.
-- On later versions of macOS, AnkiConnect will not respond when Anki is in the background ([Notes for MacOS Users](https://git.sr.ht/~foosoft/anki-connect#notes-for-macos-users)).
+- En el momento de escribir esto, se sabe que activar las funciones experimentales de la plataforma web causa este problema. Prueba a desactivar esta marca en `chrome://flags`.
+- En versiones recientes de macOS, AnkiConnect no responde cuando Anki está en segundo plano ([Notas para usuarios de macOS](https://git.sr.ht/~foosoft/anki-connect#notes-for-macos-users)).
 
-### When using the 'update last card' feature, the card does not update in Anki. {#card-not-updating}
+### La tarjeta no se actualiza en Anki al usar «Actualizar la última tarjeta» {#card-not-updating}
 
-Make sure Anki's card browser is closed when using "update last card." There is a [known issue](https://github.com/FooSoft/anki-connect/issues/82) with AnkiConnect where cards will not appear to update when the card browser is open.
+Asegúrate de que el explorador de tarjetas de Anki esté cerrado cuando uses «Actualizar la última tarjeta». Hay un [problema conocido](https://github.com/FooSoft/anki-connect/issues/82) de AnkiConnect que impide que las tarjetas parezcan actualizarse mientras el explorador está abierto.
 
-### When loading a local file asbplayer either shows a black screen, or doesn't play audio. {#local-video-playback-issues}
+### Al cargar un archivo local, asbplayer muestra una pantalla negra o no reproduce el audio {#local-video-playback-issues}
 
-Browsers have varying ability to decode certain video and audio formats. See the [compatibility section](./compatibility.md#browsers-and-media-formats).
+La capacidad de los navegadores para decodificar ciertos formatos de vídeo y audio varía. Consulta la [sección de compatibilidad](./compatibility.md#browsers-and-media-formats).
 
-### My popup dictionary extension (e.g. Yomitan) doesn't work on the side panel {#popup-dictionary-in-side-panel}
+### Mi extensión emergente de diccionario (por ejemplo, Yomitan) no funciona en el panel lateral {#popup-dictionary-in-side-panel}
 
-For security reasons, browsers do not allow extension scripts to be injected into other extension pages, so there is no fix for this. If you want to scan text with other extensions then you will need to do it from the subtitles displayed inside the video element, or from the subtitle list on the asbplayer website.
+Por motivos de seguridad, los navegadores no permiten inyectar scripts de extensiones en páginas de otras extensiones, así que no hay forma de solucionarlo. Si quieres analizar texto con otras extensiones, tendrás que hacerlo desde los subtítulos que aparecen en el elemento de vídeo o desde la lista de subtítulos del sitio web de asbplayer.
 
-### asbplayer isn't detecting streaming video. {#asbplayer-isnt-detecting-streaming-video}
+### asbplayer no detecta el vídeo en streaming {#asbplayer-isnt-detecting-streaming-video}
 
-Make sure that in the extension details, the extension has access to all sites.
+Comprueba en los detalles de la extensión que tenga acceso a todos los sitios.
 
-### Keyboard shortcuts aren't working. {#keyboard-shortcuts-arent-working}
+### Los atajos de teclado no funcionan {#keyboard-shortcuts-arent-working}
 
-Check the <a href={new URL('?view=settings#keyboard-shortcuts', project.urls.app).href}>keyboard shortcut settings</a> or the [keyboard shortcuts reference](./reference/settings.md#keyboard-shortcuts).
+Comprueba los <a href={new URL('?view=settings#keyboard-shortcuts', project.urls.app).href}>ajustes de los atajos de teclado</a> o consulta la [referencia de atajos de teclado](./reference/settings.md#keyboard-shortcuts).
 
-Also, if using the extension:
+Si usas la extensión, también puedes probar lo siguiente:
 
-- Check `chrome://extensions/shortcuts` in Chrome, or `about:addons` → gear icon → `Manage Extension Shortcuts` in Firefox.
-- Try refreshing the page and loading subtitles again.
-- Try uninstalling and reinstalling the extension, and restarting your browser.
-- Make sure the extension isn't installed twice.
+- En Chrome, comprueba `chrome://extensions/shortcuts`; en Firefox, ve a `about:addons` → icono de engranaje → `Administrar atajos de extensiones`.
+- Actualiza la página e intenta cargar los subtítulos de nuevo.
+- Desinstala y vuelve a instalar la extensión, y reinicia el navegador.
+- Asegúrate de no haber instalado la extensión dos veces.
 
-### asbplayer isn't properly cropping screenshots from streaming video. {#screenshot-cropping-issues}
+### asbplayer no recorta correctamente las capturas de pantalla de vídeos en streaming {#screenshot-cropping-issues}
 
-Make sure the browser zoom setting is at 100%. Cropping can be disabled altogether from the <a href={new URL('?view=settings#misc-settings', project.urls.app).href}>extension settings</a>.
+Comprueba que el zoom del navegador esté al 100 %. Puedes desactivar el recorte en los <a href={new URL('?view=settings#misc-settings', project.urls.app).href}>ajustes de la extensión</a>.
 
-### I'm having trouble creating cards using JP mining note. {#jp-mining-note-issues}
+### Tengo problemas para crear tarjetas con la nota de minado japonés {#jp-mining-note-issues}
 
-See this [issue](https://github.com/asbplayer/asbplayer/issues/220#issuecomment-1501124166).
+Consulta esta [incidencia](https://github.com/asbplayer/asbplayer/issues/220#issuecomment-1501124166).
 
-### asbplayer keeps asking for permission to record audio {#repeated-audio-permission-prompts}
+### asbplayer sigue pidiendo permiso para grabar audio {#repeated-audio-permission-prompts}
 
-asbplayer is not currently compatible with the Volume Master extension. So you'll need to disable it.
+asbplayer no es compatible actualmente con la extensión Volume Master, así que tendrás que desactivarla.
 
-### Audio recordings are garbled, scratchy, or spotty {#garbled-audio-recordings}
+### Las grabaciones de audio se oyen distorsionadas, con ruido o entrecortadas {#garbled-audio-recordings}
 
-This is usually due to insufficient CPU. If you are on a laptop, make sure it's connected to a power source. In general make sure your CPU is not being throttled by battery-saving mode, etc.
+Esto suele deberse a que la CPU no tiene suficiente capacidad. Si usas un portátil, asegúrate de que esté conectado a la corriente. En general, comprueba que el modo de ahorro de batería u otra opción no esté limitando la CPU.
 
-### When I use a keyboard shortcut to open asbplayer for streaming video, nothing happens and the page becomes unresponsive. {#streaming-shortcut-unresponsive}
+### Al usar un atajo de teclado para abrir asbplayer con un vídeo en streaming, no ocurre nada y la página deja de responder {#streaming-shortcut-unresponsive}
 
-This can happen because `Experimental Web Platform features` is enabled in `chrome://flags`. Make sure it's disabled and try again.
+Esto puede ocurrir si `Experimental Web Platform features` está activado en `chrome://flags`. Comprueba que esté desactivado e inténtalo de nuevo.
 
-## Annotation {#annotation}
+## Anotaciones {#annotation}
 
-### Enable or disable annotation for a track {#enable-or-disable-annotation-for-a-track}
+### Activar o desactivar las anotaciones de una pista {#enable-or-disable-annotation-for-a-track}
 
-Annotation is considered disabled if the following settings are set to these values:
+Las anotaciones se consideran desactivadas si los siguientes ajustes tienen estos valores:
 
-- In [`Settings > Annotation`](./reference/settings.md#annotation):
-  - [`Colorize subtitles based on known words`](./reference/settings.md#colorize-subtitles-based-on-known-words): **Off**
-  - [`Generate statistics automatically`](./reference/settings.md#generate-statistics-automatically): **Off**
-  - [`Display word readings`](./reference/settings.md#display-word-readings): _Nothing selected_ (empty value)
-  - [`Display word frequency`](./reference/settings.md#display-word-frequency): _Nothing selected_ (empty value)
-  - [`Display pitch accent (Japanese)`](./reference/settings.md#display-pitch-accent-japanese): _Nothing selected_ (empty value)
-  - [`Display word definitions`](./reference/settings.md#display-word-definitions): _Nothing selected_ (empty value)
-- In [`Settings > Playback > Annotation`](./reference/settings.md#playback-annotation):
-  - [`Select first matching word on pause`](./reference/settings.md#select-first-matching-word-on-pause): Never
-  - [`Auto-pause subtitles containing these words`](./reference/settings.md#auto-pause-subtitles-containing-these-words): No word filter
-  - [`Play subtitles containing these words in condensed mode`](./reference/settings.md#play-subtitles-containing-these-words-in-condensed-mode): No word filter
-  - [`Play subtitles containing these words at normal speed in fast-forward mode`](./reference/settings.md#play-subtitles-containing-these-words-at-normal-speed-in-fast-forward-mode): No word filter
-  - [`Repeat subtitles containing these words`](./reference/settings.md#repeat-subtitles-containing-these-words): No word filter
-  - [`Show these words during playback`](./reference/settings.md#show-these-words-during-playback): No word filter
-  - [`Adjust fast-forward rate by comprehension`](./reference/settings.md#adjust-fast-forward-rate-by-comprehension): **Off**
+- En [`Ajustes > Anotaciones`](./reference/settings.md#annotation):
+  - [`Colorear subtítulos según las palabras conocidas`](./reference/settings.md#colorize-subtitles-based-on-known-words): **Desactivado**
+  - [`Generar estadísticas automáticamente`](./reference/settings.md#generate-statistics-automatically): **Desactivado**
+  - [`Mostrar lecturas de palabras`](./reference/settings.md#display-word-readings): _Nada seleccionado_ (valor vacío)
+  - [`Mostrar frecuencia de palabras`](./reference/settings.md#display-word-frequency): _Nada seleccionado_ (valor vacío)
+  - [`Mostrar acento tonal (japonés)`](./reference/settings.md#display-pitch-accent-japanese): _Nada seleccionado_ (valor vacío)
+  - [`Mostrar definiciones de palabras`](./reference/settings.md#display-word-definitions): _Nada seleccionado_ (valor vacío)
+- En [`Ajustes > Reproducción > Anotaciones`](./reference/settings.md#playback-annotation):
+  - [`Seleccionar la primera palabra coincidente al pausar`](./reference/settings.md#select-first-matching-word-on-pause): Nunca
+  - [`Pausar automáticamente los subtítulos que contengan estas palabras`](./reference/settings.md#auto-pause-subtitles-containing-these-words): Sin filtro de palabras
+  - [`Reproducir en modo condensado los subtítulos que contengan estas palabras`](./reference/settings.md#play-subtitles-containing-these-words-in-condensed-mode): Sin filtro de palabras
+  - [`Reproducir a velocidad normal en modo de avance rápido los subtítulos que contengan estas palabras`](./reference/settings.md#play-subtitles-containing-these-words-at-normal-speed-in-fast-forward-mode): Sin filtro de palabras
+  - [`Repetir los subtítulos que contengan estas palabras`](./reference/settings.md#repeat-subtitles-containing-these-words): Sin filtro de palabras
+  - [`Mostrar estas palabras durante la reproducción`](./reference/settings.md#show-these-words-during-playback): Sin filtro de palabras
+  - [`Ajustar la velocidad de avance rápido según la comprensión`](./reference/settings.md#adjust-fast-forward-rate-by-comprehension): **Desactivado**
 
-To enable annotation for a track, set at least one of the above settings to a value other than the disabled value. Certain annotations may only show on hover if they are [configured to do so](./reference/settings.md#only-display-word-color-on-hover).
+Para activar las anotaciones de una pista, cambia al menos uno de los ajustes anteriores a un valor distinto del valor desactivado. Algunas anotaciones solo aparecen al pasar el cursor si así se [configuraron](./reference/settings.md#only-display-word-color-on-hover).
 
 :::tip
-The [`Re-build Anki word database`](./reference/settings.md#re-build-anki-word-database) and [`Re-build WaniKani word database`](./reference/settings.md#re-build-wanikani-word-database) buttons will be disabled unless the above settings have specific values that benefit from their integration.
+Los botones [`Reconstruir la base de datos de palabras de Anki`](./reference/settings.md#re-build-anki-word-database) y [`Reconstruir la base de datos de palabras de WaniKani`](./reference/settings.md#re-build-wanikani-word-database) estarán desactivados a menos que los ajustes anteriores tengan valores que aprovechen su integración.
 :::
 
-### Clear Anki word database {#clear-anki-word-database}
+### Vaciar la base de datos de palabras de Anki {#clear-anki-word-database}
 
-To clear the Anki word database entries for a track, set the [`Anki word fields`](./reference/settings.md#anki-word-fields) and [`Anki sentence fields`](./reference/settings.md#anki-sentence-fields) to empty values and use the [`Re-build Anki word database`](./reference/settings.md#re-build-anki-word-database) button. If the button is disabled, [follow these steps](#enable-or-disable-annotation-for-a-track) to enable annotation for the track first.
+Para vaciar las entradas de una pista en la base de datos de palabras de Anki, deja vacíos [`Campos de palabras de Anki`](./reference/settings.md#anki-word-fields) y [`Campos de oraciones de Anki`](./reference/settings.md#anki-sentence-fields) y usa el botón [`Reconstruir la base de datos de palabras de Anki`](./reference/settings.md#re-build-anki-word-database). Si el botón está desactivado, [sigue estos pasos](#enable-or-disable-annotation-for-a-track) para activar primero las anotaciones de la pista.
 
-### Clear WaniKani word database {#clear-wanikani-word-database}
+### Vaciar la base de datos de palabras de WaniKani {#clear-wanikani-word-database}
 
-To clear the WaniKani word database entries for a track, set the [WaniKani API token](./reference/settings.md#wanikani-api-token) to an empty value and use the [`Re-build WaniKani word database`](./reference/settings.md#re-build-wanikani-word-database) button. If the button is disabled, [follow these steps](#enable-or-disable-annotation-for-a-track) to enable annotation for the track first.
+Para vaciar las entradas de una pista en la base de datos de palabras de WaniKani, deja vacío el [token de API de WaniKani](./reference/settings.md#wanikani-api-token) y usa el botón [`Reconstruir la base de datos de palabras de WaniKani`](./reference/settings.md#re-build-wanikani-word-database). Si el botón está desactivado, [sigue estos pasos](#enable-or-disable-annotation-for-a-track) para activar primero las anotaciones de la pista.
 
-### Delete locally tracked words {#delete-locally-tracked-words}
+### Eliminar palabras guardadas localmente {#delete-locally-tracked-words}
 
-You can delete a locally tracked word by hovering over it and using the [Annotation keyboard shortcuts](./reference/settings.md#annotation-keyboard-shortcuts) to set its status to **Uncollected** and toggle **Ignored** if it was set.
+Puedes eliminar una palabra guardada localmente al pasar el cursor sobre ella y usar los [atajos de teclado para anotaciones](./reference/settings.md#annotation-keyboard-shortcuts) para cambiar su estado a **Sin recopilar** y desactivar **Ignorada**, si estaba activada.
 
-To bulk delete locally tracked words, use the [`Word Browser`](./reference/settings.md#word-browser) to mark words as **Uncollected** and remove their states. You can also use the [`Import Words`](./reference/settings.md#import-words) feature.
+Para eliminar en bloque las palabras guardadas localmente, usa el [`Explorador de palabras`](./reference/settings.md#word-browser) para marcar las palabras como **Sin recopilar** y quitar sus estados. También puedes usar la función [`Importar palabras`](./reference/settings.md#import-words).
 
-### Everything is uncollected {#everything-is-uncollected}
+### Todo aparece como «Sin recopilar» {#everything-is-uncollected}
 
-If you accidentally enabled annotation, [follow these steps](#enable-or-disable-annotation-for-a-track) to disable it.
+Si activaste las anotaciones por accidente, [sigue estos pasos](#enable-or-disable-annotation-for-a-track) para desactivarlas.
 
-If word statuses never change from **Uncollected**:
+Si el estado de las palabras nunca cambia de **Sin recopilar**:
 
-- If you rely on local status, import words into the local word database or use the hover + [Annotation keyboard shortcuts](./reference/settings.md#annotation-keyboard-shortcuts) to set statuses.
-- If you rely on Anki for status, make sure Anki is running and your **AnkiConnect URL** is correct.
-    - Configure [`Anki word fields`](./reference/settings.md#anki-word-fields) (recommended) and/or [`Anki sentence fields`](./reference/settings.md#anki-sentence-fields).
-    - Run [`Re-build Anki word database`](./reference/settings.md#re-build-anki-word-database).
-    - You do not need to keep Anki running after the database is built but keeping Anki open during playback will keep asbplayer in sync.
-- If you rely on WaniKani for status, make sure your [`WaniKani API token`](./reference/settings.md#wanikani-api-token) is correct.
-    - Run [`Re-build WaniKani word database`](./reference/settings.md#re-build-wanikani-word-database).
-    - asbplayer will automatically sync with WaniKani during playback.
+- Si usas estados locales, importa palabras a la base de datos local o pasa el cursor sobre ellas y usa los [atajos de teclado para anotaciones](./reference/settings.md#annotation-keyboard-shortcuts) para establecer sus estados.
+- Si usas Anki para determinar el estado, asegúrate de que Anki esté en ejecución y que la **URL de AnkiConnect** sea correcta.
+    - Configura [`Campos de palabras de Anki`](./reference/settings.md#anki-word-fields) (recomendado) o [`Campos de oraciones de Anki`](./reference/settings.md#anki-sentence-fields), o ambos.
+    - Ejecuta [`Reconstruir la base de datos de palabras de Anki`](./reference/settings.md#re-build-anki-word-database).
+    - No hace falta mantener Anki en ejecución después de crear la base de datos, pero si lo dejas abierto durante la reproducción, asbplayer se mantendrá sincronizado.
+- Si usas WaniKani para determinar el estado, asegúrate de que el [`token de API de WaniKani`](./reference/settings.md#wanikani-api-token) sea correcto.
+    - Ejecuta [`Reconstruir la base de datos de palabras de WaniKani`](./reference/settings.md#re-build-wanikani-word-database).
+    - asbplayer se sincroniza automáticamente con WaniKani durante la reproducción.
 
-### Red strikethrough styling appears {#red-strikethrough-styling-appears}
+### Aparece un tachado rojo {#red-strikethrough-styling-appears}
 
-If you accidentally enabled annotation, [follow these steps](#enable-or-disable-annotation-for-a-track) to disable it.
+Si activaste las anotaciones por accidente, [sigue estos pasos](#enable-or-disable-annotation-for-a-track) para desactivarlas.
 
-This indicates there was an error processing the subtitles, most likely due to an issue connecting to Yomitan. Check the browser console for error messages and seek support in the asbplayer Discord if you can’t resolve the issue.
+Esto indica que se produjo un error al procesar los subtítulos, probablemente por un problema al conectar con Yomitan. Revisa si hay mensajes de error en la consola del navegador y pide ayuda en el Discord de asbplayer si no puedes resolverlo.

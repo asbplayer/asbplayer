@@ -4,44 +4,44 @@ sidebar_position: 1
 
 import project from '@site/src/project';
 
-# What is asbplayer? {#what-is-asbplayer}
+# ¿Qué es asbplayer? {#what-is-asbplayer}
 
-## A language-learning assistant {#a-language-learning-assistant}
+## Un asistente para aprender idiomas {#a-language-learning-assistant}
 
-**asbplayer** is a language-learning assistant that makes it easier to learn languages through subtitled videos. Its original author created for himself to help with learning Japanese using [AJATT](https://tatsumoto-ren.github.io/blog/whats-ajatt.html). It was then popularized in the [Refold](https://refold.la/) Japanese-learning community as a **sentence mining** and **subtitle** tool. However, asbplayer's feature set is always growing. With asbplayer you can:
+**asbplayer** es un asistente para aprender idiomas que facilita el aprendizaje mediante vídeos con subtítulos. Su autor original lo creó para aprender japonés con [AJATT](https://tatsumoto-ren.github.io/blog/whats-ajatt.html). Después se popularizó en la comunidad de aprendizaje de japonés [Refold](https://refold.la/) como herramienta para el **minado de oraciones** y para trabajar con **subtítulos**. Sin embargo, las funciones de asbplayer siguen ampliándose. Con asbplayer puedes:
 
-- **Easily create high-quality, multimedia flashcards** out of subtitled videos.
-- **Load text-selectable subtitles onto most video sources**, including streaming sources. You can use **auto-detected subtitles** on popular streaming services like Netflix and YouTube, or your own **subtitle files**. A generic fallback subtitle detection algorithm allows asbplayer to detect subtitles on 85% of all other streaming services.
-- **Seek through subtitles** using a **navigable subtitle list**.
-- **Utilize customizable [keyboard shortcuts](./reference/settings.md#keyboard-shortcuts)** to access most of asbplayer's features.
-- **Optimize language acquisition** with **playback modes** like:
-    - **Condensed playback**: Skip unsubtitled sections of video.
-    - **Fast-forward playback**: Fast-forward through unsubtitled sections of video.
-    - **Auto-pause**: Automatically pause at the beginning or end of every subtitle.
-    - **Repeat**: Automatically repeat subtitles indefinitely or for a specified number of times.
-- **Use customizable [recipes](./guides/recipes.md)** to create and import immersion presets with asbplayer's rich playback features.
-- **Annotate subtitles** with the help of tools such as [Yomitan](https://yomitan.wiki/)
-    - **Word styling** (color/underline/outline, etc.) based on a word's status (uncollected/unknown/learning, etc.) synced from Anki, WaniKani, and/or tracked locally in asbplayer.
-    - **Reading annotation** for reading displayed above each word or based on status.
-    - **Accent annotation** such as pitch accent.
-    - **Frequency annotation** for rank-based frequency displayed below each word or based on status.
-    - **Glossary annotation** for a short definition or explanation of the word.
-    - **Statistics and Comprehension** on your known words for the current media.
-    - **Adaptive Playback** that uses **playback modes** and the annotation data to optimize your learning experience.
-    - **Word browser** to manage local and view words synced from external sources.
-    - Many more features for future releases! Some planned features include:
-        - **Auto mining** on uncollected/unknown/learning words.
-        - **Rich Anki Card Creation** for generating high-quality flashcards from annotated subtitles.
-        - **Statistics and Comprehension** on your known words across media.
+* **Crear fácilmente tarjetas multimedia de alta calidad** a partir de vídeos con subtítulos.
+* **Cargar subtítulos seleccionables como texto en casi cualquier fuente de vídeo**, incluidas las fuentes en streaming. Puedes usar **subtítulos detectados automáticamente** en servicios populares como Netflix y YouTube, o tus propios **archivos de subtítulos**. Un algoritmo genérico alternativo permite a asbplayer detectar subtítulos en el 85 % de los demás servicios de streaming.
+* **Avanzar por los subtítulos** con una **lista de subtítulos navegable**.
+* **Usar [atajos de teclado](./reference/settings.md#keyboard-shortcuts) personalizables** para acceder a la mayoría de las funciones de asbplayer.
+* **Optimizar el aprendizaje de idiomas** con **modos de reproducción** como:
+    * **Reproducción condensada**: omite las secciones del vídeo sin subtítulos.
+    * **Avance rápido**: avanza rápidamente por las secciones del vídeo sin subtítulos.
+    * **Pausa automática**: pausa automáticamente al principio o al final de cada subtítulo.
+    * **Repetición**: repite los subtítulos automáticamente de forma indefinida o un número determinado de veces.
+* **Usar [recetas](./guides/recipes.md) personalizables** para crear e importar ajustes preestablecidos de inmersión con las completas funciones de reproducción de asbplayer.
+* **Anotar subtítulos** con herramientas como [Yomitan](https://yomitan.wiki/):
+    * **Estilo de palabras** (color, subrayado, contorno, etc.) según su estado (sin recopilar, desconocido, en aprendizaje, etc.), sincronizado desde Anki o WaniKani, o guardado localmente en asbplayer.
+    * **Anotaciones de lectura** para mostrar la lectura encima de cada palabra o según su estado.
+    * **Anotaciones de acento**, como el acento tonal.
+    * **Anotaciones de frecuencia** para mostrar debajo de cada palabra su frecuencia basada en el rango o según su estado.
+    * **Anotaciones de glosario** con una breve definición o explicación de cada palabra.
+    * **Estadísticas y comprensión** de las palabras que conoces en el contenido actual.
+    * **Reproducción adaptativa** que usa los **modos de reproducción** y los datos de las anotaciones para optimizar tu aprendizaje.
+    * **Explorador de palabras** para administrar las palabras locales y ver las sincronizadas desde fuentes externas.
+    * ¡Muchas más funciones en próximas versiones! Algunas de las previstas son:
+        * **Creación automática de tarjetas** para palabras sin recopilar, desconocidas o en aprendizaje.
+        * **Creación avanzada de tarjetas de Anki** de alta calidad a partir de subtítulos anotados.
+        * **Estadísticas y comprensión** de las palabras que conoces en distintos contenidos.
 
-## A website and browser extension {#a-website-and-browser-extension}
+## Un sitio web y una extensión del navegador {#a-website-and-browser-extension}
 
-In order to make asbplayer as widely available as possible, asbplayer comes in two different forms, a <a href={project.urls.app}>website</a> which works with local video files, and a <a href={project.extension.chrome.storeUrl}>browser extension</a> which works with streaming video. Neither one is required to use the other - however, they work together to make the asbplayer user experience as seamless as possible.
+Para que asbplayer esté disponible para el mayor número de personas, existe en dos formatos: un <a href={project.urls.app}>sitio web</a> que funciona con archivos de vídeo locales y una <a href={project.extension.chrome.storeUrl}>extensión del navegador</a> que funciona con vídeos en streaming. No hace falta usar uno para utilizar el otro, aunque juntos ofrecen una experiencia de uso más fluida.
 
-## Why use asbplayer? {#why-use-asbplayer}
+## ¿Por qué usar asbplayer? {#why-use-asbplayer}
 
-- You want a way to watch videos with text-selectable subtitles.
-- You want a way to create high-quality, multimedia flashcards out of video and subtitle sources.
-- The video sources you are using are obscure and not supported by other similar tools.
-- You are somewhat tools-savvy. You will most likely need to combine asbplayer with other tools (like a dictionary app) for a complete language-learning toolset.
-- You don't want to pay money. asbplayer is free to use and open-source.
+- Quieres ver vídeos con subtítulos cuyo texto se pueda seleccionar.
+- Quieres crear tarjetas multimedia de alta calidad a partir de vídeos y subtítulos.
+- Usas fuentes de vídeo poco conocidas que otras herramientas similares no admiten.
+- Tienes cierta soltura con las herramientas digitales. Es probable que necesites combinar asbplayer con otras herramientas, como una aplicación de diccionario, para contar con un conjunto completo de recursos de aprendizaje.
+- No quieres pagar. asbplayer es gratuito y de código abierto.
