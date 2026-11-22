@@ -1,0 +1,75 @@
+# Builds the docs site for the locales a PR actually touches, in parallel.
+#
+# A translated page component or malformed MDX only fails at the docusaurus
+# build; this catches it on the PR instead of at deploy. Single-locale builds
+# are ~30s each and matrix jobs run concurrently, so a 12-locale translation
+# PR costs roughly one build of wall time.
+#
+# Locale selection: PR paths under docs/i18n/<locale>/ map to that locale's
+# build; any other docs/ change maps to the English build. Blog-only PRs
+# therefore still verify the English site, which includes the blog.
+
+name: Verify docs
+
+on:
+    pull_request:
+        branches: [main]
+        paths:
+            - 'docs/**'
+            - '.github/workflows/verify-docs.yml'
+
+permissions:
+    contents: read
+
+jobs:
+    changed-locales:
+        name: Changed locales
+        runs-on: ubuntu-latest
+        outputs:
+            matrix: ${{ steps.locales.outputs.matrix }}
+        steps:
+            - uses: actions/checkout@v7
+              with:
+                  fetch-depth: 0
+
+            - name: Collect locales changed by this PR
+              id: locales
+              run: |
+                  set -euo pipefail
+                  BASE="${{ github.event.pull_request.base.sha }}"
+                  HEAD="${{ github.event.pull_request.head.sha }}"
+                  CHANGED=$(git diff --name-only "${BASE}...${HEAD}")
+                  # English-side docs changes (anything under docs/ but not the
+                  # locale trees) also require the English build.
+                  ENGLISH=$(printf '%s\n' "$CHANGED" | grep '^docs/' | grep -v '^docs/i18n/' | head -1 || true)
+                  LOCALES=$(printf '%s\n' "$CHANGED" | sed -nE 's|^docs/i18n/([^/]+)/.*|\1|p' | sort -u)
+                  if [ -n "$ENGLISH" ]; then
+                      LOCALES=$(printf 'en\n%s\n' "$LOCALES" | sed '/^$/d' | sort -u)
+                  fi
+                  [ -n "$LOCALES" ] || LOCALES=en
+                  MATRIX=$(printf '%s\n' "$LOCALES" | jq -Rsc 'split("\n")[:-1]')
+                  echo "matrix=${MATRIX}" >> "$GITHUB_OUTPUT"
+                  echo "Building locales: $LOCALES"
+
+    build:
+        name: Build (${{ matrix.locale }})
+        needs: changed-locales
+        runs-on: ubuntu-latest
+        strategy:
+            fail-fast: false
+            matrix:
+                locale: ${{ fromJSON(needs.changed-locales.outputs.matrix) }}
+        steps:
+            - uses: actions/checkout@v7
+
+            - name: Setup Node.js and pnpm
+              uses: ./.github/actions/setup-node-pnpm
+
+            - name: Install docs dependencies
+              run: pnpm install --frozen-lockfile --filter asbplayer-docs
+
+            - name: Build docs
+              run: |
+                  set -euo pipefail
+                  cd docs
+                  pnpm exec docusaurus build --locale "${{ matrix.locale }}"

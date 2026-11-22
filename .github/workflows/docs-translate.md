@@ -9,6 +9,8 @@ on:
     branches: [main]
     paths:
       - docs/docs/**
+      - docs/src/pages/**
+      - docs/docusaurus.config.ts
   workflow_dispatch:
     inputs:
       locales:
@@ -57,14 +59,23 @@ pre-agent-steps:
     run: pnpm install --filter asbplayer-docs
 
   - name: Generate translation JSON skeletons
+    env:
+      DOCS_TRANSLATE_LOCALES: ${{ inputs.locales }}
     run: |
       set -euo pipefail
       # write-translations needs the docs package's node_modules, so skeletons
       # are generated here (deterministically) instead of by the agent. It
       # merges new keys and preserves already-translated values, so reruns are
       # safe; running it unconditionally is what surfaces renamed sidebar
-      # labels as new untranslated keys.
-      for locale in $(node scripts/docs-translation-worklist.ts --print-locales); do
+      # labels as new untranslated keys. Only the targeted locales are
+      # generated: untranslated skeletons for other locales must stay out of
+      # the workspace or they risk being committed before translation.
+      if [ -n "${DOCS_TRANSLATE_LOCALES:-}" ]; then
+        LOCALES=$(node scripts/docs-translation-worklist.ts --locales="${DOCS_TRANSLATE_LOCALES}" --print-locales)
+      else
+        LOCALES=$(node scripts/docs-translation-worklist.ts --print-locales)
+      fi
+      for locale in ${LOCALES}; do
         pnpm --filter asbplayer-docs exec docusaurus write-translations --locale "${locale}"
       done
 
@@ -98,8 +109,11 @@ extension strings.
 2. For every other glossary term, look up the target locale's established
    rendering in `common/locales/<app-code>.json` (`pt_BR.json`, `zh_CN.json`,
    …; the app code differs from the Docusaurus locale only for `pt-BR` →
-   `pt_BR` and `zh-CN` → `zh_CN`) and reuse it exactly. Only invent a
-   rendering when no existing translation exists anywhere.
+   `pt_BR` and `zh-CN` → `zh_CN`) and reuse it exactly. If that value is
+   still the English text (identical to the same key's value in
+   `common/locales/en.json`), the app has not translated the string yet:
+   use your best judgment instead, and apply that same rendering
+   consistently everywhere the term appears in this run.
 3. Keep the tone of the English source: instructional, concise, user-facing.
    The translation must read like the source, not like machine prose in the
    target language. In particular:
@@ -114,9 +128,9 @@ extension strings.
 
 ## Work
 
-Read `translation-worklist.json`. If `translate`, `deleted`, and `sidebar`
-are all empty, there is no work: report "No docs translation work." and stop
-without creating a PR.
+Read `translation-worklist.json`. If `translate`, `pages`, `theme`, `deleted`,
+and `sidebar` are all empty, there is no work: report "No docs translation
+work." and stop without creating a PR.
 
 ### 1. Translate prose files
 
@@ -139,6 +153,31 @@ For each locale in `sidebar`, translate the category-label values in
 
 For each entry in `deleted`, delete the listed files from the locale tree.
 
+### 4. Home page
+
+For each entry in `pages`, copy `docs/src/pages/<file>` to
+`docs/i18n/<locale>/docusaurus-plugin-content-pages/<file>` and translate
+its user-facing prose: the screen-reader-only title and tagline, the links
+hint, every feature heading and paragraph, and the CTA section. Then fix
+the relative imports for the new location:
+
+- `../../../project.json` becomes `../../../../project.json`.
+- `../components/…` becomes `../../../../src/components/…`.
+- `./index.module.css` becomes `../../../../src/pages/index.module.css`.
+- `@docusaurus/…`, `@theme/…`, and package imports are aliased and stay
+  unchanged.
+
+Everything else in the file must stay byte-identical to the source: JSX
+structure, links, video sources, icons. The translated file may differ only
+in prose strings and the import paths above.
+
+### 5. Theme strings
+
+For each locale in `theme`, translate the `message` values (never the
+keys) in that locale's `code.json`, `docusaurus-theme-classic/navbar.json`,
+and `docusaurus-theme-classic/footer.json`; the skeleton files are already
+generated in the workspace. Apply the same terminology rules as above.
+
 ## Verification
 
 Run the repo's docs i18n check and fix every reported violation before
@@ -152,6 +191,18 @@ Re-run until it passes. Node is available in the sandbox; no package
 installation is needed for this check. If a failure looks like a check bug
 rather than a translation error, stop and report it rather than editing
 files to satisfy the check.
+
+If you translated any page component (`pages` entries), also build each
+affected locale; a translated component can fail the docusaurus build in
+ways `check-docs-i18n` cannot see. The docs dependencies are already
+installed in the sandbox:
+
+```sh
+cd docs && ./node_modules/.bin/docusaurus build --locale <locale>
+```
+
+Fix any build error in your translation before continuing. For prose-only
+locales, skip the build: the CI per-locale build covers them.
 
 ## Emit PR
 
@@ -168,8 +219,10 @@ for local staging works and is expected:
    ```
 
 2. Commit exactly the files you changed under `docs/i18n/` (stage them
-   individually) with a commit message matching the PR title below. Do not
-   commit `translation-worklist.json`.
+   individually) with a commit message matching the PR title below. Two
+   exclusions: do not commit `translation-worklist.json`, and do not commit
+   generated-but-untranslated files for locales outside this run's
+   worklist; those skeletons are what keep such locales pending.
 
 3. Call the `create_pull_request` tool with:
 
@@ -186,6 +239,8 @@ for local staging works and is expected:
 
    - Translate: <"all supported locales, N files each" when no locale filter
      was specified; otherwise each locale with its file count>
+   - Home page: <locales or "none">
+   - Theme strings: <locales or "none">
    - Delete: <files or "none">
    - Sidebar labels: <locales or "none">
 
