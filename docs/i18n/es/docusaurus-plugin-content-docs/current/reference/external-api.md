@@ -1,35 +1,35 @@
 ---
 sidebar_position: 2
-description: Technical reference for asbplayer’s external interface and the WebSocket server that implements it.
+description: Referencia técnica de la interfaz externa de asbplayer y del servidor WebSocket que la implementa.
 ---
 
 import project, { ankiConnectUrl } from '@site/src/project';
 import CodeBlock from '@theme/CodeBlock';
 
-# External API {#external-api}
+# API externa {#external-api}
 
-This page is intended to be an technical reference on asbplayer's external interface. Below are ways to call the interface:
+Esta página es una referencia técnica de la interfaz externa de asbplayer. A continuación se describen las formas de llamar a la interfaz:
 
-- The <a href={`${project.urls.repo}/tree/main/scripts/web-socket-server`}>pre-packaged WebSocket server</a>. See the [guide](../guides/web-socket-server.md) for how to setup the WebSocket server.
-- (v1.23 and above) Using an extension-to-extension connection obtained from [browser.runtime.connect](https://developer.chrome.com/docs/extensions/reference/api/runtime#method-connect). See the [guide](../guides/external-extensions.md) for how to connect to asbplayer from another extension.
+- El <a href={`${project.urls.repo}/tree/main/scripts/web-socket-server`}>servidor WebSocket incluido</a>. Consulta la [guía](../guides/web-socket-server.md) para saber cómo configurar el servidor WebSocket.
+- (Versión 1.23 y posteriores) Una conexión entre extensiones obtenida mediante [browser.runtime.connect](https://developer.chrome.com/docs/extensions/reference/api/runtime#method-connect). Consulta la [guía](../guides/external-extensions.md) para saber cómo conectarte a asbplayer desde otra extensión.
 
-## Commands {#commands}
+## Comandos {#commands}
 
-asbplayer responds to the following commands, represented as JSON-RPC messages. The OpenRPC schema can be found [here](https://github.com/asbplayer/asbplayer/blob/main/external-api/openrpc.json).
+asbplayer responde a los siguientes comandos, representados como mensajes JSON-RPC. Puedes consultar el esquema OpenRPC [aquí](https://github.com/asbplayer/asbplayer/blob/main/external-api/openrpc.json).
 
 :::info
-asbplayer extensions v1.22 and below support the schema `{ command, messageId, body }` instead of `{ method, id, params }`.
+Las extensiones de asbplayer de la versión 1.22 y anteriores admiten el esquema `{ command, messageId, body }` en lugar de `{ method, id, params }`.
 :::
 
 ## `mine-subtitle` {#mine-subtitle}
 
-Mines from the active tab by default. Set `mediaId` to an ID returned by [`get-bound-media`](#get-bound-media) to target specific media. If the media is not found or has no subtitles, `published` is `false`.
+De forma predeterminada, crea una tarjeta a partir de los subtítulos de la pestaña activa. Establece `mediaId` en un ID devuelto por [`get-bound-media`](#get-bound-media) para seleccionar un elemento multimedia específico. Si no se encuentra el elemento multimedia o no tiene subtítulos, `published` será `false`.
 
-When `postMineAction` is `2`, `noteId` selects the Anki note to update. If omitted, the last-added note is updated. `noteId` applies to streaming media only and is ignored for local media.
+Cuando `postMineAction` es `2`, `noteId` selecciona la nota de Anki que se actualizará. Si se omite, se actualiza la última nota añadida. `noteId` solo se aplica a los elementos multimedia en streaming y se ignora para los locales.
 
-> `mediaId` and `noteId` require extension v1.20.0 or later.
+> `mediaId` y `noteId` requieren la versión 1.20.0 o posterior de la extensión.
 
-### Request {#mine-subtitle-request}
+### Solicitud {#mine-subtitle-request}
 
     ```javascript
     {
@@ -52,7 +52,7 @@ When `postMineAction` is `2`, `noteId` selects the Anki note to update. If omitt
     }
     ```
 
-### Response {#mine-subtitle-response}
+### Respuesta {#mine-subtitle-response}
 
     ```javascript
     {
@@ -68,11 +68,11 @@ When `postMineAction` is `2`, `noteId` selects the Anki note to update. If omitt
 
 ## `load-subtitles` {#load-subtitles}
 
-Loads the files into the active tab's media by default, showing the video selector when the tab has more than one video. Set `mediaId` to an ID returned by [`get-bound-media`](#get-bound-media) to load the files directly into that media.
+De forma predeterminada, carga los archivos en el elemento multimedia de la pestaña activa. Si hay más de un vídeo en la pestaña, muestra el selector de vídeo. Establece `mediaId` en un ID devuelto por [`get-bound-media`](#get-bound-media) para cargar los archivos directamente en ese elemento multimedia.
 
-> `mediaId` requires extension v1.23.0 or later. Earlier versions load the files into every tab with a bound video
+> `mediaId` requiere la versión 1.23.0 o posterior de la extensión. Las versiones anteriores cargan los archivos en todas las pestañas vinculadas a un vídeo.
 
-### Request {#load-subtitles-request}
+### Solicitud {#load-subtitles-request}
 
 ```javascript
 {
@@ -92,7 +92,7 @@ Loads the files into the active tab's media by default, showing the video select
 }
 ```
 
-### Response {#load-subtitles-response}
+### Respuesta {#load-subtitles-response}
 
 ```javascript
 {
@@ -105,11 +105,11 @@ Loads the files into the active tab's media by default, showing the video select
 
 ## `seek-timestamp` {#seek-timestamp}
 
-Seeks the active tab's media by default. Set `mediaId` to an ID returned by [`get-bound-media`](#get-bound-media) to target specific media.
+De forma predeterminada, cambia la posición del elemento multimedia de la pestaña activa. Establece `mediaId` en un ID devuelto por [`get-bound-media`](#get-bound-media) para seleccionar un elemento multimedia específico.
 
-> `mediaId` requires extension v1.20.0+. Seeking local media requires extension v1.23.0+
+> `mediaId` requiere la versión 1.20.0 o posterior de la extensión. Para avanzar o retroceder en contenido multimedia local, se requiere la versión 1.23.0 o posterior.
 
-### Request {#seek-timestamp-request}
+### Solicitud {#seek-timestamp-request}
 
 ```javascript
 {
@@ -125,7 +125,7 @@ Seeks the active tab's media by default. Set `mediaId` to an ID returned by [`ge
 }
 ```
 
-### Response {#seek-timestamp-response}
+### Respuesta {#seek-timestamp-response}
 
 ```javascript
 {
@@ -138,11 +138,11 @@ Seeks the active tab's media by default. Set `mediaId` to an ID returned by [`ge
 
 ## `get-bound-media` {#get-bound-media}
 
-> Requires extension v1.20.0+
+> Requiere la versión 1.20.0 o posterior de la extensión.
 
-Returns the media asbplayer is currently tracking, including both `streaming` and `local` media.
+Devuelve los elementos multimedia que asbplayer está siguiendo actualmente, tanto `streaming` como `local`.
 
-### Request {#get-bound-media-request}
+### Solicitud {#get-bound-media-request}
 
 ```javascript
 {
@@ -153,7 +153,7 @@ Returns the media asbplayer is currently tracking, including both `streaming` an
 }
 ```
 
-### Response {#get-bound-media-response}
+### Respuesta {#get-bound-media-response}
 
 ```javascript
 {
@@ -186,12 +186,12 @@ Returns the media asbplayer is currently tracking, including both `streaming` an
 
 ## `get-subtitles` {#get-subtitles}
 
-> Requires extension v1.20.0+
+> Requiere la versión 1.20.0 o posterior de la extensión.
 
-Returns the subtitles currently loaded for a piece of media. By default it targets the active tab's media; pass a `mediaId` from [`get-bound-media`](#get-bound-media) to target specific media.
-Returns an empty list when no matching media is found or no subtitles are loaded.
+Devuelve los subtítulos cargados actualmente para un elemento multimedia. De forma predeterminada, selecciona el elemento multimedia de la pestaña activa; pasa un `mediaId` de [`get-bound-media`](#get-bound-media) para seleccionar un elemento específico.
+Devuelve una lista vacía si no se encuentra ningún elemento multimedia coincidente o no hay subtítulos cargados.
 
-### Request {#get-subtitles-request}
+### Solicitud {#get-subtitles-request}
 
 ```javascript
 {
@@ -207,7 +207,7 @@ Returns an empty list when no matching media is found or no subtitles are loaded
 }
 ```
 
-### Response {#get-subtitles-response}
+### Respuesta {#get-subtitles-response}
 
 ```javascript
 {
@@ -225,9 +225,9 @@ Returns an empty list when no matching media is found or no subtitles are loaded
 
 ## `client-info` {#client-info}
 
-Returns asbplayer client info, such as supported protocols. The latest versions of asbplayer support JSON-RPC.
+Devuelve información del cliente de asbplayer, como los protocolos admitidos. Las versiones más recientes de asbplayer admiten JSON-RPC.
 
-### Request {#client-info-request}
+### Solicitud {#client-info-request}
 
 ```javascript
 {
@@ -239,7 +239,7 @@ Returns asbplayer client info, such as supported protocols. The latest versions 
 }
 ```
 
-### Response {#client-info-response}
+### Respuesta {#client-info-response}
 
 ```javascript
 {
@@ -254,9 +254,9 @@ Returns asbplayer client info, such as supported protocols. The latest versions 
 
 ## `rpc.discover` {#rpc-discover}
 
-Returns the OpenRPC document for the running build. Use it to discover the current method names, params, results, and transport tags instead of hard-coding them.
+Devuelve el documento OpenRPC de la compilación en ejecución. Úsalo para consultar los nombres actuales de los métodos, los parámetros, los resultados y las etiquetas de transporte en lugar de escribirlos directamente en el código.
 
-### Request {#rpc-discover-request}
+### Solicitud {#rpc-discover-request}
 
 ```javascript
 {
@@ -267,13 +267,13 @@ Returns the OpenRPC document for the running build. Use it to discover the curre
 }
 ```
 
-### Response {#rpc-discover-response}
+### Respuesta {#rpc-discover-response}
 
-Returns the OpenRPC document describing the supported JSON-RPC methods. See [`external-api/openrpc.json`](https://github.com/asbplayer/asbplayer/blob/main/external-api/openrpc.json) for the full document.
+Devuelve el documento OpenRPC que describe los métodos JSON-RPC admitidos. Consulta [`external-api/openrpc.json`](https://github.com/asbplayer/asbplayer/blob/main/external-api/openrpc.json) para ver el documento completo.
 
-## Error codes {#error-codes}
+## Códigos de error {#error-codes}
 
-Errors use the standard JSON-RPC error object:
+Los errores usan el objeto de error estándar de JSON-RPC:
 
 ```javascript
 {
@@ -289,17 +289,17 @@ Errors use the standard JSON-RPC error object:
 }
 ```
 
-| Code     | Meaning          | Notes                                                           |
+| Código   | Significado      | Notas                                                           |
 | -------- | ---------------- | --------------------------------------------------------------- |
-| `-32700` | Parse error      | The frame is not valid JSON.                                    |
-| `-32600` | Invalid request  | The frame is not a valid JSON-RPC request.                      |
-| `-32601` | Method not found | Unknown method, or a method unavailable on that transport.      |
-| `-32602` | Invalid params   | The method's params failed schema validation.                   |
-| `-32603` | Internal error   | The handler failed or returned a result that failed validation. |
-| `-32000` | Request timeout  | A server did not receive a response from asbplayer in time.     |
-| `-32001` | No clients       | A server has no connected asbplayer to forward the request to.  |
-| `-32002` | Not approved     | An external extension sent a command before being approved.     |
+| `-32700` | Error de análisis | El mensaje no es JSON válido.                                    |
+| `-32600` | Solicitud no válida | El mensaje no es una solicitud JSON-RPC válida.                  |
+| `-32601` | Método no encontrado | Método desconocido o no disponible en ese transporte.       |
+| `-32602` | Parámetros no válidos | Los parámetros del método no superaron la validación del esquema. |
+| `-32603` | Error interno    | El controlador falló o devolvió un resultado que no superó la validación. |
+| `-32000` | Tiempo de espera de la solicitud | El servidor no recibió una respuesta de asbplayer a tiempo. |
+| `-32001` | No hay clientes  | No hay ningún asbplayer conectado al servidor al que reenviar la solicitud. |
+| `-32002` | No aprobado      | Una extensión externa envió un comando antes de recibir aprobación. |
 
-Notifications are never answered, including when handling fails. A request with an unusable `id` receives an error response with `id: null`.
+Las notificaciones nunca reciben respuesta, incluso si falla su procesamiento. Las solicitudes con un `id` no utilizable reciben una respuesta de error con `id: null`.
 
-The Go server's HTTP bridge maps these errors to HTTP statuses; see [`external-api/README.md`](https://github.com/asbplayer/asbplayer/blob/main/external-api/README.md#error-codes).
+El puente HTTP del servidor Go asigna estos errores a códigos de estado HTTP; consulta [`external-api/README.md`](https://github.com/asbplayer/asbplayer/blob/main/external-api/README.md#error-codes).

@@ -2,27 +2,27 @@
 sidebar_position: 2
 ---
 
-# Subtitle timing {#subtitle-timing}
+# Synchronizacja napisów {#subtitle-timing}
 
-Subtitle files will very often not be aligned to the video source you load them into. To work around this, asbplayer provides ways to manually adjust subtitle timing.
+Pliki napisów często nie są zsynchronizowane ze źródłem wideo, do którego je wczytujesz. asbplayer umożliwia ręczne dostosowanie czasu wyświetlania napisów.
 
-## Keyboard shortcuts {#keyboard-shortcuts}
+## Skróty klawiszowe {#keyboard-shortcuts}
 
-The fastest way to fix subtitle timing is with the [Subtitle offset keyboard shortcuts](../reference/settings.md#subtitle-offset-keyboard-shortcuts). There are two sets of shortcuts for adjusting subtitle offset:
+Najszybciej zsynchronizujesz napisy za pomocą [skrótów klawiszowych przesunięcia napisów](../reference/settings.md#subtitle-offset-keyboard-shortcuts). Dostępne są dwa zestawy skrótów:
 
-- `Ctrl + Left/Right` or `Shift + Left/Right`: Align the current timestamp to the left or right subtitle.
-- `Ctrl + Shift + Left/Right`: Move the current timestamp `100ms` to the left or right.
+- `Ctrl + Left/Right` lub `Shift + Left/Right`: Dopasuj bieżący znacznik czasu do poprzedniego lub następnego napisu.
+- `Ctrl + Shift + Left/Right`: Przesuń bieżący znacznik czasu o `100ms` w lewo lub w prawo.
 
-Most often, finding the correct offset will look like this:
+Zwykle znalezienie właściwego przesunięcia wygląda tak:
 
-1. Wait for a character to start talking.
-2. `Ctrl + Left/Right` until the subtitle matching the character's dialog appears on screen.
-3. `Ctrl + Shift + Right/Left` until the subtitle timing precisely matches the dialog.
+1. Poczekaj, aż postać zacznie mówić.
+2. Naciskaj `Ctrl + Left/Right`, aż na ekranie pojawi się napis odpowiadający wypowiedzi postaci.
+3. Naciskaj `Ctrl + Shift + Right/Left`, aż czas wyświetlania napisu będzie dokładnie odpowiadał wypowiedzi.
 
-## Overlay UI {#overlay-ui}
+## Nakładka sterowania {#overlay-ui}
 
-The overlay UI provides buttons that perform the same functions as the keyboard shortcuts above.
+Nakładka sterowania zawiera przyciski działające tak samo jak powyższe skróty klawiszowe.
 
-1. Scroll the rightmost section to the **middle** control.
-2. Click the left or right button to align the left or right subtitle to the current timestamp.
-3. Click and **hold** the left or right button to move the current timestamp `100ms` to the left or right.
+1. Przewiń skrajną prawą sekcję do środkowego elementu sterującego.
+2. Kliknij lewy lub prawy przycisk, aby dopasować poprzedni lub następny napis do bieżącego znacznika czasu.
+3. Kliknij i **przytrzymaj** lewy lub prawy przycisk, aby przesunąć bieżący znacznik czasu o `100ms` w lewo lub w prawo.

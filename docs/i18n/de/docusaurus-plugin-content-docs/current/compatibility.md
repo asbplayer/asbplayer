@@ -4,66 +4,66 @@ sidebar_position: 7
 
 import project from '@site/src/project';
 
-# Compatibility {#compatibility}
+# Kompatibilität {#compatibility}
 
 ## Website {#website}
 
-### Browsers and audio/video formats {#browsers-and-media-formats}
+### Browser und Audio-/Videoformate {#browsers-and-media-formats}
 
-| Browser                     | `mp4` container | `mkv` container | `avi` container |                                        H.264                                         |                                      H.265/HEVC                                      | Dolby Digital / Digital Plus (AC-3 / E-AC-3) | DTS / Dolby TrueHD / MLP |
+| Browser                     | `mp4`-Container | `mkv`-Container | `avi`-Container |                                        H.264                                         |                                      H.265/HEVC                                      | Dolby Digital / Digital Plus (AC-3 / E-AC-3) | DTS / Dolby TrueHD / MLP |
 | --------------------------- | :-------------: | :-------------: | :-------------: | :----------------------------------------------------------------------------------: | :----------------------------------------------------------------------------------: | :------------------------------------------: | :----------------------: |
-| **Chromium-based browsers** |        ✓        |        ✓        |                 |                                          ✓                                           |         [Depends on platform/decoder](https://www.chromium.org/audio-video/)         |                  ✓ (FFmpeg)                  |        ✓ (FFmpeg)        |
-| **Firefox**                 |        ✓        |        ✓        |                 | [Depends on OS codecs](https://support.mozilla.org/en-US/kb/audio-and-video-firefox) | [Depends on OS codecs](https://support.mozilla.org/en-US/kb/audio-and-video-firefox) |                  ✓ (FFmpeg)                  |        ✓ (FFmpeg)        |
+| **Chromium-basierte Browser** |        ✓        |        ✓        |                 |                                          ✓                                           |         [Abhängig von Plattform/Decoder](https://www.chromium.org/audio-video/)         |                  ✓ (FFmpeg)                  |        ✓ (FFmpeg)        |
+| **Firefox**                 |        ✓        |        ✓        |                 | [Abhängig von OS-Codecs](https://support.mozilla.org/en-US/kb/audio-and-video-firefox) | [Abhängig von OS-Codecs](https://support.mozilla.org/en-US/kb/audio-and-video-firefox) |                  ✓ (FFmpeg)                  |        ✓ (FFmpeg)        |
 | **Safari**                  |        ✓        |                 |                 |                                          ✓                                           |                                          ✓                                           |                      ✓                       |        ✓ (FFmpeg)        |
 
-For the items in the matrix marked with `✓ (FFmpeg)`, asbplayer automatically converts the audio to a playable format. Supported browsers can start playback while conversion continues, with seeking limited to the available audio; others wait for conversion to finish. The <a href={`${project.urls.repo}/blob/main/ffmpeg/README.md`}>FFmpeg library compiled for asbplayer</a> is downloaded on first use and cached for offline use.
+Bei den Einträgen in der Tabelle mit `✓ (FFmpeg)` wandelt asbplayer den Ton automatisch in ein abspielbares Format um. Unterstützte Browser können die Wiedergabe starten, während die Umwandlung weiterläuft; dabei kann nur im bereits verfügbaren Audiobereich gespult werden. Andere Browser warten, bis die Umwandlung abgeschlossen ist. Die <a href={`${project.urls.repo}/blob/main/ffmpeg/README.md`}>für asbplayer kompilierte FFmpeg-Bibliothek</a> wird bei der ersten Verwendung heruntergeladen und für die Offline-Nutzung zwischengespeichert.
 
-## Extension {#extension}
+## Erweiterung {#extension}
 
-### Browsers and features {#browsers-and-features}
+### Browser und Funktionen {#browsers-and-features}
 
-|                                  | Screenshots | Animated WebP (non-DRM) | Audio Recording (non-DRM) | Audio Recording (DRM) | Side Panel | WebSocket Interface |
-| -------------------------------- | :---------: | :---------------------: | :-----------------------: | :-------------------: | :--------: | :-----------------: |
-| **Most Chromium-based browsers** |      ✓      |            ✓            |             ✓             |           ✓           |     ✓      |          ✓          |
+|                                  | Screenshots | Animiertes WebP (ohne DRM) | Audioaufnahme (ohne DRM) | Audioaufnahme (mit DRM) | Seitenleiste | WebSocket-Schnittstelle |
+| -------------------------------- | :---------: | :-----------------------: | :-----------------------: | :-------------------: | :--------: | :-----------------: |
+| **Die meisten Chromium-basierten Browser** |      ✓      |            ✓            |             ✓             |           ✓           |     ✓      |          ✓          |
 | **Firefox**                      |      ✓      |                         |             ✓             |                       |     ✓      |          ✓          |
-| **Firefox for Android**          |             |                         |             ✓             |                       |            |                     |
+| **Firefox für Android**          |             |                         |             ✓             |                       |            |                     |
 | **Kiwi Browser (Android)**       |             |                         |             ✓             |           ✓           |            |                     |
 | **Edge Canary (Android)**        |      ✓      |                         |                           |                       |            |                     |
 
-### Streaming services and subtitle detection {#streaming-services-and-subtitle-detection}
+### Streamingdienste und Untertitelerkennung {#streaming-services-and-subtitle-detection}
 
 :::tip
-For streaming services not listed below, asbplayer can attempt a best-effort generic subtitle detection which works for ~85% of websites.
+Für Streamingdienste, die unten nicht aufgeführt sind, kann asbplayer eine bestmögliche allgemeine Untertitelerkennung versuchen, die auf etwa 85 % der Websites funktioniert.
 
-You can always request a dedicated parser for any website, even if the generic parser detects subtitles, through an <a href={`${project.urls.repo}/issues`}>issue</a> or submit your own implementation in a <a href={`${project.urls.repo}/pulls`}>PR</a> on GitHub.
+Sie können für jede Website einen eigenen Parser anfragen, auch wenn der allgemeine Parser Untertitel erkennt. Erstellen Sie dazu ein <a href={`${project.urls.repo}/issues`}>Issue</a> oder reichen Sie auf GitHub selbst eine Implementierung als <a href={`${project.urls.repo}/pulls`}>PR</a> ein.
 :::
 
-| Service            |                                                                                      Compatibility                                                                                       | Notes                                                                                                                                                                                                          |
-| ------------------ | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------: | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Amazon Prime       |                                                                                            ✓                                                                                             | Timing sometimes off by 30 seconds                                                                                                                                                                             |
-| Bandai Channel     |                                                                                            ✓                                                                                             |                                                                                                                                                                                                                |
-| BiliBili           |                                                                                            ✓                                                                                             | Mainland subtitles may require login. Wait for subtitles to appear in the player before opening asbplayer's subtitle selector; a VPN may delay loading, and opening the selector too early may show no tracks. |
-| Crunchyroll        |                                                                                            ✓                                                                                             |                                                                                                                                                                                                                |
-| Disney Plus        |                                                                                            ✓                                                                                             |                                                                                                                                                                                                                |
-| Dreaming           |                                                                                            ✓                                                                                             |                                                                                                                                                                                                                |
-| Emby/Jellyfin      |                                                                                            ✓                                                                                             | Configure custom domains from the page-specific settings.                                                                                                                                                      |
-| HBO Max            |                                                                                            ✓                                                                                             |                                                                                                                                                                                                                |
-| Hulu               |                                                                                            ✓                                                                                             |                                                                                                                                                                                                                |
-| Hulu JP            |                                                                                            ✓                                                                                             |                                                                                                                                                                                                                |
-| iWantTFC           |                                                                                            ✓                                                                                             |                                                                                                                                                                                                                |
-| Natural Japanese   |                                                                                            ✓                                                                                             |                                                                                                                                                                                                                |
-| Netflix            |                                                                                            ✓                                                                                             |                                                                                                                                                                                                                |
-| NRK TV             |                                                                                            ✓                                                                                             |                                                                                                                                                                                                                |
-| OK Ru              |                                                                                            ✓                                                                                             |                                                                                                                                                                                                                |
-| osnplus            |                                             Compatibility with osnplus is currently unknown. Reach out if you have more information on this.                                             |                                                                                                                                                                                                                |
-| Plex               |                                                                                            ✓                                                                                             | Supports external subtitles. As for embedded subtitles, first select them from Plex UI to make them selectable from asbplayer. Configure custom domains from the page-specific settings.                       |
-| Rakuten Viki       |                                                                                            ✓                                                                                             |                                                                                                                                                                                                                |
-| Rutube             |                                                                                            ✓                                                                                             |                                                                                                                                                                                                                |
-| Stremio            |                                                                                            ✓                                                                                             |                                                                                                                                                                                                                |
-| SVT Play           |                                                                                            ✓                                                                                             |                                                                                                                                                                                                                |
-| TVer               |                                                                                            ✓                                                                                             |                                                                                                                                                                                                                |
-| UR Play            |                                                                                            ✓                                                                                             |                                                                                                                                                                                                                |
-| VK Video           |                                                                                            ✓                                                                                             |                                                                                                                                                                                                                |
-| Yle Areena         |                                                                                            ✓                                                                                             |                                                                                                                                                                                                                |
-| YouTube            |                                                                                            ✓                                                                                             |                                                                                                                                                                                                                |
-| All Other Websites |                                                                Best-effort generic subtitle detection with ~85% efficacy.                                                                |                                                                                                                                                                                                                |
+| Dienst             | Kompatibilität | Hinweise |
+| ------------------ | :------------: | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Amazon Prime       | ✓ | Die Zeitangabe kann manchmal um 30 Sekunden abweichen |
+| Bandai Channel     | ✓ | |
+| BiliBili           | ✓ | Untertitel aus Festlandchina erfordern möglicherweise eine Anmeldung. Warten Sie, bis die Untertitel im Player angezeigt werden, bevor Sie den Untertitelauswahldialog von asbplayer öffnen. Ein VPN kann das Laden verzögern; wird der Dialog zu früh geöffnet, werden möglicherweise keine Spuren angezeigt. |
+| Crunchyroll        | ✓ | |
+| Disney Plus        | ✓ | |
+| Dreaming           | ✓ | |
+| Emby/Jellyfin      | ✓ | Konfigurieren Sie benutzerdefinierte Domains in den seitenspezifischen Einstellungen. |
+| HBO Max            | ✓ | |
+| Hulu               | ✓ | |
+| Hulu JP            | ✓ | |
+| iWantTFC           | ✓ | |
+| Natural Japanese   | ✓ | |
+| Netflix            | ✓ | |
+| NRK TV             | ✓ | |
+| OK Ru              | ✓ | |
+| osnplus            | Die Kompatibilität mit osnplus ist derzeit unbekannt. Wenn Sie dazu Informationen haben, melden Sie sich bitte. | |
+| Plex               | ✓ | Externe Untertitel werden unterstützt. Wählen Sie eingebettete Untertitel zuerst in der Plex-Oberfläche aus, damit sie in asbplayer auswählbar sind. Benutzerdefinierte Domains können Sie in den seitenspezifischen Einstellungen konfigurieren. |
+| Rakuten Viki       | ✓ | |
+| Rutube             | ✓ | |
+| Stremio            | ✓ | |
+| SVT Play           | ✓ | |
+| TVer               | ✓ | |
+| UR Play            | ✓ | |
+| VK Video           | ✓ | |
+| Yle Areena         | ✓ | |
+| YouTube            | ✓ | |
+| Alle anderen Websites | Allgemeine Untertitelerkennung mit bestmöglichem Ergebnis und einer Erfolgsquote von etwa 85 %. | |

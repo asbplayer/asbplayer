@@ -1,0 +1,22 @@
+{
+  "version.label": {
+    "message": "Następna",
+    "description": "The label for version current"
+  },
+  "sidebar.tutorialSidebar.category.Getting started": {
+    "message": "Pierwsze kroki",
+    "description": "The label for category 'Getting started' in sidebar 'tutorialSidebar'"
+  },
+  "sidebar.tutorialSidebar.category.Guides": {
+    "message": "Przewodniki",
+    "description": "The label for category 'Guides' in sidebar 'tutorialSidebar'"
+  },
+  "sidebar.tutorialSidebar.category.Reference": {
+    "message": "Dokumentacja",
+    "description": "The label for category 'Reference' in sidebar 'tutorialSidebar'"
+  },
+  "sidebar.tutorialSidebar.link.Contributing": {
+    "message": "Wkład w projekt",
+    "description": "The label for link 'Contributing' in sidebar 'tutorialSidebar', linking to 'https://github.com/asbplayer/asbplayer/blob/main/CONTRIBUTING.md'"
+  }
+}
