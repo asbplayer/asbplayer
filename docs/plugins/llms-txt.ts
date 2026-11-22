@@ -122,6 +122,9 @@ export default function llmsTxtPlugin(context: LoadContext): Plugin {
     },
 
     postBuild({ outDir }) {
+      // llms.txt describes the English source docs; locale builds would
+      // otherwise overwrite it with translations of variable quality.
+      if (context.i18n.currentLocale !== context.i18n.defaultLocale) return;
       const { title, tagline, url, baseUrl } = context.siteConfig;
       const listed = docs.filter((doc) => !doc.unlisted && !doc.draft);
 

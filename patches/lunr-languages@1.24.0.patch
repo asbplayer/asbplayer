@@ -1,0 +1,46 @@
+diff --git a/lunr.id.js b/lunr.id.js
+new file mode 100644
+index 0000000000000000000000000000000000000000..2263064a18cb8f1a6b75643f4b8fd29ae929cad5
+--- /dev/null
++++ b/lunr.id.js
+@@ -0,0 +1,40 @@
++/**
++ * Indonesian language support for Lunr.
++ *
++ * Not shipped upstream (MihaiValentin/lunr-languages has no id locale as of
++ * 1.24.0); this file is added by the repo's pnpm patch. Registration format
++ * follows the other lunr-languages files so lunr.multiLanguage picks it up.
++ *
++ * There is no stemmer on purpose: Indonesian inflection (ber-, me(N)-, -kan,
++ * -an, ...) is light enough that exact-token matching carries most queries,
++ * and a partial rule-based stemmer would risk collapsing distinct words.
++ * The win here is stopword filtering and a correct wordCharacters range.
++ *
++ * Stopwords are the core function words of the standard Indonesian IR lists
++ * (a subset of the words Sastrawi removes); extend as gaps show up in
++ * practice.
++ */
++;
++(function(root, factory) {
++  if (typeof define === 'function' && define.amd) {
++    define(factory)
++  } else if (typeof exports === 'object') {
++    module.exports = factory()
++  } else {
++    factory()(root.lunr);
++  }
++}(this, function() {
++  return function(lunr) {
++    if ('undefined' === typeof lunr.stemmerSupport) {
++      throw new Error('Lunr stemmer support is not present. Please include / require Lunr stemmer support before this script.');
++    }
++
++    lunr.id = function() {
++      lunr.id.stopWordFilter = lunr.generateStopWordFilter('ada adapun agar akan aku antara apa apabila atas atau bagi bahwa bila bilamana boleh bukan dan dari dengan di dalam dia ia ini itu jadi jangan jika juga kah kami ke kepada karena lah maupun maka masih melainkan mereka nya oleh pada pun saja saya sebab sebagai sebelum sebuah sedang selama sesudah setelah sudah supaya tanpa tapi tersebut terhadap telah tentang untuk ya yang yaitu'.split(' '));
++
++      lunr.Pipeline.registerFunction(lunr.id.stopWordFilter, 'stopWordFilter-id');
++    };
++
++    lunr.id.wordCharacters = "A-Za-z";
++  };
++}))
