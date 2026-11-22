@@ -30,19 +30,20 @@ export async function streamSubtitles(
         publisher.dispose();
         void body?.cancel().catch(() => undefined);
     };
+    let bytes = 0;
 
     try {
         const parser = subtitleReader.createProgressiveReader(extension);
         const response = await fetch(url, { signal });
+        signal.throwIfAborted();
         if (!response.ok) {
+            void response.body?.cancel().catch(() => undefined);
             throw new Error(`Progressive subtitle retrieval failed: ${response.status} ${response.statusText}`);
         }
         if (!response.body) throw new Error('Progressive subtitle response has no readable body');
-        signal.throwIfAborted();
         body = response.body.getReader();
         signal.addEventListener('abort', cancel, { once: true });
         const decoder = new TextDecoder();
-        let bytes = 0;
         asbTrace('subtitle/progressive', 'Started reading progressive subtitle response', {
             ...source,
             contentType: response.headers.get('content-type'),
@@ -50,6 +51,7 @@ export async function streamSubtitles(
         while (true) {
             signal.throwIfAborted();
             const { value, done } = await body.read();
+            signal.throwIfAborted();
             if (publicationError !== undefined) throw publicationError;
             bytes += value?.byteLength ?? 0;
             const cues = parser.read(done ? decoder.decode() : decoder.decode(value, { stream: true }), done);
@@ -58,22 +60,37 @@ export async function streamSubtitles(
             if (done) break;
         }
         publisher.flush();
-        update({ type: 'complete', ...source });
-        asbTrace('subtitle/progressive', 'Finished reading progressive subtitles', {
-            ...source,
-            bytes,
-            elapsedMs: performance.now() - startedAt,
-        });
+        signal.throwIfAborted();
     } catch (error) {
+        const failure = publicationError ?? error;
         if (!signal.aborted) {
-            publisher.flush();
-            update({ type: 'failed', ...source, error: error instanceof Error ? error.message : String(error) });
+            if (!publicationError) {
+                try {
+                    publisher.flush();
+                } catch {
+                    // Preserve the original failure when reporting it to the consumer.
+                }
+            }
+            if (!signal.aborted) {
+                update({
+                    type: 'failed',
+                    ...source,
+                    error: failure instanceof Error ? failure.message : String(failure),
+                });
+            }
         }
-        throw error;
+        throw failure;
     } finally {
         signal.removeEventListener('abort', cancel);
         publisher.dispose();
         await body?.cancel().catch(() => undefined);
         body?.releaseLock();
     }
+    signal.throwIfAborted();
+    update({ type: 'complete', ...source });
+    asbTrace('subtitle/progressive', 'Finished reading progressive subtitles', {
+        ...source,
+        bytes,
+        elapsedMs: performance.now() - startedAt,
+    });
 }

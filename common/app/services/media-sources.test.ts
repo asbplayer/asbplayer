@@ -132,7 +132,7 @@ describe('MediaSources', () => {
             ...source('pending.srt', 1),
             embedded: embeddedDescriptor(video, { trackIndex: 1, codec: 'subrip' }),
         };
-        const external = source('English.vtt', 2);
+        const external = { id: 'English.vtt', file: new File(['WEBVTT'], 'English.vtt'), track: 2 };
         const loaded = MediaSources.fromFiles([video, completed, pending, external], { pendingEmbedded: true });
         const unloaded = loaded.withoutVideo(new Set([1]));
 
@@ -141,6 +141,12 @@ describe('MediaSources', () => {
         expect(unloaded.subtitleSourceFiles).toEqual([{ id: completed.id, file: completed.file, track: 0 }, external]);
         expect(unloaded.canDownloadSubtitles).toBe(true);
         expect(loaded.subtitleSourceFiles[0].embedded).toBe(completed.embedded);
+
+        const pendingOnly = MediaSources.fromFiles([video, { ...pending, track: 0 }], {
+            pendingEmbedded: true,
+        }).withoutVideo(new Set([1]));
+        expect(pendingOnly.subtitleTracks).toEqual([]);
+        expect(pendingOnly.subtitleFileNames).toEqual([]);
     });
 
     it.each([-1, 0.5, NaN, Infinity, 1])('rejects an invalid track index of %s', (track) => {
@@ -407,7 +413,7 @@ describe('merge', () => {
             'blob:initial'
         );
 
-        const replaced = initial.merge(new MediaSources(undefined, video2), createUrl);
+        const replaced = initial.merge(new MediaSources(undefined, video2), createUrl, new Set());
         expect(replaced.newVideo).toBe(true);
         expect(replaced.revokedVideoUrl).toBe('blob:initial');
         expect(replaced.sources.videoFile).toBe(video2);
@@ -416,12 +422,21 @@ describe('merge', () => {
         expect(replaced.loadingSources).toEqual([video2]);
         expect(replaced.resetJumpToSubtitle).toBe(true);
 
-        const sameVideo = initial.merge(new MediaSources(undefined, video1), createUrl);
+        const sameVideo = initial.merge(new MediaSources(undefined, video1), createUrl, new Set());
         expect(sameVideo.newVideo).toBe(false);
         expect(sameVideo.revokedVideoUrl).toBeUndefined();
         expect(sameVideo.sources.videoFileUrl).toBe('blob:initial');
         expect(trackNames(sameVideo.sources)).toEqual([['external.srt'], ['first.track-1.srt']]);
         expect(sameVideo.loadingSources).toEqual([]);
+
+        const pendingInitial = new MediaSources(
+            MediaSources.fromFiles([{ ...embedded, track: 0 }], { pendingEmbedded: true }).subtitleSource,
+            video1,
+            'blob:initial'
+        );
+        const reloadedSameVideo = pendingInitial.merge(new MediaSources(undefined, video1), createUrl, new Set([0]));
+        expect(reloadedSameVideo.sources.subtitleTracks).toEqual([]);
+        expect(reloadedSameVideo.sources.subtitleSource).toMatchObject({ kind: 'files', pendingEmbedded: false });
     });
 
     it('preserves the active video for local subtitle updates and revokes it for remote subtitles', () => {
@@ -429,7 +444,11 @@ describe('merge', () => {
         const initial = new MediaSources(undefined, video, 'blob:episode');
         const sub = source('en.srt');
 
-        const withSub = initial.merge(MediaSources.fromFiles([sub], { pendingEmbedded: false }), () => 'blob:unused');
+        const withSub = initial.merge(
+            MediaSources.fromFiles([sub], { pendingEmbedded: false }),
+            () => 'blob:unused',
+            new Set()
+        );
         expect(withSub.newVideo).toBe(false);
         expect(withSub.revokedVideoUrl).toBeUndefined();
         expect(withSub.sources.videoFile).toBe(video);
@@ -438,7 +457,8 @@ describe('merge', () => {
 
         const remote = initial.merge(
             new MediaSources({ kind: 'remote', names: ['remote.vtt'], status: 'complete' }),
-            () => 'blob:unused'
+            () => 'blob:unused',
+            new Set()
         );
         expect(remote.revokedVideoUrl).toBe('blob:episode');
         expect(remote.sources.videoFile).toBeUndefined();

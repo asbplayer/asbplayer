@@ -86,7 +86,8 @@ export class NativeBridge {
         const size = trackKeys.length * Uint32Array.BYTES_PER_ELEMENT;
         const trackKeysPointer = this.module._malloc(size);
         if (!trackKeysPointer) throw new Error('Could not allocate subtitle arguments');
-        let callbackError: unknown;
+        let readError: unknown;
+        let outputError: unknown;
         const finishDiagnostics = this.collectDiagnostics(onDiagnostics);
         this.module.asbReadInput = (offset, pointer, length) => {
             try {
@@ -94,16 +95,17 @@ export class NativeBridge {
                 this.module.HEAPU8.set(bytes, pointer);
                 return bytes.length;
             } catch (error) {
-                callbackError = error;
+                readError = error;
                 return -1;
             }
         };
         this.module.asbWriteOutput = (trackKey, pointer, length) => {
+            if (outputError !== undefined) return -1;
             try {
                 onChunk(trackKey, this.module.HEAPU8.slice(pointer, pointer + length).buffer);
                 return length;
             } catch (error) {
-                callbackError = error;
+                outputError = error;
                 return -1;
             }
         };
@@ -114,7 +116,8 @@ export class NativeBridge {
                 trackKeysView.setUint32(position * Uint32Array.BYTES_PER_ELEMENT, trackKey, true);
             });
             const result = this.module._asb_extract_subtitles(input.size, trackKeysPointer, trackKeys.length);
-            if (callbackError !== undefined) throw callbackError;
+            if (readError !== undefined) throw readError;
+            if (outputError !== undefined) throw outputError;
             if (!result) throw new Error(this.module.UTF8ToString(this.module._asb_last_error()));
             return JSON.parse(this.module.UTF8ToString(result)) as ExtractedSubtitle[];
         } finally {

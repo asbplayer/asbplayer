@@ -298,54 +298,62 @@ it('persists completed downloads and valid empty embedded tracks in IndexedDB be
     try {
         const session = createSession(repository);
         const signal = new AbortController().signal;
+        const selectedTracks = [{ fileParts: [pending] }, { fileParts: [online] }, { fileParts: [empty] }];
+        const completion = { videoId: video.id, selectedTracks, signal, pendingEmbeddedIds: new Set<string>() };
 
         // Saving only an empty slot keeps canRestore false.
-        session.commitSelection(undefined, {
+        session.commitSelection({
             videoId: undefined,
             files: [{ id: '-', file: new File([], '.srt'), track: 0 }],
             selectedTracks: [{ fileParts: [{ id: '-', file: new File([], '.srt') }] }],
             pendingIds: new Set(),
             signal,
         });
-        await session.saveCompletedSelection(
-            [{ fileParts: [{ id: '-', file: new File([], '.srt') }] }],
-            () => false,
-            signal
-        );
+        await session.saveCompletedSelection([], { ...completion, isStillActive: () => false });
         expect(canRestore).toBe(false);
 
         await session.saveHandles([{ id: video.id, handle: { name: video.file.name } as FileSystemFileHandle }]);
-        session.commitSelection(await session.fetch(), {
+        session.commitSelection({
             videoId: video.id,
             files: [
                 { ...pending, track: 0 },
                 { ...online, track: 1 },
                 { ...empty, track: 2 },
             ],
-            selectedTracks: [{ fileParts: [pending] }, { fileParts: [online] }, { fileParts: [empty] }],
+            selectedTracks,
             pendingIds: new Set([pending.id]),
             signal,
         });
         // Wait for the queued commitSelection write to finish without issuing a second save yet.
-        await session.saveCompletedSelection([], () => false, signal);
+        await session.saveCompletedSelection([], { ...completion, isStillActive: () => false });
         expect(canRestore).toBe(true);
 
         const savedBefore = (await repository.fetch())!;
-        expect(savedBefore.subtitleTrackIds).toEqual([[], [online.id], [empty.id]]);
+        expect(savedBefore.subtitleTrackIds).toEqual([[pending.id], [online.id], [empty.id]]);
         expect(savedBefore.cachedSubtitleFiles?.map(({ id }) => id)).toEqual([online.id, empty.id]);
-        expect(savedBefore.embeddedSubtitles).toEqual({ [empty.id]: empty.embedded });
-        const restoredBefore = await restoreSessionFiles(savedBefore, [video], prepare);
-        expect(restoredBefore.files.map(({ id }) => id)).toEqual([video.id, '-', online.id, empty.id]);
+        expect(savedBefore.embeddedSubtitles).toEqual({
+            [pending.id]: pending.embedded,
+            [empty.id]: empty.embedded,
+        });
+        const restoredBefore = await restoreSessionFiles(
+            savedBefore,
+            [video],
+            async (_source, descriptors) => {
+                expect(descriptors).toEqual([pendingDescriptor]);
+                return new Map([[pending.id, pending]]);
+            },
+            signal
+        );
+        expect(restoredBefore.files.map(({ id }) => id)).toEqual([video.id, pending.id, online.id, empty.id]);
         expect(restoredBefore.files[2].file.size).toBe(online.file.size);
-        expect(restoredBefore.missingEmbeddedSubtitles).toEqual([]);
+        expect(restoredBefore.missingEmbeddedSubtitles).toEqual([pendingDescriptor]);
 
         const completed = { ...pending, file: new File(['Extracted'], pending.file.name) };
         await session.saveCompletedSelection(
             [{ fileParts: [completed] }, { fileParts: [online] }, { fileParts: [empty] }],
-            () => true,
-            signal
+            { ...completion, isStillActive: () => true }
         );
-        const restoredAfter = await restoreSessionFiles((await repository.fetch())!, [video], prepare);
+        const restoredAfter = await restoreSessionFiles((await repository.fetch())!, [video], prepare, signal);
         expect(restoredAfter.files.map(({ id }) => id)).toEqual([video.id, pending.id, online.id, empty.id]);
         expect(restoredAfter.files[1].file.size).toBe(completed.file.size);
         expect(restoredAfter.missingEmbeddedSubtitles).toEqual([]);

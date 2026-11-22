@@ -194,3 +194,49 @@ it('honors cancellation after an outstanding file read', async () => {
     release(new ArrayBuffer(20));
     await expect(discovery).rejects.toThrow('cancelled');
 });
+
+it('recognizes S_TEXT/WEBVTT and counts non-S/D Matroska subtitle codecs in FFmpeg stream order', async () => {
+    const bytes = mkv(
+        mkvTrack(17, 'B_VOBBTN'),
+        mkvTrack(17, 'S_TEXT/WEBVTT', element('536e', utf8(''))),
+        mkvTrack(33, 'S_TEXT/WEBVTT')
+    );
+    expect(await probeSubtitleTracks(new Blob([bytes]), new AbortController().signal)).toEqual([
+        { trackIndex: 0, trackKey: 0, codec: 'B_VOBBTN', language: 'eng' },
+        { trackIndex: 1, trackKey: 1, codec: 'webvtt', language: 'eng', outputFormat: 'srt' },
+        { trackIndex: 2, trackKey: 2, codec: 'webvtt', language: 'eng', outputFormat: 'srt' },
+    ]);
+});
+
+it('decodes QuickTime Pascal-string handler names, omits und MP4 languages, and rejects duplicate MP4 track IDs', async () => {
+    const pascalTitle = Buffer.concat([Buffer.from([7]), utf8('English')]);
+    const undLang = ((21 << 10) | (14 << 5) | 4) & 0x7fff; // 'und'
+    const mdhd = Buffer.alloc(24);
+    mdhd.writeUInt16BE(undLang, 20);
+    const tkhd = (id: number) => {
+        const payload = Buffer.alloc(20);
+        payload.writeUInt32BE(id, 12);
+        return box('tkhd', payload);
+    };
+    const track = (id: number) =>
+        box(
+            'trak',
+            tkhd(id),
+            box(
+                'mdia',
+                box('mdhd', mdhd),
+                box('hdlr', Buffer.alloc(8), utf8('sbtl'), Buffer.alloc(12), pascalTitle),
+                box('minf', box('stbl', box('stsd', Buffer.alloc(8), box('tx3g'))))
+            )
+        );
+    const valid = concat(box('ftyp', utf8('qt  ')), box('moov', track(3)));
+    expect(await probeSubtitleTracks(new Blob([valid]), new AbortController().signal)).toEqual([
+        { trackIndex: 0, trackKey: 3, codec: 'mov_text', title: 'English', outputFormat: 'srt' },
+    ]);
+
+    const duplicate = concat(box('ftyp', utf8('isom')), box('moov', track(3), track(3)));
+    expect(await probeSubtitleTracks(new Blob([duplicate]), new AbortController().signal)).toEqual([
+        { trackIndex: 0, trackKey: 3, codec: 'mov_text', title: 'English', outputFormat: 'srt' },
+        { trackIndex: 1, trackKey: undefined, codec: 'mov_text', title: 'English' },
+    ]);
+});

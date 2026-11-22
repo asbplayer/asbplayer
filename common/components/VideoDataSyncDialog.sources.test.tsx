@@ -163,3 +163,49 @@ it.each(['srt', 'ass'])('confirms downloaded %s subtitles using their own filena
         container.remove();
     }
 });
+
+it('keeps OK enabled and emits an empty track for an absent selected ID without shifting later slots', () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    const onConfirm = jest.fn<(tracks: ConfirmedVideoDataSubtitleTrack[], remember: boolean) => void>();
+    const tracks: VideoDataSubtitleTrack[] = [
+        { id: '-', label: 'Empty', extension: 'srt' },
+        { id: 'local', label: 'Local', file: new File([], 'local.srt'), extension: 'srt' },
+        { id: 'unsupported', label: 'PGS', extension: 'srt', disabledReason: 'Unsupported' },
+    ];
+    try {
+        act(() =>
+            root.render(
+                <Picker
+                    suggestedName="Video.mkv"
+                    subtitleTracks={tracks}
+                    selectedSubtitleTrackIds={['stale-id', 'local', '-']}
+                    onConfirm={onConfirm}
+                />
+            )
+        );
+        const okButton = [...document.querySelectorAll('button')].find(
+            (button) => button.textContent === 'action.ok'
+        ) as HTMLButtonElement;
+        expect(okButton.disabled).toBe(false);
+        act(() => okButton.click());
+        expect(onConfirm).toHaveBeenCalledTimes(1);
+        expect(onConfirm.mock.calls[0][0].map(({ id }) => id)).toEqual(['-', 'local', '-']);
+
+        act(() =>
+            root.render(
+                <Picker
+                    suggestedName="Video.mkv"
+                    subtitleTracks={tracks}
+                    selectedSubtitleTrackIds={['unsupported', '-', '-']}
+                    onConfirm={onConfirm}
+                />
+            )
+        );
+        expect(okButton.disabled).toBe(true);
+    } finally {
+        act(() => root.unmount());
+        container.remove();
+    }
+});

@@ -140,7 +140,7 @@ const attachTracksController = () => {
         const { embeddedSelection, sources } = controller.getState();
         const producer = controller.createProducer(embeddedSelection, {
             reader,
-            errorMessage: 'Failed to load embedded subtitles',
+            errorMessage: () => 'Failed to load embedded subtitles',
         });
         return producer
             ? { kind: 'producer' as const, producer, supportsProgressiveSubtitles: true, onInitialized: () => {} }
@@ -328,8 +328,9 @@ it.each([0, 1, 2])(
         controller.openPicker();
         controller.stagePickerFiles([deferredVideo(reads, 'replacement'), ...files]);
         expect(controller.getState().picker.open).toBe(true);
+        const expectedFiles = count > 0 ? files : [subtitle('old')];
         expect(controller.getState().picker.selectedTrackIds).toEqual(
-            [0, 1, 2].map((index) => files[index]?.id ?? '-')
+            [0, 1, 2].map((index) => expectedFiles[index]?.id ?? '-')
         );
         reads[0].finish();
         await flush();
@@ -337,7 +338,7 @@ it.each([0, 1, 2])(
         reads[1].finish();
         await flush();
         expect(controller.getState().picker.externalTracks.map((track) => track.label)).toEqual(
-            files.map(({ file }) => file.name)
+            expectedFiles.map(({ file }) => file.name)
         );
         expect(controller.getState().picker.embeddedTracks).toHaveLength(1);
         expect(extract).not.toHaveBeenCalled();
@@ -517,38 +518,45 @@ it('commits resolved slots together and preserves every part of existing subtitl
 });
 
 it('ignores duplicate confirmation while confirming and aborts pending confirmation on cancel, replace, or dispose', async () => {
+    const online = {
+        id: 'online',
+        url: 'https://example.test/subtitles',
+        extension: 'srt',
+        label: 'Online',
+        name: 'Online',
+    };
     for (const action of ['cancel', 'replace', 'dispose'] as const) {
-        let releaseFetch!: (value: FileSessionRecord | undefined) => void;
-        session.fetch.mockImplementationOnce(
+        let releaseFetch!: (value: Response) => void;
+        const download = jest.fn<typeof fetch>(
             () =>
                 new Promise((resolve) => {
                     releaseFetch = resolve;
                 })
         );
+        globalThis.fetch = download;
         createController();
         controller.loadSourceFiles([video]);
         controller.openPicker();
-        controller.setPickerSelectedTrackIds([choice.id]);
-        controller.confirm([choice]);
-        controller.confirm([choice]);
+        controller.setPickerSelectedTrackIds([online.id]);
+        controller.confirm([online]);
+        controller.confirm([online]);
         await flush();
-        expect(session.fetch).toHaveBeenCalledTimes(1);
+        expect(download).toHaveBeenCalledTimes(1);
         expect(controller.getState().picker.confirming).toBe(true);
 
         if (action === 'cancel') controller.closePicker();
         else if (action === 'replace') controller.loadSourceFiles([immediateVideo('replacement')]);
         else controller.dispose();
 
-        releaseFetch(undefined);
+        releaseFetch({ ok: true, blob: async () => new Blob([srt]) } as Response);
         await flush();
         expect(controller.getState().embeddedSelection).toBeUndefined();
         expect(extract).not.toHaveBeenCalled();
         if (action !== 'dispose') expect(controller.getState().picker.selectionError).toBeUndefined();
-        session.fetch.mockClear();
     }
 });
 
-it('rejects stale choices and allows retry after a failed session read without extracting', async () => {
+it('rejects stale choices and confirms without waiting on a pending session read', async () => {
     controller.loadSourceFiles([video]);
     await openAndConfirm([choice], ['different']);
     expect(controller.getState().picker.selectionError).toEqual({
@@ -557,18 +565,13 @@ it('rejects stale choices and allows retry after a failed session read without e
     });
     expect(controller.getState().embeddedSelection).toBeUndefined();
 
-    session.fetch.mockRejectedValueOnce(new Error('Session read failed'));
-    await openAndConfirm([choice]);
-    expect(controller.getState().picker.selectionError).toEqual({
-        kind: 'selection',
-        error: new Error('Session read failed'),
-    });
-    expect(controller.getState().picker.confirming).toBe(false);
-
+    session.fetch.mockImplementationOnce(() => new Promise(() => {}));
+    controller.setPickerSelectedTrackIds([choice.id]);
+    expect(controller.getState().picker.selectionError).toBeUndefined();
     controller.confirm([choice]);
     await flush();
-    expect(controller.getState().picker.selectionError).toBeUndefined();
     expect(controller.getState().picker.open).toBe(false);
+    expect(controller.getState().picker.confirming).toBe(false);
     expect(controller.getState().embeddedSelection?.pendingDescriptors).toEqual([choice.embedded]);
     expect(extract).not.toHaveBeenCalled();
 });
@@ -651,8 +654,8 @@ it('hands confirmed extraction to the shared controller and persists completion 
     await openAndConfirm([choice]);
     expect(extract).toHaveBeenCalledTimes(1);
     expect(session.setCachedSubtitleFiles).toHaveBeenCalledWith([], {
-        subtitleTrackIds: [[]],
-        embeddedSubtitles: {},
+        subtitleTrackIds: [[choice.id]],
+        embeddedSubtitles: { [choice.id]: choice.embedded },
     });
     expect(controller.getState().sources.canDownloadSubtitles).toBe(false);
 
@@ -673,6 +676,7 @@ it('hands confirmed extraction to the shared controller and persists completion 
     expect(session.setCachedSubtitleFiles).toHaveBeenLastCalledWith([expect.objectContaining({ id: choice.id })], {
         subtitleTrackIds: [[choice.id]],
         embeddedSubtitles: { [choice.id]: choice.embedded },
+        expectedSelection: { videoId: video.id, subtitleTrackIds: [[choice.id]] },
     });
     protocol.ready();
     await flush();
@@ -708,29 +712,40 @@ it('keeps the completed file when extraction finishes during another confirmatio
     await openAndConfirm([choice]);
     emit(srt);
     await flush();
-    let resume!: (value: FileSessionRecord | undefined) => void;
-    session.fetch.mockImplementationOnce(
+    const online = {
+        id: 'online',
+        url: 'https://example.test/subtitles',
+        extension: 'srt',
+        label: 'Online',
+        name: 'Online',
+    };
+    let resume!: (value: Response) => void;
+    globalThis.fetch = jest.fn<typeof fetch>(
         () =>
             new Promise((resolve) => {
                 resume = resolve;
             })
     );
-    await openAndConfirm([choice]);
+    await openAndConfirm([choice, online]);
     expect(resume).toBeDefined();
 
     finishExtraction([{ trackKey: 0, format: 'srt', blob: new Blob([srt]) }]);
     await flush();
     const file = controller.getState().sources.subtitleSourceFiles[0].file;
-    resume(undefined);
-    await flush();
+    const secondSrt = '1\n00:00:03,000 --> 00:00:04,000\nSecond\n\n';
+    resume({ ok: true, blob: async () => new Blob([secondSrt]) } as Response);
+    for (let i = 0; i < 10 && (subtitles?.length ?? 0) < 2; i++) await flush();
 
     expect(extract).toHaveBeenCalledTimes(1);
     expect(controller.getState().sources.subtitleSourceFiles[0].file).toBe(file);
-    expect(subtitles?.map(({ text }) => text)).toEqual(['First']);
-    expect(session.setCachedSubtitleFiles).toHaveBeenLastCalledWith([expect.objectContaining({ file })], {
-        subtitleTrackIds: [[choice.id]],
-        embeddedSubtitles: { [choice.id]: choice.embedded },
-    });
+    expect(subtitles?.map(({ text }) => text)).toEqual(['First', 'Second']);
+    expect(session.setCachedSubtitleFiles).toHaveBeenLastCalledWith(
+        [expect.objectContaining({ file }), expect.objectContaining({ id: 'online' })],
+        {
+            subtitleTrackIds: [[choice.id], ['online']],
+            embeddedSubtitles: { [choice.id]: choice.embedded },
+        }
+    );
 });
 
 it('aborts the real extraction on source replacement and rejects late chunks and completion', async () => {
@@ -849,6 +864,7 @@ it.each([true, false])('restores cached=%s embedded subtitles and extracts only 
         expect(session.setCachedSubtitleFiles).toHaveBeenCalledWith([expect.objectContaining({ id: choice.id })], {
             subtitleTrackIds: [[choice.id]],
             embeddedSubtitles: { [choice.id]: choice.embedded },
+            expectedSelection: { videoId: video.id, subtitleTrackIds: [[choice.id]] },
         });
     }
     expect(onError).not.toHaveBeenCalled();

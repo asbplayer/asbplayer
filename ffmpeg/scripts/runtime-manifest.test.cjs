@@ -18,6 +18,7 @@ beforeEach(async () => {
         schemaVersion: 1,
         runtimeVersion: '0.1.0',
         ffmpeg: { version: '9.0.2', configuration: '--disable-all' },
+        operations: ['inspect', 'transcodeAudio', 'extractSubtitles'],
         sources: [{ name: 'ffmpeg', url: 'https://example.test/ffmpeg.tar.gz', sha256: 'a'.repeat(64) }],
         runtime: [],
     };
@@ -86,4 +87,13 @@ it('rejects a symlink even when its target matches the declared hash and size', 
 it('rejects a manifest for a different runtime version', async () => {
     manifest.runtimeVersion = '0.2.0';
     await expect(verify()).rejects.toThrow('invalid identity or inventory');
+});
+
+it.each([
+    ['missing operations', undefined],
+    ['missing extractSubtitles', ['inspect', 'transcodeAudio']],
+    ['duplicate operations', ['inspect', 'transcodeAudio', 'extractSubtitles', 'extractSubtitles']],
+])('rejects a manifest with %s', async (_name, operations) => {
+    manifest.operations = operations;
+    await expect(verify()).rejects.toThrow('missing required runtime operations');
 });

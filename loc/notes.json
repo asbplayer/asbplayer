@@ -456,6 +456,8 @@
         "controls.hideBlurOverlay": "Tooltip for the button that hides the blur overlay, a draggable mask that blurs a region of the video.",
         "copyHistory.deleteAll": "Button that clears all entries from the copy history.",
         "error.restoreSessionFailed": "Error shown when the app could not restore the files of a previously opened session, for example because they were moved or deleted.",
+        "error.unsupportedFormat": "Shown beside a disabled embedded subtitle track in the track picker. {{format}} is the subtitle codec's display name, for example PGS or VOBSUB.",
+        "error.embeddedSubtitlesLoadFailed": "Shown when asbplayer fails to read the list of subtitle tracks or extract the selected subtitles from the video file.",
         "info.disabledAllPlayModes": "Notification that no playback modes are currently enabled.",
         "info.cardNotExported": "Snackbar shown when a subtitle failed to export to Anki during a bulk export. {{reason}} is why the export failed.",
         "info.bulkExporting": "Progress text for a bulk export of subtitles to Anki. {{current}} is the number of subtitles exported so far and {{total}} is the total number of subtitles.",

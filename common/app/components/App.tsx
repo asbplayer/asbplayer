@@ -1289,8 +1289,10 @@ function App({
                 if (!handles || handles.length === 0) return;
 
                 const { files } = await resolveFiles(handles);
+                const resolvedIds = new Set(files.map(({ id }) => id));
+                const resolvedHandles = handles.filter(({ id }) => resolvedIds.has(id));
 
-                return await mediaSourcesController.acceptFileRequest(files, handles, { forDraft, signal });
+                return await mediaSourcesController.acceptFileRequest(files, resolvedHandles, { forDraft, signal });
             } catch (e) {
                 asbError('app/files', 'Failed to pick files via File System Access API:', e);
                 handleError(e);
@@ -1574,10 +1576,10 @@ function App({
             () => {
                 mediaSourcesController.openPicker();
             },
-            () => ankiDialogOpen,
+            () => ankiDialogOpen || subtitlePicker.open,
             false
         );
-    }, [keyBinder, ankiDialogOpen, mediaSourcesController]);
+    }, [keyBinder, ankiDialogOpen, subtitlePicker.open, mediaSourcesController]);
 
     if (!i18nInitialized) {
         return null;

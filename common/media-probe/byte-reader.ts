@@ -51,6 +51,7 @@ export default class ByteReader {
             this._signal?.throwIfAborted();
         }
         const start = offset - this._windowOffset;
+        if (start + length > this._window.length) return;
         return this._window.subarray(start, start + length);
     }
 

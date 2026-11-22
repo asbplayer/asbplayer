@@ -11,7 +11,11 @@ import {
     SUBTITLE_EXT_SET,
 } from '@project/common/app/services/media-sources';
 import type { SubtitleSourceFile } from '@project/common/app/services/media-sources';
-import type { FileSessionRecord, FileSystemFileHandleWithId } from '@project/common/file-system-access';
+import type {
+    FileSessionRecord,
+    FileSessionSourceIds,
+    FileSystemFileHandleWithId,
+} from '@project/common/file-system-access';
 import {
     IndexedDBFileSessionRepository,
     canRestoreSession,
@@ -46,6 +50,7 @@ export class FileSession {
     private initController: AbortController | undefined;
     private selectionWrite = Promise.resolve();
     private canRestore = false;
+    private disposed = false;
 
     constructor(
         private readonly store: FileSessionStore | undefined,
@@ -56,6 +61,7 @@ export class FileSession {
     ) {}
 
     initialize(): void {
+        this.disposed = false;
         if (!this.store) return;
         this.initController?.abort();
         const controller = new AbortController();
@@ -75,19 +81,21 @@ export class FileSession {
     }
 
     dispose(): void {
+        this.disposed = true;
         this.initController?.abort();
         this.initController = undefined;
     }
 
-    fetch(): Promise<FileSessionRecord | undefined> {
-        return this.store ? this.store.fetch() : Promise.resolve(undefined);
-    }
-
     retainSources(sources: MediaSources): void {
-        void this.store?.retain({
-            subtitleTrackIds: sources.subtitleTracks.map(({ fileParts }) => fileParts.map(({ id }) => id)),
-            videoId: sources.videoFile?.id,
-        });
+        if (!this.store) return;
+        void this.store
+            .retain({
+                subtitleTrackIds: sources.subtitleTracks.map(({ fileParts }) => fileParts.map(({ id }) => id)),
+                videoId: sources.videoFile?.id,
+            })
+            .then(() => this.store?.fetch())
+            .then((record) => this.setCanRestore(canRestoreSession(record)))
+            .catch((error) => this.reportError(error));
     }
 
     async saveDraftHandles(handles: FileSystemFileHandleWithId[]): Promise<void> {
@@ -98,7 +106,7 @@ export class FileSession {
     }
 
     clearDraftHandles(): void {
-        void this.store?.clearBuffered().catch((error) => this.callbacks.onError(error));
+        void this.store?.clearBuffered().catch((error) => this.reportError(error));
     }
 
     async saveHandles(handles: FileSystemFileHandleWithId[]): Promise<void> {
@@ -122,7 +130,7 @@ export class FileSession {
                     handle,
                     id: files.find(({ file }) => file.name === handle.name)?.id ?? uuid(),
                 }))
-            ).catch((error) => this.callbacks.onError(error));
+            ).catch((error) => this.reportError(error));
         } catch (error) {
             asbWarn('app/files', 'Failed to collect dropped file handles:', error);
         }
@@ -136,54 +144,65 @@ export class FileSession {
             .then((promoted) => {
                 if (promoted && !signal.aborted && isStillActive()) this.setCanRestore(true);
             })
-            .catch((error) => this.callbacks.onError(error));
+            .catch((error) => this.reportError(error));
     }
 
-    /** Save accepted handles, promote drafts, and serialize selection persistence against later extractions. */
-    commitSelection(
-        record: FileSessionRecord | undefined,
-        {
-            videoId,
-            files,
-            selectedTracks,
-            pendingIds,
-            signal,
-        }: {
-            videoId: string | undefined;
-            files: readonly SubtitleSourceFile[];
-            selectedTracks: LoadableSubtitleTrack<FileWithId>[];
-            pendingIds: ReadonlySet<string>;
-            signal: AbortSignal;
-        }
-    ): void {
-        const accepted = new Set([...files.map((file) => file.id), videoId]);
-        const handles = [...(record?.subtitleHandles ?? []), ...(record?.bufferedSubtitleHandles ?? [])].filter(
-            (handle) => accepted.has(handle.id)
-        );
-        void this.saveHandles(handles).catch((error) => this.callbacks.onError(error));
+    /** Promote accepted draft handles and serialize selection persistence against later extractions. */
+    commitSelection({
+        videoId,
+        files,
+        selectedTracks,
+        pendingIds,
+        signal,
+    }: {
+        videoId: string | undefined;
+        files: readonly SubtitleSourceFile[];
+        selectedTracks: LoadableSubtitleTrack<FileWithId>[];
+        pendingIds: ReadonlySet<string>;
+        signal: AbortSignal;
+    }): void {
+        const promotedVideo = (
+            videoId && this.store ? this.store.promoteBufferedVideo(videoId) : Promise.resolve(false)
+        )
+            .then(() => undefined)
+            .catch((error) => this.reportError(error));
         const promoted = (this.store?.promoteBuffered(files.map((file) => file.id)) ?? Promise.resolve()).catch(
-            (error) => this.callbacks.onError(error)
+            (error) => this.reportError(error)
         );
         // A fast extraction waits for this write before saving its finished files.
         // An older selection must not discard handles saved by its replacement.
-        const write: Promise<void> = Promise.all([this.selectionWrite, promoted])
+        const write: Promise<void> = Promise.all([this.selectionWrite, promotedVideo, promoted])
             .then(async () => {
                 if (!signal.aborted && this.selectionWrite === write) {
                     await this.saveSubtitleSelection(selectedTracks, pendingIds);
                 }
             })
-            .catch((error) => this.callbacks.onError(error));
+            .catch((error) => this.reportError(error));
         this.selectionWrite = write;
     }
 
     async saveCompletedSelection(
         completed: LoadableSubtitleTrack<FileWithId>[],
-        isStillActive: () => boolean,
-        signal: AbortSignal
+        {
+            videoId,
+            selectedTracks,
+            isStillActive,
+            signal,
+            pendingEmbeddedIds,
+        }: {
+            videoId: string;
+            selectedTracks: LoadableSubtitleTrack<FileWithId>[];
+            isStillActive: () => boolean;
+            signal: AbortSignal;
+            pendingEmbeddedIds: ReadonlySet<string>;
+        }
     ): Promise<void> {
         await this.selectionWrite;
         if (signal.aborted || !isStillActive()) return;
-        await this.saveSubtitleSelection(completed, new Set());
+        await this.saveSubtitleSelection(completed, pendingEmbeddedIds, {
+            videoId,
+            subtitleTrackIds: selectedTracks.map(({ fileParts }) => fileParts.map(({ id }) => id)),
+        });
         signal.throwIfAborted();
     }
 
@@ -209,7 +228,12 @@ export class FileSession {
             await this.clearSession();
             throw new LocalizedError('error.restoreSessionFailed');
         }
-        const { files, missingEmbeddedSubtitles } = await restoreSessionFiles(record, resolved, prepareEmbedded);
+        const { files, missingEmbeddedSubtitles } = await restoreSessionFiles(
+            record,
+            resolved,
+            prepareEmbedded,
+            signal
+        );
         if (signal.aborted) return;
 
         let sources: MediaSources;
@@ -220,6 +244,10 @@ export class FileSession {
             throw error;
         }
         return { sources, missingEmbeddedSubtitles };
+    }
+
+    private reportError(error: unknown): void {
+        if (!this.disposed) this.callbacks.onError(error);
     }
 
     private async clearSession(): Promise<void> {
@@ -238,24 +266,26 @@ export class FileSession {
 
     private async saveSubtitleSelection(
         tracks: LoadableSubtitleTrack<FileWithId>[],
-        pendingEmbeddedIds: ReadonlySet<string>
+        pendingEmbeddedIds: ReadonlySet<string>,
+        expectedSelection?: FileSessionSourceIds
     ): Promise<void> {
         if (!this.store) return;
-        const completedTracks = tracks.map(({ fileParts }) => ({
-            fileParts: fileParts.filter((file) => !pendingEmbeddedIds.has(file.id)),
-        }));
-        const files = completedTracks.flatMap(({ fileParts }) => fileParts);
-        await this.store.setCachedSubtitleFiles(files, {
-            subtitleTrackIds: completedTracks.map(({ fileParts }) => fileParts.map(({ id }) => id)),
-            embeddedSubtitles: Object.fromEntries(
-                files.flatMap((file) => (file.embedded ? [[file.id, file.embedded] as const] : []))
-            ),
-        });
+        const files = tracks.flatMap(({ fileParts }) => fileParts);
+        await this.store.setCachedSubtitleFiles(
+            files.filter((file) => !pendingEmbeddedIds.has(file.id)),
+            {
+                subtitleTrackIds: tracks.map(({ fileParts }) => fileParts.map(({ id }) => id)),
+                embeddedSubtitles: Object.fromEntries(
+                    files.flatMap((file) => (file.embedded ? [[file.id, file.embedded] as const] : []))
+                ),
+                expectedSelection,
+            }
+        );
         this.setCanRestore(canRestoreSession(await this.store.fetch()));
     }
 
     private setCanRestore(canRestore: boolean): void {
-        if (canRestore === this.canRestore) return;
+        if (this.disposed || canRestore === this.canRestore) return;
         this.canRestore = canRestore;
         this.callbacks.onCanRestoreChanged(canRestore);
     }

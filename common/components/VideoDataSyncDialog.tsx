@@ -327,7 +327,14 @@ export default function VideoDataSyncDialog({
     function allSelectedSubtitleTracks() {
         const selectedSubtitleTracks: ConfirmedVideoDataSubtitleTrack[] = selectedSubtitleTrackIds
             .map((selected): ConfirmedVideoDataSubtitleTrack | undefined => {
-                const subtitle = subtitleTracks.find((subtitle) => subtitle.id === selected);
+                const subtitle = subtitleTracks.find((subtitle) => subtitle.id === selected) ??
+                    subtitleTracks.find((subtitle) => subtitle.id === '-') ?? {
+                        id: '-',
+                        label: '',
+                        language: '-',
+                        url: '-',
+                        extension: 'srt',
+                    };
                 if (subtitle) {
                     const { file, label } = subtitle;
                     if (subtitle.disabledReason) return;
@@ -413,6 +420,10 @@ export default function VideoDataSyncDialog({
     const videoNameRef = useRef<HTMLInputElement>(null);
     const [focusOkAfterFileSelection, setFocusOkAfterFileSelection] = useState(false);
 
+    const hasDisabledSelection = selectedSubtitleTrackIds.some((id) =>
+        subtitleTracks.some((track) => track.id === id && Boolean(track.disabledReason))
+    );
+
     useEffect(() => {
         if (!open) {
             setFocusOkAfterFileSelection(false);
@@ -422,12 +433,13 @@ export default function VideoDataSyncDialog({
         if (
             (hideVideoNameTextField || trimmedName) &&
             (focusOkAfterFileSelection || !videoNameRef.current?.contains(document.activeElement)) &&
-            !disabled
+            !disabled &&
+            !hasDisabledSelection
         ) {
             okActionRef.current?.focusVisible();
             setFocusOkAfterFileSelection(false);
         }
-    }, [open, trimmedName, disabled, hideVideoNameTextField, focusOkAfterFileSelection]);
+    }, [open, trimmedName, disabled, hasDisabledSelection, hideVideoNameTextField, focusOkAfterFileSelection]);
 
     const [fileInputTrackNumber, setFileInputTrackNumber] = useState<number>();
     const [onlineDialogOpen, setOnlineDialogOpen] = useState(false);
@@ -696,13 +708,7 @@ export default function VideoDataSyncDialog({
                     </Button>
                     <Button
                         action={okActionRef}
-                        disabled={
-                            (!hideVideoNameTextField && !trimmedName) ||
-                            disabled ||
-                            selectedSubtitleTrackIds.some(
-                                (id) => !subtitleTracks.some((track) => track.id === id && !track.disabledReason)
-                            )
-                        }
+                        disabled={(!hideVideoNameTextField && !trimmedName) || disabled || hasDisabledSelection}
                         onClick={handleOkButtonClick}
                     >
                         {t('action.ok')}

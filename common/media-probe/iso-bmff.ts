@@ -22,6 +22,7 @@ const mediaLanguageBytes = 2;
 const languageBitsPerCharacter = 5;
 const languageCharacterMask = (1 << languageBitsPerCharacter) - 1;
 const languageCharacterCodeOffset = 96; // Packed language letters use 1 for 'a'.
+const languageAlphabetSize = 26;
 const minimumPackedLanguage = 0x400;
 const packedLanguageLimit = 0x8000;
 const handlerReservedBytes = 12;
@@ -207,6 +208,19 @@ const readTrackMedia = async (reader: ByteReader, track: Box) => {
     if (handler) return { mdia, hdlr, handler };
 };
 
+/** Decode an ISO BMFF C-string or QuickTime length-prefixed Pascal string handler name. */
+const readHandlerName = async (reader: ByteReader, hdlr: Box): Promise<string | undefined> => {
+    const nameOffset = hdlr.dataOffset + handlerNameOffset;
+    const length = hdlr.end - nameOffset;
+    if (length <= 0) return;
+    const firstByte = await reader.unsignedInt(nameOffset, 1);
+    const lastByte = await reader.unsignedInt(hdlr.end - 1, 1);
+    if (firstByte === length - 1 && lastByte !== 0) return (await reader.utf8(nameOffset + 1, firstByte)) || undefined;
+    const decoded = await reader.utf8(nameOffset, length);
+    const nul = decoded.indexOf('\0');
+    return (nul === -1 ? decoded : decoded.slice(0, nul)) || undefined;
+};
+
 export const isoBmffSubtitleTracks = async (reader: ByteReader): Promise<IsoBmffSubtitleTrack[] | undefined> => {
     const candidates: { id: number | undefined; mdia: Box; hdlr: Box }[] = [];
     const chapterIds = new Set<number>();
@@ -251,16 +265,20 @@ export const isoBmffSubtitleTracks = async (reader: ByteReader): Promise<IsoBmff
             if (languageOffset + mediaLanguageBytes > mdhd.end) throw new Error('Truncated MP4 language');
             const packed = await reader.unsignedInt(languageOffset, mediaLanguageBytes);
             if (packed && packed >= minimumPackedLanguage && packed < packedLanguageLimit) {
-                language = String.fromCharCode(
-                    ((packed >> (languageBitsPerCharacter * 2)) & languageCharacterMask) + languageCharacterCodeOffset,
-                    ((packed >> languageBitsPerCharacter) & languageCharacterMask) + languageCharacterCodeOffset,
-                    (packed & languageCharacterMask) + languageCharacterCodeOffset
-                );
+                const characters = [
+                    (packed >> (languageBitsPerCharacter * 2)) & languageCharacterMask,
+                    (packed >> languageBitsPerCharacter) & languageCharacterMask,
+                    packed & languageCharacterMask,
+                ];
+                if (characters.every((code) => code >= 1 && code <= languageAlphabetSize)) {
+                    const decoded = String.fromCharCode(
+                        ...characters.map((code) => code + languageCharacterCodeOffset)
+                    );
+                    if (decoded !== 'und') language = decoded;
+                }
             }
         }
-        // hdlr's UTF-8 name follows its full header. Real muxers use this as the track label.
-        const nameOffset = hdlr.dataOffset + handlerNameOffset;
-        const title = nameOffset < hdlr.end ? await reader.utf8(nameOffset, hdlr.end - nameOffset) : undefined;
+        const title = await readHandlerName(reader, hdlr);
         tracks.push({ id, format: await sampleEntryFormat(reader, mdia), language, title });
     }
     return tracks;

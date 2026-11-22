@@ -8,6 +8,7 @@ import { genericSubtitleDisplayLabel } from '@project/common/util/subtitle-langu
 import { subtitleCodecDisplayName } from '@project/common/media-probe';
 import { emptySubtitleTrack } from '@project/common/components/VideoDataSyncDialog';
 import { defaultFileSessionStore } from '@project/common/app/services/file-session';
+import { LocalizedError } from '@project/common/app/components/localized-error';
 import { MediaSourcesController } from '@project/common/app/services/media-sources-controller';
 import type { SourcesAppliedEvent } from '@project/common/app/services/media-sources-controller';
 
@@ -24,8 +25,16 @@ export const useMediaSources = ({
     onError: (error: unknown) => void;
 }) => {
     const { t } = useTranslation();
-    const callbacksRef = useRef({ onSourcesApplied, onError });
-    callbacksRef.current = { onSourcesApplied, onError };
+    const callbacksRef = useRef({
+        onSourcesApplied,
+        onError,
+        embeddedErrorMessage: t('error.embeddedSubtitlesLoadFailed'),
+    });
+    callbacksRef.current = {
+        onSourcesApplied,
+        onError,
+        embeddedErrorMessage: t('error.embeddedSubtitlesLoadFailed'),
+    };
 
     const controller = useMemo(
         () =>
@@ -77,7 +86,11 @@ export const useMediaSources = ({
 
     const { selectionError, discoveryError } = state.picker;
     const pickerErrorMessage = useMemo(() => {
-        if (selectionError?.kind === 'selection') return t('info.error', { message: selectionError.error.message });
+        if (selectionError?.kind === 'selection') {
+            return selectionError.error instanceof LocalizedError
+                ? t(selectionError.error.locKey, selectionError.error.locParams)
+                : t('info.error', { message: selectionError.error.message });
+        }
         if (selectionError?.kind === 'embedded' || discoveryError) return t('error.embeddedSubtitlesLoadFailed');
         return '';
     }, [selectionError, discoveryError, t]);
@@ -86,9 +99,9 @@ export const useMediaSources = ({
         () =>
             controller.createProducer(state.embeddedSelection, {
                 reader: subtitleReader,
-                errorMessage: t('error.embeddedSubtitlesLoadFailed'),
+                errorMessage: () => callbacksRef.current.embeddedErrorMessage,
             }),
-        [controller, state.embeddedSelection, subtitleReader, t]
+        [controller, state.embeddedSelection, subtitleReader]
     );
 
     return {

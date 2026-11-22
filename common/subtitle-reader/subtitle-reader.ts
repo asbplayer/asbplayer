@@ -205,15 +205,15 @@ export default class SubtitleReader {
     /**
      * Parses one ASS or SRT track incrementally, returning only new cues with stable, increasing cue IDs.
      * Feed chunks in file order with chronological cues so each batch extends the track's timeline prefix.
-     * ASS requires a fixed header before dialogue. Incomplete lines or cue blocks are buffered.
-     * Call read(text, true) at EOF to flush the remaining input.
+     * ASS requires a fixed header before dialogue; progressive SRT delimits cues on blank lines.
+     * Incomplete lines or cue blocks are buffered. Call read(text, true) at EOF to flush the remaining input.
      */
     createProgressiveReader(extension: string) {
         if (extension !== 'ass' && extension !== 'srt') {
             throw new Error(`Unsupported progressive subtitle format: ${extension}`);
         }
         let pending = '';
-        let header = '';
+        let section = '';
         let format: string[] | undefined;
         let cueId = 0;
         let previous: SubtitleNode | undefined;
@@ -230,22 +230,30 @@ export default class SubtitleReader {
                 } else {
                     const lines = pending.split(assLineBreakRegex);
                     pending = final ? '' : lines.pop()!;
-                    if (!lines.length) return [];
-                    const prefix = format ? `[Events]\nFormat: ${format.join(', ')}\n` : header;
-                    const batch = lines.join('\n');
-                    const tree = parseAss(prefix + batch);
-                    if (tree.events.format.length) {
-                        format = tree.events.format;
-                        header = '';
-                    } else if (!format) {
-                        header += `${batch}\n`;
-                    }
-                    if (!format && tree.events.dialogue.length) {
-                        throw new Error('ASS dialogue arrived before the events format');
+                    const eventLines: string[] = [];
+                    for (const line of lines) {
+                        const trimmed = line.replace(/^\uFEFF/, '').trim();
+                        const sectionHeader = /^\[([^\]]+)\]$/.exec(trimmed);
+                        if (sectionHeader) {
+                            section = sectionHeader[1].toLowerCase();
+                            continue;
+                        }
+                        if (section !== 'events') continue;
+                        if (!format && /^format\s*:/i.test(trimmed)) {
+                            const parsed = parseAss(`[Events]\n${trimmed}`);
+                            if (parsed.events.format.length) format = parsed.events.format;
+                            continue;
+                        }
+                        if (!format && /^dialogue\s*:/i.test(trimmed)) {
+                            throw new Error('ASS dialogue arrived before the events format');
+                        }
+                        if (format && trimmed) eventLines.push(line);
                     }
                     if (final && !format) {
                         throw new Error('Subtitle response did not contain an ASS events header and format');
                     }
+                    if (!format || !eventLines.length) return [];
+                    const tree = parseAss(`[Events]\nFormat: ${format.join(', ')}\n${eventLines.join('\n')}`);
                     nodes = this._assSubtitles(tree.events.dialogue, 0);
                 }
                 nodes = this._processSubtitles(nodes);
@@ -270,14 +278,14 @@ export default class SubtitleReader {
     private _srtSubtitles(contents: string, track: number): SubtitleNode[] {
         const parser = new SrtParser({ numericTimestamps: true });
         const nodes = parser.fromSrt(contents);
-        return nodes.map((node) => {
-            return {
+        return nodes
+            .map((node) => ({
                 start: Math.floor((node.startTime as number) * 1000),
                 end: Math.floor((node.endTime as number) * 1000),
                 text: this._filterText(node.text.replace(assOverrideTagRegex, '')),
-                track: track,
-            };
-        });
+                track,
+            }))
+            .filter(({ start, end }) => Number.isFinite(start) && Number.isFinite(end) && start >= 0 && end >= start);
     }
 
     private _assSubtitles(dialogues: ParsedASS['events']['dialogue'], track: number): SubtitleNode[] {
@@ -975,15 +983,7 @@ export default class SubtitleReader {
             text = text.replace(regex, replacement).trim();
         }
 
-        if (this._removeXml) {
-            // Removing markup decodes entities. Keep that plain text literal when
-            // the result is sanitized and rendered as HTML later.
-            text = removeSubtitleHtmlSafely(text)
-                .replaceAll('&', '&amp;')
-                .replaceAll('<', '&lt;')
-                .replaceAll('>', '&gt;');
-        }
-
+        if (this._removeXml) text = removeSubtitleHtmlSafely(text);
         return text;
     }
 

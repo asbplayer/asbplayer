@@ -66,10 +66,12 @@ try {
     assert.match(chunksByTrackKey.get(0)[0].toString('utf8'), /00:00:09,000 --> 00:00:11,000/);
     assert.doesNotMatch(chunksByTrackKey.get(0)[0].toString('utf8'), /Final cue/);
     assert.match(mixed.get(0), /00:00:09,000 --> 00:00:11,000/);
+    assert.match(mixed.get(0), /日本語 &amp; &lt;literal&gt; C:\\new and C:\\Notes\nline two/);
     assert.match(mixed.get(0), /00:00:10,000 --> 00:00:12,000/);
     assert.match(mixed.get(0), /Final cue/);
-    assert.match(mixed.get(1), /日本語 text\nline two end/);
-    assert.doesNotMatch(mixed.get(1), /m 0 0|\\h|\\k20/);
+    assert.match(mixed.get(1), /日本語 text\nline two end \{note \\p1\}/);
+    assert.match(mixed.get(1), /Reset text/);
+    assert.doesNotMatch(mixed.get(1), /m 0 0|\\h|\\k20|Zero duration cue/);
     assert.match(mixed.get(1), /&lt;b&gt;literal&lt;\/b&gt; &amp;amp;/);
     // Confirmed extraction must finish even with slow, fragmented input reads.
     const readInput = module.asbReadInput;
@@ -97,6 +99,20 @@ try {
     // mov_text samples cannot overlap: the first sample ends at the next sample.
     assert.match(mp4, /00:00:02,000 --> 00:00:03,000/);
     assert.match(mp4, /Final cue/);
+    await load('movtext-literal.mp4');
+    assert.match(
+        extract([2]).get(2),
+        /00:00:02,000 --> 00:00:04,000\nC:\\new and C:\\Notes \{\\b1\}tag\{\\b0\} Before \{\\unclosed after/
+    );
+    await load('movtext-utf16.mp4');
+    const utf16Srt = extract([2]).get(2);
+    assert.match(utf16Srt, /00:00:02,000 --> 00:00:03,000\n日本語𠀋/);
+    assert.match(utf16Srt, /00:00:04,000 --> 00:00:05,000\nHello\n\n/);
+    assert.match(utf16Srt, /00:00:06,000 --> 00:00:07,000\nTop\nLine\n\n/);
+    assert.ok(!utf16Srt.includes('\0'), 'Extracted SRT must not contain raw NUL bytes');
+    assert.doesNotMatch(utf16Srt, /ignored/);
+    await load('movtext-unreadable.mp4');
+    assert.throws(() => extract([2]), /Could not finish subtitle output/);
     await load('delayed.mp4');
     assert.match(extract([2]).get(2), /00:00:12,000 --> 00:00:13,000/);
     // Guard against unbounded WASM heap growth across repeated extractions.
@@ -117,6 +133,20 @@ try {
     const dense = extract([0]).get(0);
     assert.equal([...dense.matchAll(/^Dense cue \d+$/gm)].length, 300);
     assert.match(dense, /Dense cue 0[\s\S]+Dense cue 299/);
+    await load('empty-ass-header.mkv');
+    assert.match(extract([0]).get(0), /00:00:02,000 --> 00:00:03,000\nHeaderless ASS cue/);
+    await load('webvtt-nbsp.mkv');
+    assert.match(
+        extract([0]).get(0),
+        /00:00:02,000 --> 00:00:03,000\nfirst second \{music\} C:\\path \\h &lt;tag&gt; &amp;/
+    );
+    await load('raw-text.mkv');
+    assert.match(extract([0]).get(0), /00:00:02,000 --> 00:00:03,000\n\{music\} C:\\path\nsecond line/);
+    await load('non-utf8.mkv');
+    assert.match(
+        extract([0]).get(0),
+        /00:00:02,000 --> 00:00:03,000\ncaf\ufffd[\s\S]+00:00:04,000 --> 00:00:05,000\nAfter Latin-1/
+    );
     const warnings = [];
     module.asbDiagnostic = (_source, level, message) => {
         if (level === 'warning') warnings.push(message);

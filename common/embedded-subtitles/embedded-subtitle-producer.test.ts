@@ -125,7 +125,7 @@ async function loading(
         pendingDescriptors: [descriptor],
         reader,
         service,
-        errorMessage: 'Failed to load embedded subtitles',
+        errorMessage: () => 'Failed to load embedded subtitles',
         onFinished,
     });
     const updates: SubtitleSourceUpdate[] = [];
@@ -199,7 +199,7 @@ it('restores completed embedded tracks immediately and extracts only the missing
         pendingDescriptors: [pendingDescriptor],
         service,
         reader: createReader(),
-        errorMessage: 'Failed to load embedded subtitles',
+        errorMessage: () => 'Failed to load embedded subtitles',
         onFinished,
     });
     const run = produce((update) => {

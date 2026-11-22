@@ -30,6 +30,8 @@ const info = JSON.parse(module.UTF8ToString(module._asb_runtime_info_json()));
 assert.equal(typeof module._asb_transcode_audio, 'function');
 assert.equal(typeof module._asb_last_error, 'function');
 assert.equal(typeof module._asb_extract_subtitles, 'function');
+assert.equal(typeof module._malloc, 'function');
+assert.equal(typeof module._free, 'function');
 assert.ok(module.HEAPU8 instanceof Uint8Array, 'The native bridge requires an exported heap view');
 assert.ok(module.HEAPU8.buffer instanceof ArrayBuffer, 'Workers use private, unshared WASM memory');
 

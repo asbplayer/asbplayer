@@ -11,13 +11,22 @@ import SubtitleReader from '@project/common/subtitle-reader/subtitle-reader';
 import { useMediaSources } from '@project/common/app/hooks/use-media-sources';
 
 jest.mock('react-i18next', () => {
-    const t = (key: string, options?: { trackNumber?: number; format?: string; message?: string }) => {
-        if (key === 'settings.subtitleTrackChoice') return `Track ${options?.trackNumber}`;
-        if (key === 'error.unsupportedFormat') return `Unsupported ${options?.format}`;
-        if (key === 'info.error') return `Error: ${options?.message}`;
-        return key;
+    const makeT =
+        (prefix: string) =>
+        (key: string, options?: { trackNumber?: number; format?: string; message?: string; extension?: string }) => {
+            if (key === 'settings.subtitleTrackChoice') return `Track ${options?.trackNumber}`;
+            if (key === 'error.unsupportedFormat') return `Unsupported ${options?.format}`;
+            if (key === 'error.unsupportedExtension') return `Unsupported extension ${options?.extension}`;
+            if (key === 'info.error') return `Error: ${options?.message}`;
+            return `${prefix}${key}`;
+        };
+    let currentT = makeT('');
+    return {
+        useTranslation: () => ({ t: currentT }),
+        __setLanguagePrefix: (prefix: string) => {
+            currentT = makeT(prefix);
+        },
     };
-    return { useTranslation: () => ({ t }) };
 });
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -143,4 +152,35 @@ it('formats embedded vs selection errors separately', async () => {
         latest.controller.confirm([{ id: 'stale', label: 'stale', name: 'stale', extension: 'srt' }]);
     });
     expect(latest.picker.errorMessage).toBe('Error: Subtitle selection has changed');
+
+    const badFile = new File(['hello'], 'notes.txt');
+    await act(async () => {
+        latest.controller.setPickerTracks([{ id: 'bad', label: 'notes.txt', extension: 'txt', file: badFile }]);
+        latest.controller.setPickerSelectedTrackIds(['bad']);
+        latest.controller.confirm([
+            { id: 'bad', label: 'notes.txt', name: 'notes.txt', extension: 'txt', file: badFile },
+        ]);
+    });
+    expect(latest.picker.errorMessage).toBe('Unsupported extension txt');
+});
+
+it('keeps subtitleProducer stable when UI language changes', async () => {
+    const i18n = jest.requireMock<{ __setLanguagePrefix: (prefix: string) => void }>('react-i18next');
+    await act(async () => root.render(<Harness onError={jest.fn()} />));
+    const video = makeVideo('lang', 'S_TEXT/UTF8');
+    await act(async () => {
+        latest.controller.importManualFiles([video]);
+    });
+    const embeddedTrack = latest.picker.tracks.find((track) => track.embedded)!;
+    await act(async () => {
+        latest.controller.setPickerSelectedTrackIds([embeddedTrack.id]);
+        latest.controller.confirm([{ ...embeddedTrack, name: 'track.srt' }]);
+    });
+    const firstProducer = latest.subtitleProducer;
+    expect(firstProducer).toBeDefined();
+
+    i18n.__setLanguagePrefix('ja:');
+    await act(async () => root.render(<Harness onError={jest.fn()} />));
+    expect(latest.subtitleProducer).toBe(firstProducer);
+    i18n.__setLanguagePrefix('');
 });

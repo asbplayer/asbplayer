@@ -26,7 +26,7 @@ export const extractSubtitleTracks = async ({
         inputBytes: file.size,
         trackKeys,
     };
-    const chunksByTrackKey = new Map(trackKeys.map((trackKey) => [trackKey, [] as Blob[]]));
+    const chunksByTrackKey = new Map(trackKeys.map((trackKey) => [trackKey, [] as ArrayBuffer[]]));
     let session: FfmpegSession | undefined;
     let stage: 'creatingSession' | 'loadingExtractor' | 'extracting' | 'finalizing' = 'creatingSession';
     let outputBytes = 0;
@@ -54,9 +54,10 @@ export const extractSubtitleTracks = async ({
                 signal.throwIfAborted();
                 const parts = chunksByTrackKey.get(trackKey);
                 if (!parts) throw new Error('Unexpected embedded subtitle track');
-                parts.push(new Blob([chunk]));
+                const byteLength = chunk.byteLength;
+                parts.push(chunk);
                 onChunk(trackKey, chunk);
-                outputBytes += chunk.byteLength;
+                outputBytes += byteLength;
                 chunkCount++;
             },
         });

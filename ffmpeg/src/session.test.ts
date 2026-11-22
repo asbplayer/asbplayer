@@ -940,4 +940,15 @@ describe('embedded subtitle operations', () => {
         replyWithResult(worker, [{ trackKey: 3, extension: 'sup', mimeType: 'application/x-pgs' }]);
         await expect(extraction).rejects.toMatchObject({ code: 'protocol' });
     });
+    it('rejects subtitle extraction on a disposed session even for empty track keys', async () => {
+        const { session, runtime } = await ready();
+        session.dispose();
+        await expect(
+            runtime.extractSubtitles({
+                input: new Blob(['video']),
+                trackKeys: [],
+                onChunk: () => {},
+            })
+        ).rejects.toMatchObject({ code: 'disposed' });
+    });
 });

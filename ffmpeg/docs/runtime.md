@@ -4,9 +4,9 @@ The runtime executes media operations in a dedicated browser worker through a sm
 
 ## Version compatibility
 
-Each asbplayer release selects one specific FFmpeg runtime version and loads only that version. A feature that requires a new runtime version can change the runtime API without supporting older runtime versions; update the selected runtime for the corresponding asbplayer release.
+Each asbplayer release selects one specific FFmpeg runtime version and loads only that version. A feature that requires a new runtime version can change the runtime API without supporting older runtime versions; merge the runtime changes to `main` and cut and select the matching runtime release soon after.
 
-The worker and its request/reply protocol are shipped together in that selected runtime. Communication between them, and other messages confined to one asbplayer version, does not need backward compatibility with earlier versions. Keep validation for malformed messages, stale sessions, and incorrect runtime selection; those checks protect the current protocol rather than support older ones. Backward compatibility generally matters for messages exchanged between the asbplayer app and extension, and for persisted data formats of released features.
+The worker, its request/reply protocol, the native bridge, and runtime verification all target that selected runtime unconditionally rather than gating new operations as optional for older releases. Keep validation for malformed messages, stale sessions, and incorrect runtime selection, since those checks protect the current protocol rather than support older ones. Backward compatibility generally matters for messages exchanged between the asbplayer app and extension, and for persisted data formats of released features.
 
 ## Browser integration
 

@@ -136,7 +136,7 @@ async function reload() {
         }))
     );
     expect(errors).toEqual([]);
-    const restored = await restoreSessionFiles(record, files, unexpectedPreparation);
+    const restored = await restoreSessionFiles(record, files, unexpectedPreparation, new AbortController().signal);
     expect(restored.missingEmbeddedSubtitles).toEqual([]);
     return { record, files: restored.files };
 }
@@ -214,7 +214,8 @@ it('restores sessions without a saved arrangement in handle-then-cache order', a
     const { files, missingEmbeddedSubtitles } = await restoreSessionFiles(
         record,
         [video, local, secondLocal],
-        unexpectedPreparation
+        unexpectedPreparation,
+        new AbortController().signal
     );
     expect(canRestoreSession(record)).toBe(true);
     expect(record.subtitleTrackIds).toBeUndefined();
@@ -382,7 +383,8 @@ it('preserves slot positions when a saved subtitle is unavailable', async () => 
     const { files } = await restoreSessionFiles(
         { id: 1, timestamp: 1, subtitleHandles: [], subtitleTrackIds: [['missing'], ['online']] },
         [online],
-        unexpectedPreparation
+        unexpectedPreparation,
+        new AbortController().signal
     );
     expect(files.map(({ id }) => id)).toEqual(['-', 'online']);
     expect(files[0].file.size).toBe(0);
@@ -558,7 +560,12 @@ it('uses the quota for downloaded bytes when a large subtitle already has a file
     const saved = (await repository.fetch())!;
     expect(saved.subtitleHandles.map(({ id }) => id)).toEqual([large.id]);
     expect(saved.cachedSubtitleFiles?.map(({ id }) => id)).toEqual([online.id]);
-    const { files } = await restoreSessionFiles(saved, [video, large], unexpectedPreparation);
+    const { files } = await restoreSessionFiles(
+        saved,
+        [video, large],
+        unexpectedPreparation,
+        new AbortController().signal
+    );
     expect(files.map(({ id }) => id)).toEqual([video.id, large.id, online.id]);
 });
 
@@ -609,7 +616,8 @@ describe('embedded subtitle sessions', () => {
                 [video],
                 kind === 'cached'
                     ? unexpectedPreparation
-                    : async () => new Map([[id, { ...embedded, file: new File([], embedded.file.name) }]])
+                    : async () => new Map([[id, { ...embedded, file: new File([], embedded.file.name) }]]),
+                new AbortController().signal
             );
             expect(missingEmbeddedSubtitles).toEqual(kind === 'cached' ? [] : [descriptor]);
             const sources = MediaSources.fromFiles(files, { pendingEmbedded: false });
@@ -636,7 +644,8 @@ describe('embedded subtitle sessions', () => {
             const { files: restored, missingEmbeddedSubtitles } = await restoreSessionFiles(
                 session,
                 [video],
-                unexpectedPreparation
+                unexpectedPreparation,
+                new AbortController().signal
             );
             expect(missingEmbeddedSubtitles).toEqual([]);
             expect(restored.map((file) => file.id)).toEqual(['video', id, '-', 'external', id]);
@@ -681,6 +690,59 @@ describe('embedded subtitle sessions', () => {
         expect(saved?.cachedSubtitleFiles).toEqual([]);
         expect(saved?.embeddedSubtitles).toEqual({});
     });
+
+    it.each(['video', 'track order'])(
+        'keeps the selection from another tab when the %s changes during a background cache write',
+        async (changed) => {
+            const firstTab = new IndexedDBFileSessionRepository();
+            const secondTab = new IndexedDBFileSessionRepository();
+            const expectedSelection = { videoId: video.id, subtitleTrackIds: [[id], ['-']] };
+            const selection = {
+                subtitleTrackIds: expectedSelection.subtitleTrackIds,
+                embeddedSubtitles: { [id]: descriptor },
+            };
+            await firstTab.merge({ videoHandle: record().videoHandle, subtitleHandles: [] });
+            await firstTab.setCachedSubtitleFiles([], selection);
+
+            const estimate = Promise.withResolvers<StorageEstimate>();
+            const estimating = Promise.withResolvers<void>();
+            Object.defineProperty(navigator, 'storage', {
+                configurable: true,
+                value: {
+                    estimate: () => {
+                        estimating.resolve();
+                        return estimate.promise;
+                    },
+                },
+            });
+            const writing = firstTab.setCachedSubtitleFiles([embedded], { ...selection, expectedSelection });
+            let replacement: FileSessionRecord | undefined;
+            try {
+                await estimating.promise;
+                if (changed === 'video') {
+                    const replacementVideo = {
+                        id: 'replacement',
+                        handle: { name: 'replacement.mkv' } as FileSystemFileHandle,
+                    };
+                    const subtitleHandle = {
+                        id: external.id,
+                        handle: { name: external.file.name } as FileSystemFileHandle,
+                    };
+                    await secondTab.retain({ videoId: replacementVideo.id, subtitleTrackIds: [[external.id]] });
+                    await secondTab.merge({ videoHandle: replacementVideo, subtitleHandles: [subtitleHandle] });
+                } else {
+                    await secondTab.retain({ videoId: video.id, subtitleTrackIds: [['-'], [id]] });
+                }
+                replacement = await secondTab.fetch();
+            } finally {
+                estimate.resolve({ quota: 1024 ** 3, usage: 0 });
+            }
+
+            expect(await writing).toBe(false);
+            expect(await secondTab.fetch()).toEqual(replacement);
+        }
+    );
+
     it('prepares an evicted embedded file before reconstructing duplicate slots', async () => {
         const session = record();
         session.cachedSubtitleFiles = [external];
@@ -692,7 +754,8 @@ describe('embedded subtitle sessions', () => {
                 expect(source).toBe(video);
                 expect(descriptors).toEqual([descriptor]);
                 return new Map([[id, prepared]]);
-            }
+            },
+            new AbortController().signal
         );
         expect(restored.map((file) => file.id)).toEqual(['video', id, '-', 'external', id]);
         expect(restored[1].file).toBe(prepared.file);
@@ -710,9 +773,14 @@ describe('embedded subtitle sessions', () => {
             ...Object.fromEntries(missingIds.map((id, index) => [id, missing[index]])),
         };
         session.subtitleTrackIds!.push(...missingIds.map((id) => [id]));
-        const { files, missingEmbeddedSubtitles } = await restoreSessionFiles(session, [video], async () => {
-            throw new Error('Could not read embedded metadata');
-        });
+        const { files, missingEmbeddedSubtitles } = await restoreSessionFiles(
+            session,
+            [video],
+            async () => {
+                throw new Error('Could not read embedded metadata');
+            },
+            new AbortController().signal
+        );
         expect(files.map(({ id }) => id)).toEqual(['video', id, '-', 'external', id, ...missingIds]);
         expect(files[0].file).toBe(video.file);
         expect(files[3].file).toBe(external.file);
@@ -732,7 +800,12 @@ describe('embedded subtitle sessions', () => {
             };
             if (!slots) delete session.subtitleTrackIds;
 
-            const { files: restored } = await restoreSessionFiles(session, [video, updated], unexpectedPreparation);
+            const { files: restored } = await restoreSessionFiles(
+                session,
+                [video, updated],
+                unexpectedPreparation,
+                new AbortController().signal
+            );
 
             expect(restored.find((file) => file.id === external.id)?.file).toBe(updated.file);
             expect(restored.find((file) => file.id === id)?.file).toBe(embedded.file);
@@ -746,7 +819,8 @@ describe('embedded subtitle sessions', () => {
             [changed],
             async () => {
                 throw new Error('must not prepare');
-            }
+            },
+            new AbortController().signal
         );
         expect(restored.map(({ id }) => id)).toEqual(['video', '-', '-', 'external', '-']);
         expect(restored.every(({ embedded }) => !embedded)).toBe(true);
@@ -788,8 +862,25 @@ describe('embedded subtitle sessions', () => {
         const session = record();
         delete session.subtitleTrackIds;
         expect(
-            (await restoreSessionFiles(session, [video], unexpectedPreparation)).files.map((file) => file.id)
+            (
+                await restoreSessionFiles(session, [video], unexpectedPreparation, new AbortController().signal)
+            ).files.map((file) => file.id)
         ).toEqual(['video', 'external', id]);
+    });
+
+    it('restores cached embedded subtitles as standalone files when no video handle was saved', async () => {
+        const session = record();
+        session.videoHandle = undefined;
+        const { files, missingEmbeddedSubtitles } = await restoreSessionFiles(
+            session,
+            [],
+            unexpectedPreparation,
+            new AbortController().signal
+        );
+        expect(missingEmbeddedSubtitles).toEqual([]);
+        expect(files.map((file) => file.id)).toEqual([id, '-', 'external', id]);
+        expect(files[0].file).toBe(embedded.file);
+        expect(files[0].embedded).toBeUndefined();
     });
 
     it('clears cancelled draft handles while preserving the committed embedded selection', async () => {

@@ -15,11 +15,11 @@ const trackTypeAudio = 2;
 const trackTypeSubtitle = 17;
 const trackTypeMetadata = 33;
 const audioCodecPrefix = 'A';
-const subtitleCodecPrefixes = ['D', 'S'];
 const webVttCodecs = ['D_WEBVTT/SUBTITLES', 'D_WEBVTT/CAPTIONS', 'D_WEBVTT/DESCRIPTIONS', 'D_WEBVTT/METADATA'];
 
 /** Match the codec ID prefixes used by the FFmpeg Matroska demuxer. */
-export const isMatroskaWebVttCodec = (codecId: string) => webVttCodecs.some((codec) => codecId.startsWith(codec));
+export const isMatroskaWebVttCodec = (codecId: string) =>
+    codecId === 'S_TEXT/WEBVTT' || webVttCodecs.some((codec) => codecId.startsWith(codec));
 
 interface MatroskaSubtitleTrack {
     codecId: string;
@@ -51,7 +51,6 @@ const readSubtitleTrack = async (
     const codecField = fields.find(({ id }) => id === idCodecId);
     const codecId = codecField && (await reader.utf8(codecField.dataOffset, codecField.dataSize));
     if (!codecId) throw new Error('Incomplete Matroska track metadata');
-    if (!subtitleCodecPrefixes.includes(codecId[0])) return;
     if (type === trackTypeMetadata && !isMatroskaWebVttCodec(codecId)) return; // FFmpeg treats recognized WebVTT metadata tracks as subtitle streams
 
     let language = 'eng'; // Matroska's default when Language is absent.
@@ -71,7 +70,7 @@ const readSubtitleTrack = async (
         }
     }
     const tag = languageIetf || language;
-    return { codecId, language: tag === 'und' ? undefined : tag, title };
+    return { codecId, language: tag && tag !== 'und' ? tag : undefined, title: title || undefined };
 };
 
 const trackEntries = async (reader: ByteReader): Promise<EbmlElement[] | undefined> => {

@@ -1085,37 +1085,77 @@ describe('SubtitleReader SRT parsing', () => {
             text: async () => text,
         }) as File;
 
-    it.each([SubtitleHtml.render, SubtitleHtml.remove])(
-        'retains literal plain text and overlapping cues with HTML setting %s',
-        async (setting) => {
-            const nodes = await createReader({ subtitleHtml: setting }).subtitles([
-                {
-                    fileParts: [
-                        file(
-                            '1\n00:00:02,000 --> 00:00:04,500\n日本語 {\\an8}&lt;b&gt;literal&lt;/b&gt; &amp;amp;\nline two\n\n' +
-                                '2\n00:00:03,000 --> 00:00:05,000\nOverlap\n\n' +
-                                '3\n00:00:06,000 --> 00:00:07,000\nFinal cue\n\n' +
-                                '4\n00:00:08,000 --> 00:00:09,000\n&lt;laughing&gt;\n\n'
-                        ),
-                    ],
-                },
-            ]);
-            expect(nodes.map(({ start, end, text }) => ({ start, end, text }))).toEqual([
+    it.each([
+        {
+            setting: SubtitleHtml.render,
+            expected: [
                 { start: 2000, end: 4500, text: '日本語 &lt;b&gt;literal&lt;/b&gt; &amp;amp;\nline two' },
                 { start: 3000, end: 5000, text: 'Overlap' },
                 { start: 6000, end: 7000, text: 'Final cue' },
                 { start: 8000, end: 9000, text: '&lt;laughing&gt;' },
-            ]);
-        }
-    );
-    it('preserves ordinary SRT markup handling and accepts empty tracks', async () => {
-        const srt = '1\n00:00:01,000 --> 00:00:02,000\n{\\an8}<b>normal</b> &amp;\n\n';
+            ],
+        },
+        {
+            setting: SubtitleHtml.remove,
+            expected: [
+                { start: 2000, end: 4500, text: '日本語 <b>literal</b> &amp;\nline two' },
+                { start: 3000, end: 5000, text: 'Overlap' },
+                { start: 6000, end: 7000, text: 'Final cue' },
+            ],
+        },
+    ])('retains literal plain text and overlapping cues with HTML setting $setting', async ({ setting, expected }) => {
+        const nodes = await createReader({ subtitleHtml: setting }).subtitles([
+            {
+                fileParts: [
+                    file(
+                        '1\n00:00:02,000 --> 00:00:04,500\n日本語 {\\an8}&lt;b&gt;literal&lt;/b&gt; &amp;amp;\nline two\n\n' +
+                            '2\n00:00:03,000 --> 00:00:05,000\nOverlap\n\n' +
+                            '3\n00:00:06,000 --> 00:00:07,000\nFinal cue\n\n' +
+                            '4\n00:00:08,000 --> 00:00:09,000\n&lt;laughing&gt;\n\n'
+                    ),
+                ],
+            },
+        ]);
+        expect(nodes.map(({ start, end, text }) => ({ start, end, text }))).toEqual(expected);
+    });
+    it('preserves ordinary SRT plain text without escaping ampersands or closing angle brackets', async () => {
+        const srt =
+            '1\n00:00:01,000 --> 00:00:02,000\n{\\an8}<b>normal</b> &amp;\n\n' +
+            '2\n00:00:03,000 --> 00:00:04,000\nR&D > QA\n\n' +
+            '3\n00:00:05,000 --> 00:00:06,000\nTom &amp; Jerry\n\n';
         expect(
-            (await createReader({ subtitleHtml: SubtitleHtml.remove }).subtitles([{ fileParts: [file(srt)] }]))[0].text
-        ).toBe('normal &amp;');
+            (await createReader({ subtitleHtml: SubtitleHtml.remove }).subtitles([{ fileParts: [file(srt)] }])).map(
+                ({ text }) => text
+            )
+        ).toEqual(['normal &', 'R&D > QA', 'Tom & Jerry']);
         expect(
             await createReader({ subtitleHtml: SubtitleHtml.render }).subtitles([{ fileParts: [file('')] }])
         ).toEqual([]);
+    });
+    it('drops SRT cues with inverted timestamps in both batch and progressive readers', async () => {
+        const srt = '1\n00:00:05,000 --> 00:00:04,000\nInverted\n\n' + '2\n00:00:06,000 --> 00:00:07,000\nValid\n\n';
+        const reader = createReader({ subtitleHtml: SubtitleHtml.remove });
+        expect((await reader.subtitles([{ fileParts: [file(srt)] }])).map(({ text }) => text)).toEqual(['Valid']);
+
+        const progressive = reader.createProgressiveReader('srt');
+        const cues = [...progressive.read(srt.slice(0, 40), false), ...progressive.read(srt.slice(40), true)];
+        expect(cues.map(({ start, end, text }) => ({ start, end, text }))).toEqual([
+            { start: 6000, end: 7000, text: 'Valid' },
+        ]);
+    });
+
+    it('ignores ASS sections appearing after [Events] across chunk boundaries', () => {
+        const reader = createReader({ subtitleHtml: SubtitleHtml.remove });
+        const progressive = reader.createProgressiveReader('ass');
+        const chunk1 =
+            '[Script Info]\nTitle: Test\n\n[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n' +
+            'Dialogue: 0,0:00:01.00,0:00:02.00,Default,,0,0,0,,Hello\n\n[V4+ Styles]\n';
+        const chunk2 =
+            'Format: Name, Fontname\nStyle: Default,Arial\nDialogue: 0,0:00:03.00,0:00:04.00,Default,,0,0,0,,NotADialogue\n';
+        const cues = [...progressive.read(chunk1, false), ...progressive.read(chunk2, true)];
+        expect(cues.map(({ start, end, text }) => ({ start, end, text }))).toEqual([
+            { start: 1000, end: 2000, text: 'Hello' },
+        ]);
     });
 });
 
@@ -1154,7 +1194,8 @@ it('loads shared subtitle readers and session restoration without FFmpeg build d
                     [],
                     async () => {
                         throw new Error('Unexpected embedded subtitle preparation');
-                    }
+                    },
+                    new AbortController().signal
                 )
             ).toEqual({ files: [{ ...subtitle, track: 0 }], missingEmbeddedSubtitles: [] });
         });

@@ -4,6 +4,8 @@
 #include "diagnostics.hpp"
 #include "error.hpp"
 #include "host_io.hpp"
+#include <algorithm>
+#include <climits>
 #include <cmath>
 #include <cstdio>
 #include <map>
@@ -93,17 +95,36 @@ inline std::string normalize_ass_text(const char* ass) {
     bool drawing = false;
 
     while (position < source.size()) {
-        if (source[position] == '{') {
-            const auto end = source.find('}', position);
+        if (source.compare(position, 2, "{\\") == 0) {
+            const auto end = source.find('}', position + 2);
             if (end != std::string::npos) {
                 const auto block = source.substr(position, end - position + 1);
-                for (size_t p = 0; (p = block.find("\\p", p)) != std::string::npos; p += 2) {
-                    size_t number = p + 2;
-                    while (number < block.size() && block[number] == ' ') ++number;
-
-                    if (number < block.size() && block[number] >= '0' && block[number] <= '9') {
-                        drawing = block[number] != '0';
+                size_t tag = 1;
+                while (tag < block.size() - 1) {
+                    if (block[tag] != '\\') {
+                        ++tag;
+                        continue;
                     }
+                    const size_t next = block.find_first_of("\\}", tag + 1);
+                    const size_t tag_end = next == std::string::npos ? block.size() - 1 : next;
+                    if (tag + 1 < tag_end && block[tag + 1] == 'r') {
+                        drawing = false;
+                    } else if (tag + 1 < tag_end && block[tag + 1] == 'p') {
+                        size_t value = tag + 2;
+                        while (value < tag_end && block[value] == ' ') ++value;
+                        if (value == tag_end) {
+                            drawing = false;
+                        } else if (block[value] >= '0' && block[value] <= '9') {
+                            bool nonzero = false;
+                            while (value < tag_end && block[value] >= '0' && block[value] <= '9') {
+                                if (block[value] != '0') nonzero = true;
+                                ++value;
+                            }
+                            while (value < tag_end && block[value] == ' ') ++value;
+                            if (value == tag_end) drawing = nonzero;
+                        }
+                    }
+                    tag = tag_end;
                 }
 
                 output += block;
@@ -128,10 +149,131 @@ inline std::string normalize_ass_text(const char* ass) {
     return output;
 }
 
+/** WebVTT decodes &nbsp; as ASS \\h (escaping literal \\ with U+2060); expand \\h back to a space. */
+inline std::string normalize_webvtt_text(const char* ass) {
+    constexpr int ass_text_field_index = 8;
+    std::string source(ass);
+    size_t position = 0;
+
+    for (int field = 0; field < ass_text_field_index; ++field) {
+        auto comma = source.find(',', position);
+        if (comma == std::string::npos) return source;
+        position = comma + 1;
+    }
+
+    std::string output = source.substr(0, position);
+    while (position < source.size()) {
+        if (source.compare(position, 2, "\\h") == 0) {
+            output += ' ';
+            position += 2;
+            continue;
+        }
+        output += source[position++];
+    }
+    return output;
+}
+
+/** Escape literal backslashes outside ASS override blocks before htmlsubtitles.c so \\n/\\N stay literal. */
+inline std::string escape_subrip_backslashes(std::string_view input) {
+    std::string output;
+    output.reserve(input.size() + 8);
+    size_t position = 0;
+    while (position < input.size()) {
+        if (input.compare(position, 2, "{\\") == 0) {
+            const size_t end = input.find('}', position + 2);
+            if (end != std::string_view::npos) {
+                output.append(input.substr(position, end - position + 1));
+                position = end + 1;
+                continue;
+            }
+        }
+        if (input[position] == '\\') {
+            output += '\\';
+            if (input.compare(position + 1, 3, "\xe2\x81\xa0") != 0) output += "\xe2\x81\xa0";
+            ++position;
+            continue;
+        }
+        output += input[position++];
+    }
+    return output;
+}
+
+/** Undo ASS escapes (\\{{} and \\<U+2060>) emitted by FFmpeg's WebVTT/text decoders and our SubRip pre-escape. */
+inline std::string unescape_ass_text(std::string_view input, bool unescape_braces) {
+    std::string output;
+    output.reserve(input.size());
+    size_t position = 0;
+    while (position < input.size()) {
+        if (unescape_braces && input.compare(position, 4, "\\{{}") == 0) {
+            output += '{';
+            position += 4;
+            continue;
+        }
+        if (input.compare(position, 4, "\\\xe2\x81\xa0") == 0) {
+            output += '\\';
+            position += 4;
+            continue;
+        }
+        output += input[position++];
+    }
+    return output;
+}
+
+/** Convert BOM-marked UTF-16BE/UTF-16LE bytes (3GPP TS 26.245 Timed Text) to UTF-8, stopping at U+0000. */
+inline std::string decode_utf16_to_utf8(const uint8_t* bytes, size_t length, bool big_endian) {
+    auto append_utf8 = [](std::string& out, uint32_t cp) {
+        if (cp <= 0x7F) {
+            out += static_cast<char>(cp);
+        } else if (cp <= 0x7FF) {
+            out += static_cast<char>(0xC0 | (cp >> 6));
+            out += static_cast<char>(0x80 | (cp & 0x3F));
+        } else if (cp <= 0xFFFF) {
+            out += static_cast<char>(0xE0 | (cp >> 12));
+            out += static_cast<char>(0x80 | ((cp >> 6) & 0x3F));
+            out += static_cast<char>(0x80 | (cp & 0x3F));
+        } else {
+            out += static_cast<char>(0xF0 | (cp >> 18));
+            out += static_cast<char>(0x80 | ((cp >> 12) & 0x3F));
+            out += static_cast<char>(0x80 | ((cp >> 6) & 0x3F));
+            out += static_cast<char>(0x80 | (cp & 0x3F));
+        }
+    };
+    auto read_unit = [bytes, big_endian](size_t offset) -> uint16_t {
+        return big_endian ? static_cast<uint16_t>((static_cast<uint16_t>(bytes[offset]) << 8) | bytes[offset + 1])
+                          : static_cast<uint16_t>((static_cast<uint16_t>(bytes[offset + 1]) << 8) | bytes[offset]);
+    };
+
+    std::string output;
+    output.reserve(length);
+    for (size_t offset = 2; offset + 1 < length; offset += 2) {
+        const uint16_t unit = read_unit(offset);
+        if (unit == 0) break;
+        if (unit >= 0xD800 && unit <= 0xDBFF) {
+            if (offset + 3 < length) {
+                const uint16_t low = read_unit(offset + 2);
+                if (low >= 0xDC00 && low <= 0xDFFF) {
+                    const uint32_t cp =
+                        0x10000 + ((static_cast<uint32_t>(unit) - 0xD800) << 10) + (static_cast<uint32_t>(low) - 0xDC00);
+                    append_utf8(output, cp);
+                    offset += 2;
+                    continue;
+                }
+            }
+            append_utf8(output, 0xFFFD);
+        } else if (unit >= 0xDC00 && unit <= 0xDFFF) {
+            append_utf8(output, 0xFFFD);
+        } else {
+            append_utf8(output, unit);
+        }
+    }
+    return output;
+}
+
 struct SubtitleOutput {
     // The window is in cue timestamps. A later timestamp or EOF releases pending
     // cues. A cue before the published prefix fails extraction to preserve ordering.
     static constexpr int64_t reorder_window_ms = 2000;
+    static constexpr int64_t max_srt_timestamp_ms = int64_t{INT32_MAX} * 1000;
     static constexpr size_t max_pending_bytes = 8 * 1024 * 1024;
     static constexpr size_t encode_buffer_bytes = 1024 * 1024;
     static constexpr size_t pending_cue_overhead_bytes = 128; // Map node and allocator overhead beyond stored text.
@@ -140,10 +282,10 @@ struct SubtitleOutput {
     struct Cue {
         int64_t end;
         std::string text;
+        size_t bytes;
 
-        size_t pending_size() const {
-            return pending_cue_overhead_bytes + this->text.capacity();
-        }
+        Cue(int64_t end, std::string text)
+            : end(end), text(std::move(text)), bytes(pending_cue_overhead_bytes + this->text.capacity()) {}
     };
 
     uint32_t track_key;
@@ -158,10 +300,17 @@ struct SubtitleOutput {
     size_t pending_bytes = 0;
     int64_t latest_start = 0;
     int64_t last_written_start = -1;
+    size_t decoded_cues = 0;
+    size_t decode_errors = 0;
 
     SubtitleOutput(uint32_t track_key, AVStream* stream) : track_key(track_key), source(stream) {}
 
     ~SubtitleOutput() {
+        if (this->decode_errors > 0) {
+            char message[96] = {};
+            std::snprintf(message, sizeof(message), "Tolerated %zu subtitle decoder error(s)", this->decode_errors);
+            runtime_diagnostic(DiagnosticLevel::warning, message);
+        }
         av_packet_free(&this->encoded);
         avcodec_free_context(&this->decoder);
         avcodec_free_context(&this->encoder);
@@ -186,15 +335,16 @@ struct SubtitleOutput {
         if (error < 0) return error;
 
         this->decoder->pkt_timebase = this->source->time_base;
+        this->decoder->sub_charenc_mode = FF_SUB_CHARENC_MODE_IGNORE;
         if ((error = avcodec_open2(this->decoder, codec, nullptr)) < 0) return error;
 
         this->encoder->time_base = milliseconds;
-        if (this->decoder->subtitle_header_size > 0) {
-            this->encoder->subtitle_header = static_cast<uint8_t*>(av_mallocz(this->decoder->subtitle_header_size + 1));
+        if (this->decoder->subtitle_header && this->decoder->subtitle_header_size >= 0) {
+            const size_t header_size = static_cast<size_t>(this->decoder->subtitle_header_size);
+            this->encoder->subtitle_header = static_cast<uint8_t*>(av_mallocz(header_size + 1));
             if (!this->encoder->subtitle_header) return AVERROR(ENOMEM);
 
-            std::copy_n(this->decoder->subtitle_header, this->decoder->subtitle_header_size,
-                        this->encoder->subtitle_header);
+            std::copy_n(this->decoder->subtitle_header, header_size, this->encoder->subtitle_header);
             this->encoder->subtitle_header_size = this->decoder->subtitle_header_size;
         }
         if ((error = avcodec_open2(this->encoder, text, nullptr)) < 0) return error;
@@ -217,77 +367,31 @@ struct SubtitleOutput {
         return avformat_write_header(this->format, nullptr);
     }
 
-    int decode(AVPacket* packet, int64_t origin, bool* produced = nullptr) {
-        AVSubtitle subtitle{};
-        int got_subtitle = 0;
-        int error = avcodec_decode_subtitle2(this->decoder, &subtitle, &got_subtitle, packet);
-        if (produced) *produced = got_subtitle != 0;
-        if (error < 0 || !got_subtitle) return error < 0 ? error : 0;
-
-        if (subtitle.num_rects == 0) {
-            avsubtitle_free(&subtitle);
-            return 0;
-        }
-
-        // Decoder subtitle PTS is in AV_TIME_BASE units, display intervals in milliseconds.
-        int64_t pts = subtitle.pts;
-        if (pts == AV_NOPTS_VALUE && packet->pts != AV_NOPTS_VALUE) {
-            pts = av_rescale_q(packet->pts, this->source->time_base, AV_TIME_BASE_Q);
-        }
-
-        if (pts == AV_NOPTS_VALUE) {
-            avsubtitle_free(&subtitle);
-            return AVERROR_INVALIDDATA;
-        }
-
-        int64_t start = av_rescale_q(pts - origin, AV_TIME_BASE_Q, milliseconds) + subtitle.start_display_time;
-        int64_t end = av_rescale_q(pts - origin, AV_TIME_BASE_Q, milliseconds) + subtitle.end_display_time;
-        if (subtitle.end_display_time == UINT32_MAX || end <= start) {
-            if (packet->duration > 0) {
-                end = start + av_rescale_q(packet->duration, this->source->time_base, milliseconds);
-            } else {
-                avsubtitle_free(&subtitle);
-                return AVERROR_INVALIDDATA;
-            }
-        }
-
-        for (unsigned i = 0; i < subtitle.num_rects; ++i) {
-            auto* rect = subtitle.rects[i];
-            if (rect->ass) {
-                auto normalized = normalize_ass_text(rect->ass);
-                av_freep(&rect->ass);
-                rect->ass = av_strdup(normalized.c_str());
-                if (!rect->ass) {
-                    avsubtitle_free(&subtitle);
-                    return AVERROR(ENOMEM);
-                }
-            }
-        }
-
-        const int length = avcodec_encode_subtitle(this->encoder, this->bytes.data(), this->bytes.size(), &subtitle);
-        avsubtitle_free(&subtitle);
-        if (length < 0) return length;
-        if (length == 0 || end <= 0) return 0;
-
+    int emit_payload(int64_t clamped_start, int64_t end, std::string_view payload, bool escape_ampersand) {
         // SRT uses blank lines to delimit cues. Drop whitespace-only lines from
         // the payload so a chunk split there cannot truncate a cue.
-        const std::string_view payload(reinterpret_cast<const char*>(this->bytes.data()), length);
         std::string escaped;
-        escaped.reserve(length);
+        escaped.reserve(payload.size());
         size_t position = 0;
         while (position < payload.size()) {
-            const size_t line_end = payload.find('\n', position);
-            auto line = payload.substr(position, line_end - position);
-            position = line_end == std::string_view::npos ? payload.size() : line_end + 1;
-            if (line.find_first_not_of(" \t\r") == std::string_view::npos) continue;
-            if (line.back() == '\r') line.remove_suffix(1);
+            const size_t line_end = payload.find_first_of("\r\n", position);
+            auto line = payload.substr(
+                position, line_end == std::string_view::npos ? std::string_view::npos : line_end - position);
+            if (line_end == std::string_view::npos) {
+                position = payload.size();
+            } else {
+                const bool crlf =
+                    payload[line_end] == '\r' && line_end + 1 < payload.size() && payload[line_end + 1] == '\n';
+                position = line_end + (crlf ? 2 : 1);
+            }
+            if (line.find_first_not_of(" \t") == std::string_view::npos) continue;
             if (!escaped.empty()) escaped += '\n';
 
             // The text encoder strips styling, leaving literal markup to escape.
             for (const char c : line) {
                 switch (c) {
                     case '&':
-                        escaped += "&amp;";
+                        escaped += escape_ampersand ? "&amp;" : "&";
                         break;
                     case '<':
                         escaped += "&lt;";
@@ -303,7 +407,194 @@ struct SubtitleOutput {
         }
 
         if (escaped.empty()) return 0;
-        return queue_cue(std::max<int64_t>(0, start), end, std::move(escaped));
+        return queue_cue(clamped_start, end, std::move(escaped));
+    }
+
+    /** Decode 3GPP Timed Text (tx3g/mov_text) directly to avoid movtextdec's unescaped ASS roundtrip. */
+    int decode_mov_text(const AVPacket* packet, bool* produced) {
+        if (produced) *produced = false;
+        if (packet->size == 0) return 0; // Flush packet.
+        if (!packet->data || packet->size < 2) {
+            ++this->decode_errors;
+            return 0;
+        }
+        const size_t text_length =
+            (static_cast<size_t>(packet->data[0]) << 8) | static_cast<size_t>(packet->data[1]);
+        const size_t packet_size = static_cast<size_t>(packet->size);
+        if (text_length > packet_size - 2) {
+            ++this->decode_errors;
+            return 0;
+        }
+        if (packet_size == 2) return 0; // 0x0000 marks the end of the previous non-empty cue.
+        if (text_length + 2 < packet_size) {
+            size_t offset = text_length + 2;
+            while (packet_size - offset >= 8) {
+                uint64_t box_size = (static_cast<uint64_t>(packet->data[offset]) << 24) |
+                                    (static_cast<uint64_t>(packet->data[offset + 1]) << 16) |
+                                    (static_cast<uint64_t>(packet->data[offset + 2]) << 8) |
+                                    static_cast<uint64_t>(packet->data[offset + 3]);
+                offset += 8;
+                uint64_t header_size = 8;
+                if (box_size == 1) {
+                    if (packet_size - offset < 8) break;
+                    box_size = 0;
+                    for (int byte = 0; byte < 8; ++byte) box_size = (box_size << 8) | packet->data[offset + byte];
+                    offset += 8;
+                    header_size = 16;
+                }
+                if (box_size < header_size) {
+                    ++this->decode_errors;
+                    return 0;
+                }
+                const uint64_t body_size = box_size - header_size;
+                if (packet_size - offset < body_size) break;
+                offset += static_cast<size_t>(body_size);
+            }
+        }
+        if (packet->pts == AV_NOPTS_VALUE) return AVERROR_INVALIDDATA;
+        const int64_t start = av_rescale_q(packet->pts, this->source->time_base, milliseconds);
+        if (start == AV_NOPTS_VALUE) return AVERROR_INVALIDDATA;
+        if (packet->duration <= 0) return 0;
+        const int64_t duration_ms = av_rescale_q(packet->duration, this->source->time_base, milliseconds);
+        int64_t end = start;
+        if (duration_ms == AV_NOPTS_VALUE || __builtin_add_overflow(start, duration_ms, &end)) {
+            return AVERROR_INVALIDDATA;
+        }
+        if (end <= start) return 0;
+        const int64_t clamped_start = std::max<int64_t>(0, start);
+        if (clamped_start > max_srt_timestamp_ms || end > max_srt_timestamp_ms) return AVERROR_INVALIDDATA;
+
+        if (text_length == 0 || end <= 0) return 0;
+        const uint8_t* text_bytes = packet->data + 2;
+        std::string converted;
+        std::string_view payload;
+        if (text_length >= 2 && ((text_bytes[0] == 0xFE && text_bytes[1] == 0xFF) ||
+                                 (text_bytes[0] == 0xFF && text_bytes[1] == 0xFE))) {
+            converted = decode_utf16_to_utf8(text_bytes, text_length, text_bytes[0] == 0xFE);
+            payload = converted;
+        } else {
+            payload = std::string_view(reinterpret_cast<const char*>(text_bytes), text_length);
+            if (const size_t nul = payload.find('\0'); nul != std::string_view::npos) payload = payload.substr(0, nul);
+        }
+        if (payload.find_first_not_of(" \t\r\n") == std::string_view::npos) return 0;
+        ++this->decoded_cues;
+        return emit_payload(clamped_start, end, payload, true);
+    }
+
+    int decode(AVPacket* packet, bool* produced = nullptr) {
+        const auto codec_id = this->source->codecpar->codec_id;
+        if (codec_id == AV_CODEC_ID_MOV_TEXT) return decode_mov_text(packet, produced);
+
+        std::string escaped_subrip;
+        AVPacket adjusted_packet{};
+        AVPacket* decode_packet = packet;
+        if (codec_id == AV_CODEC_ID_SUBRIP && packet->data && packet->size > 0) {
+            const std::string_view raw(reinterpret_cast<const char*>(packet->data), static_cast<size_t>(packet->size));
+            if (raw.find('\\') != std::string_view::npos) {
+                escaped_subrip = escape_subrip_backslashes(raw);
+                if (escaped_subrip.size() > static_cast<size_t>(INT_MAX)) return AVERROR(ENOMEM);
+                adjusted_packet = *packet;
+                adjusted_packet.data = reinterpret_cast<uint8_t*>(escaped_subrip.data());
+                adjusted_packet.size = static_cast<int>(escaped_subrip.size());
+                decode_packet = &adjusted_packet;
+            }
+        }
+
+        AVSubtitle subtitle{};
+        int got_subtitle = 0;
+        int error = avcodec_decode_subtitle2(this->decoder, &subtitle, &got_subtitle, decode_packet);
+        if (produced) *produced = got_subtitle != 0;
+        if (error < 0) {
+            if (error == AVERROR(ENOMEM)) return error;
+            ++this->decode_errors;
+            return 0;
+        }
+        if (!got_subtitle) return 0;
+
+        if (subtitle.num_rects == 0) {
+            avsubtitle_free(&subtitle);
+            return 0;
+        }
+        ++this->decoded_cues;
+
+        // Decoder subtitle PTS is in AV_TIME_BASE units, display intervals in milliseconds.
+        int64_t pts = subtitle.pts;
+        if (pts == AV_NOPTS_VALUE && packet->pts != AV_NOPTS_VALUE) {
+            pts = av_rescale_q(packet->pts, this->source->time_base, AV_TIME_BASE_Q);
+        }
+
+        if (pts == AV_NOPTS_VALUE) {
+            avsubtitle_free(&subtitle);
+            return AVERROR_INVALIDDATA;
+        }
+
+        const int64_t base_ms = av_rescale_q(pts, AV_TIME_BASE_Q, milliseconds);
+        int64_t start = 0;
+        if (base_ms == AV_NOPTS_VALUE ||
+            __builtin_add_overflow(base_ms, static_cast<int64_t>(subtitle.start_display_time), &start)) {
+            avsubtitle_free(&subtitle);
+            return AVERROR_INVALIDDATA;
+        }
+        subtitle.start_display_time = 0;
+
+        // Avoid FFmpeg's uint32_t end_display_time narrowing of negative or >= 2^32 ms packet durations.
+        if (packet->duration < 0) {
+            avsubtitle_free(&subtitle);
+            return 0;
+        }
+        int64_t end = start;
+        if (packet->duration > 0) {
+            const int64_t duration_ms = av_rescale_q(packet->duration, this->source->time_base, milliseconds);
+            if (duration_ms == AV_NOPTS_VALUE || __builtin_add_overflow(start, duration_ms, &end)) {
+                avsubtitle_free(&subtitle);
+                return AVERROR_INVALIDDATA;
+            }
+        } else if (subtitle.end_display_time != UINT32_MAX) {
+            if (__builtin_add_overflow(base_ms, static_cast<int64_t>(subtitle.end_display_time), &end)) {
+                avsubtitle_free(&subtitle);
+                return AVERROR_INVALIDDATA;
+            }
+        }
+        if (end <= start) {
+            avsubtitle_free(&subtitle);
+            return 0;
+        }
+        const int64_t clamped_start = std::max<int64_t>(0, start);
+        if (clamped_start > max_srt_timestamp_ms || end > max_srt_timestamp_ms) {
+            avsubtitle_free(&subtitle);
+            return AVERROR_INVALIDDATA;
+        }
+
+        const bool is_ass = codec_id == AV_CODEC_ID_ASS || codec_id == AV_CODEC_ID_SSA;
+        const bool is_webvtt = codec_id == AV_CODEC_ID_WEBVTT;
+        if (is_ass || is_webvtt) {
+            for (unsigned i = 0; i < subtitle.num_rects; ++i) {
+                auto* rect = subtitle.rects[i];
+                if (rect->ass) {
+                    auto normalized = is_ass ? normalize_ass_text(rect->ass) : normalize_webvtt_text(rect->ass);
+                    av_freep(&rect->ass);
+                    rect->ass = av_strdup(normalized.c_str());
+                    if (!rect->ass) {
+                        avsubtitle_free(&subtitle);
+                        return AVERROR(ENOMEM);
+                    }
+                }
+            }
+        }
+
+        const int length = avcodec_encode_subtitle(this->encoder, this->bytes.data(), this->bytes.size(), &subtitle);
+        avsubtitle_free(&subtitle);
+        if (length < 0) return length;
+        if (length == 0 || end <= 0) return 0;
+
+        std::string_view payload(reinterpret_cast<const char*>(this->bytes.data()), length);
+        std::string unescaped_payload;
+        if (codec_id == AV_CODEC_ID_WEBVTT || codec_id == AV_CODEC_ID_TEXT || codec_id == AV_CODEC_ID_SUBRIP) {
+            unescaped_payload = unescape_ass_text(payload, codec_id != AV_CODEC_ID_SUBRIP);
+            payload = unescaped_payload;
+        }
+        const bool escape_ampersand = codec_id != AV_CODEC_ID_SUBRIP; // SubRip preserves SRT HTML entities verbatim.
+        return emit_payload(clamped_start, end, payload, escape_ampersand);
     }
 
     int queue_cue(int64_t start, int64_t end, std::string text) {
@@ -319,9 +610,8 @@ struct SubtitleOutput {
         Cue cue{end, std::move(text)};
         if (start <= cutoff) return write_cue(start, cue);
 
-        const size_t cue_bytes = cue.pending_size();
-        if (cue_bytes > max_pending_bytes - this->pending_bytes) return AVERROR(ENOMEM);
-        this->pending_bytes += cue_bytes;
+        if (cue.bytes > max_pending_bytes - this->pending_bytes) return AVERROR(ENOMEM);
+        this->pending_bytes += cue.bytes;
         this->pending.emplace(start, std::move(cue));
         return 0;
     }
@@ -331,13 +621,14 @@ struct SubtitleOutput {
             const auto& [start, cue] = *this->pending.begin();
             const int error = write_cue(start, cue);
             if (error < 0) return error;
-            this->pending_bytes -= cue.pending_size();
+            this->pending_bytes -= cue.bytes;
             this->pending.erase(this->pending.begin());
         }
         return 0;
     }
 
     int finish() {
+        if (this->decode_errors > 0 && this->decoded_cues == 0) return AVERROR_INVALIDDATA;
         const int error = flush_cues(INT64_MAX);
         return error < 0 ? error : av_write_trailer(this->format);
     }
@@ -377,19 +668,15 @@ inline const char* extract_subtitles(double size, const uint32_t* track_keys, si
     const bool mp4 = av_match_name("mov", input.format->iformat->name) != 0;
     std::map<uint32_t, AVStream*> subtitle_streams_by_key;
     uint32_t subtitle_index = 0;
-    bool has_video = false;
-    bool has_audio = false;
 
     for (unsigned i = 0; i < input.format->nb_streams; ++i) {
         auto* stream = input.format->streams[i];
-        const auto type = stream->codecpar->codec_type;
-        if (type == AVMEDIA_TYPE_SUBTITLE) {
+        if (stream->codecpar->codec_type == AVMEDIA_TYPE_ATTACHMENT) {
+            av_freep(&stream->codecpar->extradata);
+            stream->codecpar->extradata_size = 0;
+        } else if (stream->codecpar->codec_type == AVMEDIA_TYPE_SUBTITLE) {
             const uint32_t key = mp4 ? static_cast<uint32_t>(stream->id) : subtitle_index++;
             subtitle_streams_by_key.emplace(key, stream);
-        } else if (type == AVMEDIA_TYPE_VIDEO && !(stream->disposition & AV_DISPOSITION_ATTACHED_PIC)) {
-            has_video = true;
-        } else if (type == AVMEDIA_TYPE_AUDIO) {
-            has_audio = true;
         }
     }
 
@@ -423,13 +710,6 @@ inline const char* extract_subtitles(double size, const uint32_t* track_keys, si
         outputs.push_back(std::move(output));
     }
 
-    // Match playback and audio conversion: video retains positive PTS and clips preroll at zero.
-    // Audio-only playback can normalize a known negative container start.
-    const auto start_time = input.format->start_time;
-    const int64_t origin = !has_video && has_audio && start_time != AV_NOPTS_VALUE
-        ? std::min<int64_t>(0, start_time)
-        : 0;
-
     auto release_packet = [](AVPacket* packet) { av_packet_free(&packet); };
     std::unique_ptr<AVPacket, decltype(release_packet)> owned_packet(av_packet_alloc(), release_packet);
     auto* packet = owned_packet.get();
@@ -437,10 +717,6 @@ inline const char* extract_subtitles(double size, const uint32_t* track_keys, si
 
     for (unsigned i = 0; i < input.format->nb_streams; ++i) {
         auto* stream = input.format->streams[i];
-        if (stream->codecpar->codec_type == AVMEDIA_TYPE_ATTACHMENT) {
-            av_freep(&stream->codecpar->extradata);
-            stream->codecpar->extradata_size = 0;
-        }
         if (std::none_of(outputs.begin(), outputs.end(), [stream](const auto& out) {
                 return out->source == stream;
             })) {
@@ -451,7 +727,7 @@ inline const char* extract_subtitles(double size, const uint32_t* track_keys, si
     while ((error = av_read_frame(input.format, packet)) >= 0) {
         for (auto& output : outputs) {
             if (output->source->index == packet->stream_index) {
-                error = output->decode(packet, origin);
+                error = output->decode(packet);
                 break;
             }
         }
@@ -464,11 +740,10 @@ inline const char* extract_subtitles(double size, const uint32_t* track_keys, si
 
     result = "[";
     for (auto& output : outputs) {
-        AVPacket empty{};
-        empty.pts = empty.dts = AV_NOPTS_VALUE;
+        av_packet_unref(packet);
         bool produced = false;
         do {
-            error = output->decode(&empty, origin, &produced);
+            error = output->decode(packet, &produced);
         } while (error >= 0 && produced);
 
         if (error < 0 || (error = output->finish()) < 0) {

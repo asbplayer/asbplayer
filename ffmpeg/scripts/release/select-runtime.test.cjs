@@ -84,7 +84,7 @@ beforeEach(async () => {
     const bodies = {
         'ffmpeg-worker.js': 'export {};',
         'ffmpeg-core.js':
-            'export const _asb_runtime_info_json = () => 0; export const _asb_transcode_audio = () => 0; export const _asb_last_error = () => 0;',
+            'export const _asb_runtime_info_json = () => 0; export const _asb_transcode_audio = () => 0; export const _asb_extract_subtitles = () => 0; export const _asb_last_error = () => 0; export const _malloc = () => 0; export const _free = () => {};',
         'ffmpeg-core.wasm': Buffer.from([0, 97, 115, 109, 1, 0, 0, 0]),
         ...Object.fromEntries(inventory.notices.map((filename) => [`notices/${filename}`, `License: ${filename}`])),
     };
@@ -102,6 +102,7 @@ beforeEach(async () => {
             license: 'LGPL version 3 or later',
             configuration: '--disable-all --disable-autodetect --disable-pthreads --enable-version3',
         },
+        operations: ['inspect', 'transcodeAudio', 'extractSubtitles'],
         license: { notices: inventory.notices.map((filename) => `notices/${filename}`) },
         sources: sources.map(({ name, url, body }) => ({ name, url, sha256: digest(body) })),
         limits: { maximumWasmBytes: 1000000 },

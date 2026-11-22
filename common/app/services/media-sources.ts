@@ -79,7 +79,8 @@ export class MediaSources {
     /** Merge incoming sources with the current state, preserving unchanged media and external subtitles on video-only loads. */
     merge(
         incoming: MediaSources,
-        createVideoUrl: (file: File) => string
+        createVideoUrl: (file: File) => string,
+        pendingTrackIndexes: ReadonlySet<number>
     ): {
         sources: MediaSources;
         newVideo: boolean;
@@ -105,18 +106,33 @@ export class MediaSources {
             revokedVideoUrl = this.videoFileUrl;
         }
 
-        // A video-only selection retains file-backed subtitles, while a new video drops embedded tracks.
+        // A video-only selection retains file-backed subtitles, while a new video drops embedded tracks
+        // and a same-video reload drops still-pending embedded tracks whose extraction is cancelled.
         let subtitleSource = incoming.subtitleSource;
         if (incoming.videoFile && !incoming.subtitleSourceFiles.length && this.subtitleSource.kind === 'files') {
-            subtitleSource = newVideo
-                ? {
-                      kind: 'files',
-                      pendingEmbedded: false,
-                      tracks: this.subtitleTracks.map(({ fileParts }) => ({
-                          fileParts: fileParts.filter((file) => !file.embedded),
-                      })),
-                  }
-                : this.subtitleSource;
+            if (newVideo) {
+                const tracks = this.subtitleTracks.map(({ fileParts }) => ({
+                    fileParts: fileParts.filter((file) => !file.embedded),
+                }));
+                subtitleSource = {
+                    kind: 'files',
+                    pendingEmbedded: false,
+                    tracks: tracks.some(({ fileParts }) => fileParts.some(({ id }) => id !== '-')) ? tracks : [],
+                };
+            } else if (this.subtitleSource.pendingEmbedded) {
+                const tracks = this.subtitleTracks.map(({ fileParts }) => ({
+                    fileParts: fileParts.filter(
+                        (file) => !file.embedded || !pendingTrackIndexes.has(file.embedded.trackIndex)
+                    ),
+                }));
+                subtitleSource = {
+                    kind: 'files',
+                    pendingEmbedded: false,
+                    tracks: tracks.some(({ fileParts }) => fileParts.some(({ id }) => id !== '-')) ? tracks : [],
+                };
+            } else {
+                subtitleSource = this.subtitleSource;
+            }
         }
 
         const sources = new MediaSources(subtitleSource, videoFile, videoFileUrl);
@@ -129,24 +145,21 @@ export class MediaSources {
     /** Keep completed subtitles for standalone playback when their video is unloaded. */
     withoutVideo(pendingTrackIndexes: ReadonlySet<number>): MediaSources {
         const source = this.subtitleSource;
-        if (
-            source.kind !== 'files' ||
-            (!source.pendingEmbedded && !this.subtitleSourceFiles.some(({ embedded }) => embedded))
-        ) {
+        if (source.kind !== 'files') return new MediaSources(source);
+        if (!source.pendingEmbedded && !this.subtitleSourceFiles.some(({ embedded }) => embedded)) {
+            if (!this.subtitleSourceFiles.some(({ id }) => id !== '-')) return new MediaSources();
             return new MediaSources(source);
         }
-        return new MediaSources({
-            kind: 'files',
-            pendingEmbedded: false,
-            tracks: source.tracks.map(({ fileParts }) => ({
-                fileParts: fileParts.flatMap((filePart) => {
-                    const { embedded, ...file } = filePart;
-                    if (!embedded) return [filePart];
-                    if (source.pendingEmbedded && pendingTrackIndexes.has(embedded.trackIndex)) return [];
-                    return [file];
-                }),
-            })),
-        });
+        const tracks = source.tracks.map(({ fileParts }) => ({
+            fileParts: fileParts.flatMap((filePart) => {
+                const { embedded, ...file } = filePart;
+                if (!embedded) return [filePart];
+                if (source.pendingEmbedded && pendingTrackIndexes.has(embedded.trackIndex)) return [];
+                return [file];
+            }),
+        }));
+        if (!tracks.some(({ fileParts }) => fileParts.some(({ id }) => id !== '-'))) return new MediaSources();
+        return new MediaSources({ kind: 'files', pendingEmbedded: false, tracks });
     }
 
     static fromFiles(files: MediaSourceFile[], { pendingEmbedded }: { pendingEmbedded: boolean }): MediaSources {
@@ -203,11 +216,20 @@ export class MediaSources {
     }
 
     get canDownloadSubtitles(): boolean {
+        if (this.subtitleSource.kind === 'remote') {
+            return (
+                this.subtitleSource.status === 'complete' &&
+                this.subtitleFileNames.some((name) => name.length > 0 && getExtension(name) !== '.sup')
+            );
+        }
         return (
-            (this.subtitleSource.kind === 'files'
-                ? !this.subtitleSource.pendingEmbedded
-                : this.subtitleSource.status === 'complete') &&
-            this.subtitleFileNames.some((name) => name.length > 0 && getExtension(name) !== '.sup')
+            !this.subtitleSource.pendingEmbedded &&
+            this.subtitleTracks.some(({ fileParts }) =>
+                fileParts.some(
+                    ({ id, file }) =>
+                        id !== '-' && file.size > 0 && file.name.length > 0 && getExtension(file.name) !== '.sup'
+                )
+            )
         );
     }
 

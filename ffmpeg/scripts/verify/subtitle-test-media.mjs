@@ -6,14 +6,16 @@ import { deflateSync } from 'node:zlib';
 
 export const generateSubtitleMedia = async (root) => {
     const srt =
-        '1\n00:00:02,000 --> 00:00:04,000\n日本語 & <literal>\nline two\n\n2\n00:00:03,000 --> 00:00:05,000\nOverlap\n\n3\n00:00:07,000 --> 00:00:08,000\nFinal cue\n';
+        '1\n00:00:02,000 --> 00:00:04,000\n日本語 &amp; &lt;literal&gt; C:\\new and C:\\Notes\nline two\n\n2\n00:00:03,000 --> 00:00:05,000\nOverlap\n\n3\n00:00:07,000 --> 00:00:08,000\nFinal cue\n';
     const header =
         '[Script Info]\nScriptType: v4.00+\nPlayResX: 320\nPlayResY: 240\n[V4+ Styles]\nFormat: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\nStyle: Default,Arial,20,&H00FFFFFF,&H000000FF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,1,0,2,10,10,10,1\n[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n';
     await writeFile(resolve(root, 'text.srt'), srt);
     await writeFile(
         resolve(root, 'text.ass'),
         header +
-            'Dialogue: 0,0:00:02.00,0:00:04.00,Default,,0,0,0,,{\\k20}日本語\\htext\\N\\Nline two{\\p1}m 0 0 l 10 10{\\p0} end <b>literal</b> &amp;\n'
+            'Dialogue: 0,0:00:01.00,0:00:01.00,Default,,0,0,0,,Zero duration cue\n' +
+            'Dialogue: 0,0:00:02.00,0:00:04.00,Default,,0,0,0,,{\\k20}日本語\\htext\\N\\Nline two{\\p01}m 0 0 l 10 10{\\p} end {note \\p1}<b>literal</b> &amp;\n' +
+            'Dialogue: 0,0:00:05.00,0:00:06.00,Default,,0,0,0,,{\\p1}m 0 0 l 5 5{\\r}Reset text\n'
     );
     const run = (args) => execFileSync('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', ...args], { cwd: root });
     const video = ['-f', 'lavfi', '-i', 'color=size=16x16:rate=1:duration=10'];
@@ -56,6 +58,111 @@ export const generateSubtitleMedia = async (root) => {
         'mov_text',
         'timed-text.mp4',
     ]);
+    // Author a mov_text sample with literal backslashes and ASS-like braces (ffmpeg -c:s mov_text from SRT mangles them).
+    const literalMovText = 'C:\\new and C:\\Notes {\\b1}tag{\\b0} Before {\\unclosed after';
+    await writeFile(
+        resolve(root, 'movtext-placeholder.srt'),
+        `1\n00:00:02,000 --> 00:00:04,000\n${'X'.repeat(literalMovText.length)}\n`
+    );
+    run([
+        ...video,
+        '-i',
+        'movtext-placeholder.srt',
+        '-map',
+        '0:v',
+        '-map',
+        '1:s',
+        '-c:v',
+        'libx264',
+        '-c:s',
+        'mov_text',
+        'movtext-literal.mp4',
+    ]);
+    const movTextLiteral = await readFile(resolve(root, 'movtext-literal.mp4'));
+    const placeholderOffset = movTextLiteral.indexOf('X'.repeat(literalMovText.length));
+    if (placeholderOffset < 0) throw new Error('Expected mov_text placeholder payload');
+    movTextLiteral.write(literalMovText, placeholderOffset, 'utf8');
+    await writeFile(resolve(root, 'movtext-literal.mp4'), movTextLiteral);
+
+    // Author a BOM-marked UTF-16BE mov_text sample (3GPP TS 26.245) and a NUL-terminated UTF-8 sample.
+    const utf16BeBytes = Buffer.from([
+        0xfe,
+        0xff, // UTF-16BE BOM
+        0x65,
+        0xe5, // 日
+        0x67,
+        0x2c, // 本
+        0x8a,
+        0x9e, // 語
+        0xd8,
+        0x40,
+        0xdc,
+        0x0b, // 𠀋 (U+2000B surrogate pair)
+    ]);
+    const nulTerminatedBytes = Buffer.from('Hello\0ignored', 'utf8');
+    const crLineBreakBytes = Buffer.from('Top\rLine', 'utf8');
+    await writeFile(
+        resolve(root, 'movtext-utf16.srt'),
+        `1\n00:00:02,000 --> 00:00:03,000\n${'A'.repeat(utf16BeBytes.length)}\n\n` +
+            `2\n00:00:04,000 --> 00:00:05,000\n${'B'.repeat(nulTerminatedBytes.length)}\n\n` +
+            `3\n00:00:06,000 --> 00:00:07,000\n${'C'.repeat(crLineBreakBytes.length)}\n`
+    );
+    run([
+        ...video,
+        '-i',
+        'movtext-utf16.srt',
+        '-map',
+        '0:v',
+        '-map',
+        '1:s',
+        '-c:v',
+        'libx264',
+        '-c:s',
+        'mov_text',
+        'movtext-utf16.mp4',
+    ]);
+    const movTextUtf16 = await readFile(resolve(root, 'movtext-utf16.mp4'));
+    const utf16Offset = movTextUtf16.indexOf('A'.repeat(utf16BeBytes.length));
+    const nulOffset = movTextUtf16.indexOf('B'.repeat(nulTerminatedBytes.length));
+    const crOffset = movTextUtf16.indexOf('C'.repeat(crLineBreakBytes.length));
+    if (utf16Offset < 0 || nulOffset < 0 || crOffset < 0) {
+        throw new Error('Expected mov_text UTF-16/NUL/CR placeholder payloads');
+    }
+    utf16BeBytes.copy(movTextUtf16, utf16Offset);
+    nulTerminatedBytes.copy(movTextUtf16, nulOffset);
+    crLineBreakBytes.copy(movTextUtf16, crOffset);
+    await writeFile(resolve(root, 'movtext-utf16.mp4'), movTextUtf16);
+
+    // Author an MP4 whose two mov_text cue samples both have corrupt tsmb box sizes (< 8).
+    await writeFile(
+        resolve(root, 'movtext-two.srt'),
+        '1\n00:00:02,000 --> 00:00:03,000\nAAAAAAAAAAAA\n\n2\n00:00:04,000 --> 00:00:05,000\nBBBBBBBBBBBB\n'
+    );
+    run([
+        ...video,
+        '-i',
+        'movtext-two.srt',
+        '-map',
+        '0:v',
+        '-map',
+        '1:s',
+        '-c:v',
+        'libx264',
+        '-c:s',
+        'mov_text',
+        'movtext-unreadable.mp4',
+    ]);
+    const movTextUnreadable = await readFile(resolve(root, 'movtext-unreadable.mp4'));
+    for (const marker of ['AAAAAAAAAAAA', 'BBBBBBBBBBBB']) {
+        const offset = movTextUnreadable.indexOf(marker);
+        if (offset < 2) throw new Error(`Expected mov_text sample ${marker}`);
+        // Replace 2-byte text_length (12) + 12-byte text with text_length=0 + an 8-byte invalid box (size=0 < 8).
+        movTextUnreadable.writeUInt16BE(0, offset - 2);
+        movTextUnreadable.fill(0, offset, offset + 12);
+        movTextUnreadable.write('styl', offset + 4, 'ascii');
+    }
+    await writeFile(resolve(root, 'movtext-unreadable.mp4'), movTextUnreadable);
+
     run(['-i', 'timed-text.mp4', '-map', '0', '-c', 'copy', '-output_ts_offset', '10', 'delayed.mp4']);
     run([
         ...video,
@@ -219,6 +326,69 @@ export const generateSubtitleMedia = async (root) => {
     await writeFile(
         resolve(root, 'dense.mkv'),
         subtitleMedia(...Array.from({ length: 300 }, (_, index) => subtitleBlock(index * 2, `Dense cue ${index}`)))
+    );
+    await writeFile(
+        resolve(root, 'empty-ass-header.mkv'),
+        Buffer.concat([
+            ebml,
+            master(
+                '18538067',
+                master('1549a966', uint('2ad7b1', 1000000)),
+                master(
+                    '1654ae6b',
+                    master('ae', uint('d7', 1), uint('73c5', 1), uint('83', 17), text('86', 'S_TEXT/ASS'))
+                ),
+                master('1f43b675', uint('e7', 0), subtitleBlock(2000, '0,0,Default,,0,0,0,,Headerless ASS cue'))
+            ),
+        ])
+    );
+    await writeFile(
+        resolve(root, 'webvtt-nbsp.mkv'),
+        Buffer.concat([
+            ebml,
+            master(
+                '18538067',
+                master('1549a966', uint('2ad7b1', 1000000)),
+                master(
+                    '1654ae6b',
+                    master('ae', uint('d7', 1), uint('73c5', 1), uint('83', 17), text('86', 'D_WEBVTT/SUBTITLES'))
+                ),
+                master(
+                    '1f43b675',
+                    uint('e7', 0),
+                    subtitleBlock(2000, '\n\nfirst&nbsp;second {music} C:\\path \\h &lt;tag&gt; &amp;')
+                )
+            ),
+        ])
+    );
+    await writeFile(
+        resolve(root, 'raw-text.mkv'),
+        Buffer.concat([
+            ebml,
+            master(
+                '18538067',
+                master('1549a966', uint('2ad7b1', 1000000)),
+                master(
+                    '1654ae6b',
+                    master('ae', uint('d7', 1), uint('73c5', 1), uint('83', 17), text('86', 'S_TEXT/ASCII'))
+                ),
+                master('1f43b675', uint('e7', 0), subtitleBlock(2000, '{music} C:\\path\nsecond line'))
+            ),
+        ])
+    );
+    await writeFile(
+        resolve(root, 'non-utf8.mkv'),
+        subtitleMedia(
+            master(
+                'a0',
+                element(
+                    'a1',
+                    Buffer.concat([Buffer.from([0x81, 0x07, 0xd0, 0]), Buffer.from([0x63, 0x61, 0x66, 0xe9])])
+                ),
+                uint('9b', 1000)
+            ),
+            subtitleBlock(4000, 'After Latin-1')
+        )
     );
     await writeFile(
         resolve(root, 'outside-reorder-window.mkv'),

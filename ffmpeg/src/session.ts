@@ -257,6 +257,7 @@ export const createFfmpegSession = ({
 
     const runtime: FfmpegRuntime = {
         extractSubtitles: async ({ input, trackKeys, signal, onChunk }) => {
+            if (state !== 'ready') throw new FfmpegError('disposed', 'The FFmpeg session is not ready');
             const uniqueTrackKeys = [...new Set(trackKeys)];
             if (uniqueTrackKeys.some((trackKey) => !Number.isSafeInteger(trackKey) || trackKey < 0)) {
                 throw new FfmpegError('protocol', 'Invalid subtitle track index');

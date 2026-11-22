@@ -96,9 +96,12 @@ export const probeSubtitleTracks = async (blob: Blob, signal: AbortSignal): Prom
     if (boxType && isoBmffTopLevelBoxTypes.includes(boxType)) {
         const tracks = await isoBmffSubtitleTracks(reader);
         if (!tracks) throw new Error('Could not read MP4 tracks');
+        const seenTrackKeys = new Set<number>();
         return tracks.map((track, index) => {
             if (!track.format) throw new Error('Missing MP4 subtitle sample entry');
-            const trackKey = track.id && track.id > 0 ? track.id : undefined;
+            const duplicateKey = track.id !== undefined && seenTrackKeys.has(track.id);
+            const trackKey = track.id && track.id > 0 && !duplicateKey ? track.id : undefined;
+            if (trackKey !== undefined) seenTrackKeys.add(trackKey);
             return subtitle({
                 trackIndex: index,
                 trackKey,

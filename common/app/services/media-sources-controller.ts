@@ -154,6 +154,10 @@ export class MediaSourcesController {
     private discovery: { file: File; controller: AbortController; openOnSupported: boolean } | undefined;
     private pendingRequest: { kind: 'confirm' | 'restore'; controller: AbortController } | undefined;
     private draftFileInputSignal: AbortSignal | undefined;
+    private settledSelection = new WeakMap<
+        EmbeddedSelection,
+        { tracks: LoadableSubtitleTrack<FileWithId>[]; pendingDescriptors: EmbeddedSubtitleDescriptor[] }
+    >();
 
     constructor(config: MediaSourcesControllerConfig) {
         this.embeddedSubtitles = new EmbeddedSubtitles(config.subtitleHost);
@@ -184,6 +188,8 @@ export class MediaSourcesController {
         this.pickerDraft = new AbortController();
         this.cancelDiscovery();
         this.cancelPendingRequest();
+        if (this.state.sources.videoFileUrl) revokeBlobUrl(this.state.sources.videoFileUrl);
+        this.embeddedSubtitles.retain([]);
     }
 
     fileRequestSignal({ forDraft }: { forDraft: boolean }): AbortSignal {
@@ -200,6 +206,7 @@ export class MediaSourcesController {
     }
 
     openPicker(): void {
+        if (this.state.picker.open || this.state.picker.confirming) return;
         this.openPickerWithFiles(this.state.sources.firstSubtitleSourceFiles);
     }
 
@@ -219,7 +226,7 @@ export class MediaSourcesController {
     }
 
     setPickerSelectedTrackIds(selectedTrackIds: readonly string[]): void {
-        this.updatePicker({ selectedTrackIds });
+        this.updatePicker({ selectedTrackIds, selectionError: undefined });
     }
 
     setPickerTracks(tracks: readonly VideoDataSubtitleTrack[]): void {
@@ -235,7 +242,13 @@ export class MediaSourcesController {
             if (track.embedded && discoveredIds.has(track.id)) continue;
             tracksById.set(track.id, track);
         }
-        this.updatePicker({ externalTracks: [...tracksById.values()] });
+        const externalTracks = [...tracksById.values()];
+        const validIds = new Set(['-', ...discoveredIds, ...tracksById.keys()]);
+        this.updatePicker({
+            externalTracks,
+            selectedTrackIds: this.state.picker.selectedTrackIds.map((id) => (validIds.has(id) ? id : '-')),
+            selectionError: undefined,
+        });
     }
 
     loadSources(sources: MediaSources, { keepDraftHandles }: { keepDraftHandles: boolean }): void {
@@ -253,6 +266,7 @@ export class MediaSourcesController {
 
     unloadVideo(videoFileUrl: string): boolean {
         if (videoFileUrl !== this.state.sources.videoFileUrl) return false;
+        const video = this.state.sources.videoFile;
         const pendingTrackIndexes = new Set(
             this.state.embeddedSelection?.pendingDescriptors.map(({ trackIndex }) => trackIndex)
         );
@@ -262,6 +276,34 @@ export class MediaSourcesController {
         this.cancelPendingRequest();
         revokeBlobUrl(videoFileUrl);
         const nextSources = this.state.sources.withoutVideo(pendingTrackIndexes);
+        let externalTracks: VideoDataSubtitleTrack[] = [];
+        let selectedTrackIds = initialTrackIds;
+        if (this.state.picker.open) {
+            const tracksById = new Map<string, VideoDataSubtitleTrack>();
+            for (const track of this.state.picker.externalTracks) {
+                if (!track.embedded) {
+                    tracksById.set(track.id, track);
+                    continue;
+                }
+                const completed = video
+                    ? this.embeddedSubtitles.completedFile(video, track.embedded.trackIndex)
+                    : undefined;
+                if (!completed) continue;
+                tracksById.set(track.id, { ...track, file: completed.file, embedded: undefined });
+            }
+            for (const candidate of nextSources.firstSubtitleSourceFiles) {
+                if (!candidate || candidate.id === '-' || tracksById.has(candidate.id)) continue;
+                tracksById.set(candidate.id, {
+                    id: candidate.id,
+                    label: candidate.file.name,
+                    file: candidate.file,
+                    extension: candidate.file.name.substring(candidate.file.name.lastIndexOf('.') + 1),
+                });
+            }
+            externalTracks = [...tracksById.values()];
+            const validIds = new Set(['-', ...externalTracks.map(({ id }) => id)]);
+            selectedTrackIds = this.state.picker.selectedTrackIds.map((id) => (validIds.has(id) ? id : '-'));
+        }
         this.embeddedSubtitles.retain([]);
         this.setState({
             ...this.state,
@@ -269,6 +311,8 @@ export class MediaSourcesController {
             embeddedSelection: undefined,
             picker: {
                 ...this.state.picker,
+                externalTracks,
+                selectedTrackIds,
                 embeddedTracks: undefined,
                 discovering: false,
                 discoveryError: false,
@@ -357,7 +401,11 @@ export class MediaSourcesController {
         if (incoming.videoFile) {
             const video = incoming.videoFile;
             this.loadSources(new MediaSources(undefined, video), { keepDraftHandles: true }); // Keep draft handles across the picker reset so confirmation can promote them.
-            this.openPickerWithFiles(incoming.subtitleSourceFiles);
+            this.openPickerWithFiles(
+                incoming.subtitleSourceFiles.length
+                    ? incoming.subtitleSourceFiles
+                    : this.state.sources.firstSubtitleSourceFiles
+            );
             this.session.retainDraftVideoHandle(
                 video.id,
                 () => this.state.sources.videoFile?.file === video.file,
@@ -378,6 +426,7 @@ export class MediaSourcesController {
         this.updatePicker({
             externalTracks: [...tracksById.values()],
             selectedTrackIds: initialTrackIds.map((_, index) => files[index]?.id ?? '-'),
+            selectionError: undefined,
         });
     }
 
@@ -404,8 +453,6 @@ export class MediaSourcesController {
                 const preparedTracks = resolvedFiles.map(
                     (file) => sources.findSubtitleTrack(file) ?? { fileParts: [file] }
                 );
-                const record = await this.session.fetch();
-                signal.throwIfAborted();
                 const pending: EmbeddedSubtitleDescriptor[] = [];
                 const selectedTracks = preparedTracks.map(({ fileParts }) => ({
                     fileParts: fileParts.map((file) => {
@@ -432,7 +479,7 @@ export class MediaSourcesController {
                     clearEmbeddedSelection: true,
                     closePicker: false,
                 });
-                this.session.commitSelection(record, {
+                this.session.commitSelection({
                     videoId: video?.id,
                     files,
                     selectedTracks,
@@ -505,7 +552,9 @@ export class MediaSourcesController {
         options: Pick<Parameters<typeof embeddedSubtitleProducer>[0], 'reader' | 'errorMessage'>
     ): SubtitleSourceProducer | undefined {
         if (!selection) return;
-        const { video, tracks, pendingDescriptors } = selection;
+        const active = this.settledSelection.get(selection) ?? selection;
+        const { video } = selection;
+        const { tracks, pendingDescriptors } = active;
         const { signal: sourceSignal } = this.sourceLifetime;
         return embeddedSubtitleProducer({
             source: video,
@@ -516,6 +565,8 @@ export class MediaSourcesController {
             onFinished: async (completed, signal) => {
                 signal.throwIfAborted();
                 if (sourceSignal.aborted || this.state.embeddedSelection !== selection) return;
+                if (this.settledSelection.has(selection)) return;
+                this.settledSelection.set(selection, { tracks: completed, pendingDescriptors: [] });
                 // Persisted output must not replace the active selection or restart its producer.
                 const previous = this.state.sources;
                 if (previous.videoFile?.file === video.file) {
@@ -534,11 +585,28 @@ export class MediaSourcesController {
                         ),
                     });
                 }
-                await this.session.saveCompletedSelection(
-                    completed,
-                    () => !sourceSignal.aborted && this.state.embeddedSelection === selection,
-                    signal
+                const pendingIds = new Set(
+                    selection.pendingDescriptors.map((descriptor) =>
+                        embeddedSubtitleId(descriptor.videoId, descriptor.trackIndex)
+                    )
                 );
+                const failedEmbeddedIds = new Set<string>();
+                const persistedTracks = completed.map((track, slotIndex) => {
+                    if (track.fileParts.length) return track;
+                    const failedEmbedded = selection.tracks[slotIndex]?.fileParts.filter((file) =>
+                        pendingIds.has(file.id)
+                    );
+                    if (!failedEmbedded?.length) return track;
+                    for (const file of failedEmbedded) failedEmbeddedIds.add(file.id);
+                    return { fileParts: failedEmbedded };
+                });
+                await this.session.saveCompletedSelection(persistedTracks, {
+                    videoId: video.id,
+                    selectedTracks: selection.tracks,
+                    isStillActive: () => !sourceSignal.aborted && this.state.embeddedSelection === selection,
+                    signal: sourceSignal,
+                    pendingEmbeddedIds: failedEmbeddedIds,
+                });
             },
         });
     }
@@ -548,13 +616,18 @@ export class MediaSourcesController {
         { clearEmbeddedSelection, closePicker }: { clearEmbeddedSelection: boolean; closePicker: boolean }
     ): void {
         const previous = this.state.sources;
+        const pendingTrackIndexes = new Set(
+            clearEmbeddedSelection
+                ? this.state.embeddedSelection?.pendingDescriptors.map(({ trackIndex }) => trackIndex)
+                : []
+        );
         const {
             sources: nextSources,
             newVideo,
             revokedVideoUrl,
             loadingSources,
             resetJumpToSubtitle,
-        } = previous.merge(incoming, createBlobUrl);
+        } = previous.merge(incoming, createBlobUrl, pendingTrackIndexes);
         if (revokedVideoUrl) revokeBlobUrl(revokedVideoUrl);
         this.embeddedSubtitles.retain(nextSources.videoFile ? [nextSources.videoFile] : []);
 

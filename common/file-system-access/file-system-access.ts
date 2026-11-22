@@ -10,7 +10,7 @@ import type {
     FileSessionRecord,
     FileSystemFileHandleWithId,
 } from '@project/common/file-system-access/file-system-access-repository';
-import { subtitleSourceMatches } from '@project/common/embedded-subtitles/subtitle-source';
+import { embeddedSubtitleId, subtitleSourceMatches } from '@project/common/embedded-subtitles/subtitle-source';
 import type { EmbeddedSubtitleDescriptor } from '@project/common/embedded-subtitles/subtitle-source';
 import { asbError } from '@project/common/util/log';
 import { v4 as uuidv4 } from 'uuid';
@@ -82,7 +82,8 @@ export function canRestoreSession(record: FileSessionRecord | undefined): boolea
 export async function restoreSessionFiles(
     record: FileSessionRecord,
     resolvedFiles: FileWithId[],
-    prepare: (source: FileWithId, descriptors: EmbeddedSubtitleDescriptor[]) => Promise<Map<string, FileWithId>>
+    prepare: (source: FileWithId, descriptors: EmbeddedSubtitleDescriptor[]) => Promise<Map<string, FileWithId>>,
+    signal: AbortSignal
 ): Promise<{ files: MediaSourceFile[]; missingEmbeddedSubtitles: EmbeddedSubtitleDescriptor[] }> {
     const video = resolvedFiles.find((file) => file.id === record.videoHandle?.id);
     const filesById = new Map(resolvedFiles.map((file) => [file.id, file]));
@@ -90,18 +91,31 @@ export async function restoreSessionFiles(
     for (const file of record.cachedSubtitleFiles ?? []) {
         if (!filesById.has(file.id)) filesById.set(file.id, file);
     }
+    const selectedIds = record.subtitleTrackIds ? new Set(record.subtitleTrackIds.flat()) : undefined;
     const pendingById = new Map<string, EmbeddedSubtitleDescriptor>();
     for (const [id, descriptor] of Object.entries(record.embeddedSubtitles ?? {})) {
-        if (!video || !subtitleSourceMatches(video, descriptor)) {
+        const cached = filesById.get(id);
+        if (descriptor.format !== 'srt') {
             filesById.delete(id);
             continue;
         }
-        const cached = filesById.get(id);
-        if (descriptor.format === 'srt' && cached) {
+        if (!video) {
+            if (!record.videoHandle && cached) {
+                filesById.set(id, { ...cached, embedded: undefined });
+            } else {
+                filesById.delete(id);
+            }
+            continue;
+        }
+        if (!subtitleSourceMatches(video, descriptor)) {
+            filesById.delete(id);
+            continue;
+        }
+        if (cached) {
             filesById.set(id, { ...cached, embedded: descriptor });
         } else {
             filesById.delete(id);
-            pendingById.set(id, descriptor);
+            if (!selectedIds || selectedIds.has(id)) pendingById.set(id, descriptor);
         }
     }
     const missing = [...pendingById.values()];
@@ -109,7 +123,13 @@ export async function restoreSessionFiles(
         try {
             for (const [id, file] of await prepare(video, missing)) filesById.set(id, file);
         } catch (error) {
-            asbError('app/session', 'Failed to prepare embedded subtitles; preserving available session files:', error);
+            if (!signal.aborted && (error as { name?: unknown } | null)?.name !== 'AbortError') {
+                asbError(
+                    'app/session',
+                    'Failed to prepare embedded subtitles; preserving available session files:',
+                    error
+                );
+            }
         }
     }
     if (!record.subtitleTrackIds) {
@@ -119,7 +139,9 @@ export async function restoreSessionFiles(
             files: [...filesById.values()].map((source) =>
                 source.id === record.videoHandle?.id ? source : { ...source, track: track++ }
             ),
-            missingEmbeddedSubtitles: missing,
+            missingEmbeddedSubtitles: missing.filter((descriptor) =>
+                filesById.has(embeddedSubtitleId(descriptor.videoId, descriptor.trackIndex))
+            ),
         };
     }
     return {

@@ -24,7 +24,7 @@ export const embeddedSubtitleProducer =
         tracks: LoadableSubtitleTrack<FileWithId>[];
         service: EmbeddedSubtitles;
         reader: SubtitleReader;
-        errorMessage: string;
+        errorMessage: () => string;
         pendingDescriptors: EmbeddedSubtitleDescriptor[];
         onFinished: (tracks: LoadableSubtitleTrack<FileWithId>[], signal: AbortSignal) => Promise<void>;
     }): SubtitleSourceProducer =>
@@ -51,6 +51,7 @@ export const embeddedSubtitleProducer =
                 cues: [],
             })),
         });
+        signal.throwIfAborted();
         const extraction = new AbortController();
         let publicationError: Error | undefined;
         const streamsByTrackIndex = new Map(
@@ -121,8 +122,9 @@ export const embeddedSubtitleProducer =
                     })
             );
         const extract = async () => {
+            let extracted: Map<string, FileWithId>;
             try {
-                const completed = await service.extract(
+                extracted = await service.extract(
                     source,
                     pendingDescriptors,
                     extraction.signal,
@@ -138,18 +140,22 @@ export const embeddedSubtitleProducer =
                     stream.publisher.add(stream.parser.read(stream.decoder.decode(), true));
                     stream.publisher.flush();
                 }
-                for (const { slotIndex, loadId } of pendingSlots) {
-                    publishUpdate({ type: 'complete', track: slotIndex, loadId });
-                }
-                return completed;
             } catch (error) {
                 if (signal.aborted) throw error;
                 for (const stream of streamsByTrackIndex.values()) stream.publisher.flush();
                 asbError('app/subtitles', 'Failed to produce embedded subtitles', publicationError ?? error);
+                const resolvedErrorMessage = errorMessage();
                 for (const { slotIndex, loadId } of pendingSlots) {
-                    publishUpdate({ type: 'failed', track: slotIndex, loadId, error: errorMessage });
+                    signal.throwIfAborted();
+                    publishUpdate({ type: 'failed', track: slotIndex, loadId, error: resolvedErrorMessage });
                 }
+                return;
             }
+            for (const { slotIndex, loadId } of pendingSlots) {
+                signal.throwIfAborted();
+                publishUpdate({ type: 'complete', track: slotIndex, loadId });
+            }
+            return extracted;
         };
         signal.addEventListener('abort', cancel, { once: true });
         let completed: Map<string, FileWithId> | undefined;
