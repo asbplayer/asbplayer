@@ -6,43 +6,43 @@ import project from '@site/src/project';
 
 # Android {#android}
 
-While the UX is worse, it's possible to use asbplayer on Android devices.
+Aunque la experiencia de uso es menos fluida, es posible usar asbplayer en dispositivos Android.
 
-## Website {#website}
+## Sitio web {#website}
 
-The website can be used as-is. The **Overlay UI** will be displayed instead of the default, desktop-optimized video controls.
+El sitio web se puede usar tal cual. En lugar de los controles de vídeo predeterminados, optimizados para ordenadores, se mostrará la **interfaz superpuesta**.
 
-### Add to home screen {#add-to-home-screen}
+### Añadir a la pantalla de inicio {#add-to-home-screen}
 
-As a progressive web app, the website can be added to the home screen of your Android device. From the browser menu, tap "add to home screen."
+Como aplicación web progresiva, puedes añadir el sitio web a la pantalla de inicio de tu dispositivo Android. En el menú del navegador, pulsa «Añadir a la pantalla de inicio».
 
 ## Extension {#extension}
 
 :::warning
-**Many features are missing**: the **side panel**, **screenshots**, and the **WebSocket interface**. See the [compatibility](../compatibility.md#browsers-and-features) section for a table of supported and unsupported features on each browser.
+**Faltan muchas funciones**: el **panel lateral**, las **capturas de pantalla** y la **interfaz de WebSocket**. Consulta la sección de [compatibilidad](../compatibility.md#browsers-and-features) para ver una tabla de las funciones admitidas y no admitidas en cada navegador.
 :::
 
-As with the website, the primary way to interact with asbplayer extension is through the **Overlay UI**. The side panel is missing, so instead **subtitles are loaded by selecting the asbplayer button from the browser's extension menu.**. Using a (bluetooth) keyboard is not necessary but can be very useful for those who prefer to use the [keyboard shortcuts](../reference/settings.md#keyboard-shortcuts) with the extension.
+Al igual que en el sitio web, la principal forma de interactuar con la extensión de asbplayer es mediante la **interfaz superpuesta**. Como no hay panel lateral, **los subtítulos se cargan seleccionando el botón de asbplayer en el menú de extensiones del navegador**. No es necesario usar un teclado (Bluetooth), pero puede ser muy útil si prefieres usar los [atajos de teclado](../reference/settings.md#keyboard-shortcuts) con la extensión.
 
-Below are Android browsers where asbplayer can be installed.
+A continuación se indican los navegadores para Android en los que se puede instalar asbplayer.
 
 ### Firefox for Android {#firefox-for-android}
 
-Install asbplayer from the <a href={project.extension.firefoxAndroid.storeUrl}>AMO page</a>. Firefox for Android suffers from the same limitations as Firefox - it's not possible to record audio from DRM-protected streams.
+Instala asbplayer desde la <a href={project.extension.firefoxAndroid.storeUrl}>página de AMO</a>. Firefox para Android tiene las mismas limitaciones que Firefox: no es posible grabar audio de transmisiones protegidas con DRM.
 
 ### Edge Canary {#edge-canary}
 
-Edge Canary is another Chromium-based mobile browser that can run extensions. As of this writing, asbplayer on Edge Canary does not support audio recording.
-To install asbplayer on Edge Canary:
+Edge Canary es otro navegador móvil basado en Chromium que puede ejecutar extensiones. En el momento de escribir esto, asbplayer en Edge Canary no admite la grabación de audio.
+Para instalar asbplayer en Edge Canary:
 
-1. Download the asbplayer `crx` file from the <a href={`${project.urls.repo}/releases/latest`}>releases page</a>.
-2. If not already, enable developer mode from the Edge Canary settings by going to "about Microsoft Edge" and tapping on the build version string several times.
-3. From **Developer Options** tap **Extension install by crx** and select the `crx` file you just downloaded.
+1. Descarga el archivo `crx` de asbplayer desde la <a href={`${project.urls.repo}/releases/latest`}>página de versiones</a>.
+2. Si aún no está activado, habilita el modo de desarrollador en los ajustes de Edge Canary: ve a «Acerca de Microsoft Edge» y pulsa varias veces la cadena de la versión de compilación.
+3. En **Opciones de desarrollador**, pulsa **Instalar extensión mediante crx** y selecciona el archivo `crx` que acabas de descargar.
 
 ### Kiwi Browser (discontinued) {#kiwi-browser-discontinued}
 
-Kiwi Browser is a Chromium-based mobile browser that can run extensions. However, it's development has been discontinued and the only way to install it is from the [GitHub page](https://github.com/kiwibrowser/src.next/releases). Once Kiwi Browser is installed, asbplayer can be installed from the Chrome <a href={project.extension.chrome.storeUrl}>web store</a>.
+Kiwi Browser es un navegador móvil basado en Chromium que puede ejecutar extensiones. Sin embargo, su desarrollo se ha discontinuado y solo se puede instalar desde la [página de GitHub](https://github.com/kiwibrowser/src.next/releases). Una vez instalado Kiwi Browser, puedes instalar asbplayer desde la <a href={project.extension.chrome.storeUrl}>tienda web</a> de Chrome.
 
 ## Anki integration {#anki-integration}
 
-Install [AnkiConnect Android](https://github.com/KamWithK/AnkiconnectAndroid) for Anki integration.
+Para integrar Anki, instala [AnkiConnect Android](https://github.com/KamWithK/AnkiconnectAndroid).
