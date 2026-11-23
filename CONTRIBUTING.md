@@ -129,7 +129,7 @@ Docs are translated by an LLM agent workflow, not Crowdin:
 
 App/extension strings do not have the characteristics above, and will remain human-translated.
 
-[Translate docs](https://github.com/asbplayer/asbplayer/actions/workflows/docs-translate.lock.yml) runs when `docs/docs/**` changes on `main` and opens one PR containing the translated files for every language. It can be run manually with a `locales` input to bootstrap or refresh a single language.
+[Translate docs](https://github.com/asbplayer/asbplayer/actions/workflows/docs-translate.lock.yml) runs when docs content, the home page, or the docs config changes on `main` and opens one PR containing the translated files for every language. It can be run manually with a `locales` input to bootstrap or refresh a single language.
 
 To preview a specific locale using the Docusaurus dev server:
 

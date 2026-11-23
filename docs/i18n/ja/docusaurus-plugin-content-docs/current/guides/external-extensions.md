@@ -12,7 +12,7 @@ v1.23以降、asbplayerは他のブラウザー拡張機能と通信する方法
 
 ## 接続とユーザー承認の取得
 
-asbplayerとの通信を希望する拡張機能は、まず以下のようなコードで接続する必要があります。asbplayerの拡張機能IDは、ブラウザーの拡張機能マネージャー（Chromeでは`chrome://extensions`、Firefoxでは`about:addons`）で確認できます。
+asbplayerと通信したい拡張機能は、まず以下のようなコードで接続する必要があります。asbplayerの拡張機能IDは、ブラウザーの拡張機能マネージャー（Chromeでは`chrome://extensions`、Firefoxでは`about:addons`）で確認できます。
 
 ```typescript
 const port = browser.runtime.connect(<asbplayer extension ID>, {
@@ -55,7 +55,7 @@ port.postMessage({
 }
 ```
 
-承認されると、`approval-state`は`{ "state": "approved" }`を返し、接続からコマンドを実行できるようになります。拒否された場合は、`approval-state`が一度だけ`{ "state": "denied" }`を返し、その後asbplayerはポートを閉じます。拒否後24時間は、要求元の拡張機能から再度承認を要求できません。
+承認されると、`approval-state`は`{ "state": "approved" }`を返し、その接続を通じてコマンドを実行できるようになります。拒否された場合は、`approval-state`が一度だけ`{ "state": "denied" }`を返し、その後asbplayerはポートを閉じます。拒否後24時間は、要求元の拡張機能から再度承認を要求できません。
 
 [ドキュメント](../reference/external-api.md)に記載されているコマンドを実行できます。例:
 

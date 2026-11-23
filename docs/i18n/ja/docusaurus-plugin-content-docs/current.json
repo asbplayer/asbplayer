@@ -16,7 +16,7 @@
     "description": "The label for category 'Reference' in sidebar 'tutorialSidebar'"
   },
   "sidebar.tutorialSidebar.link.Contributing": {
-    "message": "Contributing",
+    "message": "貢献",
     "description": "The label for link 'Contributing' in sidebar 'tutorialSidebar', linking to 'https://github.com/asbplayer/asbplayer/blob/main/CONTRIBUTING.md'"
   }
 }

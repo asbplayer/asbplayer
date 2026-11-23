@@ -19,7 +19,7 @@ asbplayerでは、ニーズや好みに応じてさまざまな方法でセン�
 4. ストリーミング動画で右クリック → asbplayer → **字幕をマイニングする**。
 
 :::info
-方法1と2でダイアログが開くのは、[マイニングボタンのデフォルト動作](../reference/settings#mining-button-default-action)が「Anki のエクスポートウィンドウを開く」に設定されている場合のみです。
+方法1と2では、ダイアログが開くのは、[マイニングボタンのデフォルト動作](../reference/settings#mining-button-default-action)が「Anki のエクスポートウィンドウを開く」に設定されている場合のみです。
 :::
 
 :::info

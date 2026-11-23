@@ -8,7 +8,7 @@ import project from '@site/src/project';
 
 ## 語学学習アシスタント {#a-language-learning-assistant}
 
-**asbplayer**は、字幕付き動画を使った語学学習を支援するアシスタントです。最初の作者が、[AJATT](https://tatsumoto-ren.github.io/blog/whats-ajatt.html)を使った日本語学習のために自分用に作りました。その後、[Refold](https://refold.la/)の日本語学習コミュニティで、**センテンスマイニング**や**字幕**のツールとして広まりました。asbplayerの機能は現在も拡張を続けています。asbplayerでは次のことができます。
+**asbplayer**は、字幕付き動画を使った語学学習を支援するアシスタントです。最初の作者が、[AJATT](https://tatsumoto-ren.github.io/blog/whats-ajatt.html)を使った日本語学習のために自分用に作りました。その後、[Refold](https://refold.la/)の日本語学習コミュニティで、**センテンスマイニング**や**字幕**のツールとして広まりました。asbplayerの機能は日々拡張されています。asbplayerでは次のことができます。
 
 - **字幕付き動画から高品質なマルチメディアフラッシュカードを簡単に作成**できます。
 - ストリーミング動画を含む多くの動画ソースに、**テキスト選択可能な字幕を読み込めます**。NetflixやYouTubeなどの人気サービスでは**自動検出された字幕**を、自分の**字幕ファイル**も使用できます。汎用のフォールバック字幕検出アルゴリズムにより、その他のストリーミングサービスの85%で字幕を検出できます。
@@ -36,7 +36,7 @@ import project from '@site/src/project';
 
 ## ウェブサイトとブラウザー拡張機能 {#a-website-and-browser-extension}
 
-asbplayerを幅広く利用できるよう、ローカル動画ファイルで動作する<a href={project.urls.app}>ウェブサイト</a>と、ストリーミング動画で動作する<a href={project.extension.chrome.storeUrl}>ブラウザー拡張機能</a>の2つを提供しています。どちらか一方を使うのにもう一方は必要ありませんが、組み合わせることでasbplayerをよりスムーズに利用できます。
+asbplayerを幅広く利用できるよう、ローカル動画ファイルで動作する<a href={project.urls.app}>ウェブサイト</a>と、ストリーミング動画で動作する<a href={project.extension.chrome.storeUrl}>ブラウザー拡張機能</a>の2つを提供しています。どちらを使うにも、もう一方は必要ありませんが、組み合わせるとよりスムーズに利用できます。
 
 ## asbplayerを使う理由 {#why-use-asbplayer}
 
