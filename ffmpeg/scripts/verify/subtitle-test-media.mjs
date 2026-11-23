@@ -229,18 +229,16 @@ export const generateSubtitleMedia = async (root) => {
         buffer.writeUInt16BE(value);
         return buffer;
     };
-    const segment = (seconds, type, payload) => {
+    const pgsSegment = (type, payload) => {
         const bytes = Buffer.from(payload);
-        const header = Buffer.alloc(13);
-        header.write('PG');
-        header.writeUInt32BE(seconds * pgsClockRateHz, 2);
-        header[10] = type;
-        header.writeUInt16BE(bytes.length, 11);
+        const header = Buffer.alloc(3);
+        header[0] = type;
+        header.writeUInt16BE(bytes.length, 1);
         return Buffer.concat([header, bytes]);
     };
-    const display = (seconds, { clear = false } = {}) => {
+    const displaySegments = (seconds, { clear = false, alpha = 128, screenWidth = 320 } = {}) => {
         const composition = Buffer.concat([
-            word(320),
+            word(screenWidth),
             word(240),
             Buffer.from([0x10]),
             word(seconds),
@@ -252,28 +250,47 @@ export const generateSubtitleMedia = async (root) => {
                       Buffer.concat([word(1), Buffer.from([0, 0]), word(30), word(182)]),
                   ]),
         ]);
-        const parts = [segment(seconds, pgsPresentationCompositionSegment, composition)];
+        const parts = [pgsSegment(pgsPresentationCompositionSegment, composition)];
         if (!clear) {
             parts.push(
-                segment(
-                    seconds,
-                    pgsPaletteDefinitionSegment,
-                    [0, 0, 0, 0, 128, 128, 0, 1, 235, 128, 128, 255, 2, 81, 240, 90, 128]
-                )
+                pgsSegment(pgsPaletteDefinitionSegment, [
+                    0,
+                    0,
+                    0,
+                    0,
+                    128,
+                    128,
+                    0,
+                    1,
+                    235,
+                    128,
+                    128,
+                    255,
+                    2,
+                    81,
+                    240,
+                    90,
+                    alpha,
+                ])
             );
             for (const id of [0, 1]) {
                 const rle = Buffer.from([1, 2, 0, 2, 0, 0, 1, 1, 1, 1, 0, 0]);
                 parts.push(
-                    segment(
-                        seconds,
+                    pgsSegment(
                         pgsObjectDefinitionSegment,
                         Buffer.concat([word(id), Buffer.from([0, 0xc0, 0, 0, rle.length + 4]), word(4), word(2), rle])
                     )
                 );
             }
         }
-        parts.push(segment(seconds, pgsEndDisplaySetSegment, []));
-        return Buffer.concat(parts);
+        parts.push(pgsSegment(pgsEndDisplaySetSegment, []));
+        return parts;
+    };
+    const display = (seconds, options) => {
+        const supHeader = Buffer.alloc(10);
+        supHeader.write('PG');
+        supHeader.writeUInt32BE(seconds * pgsClockRateHz, 2);
+        return Buffer.concat(displaySegments(seconds, options).flatMap((segment) => [supHeader, segment]));
     };
     await writeFile(
         resolve(root, 'bitmap.sup'),
@@ -427,24 +444,39 @@ export const generateSubtitleMedia = async (root) => {
         ])
     );
 
-    const subtitleBlock = (ms, cueText) => {
+    const subtitleBlock = (ms, payload, duration = 1000) => {
         const header = Buffer.from([0x81, 0, 0, 0]);
         header.writeInt16BE(ms, 1);
-        return master('a0', element('a1', Buffer.concat([header, Buffer.from(cueText)])), uint('9b', 1000));
+        const block = element('a1', Buffer.concat([header, Buffer.from(payload)]));
+        return duration === 0 ? master('a0', block) : master('a0', block, uint('9b', duration));
     };
-    const subtitleMedia = (...blocks) =>
+    const matroskaSubtitles = (codec, blocks) =>
         Buffer.concat([
             ebml,
             master(
                 '18538067',
                 master('1549a966', uint('2ad7b1', 1000000)),
-                master(
-                    '1654ae6b',
-                    master('ae', uint('d7', 1), uint('73c5', 1), uint('83', 17), text('86', 'S_TEXT/UTF8'))
-                ),
+                master('1654ae6b', master('ae', uint('d7', 1), uint('73c5', 1), uint('83', 17), text('86', codec))),
                 master('1f43b675', uint('e7', 0), ...blocks)
             ),
         ]);
+    const subtitleMedia = (...blocks) => matroskaSubtitles('S_TEXT/UTF8', blocks);
+    const pgsBlock = (seconds, options, duration) =>
+        subtitleBlock(seconds * 1000, Buffer.concat(displaySegments(seconds, options)), duration);
+    const resized = { alpha: 64, screenWidth: 640 };
+    await writeFile(
+        resolve(root, 'repeated-pgs.mkv'),
+        matroskaSubtitles('S_HDMV/PGS', [
+            pgsBlock(2, undefined, 0),
+            pgsBlock(3),
+            pgsBlock(4, { alpha: 64 }),
+            pgsBlock(5, resized),
+            pgsBlock(7, resized),
+            pgsBlock(8, { clear: true }),
+            pgsBlock(8, resized),
+            pgsBlock(9, resized, 0),
+        ])
+    );
     await writeFile(
         resolve(root, 'reordered.mkv'),
         subtitleMedia(subtitleBlock(3000, 'Later cue'), subtitleBlock(2000, 'Earlier cue'))

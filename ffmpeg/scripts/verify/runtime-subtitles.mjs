@@ -214,6 +214,24 @@ try {
     assert.equal(uncleared.length, 2);
     assert.equal(uncleared[1].start, 6000);
     assert.equal(uncleared[1].end, 10000, 'Container duration must bound the last display when its clear is absent');
+    await load('repeated-pgs.mkv');
+    const repeated = imageRecords(0);
+    assert.deepEqual(
+        repeated.map(({ start, end }) => [start, end]),
+        [
+            [2000, 4000], // Identical consecutive displays.
+            [4000, 5000], // The palette changes the PNG.
+            [5000, 6000], // Same PNG, different screen size.
+            [7000, 8000], // Same image after a gap.
+            [8000, 9000], // A same timestamp clear separates the cues. EOF bounds only the confirmed prefix.
+        ]
+    );
+    const [original, changed, resized, afterGap, afterClear] = repeated.map(({ textImage }) => textImage);
+    assert.notEqual(original.dataUrl, changed.dataUrl);
+    assert.equal(changed.dataUrl, resized.dataUrl);
+    assert.notDeepEqual(changed.screen, resized.screen);
+    assert.deepEqual(afterGap, resized);
+    assert.deepEqual(afterClear, afterGap);
     process.stdout.write(
         'WASM subtitle regressions passed: track identity, presentation timing, reordered cues, text normalization, slow reads, zlib, PGS/DVD/DVB bitmaps\n'
     );

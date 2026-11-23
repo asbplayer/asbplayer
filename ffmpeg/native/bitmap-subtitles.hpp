@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <cstring>
 #include <string>
+#include <utility>
 
 extern "C" {
 #include <libavcodec/avcodec.h>
@@ -21,8 +22,8 @@ inline bool supported_bitmap_codec(AVCodecID id) {
 }
 
 /**
- * One composited PNG per display, preserving palette alpha and the relative placement
- * of every rectangle. Retains only the latest display because PGS ends at the next display or clear.
+ * Composites each display to a PNG, preserving palette alpha and relative rectangle placement.
+ * Keeps one pending cue so contiguous displays of the same image can share its interval.
  */
 struct BitmapSubtitleOutput {
     static constexpr int maximum_dimension = 8192;
@@ -34,6 +35,7 @@ struct BitmapSubtitleOutput {
     int screen_height;
     int64_t start = 0;
     int64_t end = AV_NOPTS_VALUE;
+    int64_t latest_display_start = 0;
     std::string image;
 
     BitmapSubtitleOutput(uint32_t track_key, int screen_width, int screen_height)
@@ -46,27 +48,52 @@ struct BitmapSubtitleOutput {
             boundary = boundary == AV_NOPTS_VALUE ? this->end : std::min(boundary, this->end);
         }
 
-        int result = 0;
-        const int64_t clamped_start = std::max<int64_t>(0, this->start);
-        if (boundary != AV_NOPTS_VALUE && boundary > clamped_start) {
-            auto record = "{\"start\":" + std::to_string(clamped_start) +
-                          ",\"end\":" + std::to_string(boundary) + ",\"textImage\":" + this->image + "}\n";
-            result = asb_write_output(this->track_key, reinterpret_cast<const uint8_t*>(record.data()),
-                                      record.size()) == static_cast<int>(record.size()) ? 0 : AVERROR(EIO);
-        }
-
         if (boundary == AV_NOPTS_VALUE) {
             runtime_diagnostic(DiagnosticLevel::warning,
                                "Omitted final bitmap display without an end time or container duration");
         }
+
+        // Each merged display already confirmed that the image lasted up to its start.
+        const int64_t cue_end = std::max(boundary, this->latest_display_start);
+        const int64_t clamped_start = std::max<int64_t>(0, this->start);
+        int result = 0;
+        if (cue_end > clamped_start) {
+            auto record = "{\"start\":" + std::to_string(clamped_start) +
+                          ",\"end\":" + std::to_string(cue_end) + ",\"textImage\":" + this->image + "}\n";
+            result = asb_write_output(this->track_key, reinterpret_cast<const uint8_t*>(record.data()),
+                                      record.size()) == static_cast<int>(record.size()) ? 0 : AVERROR(EIO);
+        }
+
         this->image.clear();
         return result;
     }
 
     int display(const AVSubtitle& subtitle, int64_t start, int64_t end, AVCodecContext* decoder) {
-        int error = this->finish(start);
-        if (error < 0 || subtitle.num_rects == 0) return error;
+        if (subtitle.num_rects == 0) return this->finish(start);
 
+        std::string next_image;
+        const int encode_error = this->encode_image(subtitle, decoder, next_image);
+        // A new start caps the previous display. The serialized image includes the PNG and both sets of dimensions.
+        if (encode_error >= 0 && !next_image.empty() && start > std::max<int64_t>(0, this->latest_display_start) &&
+            (this->end == AV_NOPTS_VALUE || start <= this->end) && next_image == this->image) {
+            this->latest_display_start = start;
+            this->end = end;
+            return 0;
+        }
+
+        const int write_error = this->finish(start);
+        if (write_error < 0) return write_error;
+        if (encode_error < 0 || next_image.empty()) return encode_error;
+
+        this->image = std::move(next_image);
+        this->start = start;
+        this->latest_display_start = start;
+        this->end = end;
+        return 0;
+    }
+
+private:
+    int encode_image(const AVSubtitle& subtitle, const AVCodecContext* decoder, std::string& image) const {
         const int width = decoder->width > 0 ? decoder->width : this->screen_width;
         const int height = decoder->height > 0 ? decoder->height : this->screen_height;
         if (width <= 0 || height <= 0 || width > maximum_dimension || height > maximum_dimension) {
@@ -119,7 +146,8 @@ struct BitmapSubtitleOutput {
         encoder->pix_fmt = AV_PIX_FMT_RGBA;
         frame->format = AV_PIX_FMT_RGBA;
         encoder->time_base = milliseconds;
-        if ((error = avcodec_open2(encoder, png, nullptr)) < 0) return error;
+        int error = avcodec_open2(encoder, png, nullptr);
+        if (error < 0) return error;
         if ((error = av_frame_get_buffer(frame, 0)) < 0) return error;
 
         for (int y = 0; y < frame->height; ++y) {
@@ -158,13 +186,11 @@ struct BitmapSubtitleOutput {
         std::string base64(AV_BASE64_SIZE(packet->size), '\0');
         av_base64_encode(base64.data(), base64.size(), packet->data, packet->size);
         base64.resize(std::strlen(base64.c_str()));
-        this->image = "{\"dataUrl\":\"data:image/png;base64," + base64 +
-                      "\",\"screen\":{\"width\":" + std::to_string(width) +
-                      ",\"height\":" + std::to_string(height) + "},\"image\":{\"width\":" +
-                      std::to_string(frame->width) + ",\"height\":" + std::to_string(frame->height) +
-                      "}}";
-        this->start = start;
-        this->end = end;
+        image = "{\"dataUrl\":\"data:image/png;base64," + base64 +
+                "\",\"screen\":{\"width\":" + std::to_string(width) +
+                ",\"height\":" + std::to_string(height) + "},\"image\":{\"width\":" +
+                std::to_string(frame->width) + ",\"height\":" + std::to_string(frame->height) +
+                "}}";
         return 0;
     }
 };
