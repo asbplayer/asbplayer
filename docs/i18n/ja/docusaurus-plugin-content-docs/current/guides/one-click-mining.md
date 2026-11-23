@@ -17,11 +17,11 @@ asbplayerは字幕や動画の内容をAnkiConnectに連携できますが、単
 
 ## Yomitanのインストールと設定 {#install-and-configure-yomitan}
 
-手順に従って[Yomitanのウェブサイト](https://yomitan.wiki/)からYomitanをインストールし、学習対象言語の辞書を設定します。まだの場合は、Ankiに[AnkiConnect](https://ankiweb.net/shared/info/2055492159)も追加する必要があります。
+手順に従って[Yomitanのウェブサイト](https://yomitan.wiki/)からYomitanをインストールし、学習対象言語の辞書を設定します。まだ追加していない場合は、Ankiに[AnkiConnect](https://ankiweb.net/shared/info/2055492159)も追加する必要があります。
 
 YomitanのAnki設定で、次のようにします。
 
-- AnkiConnectサーバーアドレスはデフォルト（<code>{ankiConnectUrl}</code>）にします。
+- AnkiConnectサーバーアドレスはデフォルト（<code>{ankiConnectUrl}</code>）にしてください。
 - Yomitanではasbplayerと同じ**ノートタイプ**を使います。
 
 ## asbplayer Ankiアドオンのインストール {#install-the-asbplayer-anki-add-on}

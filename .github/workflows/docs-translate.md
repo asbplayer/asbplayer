@@ -150,9 +150,13 @@ prose only. The following must stay byte-identical to the English source:
 
 ### 2. Sidebar labels
 
-For each locale in `sidebar`, translate the category-label values in
-`docs/i18n/<locale>/docusaurus-plugin-content-docs/current.json` (keys like
-`sidebar.tutorialSidebar.category.*`). Do not touch JSON keys.
+For each locale in `sidebar`, translate the label values in that locale's
+`docs/i18n/<locale>/docusaurus-plugin-content-docs/current.json`: category
+keys (`sidebar.tutorialSidebar.category.*`) and link keys
+(`sidebar.tutorialSidebar.link.*`). Do not touch JSON keys. Never edit the
+locale trees' `_category_.json` files: they are structural and kept
+byte-identical to English by `pnpm sync:project`; category labels
+translate through current.json only.
 
 ### 3. Deletions
 

@@ -63,24 +63,36 @@ test('lists locale files whose English source was deleted', (t) => {
     assert.deepEqual(computeWorklist(root, ['de']).deleted, [{ locale: 'de', files: ['gone.md'] }]);
 });
 
-test('flags sidebar labels while any category value equals its English label', (t) => {
+test('sidebar labels are pending until committed clean, and again when regenerated with new keys', (t) => {
     const { root, write, commit } = repo(t);
-    write('docs/docs/guides/_category_.json', '{"label": "Guides"}\n');
     write('docs/docs/page.md', 'English source.\n');
     write(`${localeTreeDir('de')}/page.md`, 'Deutsche Übersetzung.\n');
+    commit('add English');
     write(
         'docs/i18n/de/docusaurus-plugin-content-docs/current.json',
-        '{"sidebar.tutorialSidebar.category.Guides": {"message": "Guides"}}\n'
+        [
+            '{"sidebar.tutorialSidebar.category.Guides": {"message": "Anleitungen"},',
+            ' "sidebar.tutorialSidebar.link.Contributing": {"message": "Mitwirken"}}',
+        ].join('\n')
     );
-    commit('skeleton');
+    // The freshly generated file is untracked: the run that will translate it
+    // has not committed yet.
     assert.deepEqual(computeWorklist(root, ['de']).sidebar, ['de']);
+    commit('translate labels');
+    // A committed clean file is trusted; a cognate equal to the English label
+    // would not re-ping either.
+    assert.deepEqual(computeWorklist(root, ['de']).sidebar, []);
 
+    // Regeneration after a config change dirties the file with new keys.
     write(
         'docs/i18n/de/docusaurus-plugin-content-docs/current.json',
-        '{"sidebar.tutorialSidebar.category.Guides": {"message": "Anleitungen"}}\n'
+        [
+            '{"sidebar.tutorialSidebar.category.Guides": {"message": "Anleitungen"},',
+            ' "sidebar.tutorialSidebar.category.References": {"message": "References"},',
+            ' "sidebar.tutorialSidebar.link.Contributing": {"message": "Mitwirken"}}',
+        ].join('\n')
     );
-    commit('translate labels');
-    assert.deepEqual(computeWorklist(root, ['de']).sidebar, []);
+    assert.deepEqual(computeWorklist(root, ['de']).sidebar, ['de']);
 });
 
 test('theme strings are pending until committed clean, and again when dirtied', (t) => {
