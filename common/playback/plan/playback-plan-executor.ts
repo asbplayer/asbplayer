@@ -126,8 +126,8 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
             correctAutoPause: async (targetTimestampMs) => {
                 await this.correctAutoPause(targetTimestampMs);
             },
-            onState: async (state) => {
-                this.reconcilePlaybackRate(state, { forcePlaybackRate: false });
+            onState: async (state, timestampMs) => {
+                this.reconcilePlaybackRate(state, timestampMs, { forcePlaybackRate: false });
             },
             onAfterState: (currentTimestampMs) => this.onAfterState(currentTimestampMs),
         });
@@ -286,7 +286,7 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
     }
 
     initializePlaybackRate(timestampMs: number): void {
-        this.reconcilePlaybackRate(this.timeline.lookupAt(timestampMs).state, { forcePlaybackRate: true });
+        this.reconcilePlaybackRate(this.timeline.lookupAt(timestampMs).state, timestampMs, { forcePlaybackRate: true });
     }
 
     cancelPendingOperations(options: { preserveExpectedDiscontinuity: boolean }): void {
@@ -453,11 +453,15 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
 
     reconcileAt(timestampMs: number, options: PlaybackRateReconciliationOptions): void {
         const lookup = this.timeline.lookupAt(timestampMs);
-        this.reconcilePlaybackRate(lookup.state, options);
+        this.reconcilePlaybackRate(lookup.state, timestampMs, options);
     }
 
-    private reconcilePlaybackRate(state: PlaybackTimelineState, options: PlaybackRateReconciliationOptions): void {
-        const fastForwarding = fastForwardingForPlanState(this.plan, state);
+    private reconcilePlaybackRate(
+        state: PlaybackTimelineState,
+        timestampMs: number,
+        options: PlaybackRateReconciliationOptions
+    ): void {
+        const fastForwarding = fastForwardingForPlanState(this.plan, state, timestampMs);
         const playbackRate =
             state.current?.adaptiveRate?.playbackRate ??
             (fastForwarding ? this.plan.fastForward!.playbackRate : this.plan.playbackRate);

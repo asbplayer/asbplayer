@@ -1,7 +1,10 @@
 import project from "../project.json";
 import { themes as prismThemes } from "prism-react-renderer";
+import { docsLocales, localeLabel, searchLanguages } from "../scripts/docs-locales.ts";
 import type { Config } from "@docusaurus/types";
 import type * as Preset from "@docusaurus/preset-classic";
+
+const locales = ["en", ...docsLocales(project.languages)];
 
 const config: Config = {
   title: project.names.short,
@@ -17,7 +20,10 @@ const config: Config = {
 
   i18n: {
     defaultLocale: "en",
-    locales: ["en"],
+    locales,
+    localeConfigs: Object.fromEntries(
+      locales.map((locale) => [locale, { label: localeLabel(locale) }])
+    ),
   },
 
   plugins: ["./plugins/llms-txt.ts"],
@@ -69,6 +75,10 @@ const config: Config = {
           to: "/docs/intro",
         },
         { to: "/blog", label: "Blog", position: "left" },
+        {
+          type: "localeDropdown",
+          position: "right",
+        },
         {
           href: project.urls.repo,
           className: "header-github-link",
@@ -130,8 +140,9 @@ const config: Config = {
         // `hashed` is recommended as long-term-cache of index file is possible.
         hashed: true,
 
-        // For Docs using Chinese, it is recomended to set:
-        language: ["en"],
+        // One combined multi-language index, derived from the app languages;
+        // see scripts/docs-locales.ts for how unsupported languages fail.
+        language: searchLanguages(project.languages),
 
         // If you're using `noIndex: true`, set `forceIgnoreNoIndex` to enable local index:
         forceIgnoreNoIndex: true,

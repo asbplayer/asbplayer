@@ -137,6 +137,7 @@ const makeProcessingSnapshot = (): DictionaryStatisticsSnapshot => ({
     },
     snapshots: [
         {
+            sourceStatus: 'complete',
             track: 0,
             progress: { current: 2, total: 2, startedAt: 1 },
             statusColors: {
@@ -263,6 +264,7 @@ const makeAnkiSnapshot = (): DictionaryStatisticsSnapshot => ({
     },
     snapshots: [
         {
+            sourceStatus: 'complete',
             track: 0,
             progress: { current: 2, total: 2, startedAt: 1 },
             statusColors: {
@@ -331,6 +333,7 @@ const makeUnknownFrequencySnapshot = (): DictionaryStatisticsSnapshot => ({
     },
     snapshots: [
         {
+            sourceStatus: 'complete',
             track: 0,
             progress: { current: 1, total: 1, startedAt: 1 },
             statusColors: {
@@ -390,21 +393,183 @@ const makeEntry = (
     ...overrides,
 });
 
-beforeEach(() => {
-    let now = 1;
-    jest.spyOn(Date, 'now').mockImplementation(() => now++);
-});
-
 afterEach(() => {
     jest.restoreAllMocks();
 });
 
 describe('DictionaryStatistics', () => {
-    it('publishes undefined before initialization, sorts snapshots, and resets state', () => {
+    beforeEach(() => {
+        jest.useFakeTimers({ doNotFake: ['Date'] });
+    });
+
+    afterEach(() => {
+        jest.useRealTimers();
+    });
+
+    it('publishes the latest state once per second without postponing publication for further updates', async () => {
+        const { statistics, storage } = makeStatistics();
+        statistics.init(0, 3);
+        statistics.publishSnapshot();
+        expect(storage.publishStatisticsSnapshot).toHaveBeenCalledTimes(1);
+        await jest.advanceTimersByTimeAsync(500);
+        statistics.ingest(makeSentence());
+        statistics.updateProgress(0, 1);
+        statistics.replaceAnkiSnapshot({ available: false, cardsInfo: {}, dueCards: {} });
+        statistics.replaceWaniKaniSnapshots({ 0: { available: false, assignments: [], subjects: {} } });
+        await jest.advanceTimersByTimeAsync(499);
+        expect(storage.publishStatisticsSnapshot).toHaveBeenCalledTimes(1);
+
+        statistics.updateProgress(0, 2);
+        await jest.advanceTimersByTimeAsync(1);
+        expect(storage.publishStatisticsSnapshot).toHaveBeenCalledTimes(2);
+        expect(lastPublishedSnapshot(storage)).toMatchObject({
+            snapshots: [{ progress: { current: 2, total: 3 }, stats: { sentences: { 0: { text: 'word' } } } }],
+            anki: { available: false },
+            waniKani: { 0: { available: false } },
+        });
+
+        statistics.updateProgress(0, 3);
+        await jest.advanceTimersByTimeAsync(999);
+        expect(storage.publishStatisticsSnapshot).toHaveBeenCalledTimes(2);
+        await jest.advanceTimersByTimeAsync(1);
+        expect(storage.publishStatisticsSnapshot).toHaveBeenCalledTimes(3);
+        expect(lastPublishedSnapshot(storage)?.snapshots[0].progress.current).toBe(3);
+        await jest.advanceTimersByTimeAsync(5000);
+        expect(storage.publishStatisticsSnapshot).toHaveBeenCalledTimes(3);
+        statistics.publishSnapshot();
+        expect(storage.publishStatisticsSnapshot).toHaveBeenCalledTimes(4);
+    });
+
+    it('cancels pending publication on reset without counting the reset toward the publication interval', async () => {
+        const { statistics, storage } = makeStatistics();
+        statistics.init(0, 1);
+        statistics.ingest(makeSentence({ text: 'old' }));
+        statistics.updateProgress(0, 1);
+        statistics.publishSnapshot();
+        await jest.advanceTimersByTimeAsync(500);
+        statistics.reset();
+        expect(storage.publishStatisticsSnapshot).toHaveBeenCalledTimes(2);
+        expect(lastPublishedSnapshot(storage)).toBeUndefined();
+
+        statistics.init(0, 2);
+        statistics.ingest(makeSentence({ text: 'new' }));
+        statistics.updateProgress(0, 1);
+        await jest.advanceTimersByTimeAsync(499);
+        expect(storage.publishStatisticsSnapshot).toHaveBeenCalledTimes(2);
+        await jest.advanceTimersByTimeAsync(1);
+        expect(storage.publishStatisticsSnapshot).toHaveBeenCalledTimes(3);
+        expect(lastPublishedSnapshot(storage)?.snapshots[0].stats.sentences[0].text).toBe('new');
+    });
+
+    it.each(['complete', 'failed'] as const)(
+        'reports source status separately from annotation progress and remaps retained sentences through %s',
+        async (status) => {
+            const { statistics, storage } = makeStatistics();
+            const source = { track: 0, loadId: 'stream', name: 'subtitles.srt', status: 'loading' as const };
+            statistics.init(0, 1);
+            statistics.setSourceStates([source]);
+            statistics.ingest(makeSentence({ source: { loadId: 'stream', cueId: 0 } }));
+            statistics.updateProgress(0, 1);
+            await jest.advanceTimersByTimeAsync(1000);
+            expect(lastPublishedSnapshot(storage)?.snapshots[0]).toMatchObject({
+                sourceStatus: 'loading',
+                progress: { current: 1, total: 1 },
+                stats: { sentences: { 0: { source: { loadId: 'stream', cueId: 0 } } } },
+            });
+            const subtitles = [
+                { ...makeSentence({ text: 'earlier', end: 500 }), originalStart: 0, originalEnd: 500 },
+                { ...makeSentence({ index: 1, start: 2000, end: 3000 }), originalStart: 2000, originalEnd: 3000 },
+            ];
+            statistics.reconcileSubtitles(subtitles, new Map([[0, 1]]), [source], new Map([[0, new Set([1])]]));
+            await jest.advanceTimersByTimeAsync(1000);
+            expect(lastPublishedSnapshot(storage)?.snapshots[0]).toMatchObject({
+                sourceStatus: 'loading',
+                progress: { current: 1, total: 2 },
+                stats: {
+                    sentences: { 1: { index: 1, start: 2000, end: 3000, source: { loadId: 'stream', cueId: 0 } } },
+                },
+            });
+            statistics.setSourceStates([{ ...source, status }]);
+            await jest.advanceTimersByTimeAsync(1000);
+            expect(lastPublishedSnapshot(storage)?.snapshots[0].sourceStatus).toBe(status);
+            expect(lastPublishedSnapshot(storage)?.snapshots[0].progress).toMatchObject({ current: 1, total: 2 });
+        }
+    );
+
+    it('reconciles mixed tracks, invalidated cues, and offset-only changes without losing retained sentences', async () => {
+        const { statistics, storage } = makeStatistics();
+        const sources = [
+            { track: 0, loadId: 'primary', name: 'primary.ass', status: 'loading' },
+            { track: 1, loadId: 'translation', name: 'translation.ass', status: 'complete' },
+        ] as const;
+        const retained = makeSentence({ start: 2000, end: 3000 });
+        const translation = makeSentence({ index: 1, track: 1 });
+        const corrected = makeSentence({ index: 2, start: 4000, end: 5000 });
+        statistics.init(0, 2);
+        statistics.init(1, 1);
+        for (const sentence of [retained, translation, corrected]) statistics.ingest(sentence);
+        const subtitles = [
+            { ...translation, index: 0, originalStart: translation.start, originalEnd: translation.end },
+            { ...retained, index: 1, originalStart: retained.start, originalEnd: retained.end },
+            { ...corrected, text: 'corrected', originalStart: corrected.start, originalEnd: corrected.end },
+        ];
+        const processed = new Map([
+            [0, new Set([1])],
+            [1, new Set([0])],
+        ]);
+        statistics.reconcileSubtitles(
+            subtitles,
+            new Map([
+                [0, 1],
+                [1, 0],
+            ]),
+            sources,
+            processed
+        );
+        await jest.advanceTimersByTimeAsync(1000);
+        let snapshots = lastPublishedSnapshot(storage)!.snapshots;
+        expect(snapshots[0]).toMatchObject({ sourceStatus: 'loading', progress: { current: 1, total: 2 } });
+        expect(snapshots[0].stats.sentences).toEqual({ 1: { ...retained, index: 1 } });
+        expect(snapshots[1]).toMatchObject({ sourceStatus: 'complete', progress: { current: 1, total: 1 } });
+        expect(snapshots[1].stats.sentences).toEqual({ 0: { ...translation, index: 0 } });
+
+        const shifted = subtitles.map((cue) => ({
+            ...cue,
+            start: cue.originalStart + 500,
+            end: cue.originalEnd + 500,
+        }));
+        statistics.reconcileSubtitles(
+            shifted,
+            new Map(shifted.map((cue) => [cue.index, cue.index])),
+            sources,
+            processed
+        );
+        await jest.advanceTimersByTimeAsync(1000);
+        snapshots = lastPublishedSnapshot(storage)!.snapshots;
+        expect(snapshots[0].stats.sentences).toEqual({ 1: { ...retained, index: 1, start: 2500, end: 3500 } });
+        expect(snapshots[1].stats.sentences[0]).toMatchObject({
+            start: translation.start + 500,
+            end: translation.end + 500,
+        });
+        expect(snapshots.map((snapshot) => snapshot.progress.current)).toEqual([1, 1]);
+    });
+
+    it.each(['loading', 'complete', 'failed'] as const)(
+        'preserves source status %s in full and simplified views',
+        (sourceStatus) => {
+            const snapshot = makeProcessingSnapshot();
+            snapshot.snapshots[0].sourceStatus = sourceStatus;
+            expect(processDictionaryStatisticsSnapshot(snapshot)[0].sourceStatus).toBe(sourceStatus);
+            expect(processSimplifiedDictionaryStatistics(snapshot)[0].sourceStatus).toBe(sourceStatus);
+        }
+    );
+
+    it('publishes undefined before initialization, sorts snapshots, and resets state', async () => {
         const { statistics, storage } = makeStatistics();
 
         expect(statistics.hasStatistics()).toBe(false);
         statistics.publishSnapshot();
+        await jest.advanceTimersByTimeAsync(1000);
         expect(storage.publishStatisticsSnapshot).toHaveBeenLastCalledWith('media-id', undefined);
 
         statistics.init(2, 2);
@@ -419,6 +584,7 @@ describe('DictionaryStatistics', () => {
         });
         statistics.publishSnapshot();
 
+        await jest.advanceTimersByTimeAsync(1000);
         const snapshot = lastPublishedSnapshot(storage)!;
         expect(statistics.hasStatistics()).toBe(true);
         expect(snapshot.mediaId).toBe('media-id');
@@ -443,7 +609,7 @@ describe('DictionaryStatistics', () => {
         await expect(statistics.refreshDictionaryTokens('profile')).rejects.toThrow('Track 0 not initialized');
     });
 
-    it('stores replaced Anki snapshots and avoids publishing before stats exist', () => {
+    it('stores replaced Anki snapshots and avoids publishing before stats exist', async () => {
         const { statistics, storage } = makeStatistics();
 
         statistics.replaceAnkiSnapshot({
@@ -461,6 +627,7 @@ describe('DictionaryStatistics', () => {
             dueCards: {},
         });
 
+        await jest.advanceTimersByTimeAsync(1000);
         expect(lastPublishedSnapshot(storage)?.anki).toEqual({
             progress: { current: 1, total: 2, startedAt: 999 },
             cardsInfo: { 2: { cardId: 2 } },
@@ -468,7 +635,7 @@ describe('DictionaryStatistics', () => {
         });
     });
 
-    it('stores replaced anki snapshots before initialization and publishes availability-only updates afterward', () => {
+    it('stores replaced anki snapshots before initialization and publishes availability-only updates afterward', async () => {
         const { statistics, storage } = makeStatistics();
 
         statistics.replaceAnkiSnapshot({ available: false, cardsInfo: {}, dueCards: {} });
@@ -477,10 +644,11 @@ describe('DictionaryStatistics', () => {
         statistics.init(0, 1);
         statistics.replaceAnkiSnapshot({ available: false, cardsInfo: {}, dueCards: {} });
 
+        await jest.advanceTimersByTimeAsync(1000);
         expect(lastPublishedSnapshot(storage)?.anki).toEqual({ available: false, cardsInfo: {}, dueCards: {} });
     });
 
-    it('stores WaniKani snapshots before initialization and publishes a top-level copy afterward', () => {
+    it('stores WaniKani snapshots before initialization and publishes a top-level copy afterward', async () => {
         const { statistics, storage } = makeStatistics();
         const initial = {
             0: { available: true, assignments: [{ id: 1 }], subjects: { 1: { id: 1 } } },
@@ -492,6 +660,7 @@ describe('DictionaryStatistics', () => {
         initial[1] = { available: false, assignments: [], subjects: {} };
         statistics.init(0, 1);
         statistics.publishSnapshot();
+        await jest.advanceTimersByTimeAsync(1000);
         expect(lastPublishedSnapshot(storage)?.waniKani).toEqual({
             0: { available: true, assignments: [{ id: 1 }], subjects: { 1: { id: 1 } } },
         });
@@ -499,6 +668,7 @@ describe('DictionaryStatistics', () => {
         statistics.replaceWaniKaniSnapshots({
             1: { available: false, assignments: [], subjects: {} },
         });
+        await jest.advanceTimersByTimeAsync(1000);
         expect(lastPublishedSnapshot(storage)?.waniKani).toEqual({
             1: { available: false, assignments: [], subjects: {} },
         });
@@ -530,6 +700,7 @@ describe('DictionaryStatistics', () => {
             .mockResolvedValueOnce({ beta: { source: DictionaryTokenSource.LOCAL, statuses: [], states: [] } });
 
         await statistics.refreshDictionaryTokens('profile');
+        await jest.advanceTimersByTimeAsync(1000);
 
         const snapshot = lastPublishedSnapshot(storage)!;
         expect(snapshot.settings).toEqual({
@@ -552,7 +723,22 @@ describe('DictionaryStatistics', () => {
         );
     });
 
-    it('blocks stale publishes that started before reset', async () => {
+    it('refreshes tokens immediately after reset even in the same millisecond', async () => {
+        jest.spyOn(Date, 'now').mockReturnValue(1000);
+        const settings = makeSettings([makeDictionaryTrack({ dictionaryAutoGenerateStatistics: true })]);
+        const { statistics, storage } = makeStatistics(settings);
+        const tokens = { alpha: { source: DictionaryTokenSource.LOCAL, statuses: [], states: [] } };
+        storage.getAllTokens.mockResolvedValueOnce(tokens);
+
+        statistics.reset();
+        statistics.init(0, 1);
+        await statistics.refreshDictionaryTokens('profile');
+
+        expect(lastPublishedSnapshot(storage)?.snapshots[0].stats.dictionary.tokens).toEqual(tokens);
+    });
+
+    it('blocks stale publishes that started before reset, including within the same millisecond', async () => {
+        jest.spyOn(Date, 'now').mockReturnValue(1000);
         const settings = makeSettings([makeDictionaryTrack({ dictionaryAutoGenerateStatistics: true })]);
         const { statistics, storage } = makeStatistics(settings);
         const pendingTokens =
@@ -572,6 +758,7 @@ describe('DictionaryStatistics', () => {
         pendingTokens.resolve({ alpha: { source: DictionaryTokenSource.LOCAL, statuses: [], states: [] } });
         await refreshPromise;
 
+        await jest.advanceTimersByTimeAsync(1000);
         expect(storage.publishStatisticsSnapshot).toHaveBeenCalledTimes(1);
         expect(storage.publishStatisticsSnapshot).toHaveBeenCalledWith('media-id', undefined);
     });
@@ -608,6 +795,7 @@ describe('DictionaryStatistics', () => {
         const refreshPromise = statistics.refreshDictionaryTokens('profile');
         await Promise.all([firstTrackRequestStarted.promise, secondTrackRequestStarted.promise]);
         firstTrackTokens.resolve({ alpha: { source: DictionaryTokenSource.LOCAL, statuses: [], states: [] } });
+        await jest.advanceTimersByTimeAsync(1000);
         await firstTrackPublished.promise;
 
         expect(lastPublishedSnapshot(storage)?.snapshots[0].stats.dictionary.tokens).toEqual({
@@ -914,6 +1102,34 @@ describe('dictionary-statistics view helpers', () => {
         ).toEqual([1, 2]);
     });
 
+    it.each([false, true])(
+        'finishes rewatch projections with inconsistent occurrence statuses (known first: %s)',
+        (knownFirst) => {
+            const snapshot = makeProcessingSnapshot();
+            const track = snapshot.snapshots[0];
+            track.stats.dictionary.tokens = {};
+            track.progress.current = 2;
+            track.progress.total = 2;
+            const statuses = knownFirst
+                ? [TokenStatus.MATURE, TokenStatus.UNCOLLECTED]
+                : [TokenStatus.UNCOLLECTED, TokenStatus.MATURE];
+            track.stats.sentences = Object.fromEntries(
+                statuses.map((status, index) => [
+                    index,
+                    makeSentence({
+                        index,
+                        tokenization: { tokens: [makeToken({ pos: [0, 4], status })] },
+                    }),
+                ])
+            );
+
+            const [result] = processDictionaryStatisticsSnapshot(snapshot);
+
+            expect(result.rewatchSnapshots.map((rewatch) => rewatch.numKnownTokens)).toEqual([1, 1]);
+            expect(result.rewatchSnapshots.map((rewatch) => rewatch.sentenceBuckets.allKnown.count)).toEqual([1, 2]);
+        }
+    );
+
     it('processes simplified and full track snapshots with merged tokens, buckets, and rewatch projections', () => {
         const snapshot = makeProcessingSnapshot();
 
@@ -1177,6 +1393,7 @@ describe('dictionary-statistics view helpers', () => {
             },
             snapshots: [
                 {
+                    sourceStatus: 'complete',
                     track: 0,
                     progress: { current: 1, total: 1, startedAt: 1 },
                     statusColors: makeProcessingSnapshot().snapshots[0].statusColors,

@@ -13,6 +13,7 @@ describe('PlaybackTimelineCursor', () => {
             actionBlocks: [],
             hiddenSubtitleIndexes: [],
             durationMs: result.durationMs,
+            gapActionEndMs: result.durationMs,
             blocks: result.blocks.map((block) => ({
                 ...block,
                 startAction: true as const,

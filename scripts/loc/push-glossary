@@ -1,0 +1,21 @@
+#!/bin/bash
+set -euo pipefail
+
+SCRIPTPATH="$(cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P)"
+
+if [ -z "${CROWDIN_API_TOKEN:-}" ]; then
+    echo "CROWDIN_API_TOKEN not defined"
+    exit 1
+fi
+
+# CROWDIN_GLOSSARY_ID overrides project.json's crowdin.glossaryId for a single run.
+glossary_id="${CROWDIN_GLOSSARY_ID:-$(jq -r '.crowdin.glossaryId // empty' "$SCRIPTPATH/../../project.json")}"
+
+if [ -z "${glossary_id}" ] || [ "${glossary_id}" = "0" ]; then
+    echo "crowdin.glossaryId not set in project.json; skipping glossary push"
+    exit 0
+fi
+
+cd "$SCRIPTPATH"
+node glossary-tbx.js generate
+crowdin -v glossary upload glossary/glossary.tbx --id "$glossary_id" -T "$CROWDIN_API_TOKEN"

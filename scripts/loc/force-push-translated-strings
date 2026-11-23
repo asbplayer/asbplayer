@@ -13,6 +13,8 @@ fi
 
 LANGUAGE="$1"
 
+export CROWDIN_PROJECT_ID="$(jq -r '.crowdin.projectId' "$(dirname "$0")/../../project.json")"
+
 node loc-xliff.js
 crowdin --verbose push translations -l "$LANGUAGE" -T "$CROWDIN_API_TOKEN"
 

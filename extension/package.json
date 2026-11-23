@@ -50,6 +50,7 @@
     "devDependencies": {
         "@jest/globals": "^30.0.5",
         "@types/jest": "^30.0.0",
+        "@types/node": "^24.13.3",
         "@wxt-dev/module-react": "^1.2.2",
         "jest": "^30.0.5",
         "ts-jest": "^29.4.0",

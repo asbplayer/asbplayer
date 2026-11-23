@@ -264,9 +264,9 @@ export default defineContentScript({
                             break;
                         }
                         case 'dictionary-request-statistics-mine-sentences': {
-                            const { mediaId, indexes } =
+                            const { mediaId, subtitles, indexes } =
                                 command.message as DictionaryRequestStatisticsMineSentencesMessage;
-                            await dictionaryStorage.requestStatisticsMineSentences(mediaId, indexes);
+                            await dictionaryStorage.requestStatisticsMineSentences(mediaId, subtitles ?? indexes);
                             break;
                         }
                         case 'request-subtitles':

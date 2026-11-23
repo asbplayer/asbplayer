@@ -1,3 +1,4 @@
+import type { SubtitleReference } from '@project/common/subtitle-reader/subtitle-stream';
 import type {
     CardExportedDialogMessage,
     CardUpdatedDialogMessage,
@@ -53,7 +54,10 @@ export class LocalDictionaryStorage implements DictionaryStorage {
     private dictionaryStatisticsGenerationRequestListener?: (event: MessageEvent) => void;
     private dictionaryStatisticsSeekCallbacks: ((timestamp: number) => void)[];
     private dictionaryStatisticsSeekListener?: (event: MessageEvent) => void;
-    private dictionaryStatisticsMineSentencesCallbacks: ((mediaId: string, indexes: number[]) => void)[];
+    private dictionaryStatisticsMineSentencesCallbacks: ((
+        mediaId: string,
+        subtitles: readonly SubtitleReference[]
+    ) => void)[];
     private dictionaryStatisticsMineSentencesListener?: (event: MessageEvent) => void;
 
     constructor(settingsProvider: SettingsProvider) {
@@ -340,19 +344,20 @@ export class LocalDictionaryStorage implements DictionaryStorage {
         };
     }
 
-    async requestStatisticsMineSentences(mediaId: string, indexes: number[]) {
+    async requestStatisticsMineSentences(mediaId: string, subtitles: readonly SubtitleReference[]) {
         const message: ExtensionToAsbPlayerCommand<DictionaryRequestStatisticsMineSentencesMessage> = {
             sender: 'asbplayer-extension-to-player',
             message: {
                 command: 'dictionary-request-statistics-mine-sentences',
                 mediaId,
-                indexes,
+                indexes: subtitles.map((subtitle) => (typeof subtitle === 'number' ? subtitle : subtitle.index)),
+                subtitles,
             },
         };
         window.parent.postMessage(message);
     }
 
-    onRequestStatisticsMineSentences(callback: (mediaId: string, indexes: number[]) => void) {
+    onRequestStatisticsMineSentences(callback: (mediaId: string, subtitles: readonly SubtitleReference[]) => void) {
         this.dictionaryStatisticsMineSentencesCallbacks.push(callback);
         if (!this.dictionaryStatisticsMineSentencesListener) {
             this.dictionaryStatisticsMineSentencesListener = (event: MessageEvent) => {
@@ -362,7 +367,7 @@ export class LocalDictionaryStorage implements DictionaryStorage {
                 if (!isExtensionDictionaryStatisticsSender(data.sender)) return;
                 if (data.message.command !== 'dictionary-request-statistics-mine-sentences') return;
                 this.dictionaryStatisticsMineSentencesCallbacks.forEach((listener) =>
-                    listener(data.message.mediaId, data.message.indexes)
+                    listener(data.message.mediaId, data.message.subtitles)
                 );
             };
             window.parent.addEventListener('message', this.dictionaryStatisticsMineSentencesListener);

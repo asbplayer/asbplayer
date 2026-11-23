@@ -1,3 +1,4 @@
+import type { SubtitleReference } from '@project/common/subtitle-reader/subtitle-stream';
 import type {
     DictionaryLocalTokenInput,
     DictionaryTokenKey,
@@ -62,8 +63,10 @@ export interface DictionaryStorage {
     onRequestStatisticsGeneration: (callback: () => void) => () => void;
     requestStatisticsSeek: (mediaId: string, timestamp: number) => Promise<void>;
     onRequestStatisticsSeek: (callback: (timestamp: number) => void) => () => void;
-    requestStatisticsMineSentences: (mediaId: string, indexes: number[]) => Promise<void>;
-    onRequestStatisticsMineSentences: (callback: (mediaId: string, indexes: number[]) => void) => () => void;
+    requestStatisticsMineSentences: (mediaId: string, subtitles: readonly SubtitleReference[]) => Promise<void>;
+    onRequestStatisticsMineSentences: (
+        callback: (mediaId: string, subtitles: readonly SubtitleReference[]) => void
+    ) => () => void;
     _removeCallback<T>(callback: T, callbacks: T[]): void;
 }
 
@@ -183,11 +186,11 @@ export class DictionaryProvider {
         return this._storage.onRequestStatisticsSeek(callback);
     }
 
-    requestStatisticsMineSentences(mediaId: string, indexes: number[]) {
-        return this._storage.requestStatisticsMineSentences(mediaId, indexes);
+    requestStatisticsMineSentences(mediaId: string, subtitles: readonly SubtitleReference[]) {
+        return this._storage.requestStatisticsMineSentences(mediaId, subtitles);
     }
 
-    onRequestStatisticsMineSentences(callback: (mediaId: string, indexes: number[]) => void) {
+    onRequestStatisticsMineSentences(callback: (mediaId: string, subtitles: readonly SubtitleReference[]) => void) {
         return this._storage.onRequestStatisticsMineSentences(callback);
     }
 }

@@ -1,0 +1,14 @@
+{
+  "title": {
+    "message": "Blogi",
+    "description": "The title for the blog used in SEO"
+  },
+  "description": {
+    "message": "Blogi",
+    "description": "The description for the blog used in SEO"
+  },
+  "sidebar.title": {
+    "message": "Viimeisimmät julkaisut",
+    "description": "The label for the left sidebar"
+  }
+}

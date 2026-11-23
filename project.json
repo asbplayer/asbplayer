@@ -82,6 +82,10 @@
             "port": 19633
         }
     },
+    "crowdin": {
+        "projectId": 674706,
+        "glossaryId": 465438
+    },
     "defaultLanguage": "en",
     "languageUrl": "/locales/{{language}}.json",
     "languages": [

@@ -1,3 +1,4 @@
+import type { SubtitleReference } from '@project/common/subtitle-reader/subtitle-stream';
 import type {
     AsbPlayerCommand,
     AsbPlayerToVideoCommandV2,
@@ -203,6 +204,10 @@ export default class ChromeExtension {
         };
 
         window.addEventListener('message', this.windowEventListener);
+    }
+
+    get supportsProgressiveSubtitles() {
+        return this.installed && gte(this.version, '1.24.0');
     }
 
     get supportsDictionaryPlayback() {
@@ -1049,10 +1054,15 @@ export default class ChromeExtension {
         window.postMessage(command);
     }
 
-    requestStatisticsMineSentences(mediaId: string, indexes: number[]) {
+    requestStatisticsMineSentences(mediaId: string, subtitles: readonly SubtitleReference[]) {
         const command: AsbPlayerCommand<DictionaryRequestStatisticsMineSentencesMessage> = {
             sender: 'asbplayerv2',
-            message: { command: 'dictionary-request-statistics-mine-sentences', mediaId, indexes },
+            message: {
+                command: 'dictionary-request-statistics-mine-sentences',
+                mediaId,
+                indexes: subtitles.map((subtitle) => (typeof subtitle === 'number' ? subtitle : subtitle.index)),
+                subtitles,
+            },
         };
         window.postMessage(command);
     }

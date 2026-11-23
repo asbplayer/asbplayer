@@ -211,6 +211,7 @@ catalogs:
 
 patchedDependencies:
   lamejs@1.2.0: fefa3255ad0ee7360366074e02b2ac9285256e003fdbb1f5481a251a08ecf66c
+  lunr-languages@1.24.0: a0133f3570e6c8e0c86e5d39a5aea5a122979beeef447dc843137994e95f9c8f
 
 importers:
 
@@ -622,6 +623,9 @@ importers:
       '@types/jest':
         specifier: ^30.0.0
         version: 30.0.0
+      '@types/node':
+        specifier: ^24.13.3
+        version: 24.13.3
       '@wxt-dev/module-react':
         specifier: ^1.2.2
         version: 1.2.2(vite@8.2.4(@types/node@24.13.3)(esbuild@0.27.3)(jiti@2.6.1)(terser@5.51.2))(wxt@0.21.4(eslint@9.39.4(jiti@2.6.1)(supports-color@8.1.1))(rollup@4.63.3)(typescript@5.8.3)(vite@8.2.4(@types/node@24.13.3)(esbuild@0.27.3)(jiti@2.6.1)(terser@5.51.2))(web-ext@10.6.0(jiti@2.6.1)(supports-color@8.1.1)))
@@ -7070,8 +7074,8 @@ packages:
   lru-cache@5.1.1:
     resolution: {integrity: sha512-KpNARQA3Iwv+jTA0utUVVbrh+Jlrr1Fv0e56GGzAFOXN7dk/FviaDW8LHmK52DlcH4WP2n6gI8vN1aesBFgo9w==}
 
-  lunr-languages@1.21.0:
-    resolution: {integrity: sha512-Hj0VwJP1FGwZzVMMZdDtWY2GB2VVKtvVElYtVajzCZCDr2RTucyLpPibrOPGgTlcq2ENQy2gYLtPnzyFu9jZCg==}
+  lunr-languages@1.24.0:
+    resolution: {integrity: sha512-8Eqin9QVaFzC2IMhYmZWlIn3bwPx9DDrpAoYhcr0JnP5NP1Ih3Sli4tso1Dcc1vTmKnXGxnTzi8NxJLASNu/fQ==}
 
   lunr@2.3.9:
     resolution: {integrity: sha512-zTU3DaZaF3Rt9rhN3uBMGQD3dD2/vFQqnvZCDv4dl5iOzq2IZQqTxu90r4E5J+nP70J3ilqVCrbho2eWaeW8Ow==}
@@ -12338,7 +12342,7 @@ snapshots:
       fs-extra: 10.1.0
       klaw-sync: 6.0.0
       lunr: 2.3.9
-      lunr-languages: 1.21.0
+      lunr-languages: 1.24.0(patch_hash=a0133f3570e6c8e0c86e5d39a5aea5a122979beeef447dc843137994e95f9c8f)
       mark.js: 8.11.1
       react: 19.2.8
       react-dom: 19.2.8(react@19.2.8)
@@ -18404,7 +18408,7 @@ snapshots:
     dependencies:
       yallist: 3.1.1
 
-  lunr-languages@1.21.0: {}
+  lunr-languages@1.24.0(patch_hash=a0133f3570e6c8e0c86e5d39a5aea5a122979beeef447dc843137994e95f9c8f): {}
 
   lunr@2.3.9: {}
 

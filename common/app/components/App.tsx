@@ -35,6 +35,8 @@ import type { AsbplayerSettings, DictionaryTrack, Profile, SettingsProvider } fr
 import { AudioClip, Mp3Encoder } from '@project/common/audio-clip';
 import type { ExportParams } from '@project/common/anki';
 import { SubtitleReader } from '@project/common/subtitle-reader';
+import { subtitleSourceNames, subtitleSourceStatus } from '@project/common/subtitle-reader/subtitle-stream';
+import type { SubtitleSourceState } from '@project/common/subtitle-reader/subtitle-stream';
 import { v4 as uuidv4 } from 'uuid';
 import clsx from 'clsx';
 import Alert from '@project/common/app/components/Alert';
@@ -110,6 +112,7 @@ import {
 } from '@project/common/app/services/media-sources';
 
 const extensionUrl = project.extension.chrome.storeUrl;
+const fileExtensionPattern = /\.[^.]+$/;
 
 const useContentStyles = makeStyles<Theme, ContentProps>((theme) => ({
     content: {
@@ -381,6 +384,7 @@ function App({
     const [jumpToSubtitle, setJumpToSubtitle] = useState<SubtitleModel>();
     const [rewindSubtitle, setRewindSubtitle] = useState<SubtitleModel>();
     const [sources, setSources] = useState(() => new MediaSources());
+    const { firstSubtitleSourceFiles, subtitleFileNames } = sources;
     useEffect(() => {
         if (!sources.videoFile) {
             return;
@@ -436,7 +440,6 @@ function App({
     const playerRef = useRef<PlayerRef>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const bufferedFileInputRef = useRef<HTMLInputElement>(null);
-    const { firstSubtitleSourceFiles, subtitleFileNames } = sources;
 
     const handleError = useCallback(
         (message: any) => {
@@ -797,7 +800,7 @@ function App({
             setSources((previous) => {
                 revokeBlobUrl(videoFileUrl);
 
-                return new MediaSources(previous.subtitleTracks);
+                return new MediaSources(previous.subtitleSource);
             });
             setVideoFullscreen(false);
         },
@@ -1023,77 +1026,68 @@ function App({
         [handleError]
     );
 
+    const handleSources = useCallback(
+        (mediaSources: MediaSources) => {
+            const remoteSubtitles = mediaSources.subtitleSource.kind === 'video';
+            if (remoteSubtitles || mediaSources.videoFile || mediaSources.subtitleFileNames.length > 0) {
+                setJumpToSubtitle(undefined);
+            }
+
+            setSources((previous) => {
+                let videoFile = mediaSources.videoFile;
+                let videoFileUrl: string | undefined;
+
+                if (videoFile) {
+                    if (previous.videoFileUrl) revokeBlobUrl(previous.videoFileUrl);
+                    videoFileUrl = createBlobUrl(videoFile.file);
+                    setTab(undefined);
+                } else if (!remoteSubtitles) {
+                    videoFile = previous.videoFile;
+                    videoFileUrl = previous.videoFileUrl;
+                }
+
+                // A video-only selection retains file-backed subtitles; other selections replace them.
+                const sources = new MediaSources(
+                    mediaSources.videoFile &&
+                    mediaSources.subtitleSourceFiles.length === 0 &&
+                    previous.subtitleSource.kind === 'files'
+                        ? previous.subtitleSource
+                        : mediaSources.subtitleSource,
+                    videoFile,
+                    videoFileUrl
+                );
+
+                const previousLoadingSources = previous.allSourceFiles;
+                const loadingSources = sources.allSourceFiles.filter(
+                    (source) => !previousLoadingSources.some((previousSource) => source.file === previousSource.file)
+                );
+                setLoadingSources(loadingSources);
+
+                void retainSourcesInFileSession({
+                    subtitleTrackIds: sources.subtitleTracks.map(({ fileParts }) => fileParts.map(({ id }) => id)),
+                    videoId: sources.videoFile?.id,
+                });
+
+                return sources;
+            });
+
+            const subtitleFileName = mediaSources.subtitleFileNames.find((name) => name);
+            if (remoteSubtitles || subtitleFileName) setFileName(subtitleFileName?.replace(fileExtensionPattern, ''));
+        },
+        [retainSourcesInFileSession]
+    );
+
     const handleFiles = useCallback(
         (files: MediaSourceFile[]): boolean => {
             try {
-                const mediaSources = MediaSources.fromFiles(files);
-                let videoFile = mediaSources.videoFile;
-                const { subtitleSourceFiles } = mediaSources;
-
-                if (videoFile || subtitleSourceFiles.length > 0) {
-                    setJumpToSubtitle(undefined);
-                }
-
-                setSources((previous) => {
-                    let videoFileUrl: string | undefined = undefined;
-
-                    if (videoFile) {
-                        if (previous.videoFileUrl) {
-                            revokeBlobUrl(previous.videoFileUrl);
-                        }
-
-                        if (videoFile) {
-                            videoFileUrl = createBlobUrl(videoFile.file);
-                        }
-
-                        setTab(undefined);
-                    } else {
-                        videoFile = previous.videoFile;
-                        videoFileUrl = previous.videoFileUrl;
-                    }
-
-                    // An empty selection clears subtitles; a video-only selection retains them.
-                    const sources = new MediaSources(
-                        files.length === 0 || mediaSources.subtitleTracks.length > 0
-                            ? mediaSources.subtitleTracks
-                            : previous.subtitleTracks,
-                        videoFile,
-                        videoFileUrl
-                    );
-
-                    const previousLoadingSources = previous.allSourceFiles;
-                    const loadingSources = sources.allSourceFiles.filter((source) => {
-                        for (const previousLoadingSource of previousLoadingSources) {
-                            if (source.file === previousLoadingSource.file) {
-                                return false;
-                            }
-                        }
-
-                        return true;
-                    });
-                    setLoadingSources(loadingSources);
-
-                    void retainSourcesInFileSession({
-                        subtitleTrackIds: sources.subtitleTracks.map(({ fileParts }) => fileParts.map(({ id }) => id)),
-                        videoId: sources.videoFile?.id,
-                    });
-
-                    return sources;
-                });
-
-                if (subtitleSourceFiles.length > 0) {
-                    const firstFilePart = subtitleSourceFiles[0];
-                    const subtitleFileName = firstFilePart.file.name;
-                    setFileName(subtitleFileName.substring(0, subtitleFileName.lastIndexOf('.')));
-                }
-
+                handleSources(MediaSources.fromFiles(files));
                 return true;
             } catch (e) {
                 handleError(e);
                 return false;
             }
         },
-        [handleError, retainSourcesInFileSession]
+        [handleError, handleSources]
     );
 
     const handleManualFiles = useCallback(
@@ -1293,25 +1287,14 @@ function App({
                 }
 
                 const tab = tabs[0];
-                let subtitleSourceFiles: MediaSourceFile[];
-
-                if (message.data.command === 'sync') {
-                    const syncMessage = message.data as LegacyPlayerSyncMessage;
-                    subtitleSourceFiles = decodeSubtitleSourceFiles([syncMessage.subtitles]);
-                } else if (message.data.command === 'syncv2') {
-                    const syncMessage = message.data as PlayerSyncMessage;
-                    subtitleSourceFiles = decodeSubtitleSourceFiles(syncMessage.subtitles, syncMessage.flatten);
-                } else {
-                    asbError('app/messages', 'Unknown message ' + message.data.command);
-                    return;
-                }
+                const mediaSources = MediaSources.fromSync(message.data as LegacyPlayerSyncMessage | PlayerSyncMessage);
 
                 if (sources.videoFileUrl) {
                     handleUnloadVideo(sources.videoFileUrl);
                 }
 
-                handleFiles(subtitleSourceFiles);
-                setTab(tab);
+                handleSources(mediaSources);
+                setTab((previous) => (previous?.id === tab.id && previous.src === tab.src ? previous : tab));
             } else if (message.data.command === 'edit-keyboard-shortcuts') {
                 setSettingsDialogOpen(true);
                 setSettingsDialogScrollToId('keyboard-shortcuts');
@@ -1354,7 +1337,7 @@ function App({
         subtitleFileNames,
         statisticsOverlayOpen,
         tab,
-        handleFiles,
+        handleSources,
         handleAnki,
         handleCloseStatisticsOverlay,
         handleUnloadVideo,
@@ -1528,56 +1511,73 @@ function App({
         async (videoElement: VideoTabModel) => {
             const { id: tabId, synced, src } = videoElement;
 
-            if (synced) {
-                const response = (await extension.requestSubtitles(tabId, src)) as RequestSubtitlesResponse | undefined;
-
-                if (response !== undefined) {
-                    const { subtitles, subtitleFileNames } = response;
-
-                    if (subtitleFileNames.length > 0) {
-                        const subtitleFileName = subtitleFileNames[0];
-                        setFileName(subtitleFileName.substring(0, subtitleFileName.lastIndexOf('.')));
-                        const length = subtitles.length > 0 ? subtitles[subtitles.length - 1].end : 0;
-                        setSubtitles(
-                            subtitles.map((s, i) => ({
-                                ...s,
-                                displayTime: timeDurationDisplay(s.start, length),
-                                displayEndTime: timeDurationDisplay(s.end, length),
-                                index: i,
-                            }))
-                        );
-                        setTab(videoElement);
-                    }
-                }
-            } else {
+            if (!synced) {
                 extension.loadSubtitles(tabId, src);
+                return;
             }
+
+            let subtitleFileNames: string[] = [];
+            if (!extension.supportsProgressiveSubtitles) {
+                const response = (await extension.requestSubtitles(tabId, src)) as RequestSubtitlesResponse | undefined;
+                if (response === undefined || response.subtitleFileNames.length === 0) return;
+                subtitleFileNames = response.subtitleFileNames;
+                const { subtitles } = response;
+                const length = subtitles.length > 0 ? subtitles[subtitles.length - 1].end : 0;
+                setSubtitles(
+                    subtitles.map((s, i) => ({
+                        ...s,
+                        displayTime: timeDurationDisplay(s.start, length),
+                        displayEndTime: timeDurationDisplay(s.end, length),
+                        index: i,
+                    }))
+                );
+            }
+
+            if (sources.videoFileUrl) handleUnloadVideo(sources.videoFileUrl);
+            handleSources(
+                new MediaSources({
+                    kind: 'video',
+                    names: subtitleFileNames,
+                    status: extension.supportsProgressiveSubtitles ? 'loading' : 'complete',
+                })
+            );
+            setTab((previous) =>
+                previous?.id === videoElement.id && previous.src === videoElement.src ? previous : videoElement
+            );
         },
-        [extension]
+        [extension, sources.videoFileUrl, handleUnloadVideo, handleSources]
+    );
+
+    const handleSubtitleSourcesChanged = useCallback(
+        (sourceStates: readonly SubtitleSourceState[]) => {
+            if (sources.subtitleSource.kind !== 'video') return;
+            const names = subtitleSourceNames(sourceStates);
+            const status = subtitleSourceStatus(sourceStates);
+            if (
+                status === sources.subtitleSource.status &&
+                names.length === sources.subtitleFileNames.length &&
+                names.every((name, track) => name === sources.subtitleFileNames[track])
+            ) {
+                return;
+            }
+            setSources(new MediaSources({ kind: 'video', names, status }));
+            setFileName(names.find((name) => name)?.replace(fileExtensionPattern, ''));
+        },
+        [sources]
     );
 
     const handleDownloadSubtitleFilesAsSrt = useCallback(async () => {
         try {
-            const sourceTracks = sources.subtitleTracks.map(({ fileParts }) => ({
-                fileParts: fileParts
-                    .map(({ file }) => file)
-                    .filter((file) => file.size > 0 && getExtension(file.name) !== '.sup'),
-            }));
-            const subtitles = await subtitleReader.subtitles(sourceTracks);
-            const tracks = sourceTracks.flatMap(({ fileParts }, track) =>
-                fileParts.length === 0
-                    ? []
-                    : [{ track, name: fileParts[0].name, subtitles: subtitles.filter((cue) => cue.track === track) }]
-            );
+            const tracks = await sources.subtitleTracksForExport(subtitleReader, subtitles);
             const result = subtitleReader.createSrtDownload(
                 tracks,
-                sources.videoFile?.file.name ?? sources.firstSubtitleSourceFiles[0]?.file.name ?? 'subtitles'
+                sources.videoFile?.file.name ?? sources.subtitleFileNames.find((name) => name) ?? 'subtitles'
             );
             if (result !== undefined) download(result.blob, result.name);
         } catch (error) {
             handleError(error);
         }
-    }, [sources, subtitleReader, handleError]);
+    }, [sources, subtitles, subtitleReader, handleError]);
 
     const handleDownloadSubtitleTimeline = useCallback(() => {
         playerRef.current?.downloadSubtitleTimeline();
@@ -1908,6 +1908,7 @@ function App({
                                 items={copyHistoryItems}
                                 open={effectiveDrawerOpen}
                                 drawerWidth={drawerWidth}
+                                sources={sources}
                                 onClose={handleCloseCopyHistory}
                                 onDelete={deleteCopyHistoryItem}
                                 onDeleteAll={deleteAllCopyHistoryItems}
@@ -2010,7 +2011,7 @@ function App({
                                 drawerWidth={drawerWidth}
                                 drawerOpen={effectiveDrawerOpen}
                                 hidden={appBarHidden}
-                                subtitleFiles={firstSubtitleSourceFiles}
+                                canDownloadSubtitles={sources.canDownloadSubtitles}
                                 onOpenCopyHistory={handleOpenCopyHistory}
                                 onOpenStatistics={supportsDictionaryStatistics ? handleOpenStatistics : undefined}
                                 onDownloadSubtitleFilesAsSrt={handleDownloadSubtitleFilesAsSrt}
@@ -2078,6 +2079,7 @@ function App({
                                     onError={handleError}
                                     onUnloadVideo={handleUnloadVideo}
                                     onLoaded={handleFilesLoaded}
+                                    onSubtitleSourcesChanged={handleSubtitleSourcesChanged}
                                     onTabSelected={handleTabSelected}
                                     onAnkiDialogRequest={handleAnkiDialogRequest}
                                     onAnkiDialogRewind={handleAnkiDialogRewind}

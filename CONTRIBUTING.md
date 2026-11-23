@@ -108,7 +108,7 @@ Supported languages and their translation revisions are maintained in `project.j
 
 ### Adding a New Language
 
-To add a language, add its entry to `project.json`, then run `pnpm sync:project`. Sync creates missing common, extension, and external locale files from their English sources and records the copied strings as untranslated. Existing translations are preserved. Commit the generated files together with the configuration change, then rebuild to make the language selectable. Locale scripts use the configured language list; extra files in the locale directories do not add supported languages.
+To add a language, add its entry to `project.json`, then run `pnpm sync:project`. Sync creates missing common, extension, docs, and external locale files from their English sources and records the copied strings as untranslated. Existing translations are preserved. Commit the generated files together with the configuration change, then rebuild to make the language selectable. Locale scripts use the configured language list; extra files in the locale directories do not add supported languages.
 
 Enable new target languages separately in Crowdin's project settings and add a mapping in `scripts/loc/crowdin.yml` when Crowdin's language code differs from the local code. Adding a local language does not enable it on Crowdin.
 
@@ -119,6 +119,23 @@ Enable new target languages separately in Crowdin's project settings and add a m
 [Push loc](https://github.com/asbplayer/asbplayer/actions/workflows/push-loc.yml) pushes localization changes found in `en.json` to Crowdin, allowing new or changed strings become available on Crowdin for localization into other languages.
 
 [Pull loc](https://github.com/asbplayer/asbplayer/actions/workflows/pull-loc.yml) pulls new translations from Crowdin and creates a PR with updated translations.
+
+### Docs Localization
+
+Docs are translated by an LLM agent workflow, not Crowdin:
+- Docs translation via Crowdin would require a paid subscription due to the word count.
+- Docs are expected to change very often and would require both a large amount of time and/or money to be maintained by humans and/or machines.
+- LLM translation of docs will have greater accuracy due to docs being prose and naturally rich in context.
+
+App/extension strings do not have the characteristics above, and will remain human-translated.
+
+[Translate docs](https://github.com/asbplayer/asbplayer/actions/workflows/docs-translate.lock.yml) runs when docs content, the home page, or the docs config changes on `main` and opens one PR containing the translated files for every language. It can be run manually with a `locales` input to bootstrap or refresh a single language.
+
+To preview a specific locale using the Docusaurus dev server:
+
+```bash
+pnpm --filter asbplayer-docs exec docusaurus start --locale <locale>
+```
 
 ## Release process
 

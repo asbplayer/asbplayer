@@ -23,11 +23,13 @@ import type { Theme } from '@mui/material/styles';
 import type { CopyHistoryItem } from '@project/common';
 import { AudioClip } from '@project/common/audio-clip';
 import { MediaFragment } from '@project/common';
+import type { MediaSources } from '@project/common/app/services/media-sources';
 
 interface CopyHistoryListProps {
     open: boolean;
     forceShowDownloadOptions?: boolean;
     items: CopyHistoryItem[];
+    sources?: MediaSources;
     onClose: () => void;
     onDelete: (item: CopyHistoryItem) => void;
     onDeleteAll: () => void;
@@ -57,6 +59,12 @@ const useStyles = makeStyles<Theme>((theme) => ({
         '&:hover': {
             backgroundColor: theme.palette.action.hover,
         },
+    },
+    jumpableListItem: {
+        cursor: 'pointer',
+    },
+    jumpableText: {
+        cursor: 'text',
     },
     listItemGutters: {
         paddingLeft: 5,
@@ -125,6 +133,7 @@ interface MenuProps {
     item: CopyHistoryItem;
     anchorEl?: Element;
     forceShowDownloadOptions?: boolean;
+    jumpPossible?: boolean;
     onClose: () => void;
     onSelect?: (item: CopyHistoryItem) => void;
     onClipAudio: (item: CopyHistoryItem) => void;
@@ -136,6 +145,7 @@ function Menu({
     open,
     anchorEl,
     forceShowDownloadOptions,
+    jumpPossible = false,
     onClose,
     onSelect,
     onClipAudio,
@@ -150,13 +160,12 @@ function Menu({
     }, [item, onClose]);
 
     const handleJumpTo = useCallback(() => {
-        if (onSelect === undefined) {
+        if (onSelect === undefined || !jumpPossible) {
             return;
         }
-
         onSelect(item);
         onClose();
-    }, [item, onSelect, onClose]);
+    }, [item, onSelect, jumpPossible, onClose]);
 
     const handleClipAudio = useCallback(() => {
         onClipAudio(item);
@@ -197,7 +206,7 @@ function Menu({
                         <ListItemText primaryTypographyProps={{ variant: 'body2' }} primary={t('action.copy')} />
                     </ListItemButton>
                 </ListItem>
-                {onSelect && (
+                {onSelect && jumpPossible && (
                     <ListItem disablePadding onClick={handleJumpTo}>
                         <ListItemButton>
                             <ListItemText primaryTypographyProps={{ variant: 'body2' }} primary={t('action.jumpTo')} />
@@ -238,6 +247,7 @@ export default function CopyHistoryList({
     open,
     items,
     forceShowDownloadOptions,
+    sources,
     onSelect,
     onClipAudio,
     onDownloadImage,
@@ -277,18 +287,21 @@ export default function CopyHistoryList({
     }, []);
 
     const [menuItem, setMenuItem] = useState<CopyHistoryItem>();
+    const [menuJumpPossible, setMenuJumpPossible] = useState<boolean>(false);
     const [menuOpen, setMenuOpen] = useState<boolean>(false);
     const [menuAnchorEl, setMenuAnchorEl] = useState<Element>();
     const { t } = useTranslation();
 
-    const handleMenu = useCallback((e: React.MouseEvent, item: CopyHistoryItem) => {
+    const handleMenu = useCallback((e: React.MouseEvent, item: CopyHistoryItem, jumpPossible: boolean) => {
         setMenuItem(item);
+        setMenuJumpPossible(jumpPossible);
         setMenuOpen(true);
         setMenuAnchorEl(e.currentTarget);
     }, []);
 
     const handleMenuClosed = useCallback(() => {
         setMenuItem(undefined);
+        setMenuJumpPossible(false);
         setMenuOpen(false);
         setMenuAnchorEl(undefined);
     }, []);
@@ -347,37 +360,68 @@ export default function CopyHistoryList({
             itemsBySection[currentKey!].push(item);
             const ref = i === items.length - 1 ? scrollToBottomRefCallback : null;
 
+            const jumpPossible = onSelect !== undefined && (sources?.hasSubtitleFile(item.subtitleFileName) ?? false);
             elements.push(
                 <ListItem
                     ref={ref}
                     key={item.id}
-                    className={classes.listItem}
+                    className={`${classes.listItem} ${jumpPossible ? classes.jumpableListItem : ''}`}
                     classes={{ gutters: classes.listItemGutters }}
+                    onClick={
+                        jumpPossible
+                            ? (event) => {
+                                  const selection = document.getSelection();
+                                  const row = event.currentTarget;
+                                  const selectingText =
+                                      selection !== null &&
+                                      selection.type === 'Range' &&
+                                      !selection.isCollapsed &&
+                                      selection.anchorNode !== null &&
+                                      row.contains(selection.anchorNode);
+                                  if (selectingText) return;
+                                  onSelect?.(item);
+                              }
+                            : undefined
+                    }
                 >
                     <ListItemIcon classes={{ root: classes.listItemIconRoot }}>
                         <Tooltip title={t('copyHistory.exportToAnki')}>
-                            <IconButton onClick={() => onAnki(item)}>
+                            <IconButton
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onAnki(item);
+                                }}
+                            >
                                 <NoteAddIcon fontSize="small" />
                             </IconButton>
                         </Tooltip>
                     </ListItemIcon>
                     <ListItemIcon classes={{ root: classes.listItemIconRoot }}>
-                        <IconButton onClick={(e) => handleMenu(e, item)}>
+                        <IconButton
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                handleMenu(e, item, jumpPossible);
+                            }}
+                        >
                             <MoreVertIcon fontSize="small" />
                         </IconButton>
                     </ListItemIcon>
-                    <ListItemText
-                        primary={
-                            <Grid wrap="nowrap" container>
-                                <Grid item className={item.subtitle.text === '' ? classes.emptyText : classes.text}>
-                                    {item.subtitle.text === '' ? t('copyHistory.blank') : item.subtitle.text}
+                    <Tooltip title={t('action.jumpTo')} disabled={!jumpPossible}>
+                        <ListItemText
+                            primary={
+                                <Grid wrap="nowrap" container>
+                                    <Grid item className={item.subtitle.text === '' ? classes.emptyText : classes.text}>
+                                        <span className={jumpPossible ? classes.jumpableText : undefined}>
+                                            {item.subtitle.text === '' ? t('copyHistory.blank') : item.subtitle.text}
+                                        </span>
+                                    </Grid>
+                                    <Grid item className={classes.timestamp}>
+                                        {timeDurationDisplay(item.subtitle.start, item.subtitle.start, false)}
+                                    </Grid>
                                 </Grid>
-                                <Grid item className={classes.timestamp}>
-                                    {timeDurationDisplay(item.subtitle.start, item.subtitle.start, false)}
-                                </Grid>
-                            </Grid>
-                        }
-                    />
+                            }
+                        />
+                    </Tooltip>
                 </ListItem>
             );
 
@@ -415,6 +459,7 @@ export default function CopyHistoryList({
                     forceShowDownloadOptions={forceShowDownloadOptions}
                     anchorEl={menuAnchorEl}
                     item={menuItem}
+                    jumpPossible={menuJumpPossible}
                     onClose={handleMenuClosed}
                     onSelect={onSelect}
                     onClipAudio={onClipAudio}

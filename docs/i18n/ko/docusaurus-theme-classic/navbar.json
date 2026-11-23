@@ -1,0 +1,18 @@
+{
+  "title": {
+    "message": "asbplayer",
+    "description": "The title in the navbar"
+  },
+  "logo.alt": {
+    "message": "asbplayer 로고",
+    "description": "The alt text of navbar logo"
+  },
+  "item.label.User Guide": {
+    "message": "사용자 안내서",
+    "description": "Navbar item with label User Guide"
+  },
+  "item.label.Blog": {
+    "message": "블로그",
+    "description": "Navbar item with label Blog"
+  }
+}

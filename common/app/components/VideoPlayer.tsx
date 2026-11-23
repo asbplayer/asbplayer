@@ -1,3 +1,4 @@
+import { displaySubtitleSnapshot, SubtitleStream, subtitleKey } from '@project/common/subtitle-reader/subtitle-stream';
 import { AudioClip } from '@project/common/audio-clip';
 import { canMineWithAudio } from '@project/common/audio-transcode/mining-audio';
 import { usesConvertedAudio } from '@project/common/audio-transcode';
@@ -71,6 +72,7 @@ import type {
 import { asbTrace } from '@project/common/util/log';
 import {
     HoveredToken,
+    mergeSubtitleAnnotations,
     renderRichTextOntoSubtitles,
     getAnnotationsHtml,
     ASB_SUBTITLE_INDEX_ATTRIBUTE,
@@ -256,6 +258,17 @@ const CachedShowingSubtitle = React.memo(function CachedShowingSubtitle({
     onMouseOver,
     onMouseOut,
 }: CachedShowingSubtitleProps) {
+    const currentSubtitle = useRef(subtitle);
+    currentSubtitle.current = subtitle;
+    const key = subtitleKey(subtitle);
+    const attach = useCallback(
+        (element: HTMLDivElement | null) => {
+            if (!element) return;
+            while (element.firstChild) domCache.return(element.lastChild! as HTMLElement);
+            element.appendChild(domCache.get(key, () => renderHtml(currentSubtitle.current)));
+        },
+        [domCache, key, renderHtml]
+    );
     return (
         <div
             className={className ? className : ''}
@@ -263,17 +276,7 @@ const CachedShowingSubtitle = React.memo(function CachedShowingSubtitle({
             style={visible ? { pointerEvents: 'auto' } : { visibility: 'hidden', pointerEvents: 'none' }}
             onMouseOver={onMouseOver}
             onMouseOut={onMouseOut}
-            ref={(ref) => {
-                if (!ref) {
-                    return;
-                }
-
-                while (ref.firstChild) {
-                    domCache.return(ref.lastChild! as HTMLElement);
-                }
-
-                ref.appendChild(domCache.get(String(subtitle.index), () => renderHtml(subtitle)));
-            }}
+            ref={attach}
         />
     );
 });
@@ -489,6 +492,7 @@ export default function VideoPlayer({
     const [selectedAudioTrack, setSelectedAudioTrack] = useState<string>();
     const [wasPlayingOnAnkiDialogRequest, setWasPlayingOnAnkiDialogRequest] = useState<boolean>(false);
     const [subtitles, setSubtitles] = useState<IndexedSubtitleModel[]>([]);
+    const subtitleStream = useRef(new SubtitleStream());
     const subtitlesRef = useRef(subtitles);
     const annotationSubtitlesRef = useRef<IndexedSubtitleModel[] | undefined>(undefined);
     subtitlesRef.current = subtitles;
@@ -546,10 +550,12 @@ export default function VideoPlayer({
     });
     const [alertDisableAutoHide, setAlertDisableAutoHide] = useState<boolean>(false);
     const [pendingPlaybackPosition, setPendingPlaybackPosition] = useState<number>();
+    const [resumeSubtitlesReady, setResumeSubtitlesReady] = useState(true);
     const resumePlaybackSnackbar = useResumePlaybackSnackbar({
         position: pendingPlaybackPosition,
         source: videoFile,
         conversion: convertedAudio,
+        subtitlesReady: resumeSubtitlesReady,
         onDismiss: () => playbackEngineRef.current?.dismissPlaybackPosition(),
     });
     const [lastMinedRecord, setLastMinedRecord] = useState<MinedRecord>();
@@ -560,10 +566,6 @@ export default function VideoPlayer({
     const handleBlurOverlayToggle = useCallback(() => setBlurOverlayVisible((v) => !v), []);
     const mobileOverlayRef = useRef<HTMLDivElement>(null);
     const bottomSubtitleContainerRef = useRef<HTMLDivElement>(null);
-    const domCacheRef = useRef<OffscreenDomCache | undefined>(undefined);
-    const updateSubtitleDomCacheRef = useRef<((subtitles: readonly IndexedSubtitleModel[]) => void) | undefined>(
-        undefined
-    );
     const thumbnailsRef = useRef<Map<number, string>>(new Map()); // cache thumbnails, in intervals of 5s
     const isGeneratingRef = useRef(false); // avoid subsequent calls to generate thumbnail while generating one
 
@@ -738,15 +740,10 @@ export default function VideoPlayer({
         if (offset === previousOffset) return;
 
         const shiftedSubtitles = subtitlesRef.current.map((s, i) => ({
-            text: s.text,
-            textImage: s.textImage,
+            ...s,
             start: s.originalStart + offset,
-            originalStart: s.originalStart,
             end: s.originalEnd + offset,
-            originalEnd: s.originalEnd,
-            track: s.track,
             index: i,
-            tokenization: s.tokenization,
         }));
         subtitlesRef.current = shiftedSubtitles;
         setSubtitles(shiftedSubtitles);
@@ -765,6 +762,7 @@ export default function VideoPlayer({
             appIntegration: extension.supportsAppIntegration,
             autoPauseCorrectionDisabled: false,
             subtitles: subtitlesRef.current,
+            sources: subtitleStream.current.sourceStates(),
             playbackModesDisabled: false,
             playbackModesSuppressed: false,
             playbackPositionKeys: videoFileNameRef.current ? [videoFileNameRef.current] : [],
@@ -859,7 +857,10 @@ export default function VideoPlayer({
                     playbackStateChangedRef.current(state);
                     playerChannel.playbackState(state);
                 },
-                playbackPositionChanged: setPendingPlaybackPosition,
+                playbackPositionChanged: (position, ready) => {
+                    setPendingPlaybackPosition(position);
+                    setResumeSubtitlesReady(ready);
+                },
                 saveSettings: (settings) => onSettingsChangedRef.current(settings),
                 settingChangeBlocked: (settingLocKey) => {
                     const notification = formatRecipeSettingLockedNotification(settingLocKey);
@@ -1011,7 +1012,10 @@ export default function VideoPlayer({
     useEffect(() => {
         const playbackEngine = playbackEngineRef.current;
         if (!playerChannelSubscribed || !playbackEngine) return;
-        playbackEngine.subtitlesChanged(subtitles, { timingChanged: subtitles !== annotationSubtitlesRef.current });
+        playbackEngine.subtitlesChanged(subtitles, {
+            timingChanged: subtitles !== annotationSubtitlesRef.current,
+            sources: subtitleStream.current.sourceStates(),
+        });
     }, [playerChannelSubscribed, subtitles, video]);
 
     useEffect(() => {
@@ -1069,10 +1073,20 @@ export default function VideoPlayer({
             window.close();
         });
 
+        playerChannel.onSubtitleSource((update) => {
+            if (!subtitleStream.current.update(update)) return;
+            const snapshot = subtitleStream.current.snapshot();
+            const current = displaySubtitleSnapshot(snapshot, subtitlesRef.current, offsetRef.current);
+            subtitlesRef.current = current;
+            setSubtitles(current);
+            setTrackCount(snapshot.tracks.reduce((count, track) => Math.max(count, track.track + 1), 0));
+        });
+
         playerChannel.onSubtitles((subtitles) => {
             asbTrace('playback/video-player', 'Received subtitles from player channel', {
                 subtitleCount: subtitles.length,
             });
+            subtitleStream.current.replace(subtitles, []);
             const offset = playbackEngineRef.current?.lastSubtitleOffset ?? 0;
             const videoSubtitles = subtitles.map((s, i) => ({
                 ...s,
@@ -1098,32 +1112,8 @@ export default function VideoPlayer({
             asbTrace('playback/video-player', 'Received subtitle update from player channel', {
                 subtitleCount: updatedSubtitles.length,
             });
-            updateSubtitleDomCacheRef.current?.(updatedSubtitles);
-
-            const updatedByIndex = new Map(updatedSubtitles.map((s) => [s.index, s] as const));
-            if (showSubtitlesRef.current.some((s) => updatedByIndex.has(s.index))) {
-                setShowSubtitles((prevShowSubtitles) =>
-                    prevShowSubtitles.map((showSubtitle) => {
-                        const updatedShowSubtitle = updatedByIndex.get(showSubtitle.index);
-                        if (!updatedShowSubtitle) return showSubtitle;
-                        return {
-                            ...showSubtitle,
-                            text: updatedShowSubtitle.text,
-                            tokenization: updatedShowSubtitle.tokenization,
-                        };
-                    })
-                );
-            }
-
-            if (!subtitlesRef.current.length) return;
-            const allSubtitles = subtitlesRef.current.slice();
-            for (const s of updatedSubtitles) {
-                allSubtitles[s.index] = {
-                    ...allSubtitles[s.index],
-                    text: s.text,
-                    tokenization: s.tokenization,
-                };
-            }
+            setShowSubtitles((previous) => mergeSubtitleAnnotations(previous, updatedSubtitles));
+            const allSubtitles = mergeSubtitleAnnotations(subtitlesRef.current, updatedSubtitles);
             subtitlesRef.current = allSubtitles;
             annotationSubtitlesRef.current = allSubtitles;
             setSubtitles(allSubtitles);
@@ -2211,10 +2201,7 @@ export default function VideoPlayer({
         ]
     );
 
-    const { getSubtitleDomCache, updateSubtitleDomCache } = useSubtitleDomCache(subtitles, getSubtitleHtml);
-
-    domCacheRef.current = getSubtitleDomCache();
-    updateSubtitleDomCacheRef.current = updateSubtitleDomCache;
+    const subtitleDomCache = useSubtitleDomCache(subtitles, getSubtitleHtml);
 
     const handleSwipe = useCallback(
         (direction: Direction) => {
@@ -2334,10 +2321,10 @@ export default function VideoPlayer({
 
     const elementForSubtitle = (subtitle: IndexedSubtitleModel, visible: boolean) => (
         <CachedShowingSubtitle
-            key={subtitle.index}
+            key={subtitleKey(subtitle)}
             subtitle={subtitle}
             visible={visible}
-            domCache={domCacheRef.current ?? getSubtitleDomCache()}
+            domCache={subtitleDomCache}
             renderHtml={getSubtitleHtml}
             onMouseOver={handleSubtitleMouseOver}
             onMouseOut={handleSubtitleMouseOut}

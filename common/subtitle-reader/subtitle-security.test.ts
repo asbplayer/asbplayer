@@ -8,15 +8,6 @@ jest.mock('@qgustavor/srt-parser', () => ({
         }
     },
 }));
-jest.mock('ass-compiler', () => ({
-    compile: (value: string) => {
-        const dialogue = value.split(/\r?\n/).find((line) => line.startsWith('Dialogue:'));
-        const text = dialogue?.split(',').slice(9).join(',') ?? '';
-        return {
-            dialogues: [{ start: 0, end: 1, slices: [{ fragments: [{ text }] }] }],
-        };
-    },
-}));
 import SubtitleReader, { sanitizeSubtitleHtml } from '@project/common/subtitle-reader/subtitle-reader';
 import { SubtitleHtml } from '@project/common';
 

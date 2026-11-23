@@ -1,0 +1,30 @@
+{
+  "link.title.User Guide": {
+    "message": "Guide utilisateur",
+    "description": "The title of the footer links column with title=User Guide in the footer"
+  },
+  "link.title.Community": {
+    "message": "Communauté",
+    "description": "The title of the footer links column with title=Community in the footer"
+  },
+  "link.title.More": {
+    "message": "Plus",
+    "description": "The title of the footer links column with title=More in the footer"
+  },
+  "link.item.label.User Guide": {
+    "message": "Guide utilisateur",
+    "description": "The label of footer link with label=User Guide linking to /docs/intro"
+  },
+  "link.item.label.Discord": {
+    "message": "Discord",
+    "description": "The label of footer link with label=Discord linking to https://discord.gg/ad7VAQru7m"
+  },
+  "link.item.label.GitHub": {
+    "message": "GitHub",
+    "description": "The label of footer link with label=GitHub linking to https://github.com/asbplayer/asbplayer"
+  },
+  "copyright": {
+    "message": "Droits d’auteur © 2026 les auteurs d’asbplayer. Réalisé avec Docusaurus.",
+    "description": "The footer copyright"
+  }
+}

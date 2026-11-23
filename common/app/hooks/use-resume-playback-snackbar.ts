@@ -4,16 +4,18 @@ import { snapshotWebmAudio } from '@project/common/audio-transcode/mining-audio'
 import { asbWarn } from '@project/common/util/log';
 import type { TranscodedAudioPayload } from '@project/common';
 
-/** Retain a timed-out resume offer until conversion makes its saved position available. */
+/** Retain a timed-out resume offer until audio and subtitles reach its saved position. */
 export const useResumePlaybackSnackbar = ({
     position,
     source,
     conversion,
+    subtitlesReady,
     onDismiss,
 }: {
     position: number | undefined;
     source: string;
     conversion: TranscodedAudioPayload;
+    subtitlesReady: boolean;
     onDismiss: () => void;
 }) => {
     const [available, setAvailable] = useState<{ source: string; position: number }>();
@@ -22,8 +24,9 @@ export const useResumePlaybackSnackbar = ({
     const hasAudio = conversion.audio !== undefined;
     // Only ongoing conversion restricts resuming. Failure/unavailability permits video-only playback;
     // completion also permits resuming into the video's silent tail after audio EOF.
-    const ready =
+    const audioReady =
         conversion.state !== 'transcoding' || (available?.source === source && available.position === position);
+    const ready = audioReady && subtitlesReady;
     const snackbar = useSnackbar({
         open: position !== undefined,
         refreshKey: ready,
@@ -38,7 +41,7 @@ export const useResumePlaybackSnackbar = ({
             setAvailable(undefined);
             return;
         }
-        if (ready || !hasAudio) return;
+        if (audioReady || !hasAudio) return;
         let cancelled = false;
         let reading = false;
         let checkedAudio: Blob | undefined;
@@ -66,7 +69,7 @@ export const useResumePlaybackSnackbar = ({
             cancelled = true;
             clearInterval(interval);
         };
-    }, [position, source, hasAudio, conversion.state, ready]);
+    }, [position, source, hasAudio, conversion.state, audioReady]);
 
     return snackbar;
 };

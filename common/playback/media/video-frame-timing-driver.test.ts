@@ -735,6 +735,7 @@ describe('VideoFrameTimingDriver', () => {
             index: 0,
         };
         const plan = buildPlaybackPlan({
+            sources: [],
             subtitles: [subtitle],
             durationMs: 3000,
             playModes: new Set([PlayMode.autoPause, PlayMode.repeat]),
@@ -816,6 +817,7 @@ describe('VideoFrameTimingDriver', () => {
             index: 0,
         };
         const plan = buildPlaybackPlan({
+            sources: [],
             subtitles: [subtitle],
             durationMs: 6000,
             playModes: new Set([PlayMode.autoPause]),
@@ -914,6 +916,7 @@ describe('VideoFrameTimingDriver', () => {
             },
         ];
         const plan = buildPlaybackPlan({
+            sources: [],
             subtitles,
             durationMs: 6000,
             playModes: new Set([PlayMode.autoPause, PlayMode.condensed]),
@@ -998,6 +1001,7 @@ describe('VideoFrameTimingDriver', () => {
             index: 0,
         };
         const plan = buildPlaybackPlan({
+            sources: [],
             subtitles: [subtitle],
             durationMs: 3000,
             playModes: new Set([PlayMode.repeat]),
@@ -1093,6 +1097,7 @@ describe('VideoFrameTimingDriver', () => {
             },
         ];
         const plan = buildPlaybackPlan({
+            sources: [],
             subtitles,
             durationMs: 6000,
             playModes: new Set([PlayMode.condensed, PlayMode.repeat]),

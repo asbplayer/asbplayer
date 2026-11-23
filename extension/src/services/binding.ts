@@ -1,3 +1,10 @@
+import {
+    displaySubtitleSnapshot,
+    SubtitleStream,
+    subtitleSourceNames,
+    resolveSubtitleReference,
+} from '@project/common/subtitle-reader/subtitle-stream';
+import type { SubtitleSourceState, SubtitleSourceUpdate } from '@project/common/subtitle-reader/subtitle-stream';
 import PlaybackEngine, {
     formatRecipeNotification,
     formatRecipeSettingLockedNotification,
@@ -36,6 +43,8 @@ import {
     VideoDataUiOpenReason,
 } from '@project/common';
 import type {
+    SubtitleSourceMessage,
+    SubtitleSourceToVideoMessage,
     AckMessage,
     AnkiUiSavedState,
     AudioBase64Message,
@@ -65,6 +74,7 @@ import type {
     PlayModeMessage,
     PlayModesMessage,
     ReadyFromVideoMessage,
+    InitToVideoMessage,
     ReadyStateFromVideoMessage,
     RecordMediaAndForwardSubtitleMessage,
     RequestingActiveTabPermissionMessage,
@@ -83,6 +93,7 @@ import type {
     StopRecordingResponse,
     SubtitleModel,
     SubtitlesToVideoMessage,
+    SubtitlesUpdatedFromVideoMessage,
     TakeScreenshotFromExtensionMessage,
     VideoDisappearedMessage,
     VideoHeartbeatMessage,
@@ -207,6 +218,8 @@ interface SubtitleSource {
 }
 
 export default class Binding {
+    private readonly subtitleStream = new SubtitleStream();
+
     private readonly _fallbackVideoSrc = uuidv4();
 
     subscribed: boolean = false;
@@ -439,7 +452,10 @@ export default class Binding {
     }
 
     subtitlesChanged(options?: { readonly timingChanged?: boolean }): void {
-        this.playbackEngine.subtitlesChanged(this.subtitleController.subtitles, options);
+        this.playbackEngine.subtitlesChanged(this.subtitleController.subtitles, {
+            ...options,
+            sources: this.subtitleStream.sourceStates(),
+        });
     }
 
     adjustPlaybackRate(delta: number): void {
@@ -531,6 +547,7 @@ export default class Binding {
             appIntegration: true,
             autoPauseCorrectionDisabled: disneyPlus,
             subtitles,
+            sources: this.subtitleStream.sourceStates(),
             playbackModesDisabled: false,
             playbackModesSuppressed: this.recordingMedia,
             playbackPositionKeys: this._playbackPositionKeys(
@@ -622,12 +639,18 @@ export default class Binding {
                     this.subtitleController.playbackStateChanged(state);
                     this._notifyPlaybackState(state);
                 },
-                playbackPositionChanged: (position) => {
+                playbackPositionChanged: (position, ready) => {
                     if (position === undefined) {
                         this.notificationController.hide();
                         this.notificationController.onAction = undefined;
+                        this.notificationController.onClose = undefined;
+                        this.notificationController.onTimeout = undefined;
                         return;
                     }
+                    this.notificationController.onClose = () => this.playbackEngine.dismissPlaybackPosition();
+                    this.notificationController.onTimeout = () => {
+                        if (ready) this.playbackEngine.dismissPlaybackPosition();
+                    };
                     this.notificationController.onAction = () => {
                         void this.playbackEngine.resumePlaybackPosition();
                     };
@@ -819,7 +842,7 @@ export default class Binding {
         asbTrace('playback/binding', 'Media-owner bind finished');
     }
 
-    _notifyReady() {
+    _notifyReady(channelId?: string) {
         asbTrace('playback/binding', 'Sending media-ready state', {
             durationMs: this.video.duration * 1000,
             currentTimeMs: this.currentTimeMs,
@@ -831,6 +854,7 @@ export default class Binding {
             sender: 'asbplayer-video',
             message: {
                 command: 'ready',
+                channelId,
                 duration: this.video.duration,
                 currentTime: this.currentTimeMs / 1000,
                 paused: this.video.paused,
@@ -1046,7 +1070,7 @@ export default class Binding {
             if (request.sender === 'asbplayer-extension-to-video' && request.src === this._registeredVideoSrc) {
                 switch (request.message.command) {
                     case 'init':
-                        this._notifyReady();
+                        this._notifyReady((request.message as InitToVideoMessage).channelId);
                         break;
                     case 'ready':
                         // ignore
@@ -1065,7 +1089,43 @@ export default class Binding {
                     case 'close':
                         // ignore
                         break;
+                    case 'subtitleSource': {
+                        if (this.applySubtitleSource((request.message as SubtitleSourceToVideoMessage).update)) {
+                            this.videoDataSyncController.cancelSubtitleLoad({ clearSubtitles: false });
+                        }
+                        break;
+                    }
+                    case 'requestSubtitleSource': {
+                        void browser.runtime.sendMessage({
+                            sender: 'asbplayer-video',
+                            src: this._registeredVideoSrc,
+                            message: {
+                                command: 'subtitleSource',
+                                update: {
+                                    type: 'snapshot',
+                                    ...this.subtitleStream.sourceSnapshot(),
+                                    offset: this.playbackEngine.currentSubtitleOffset,
+                                },
+                            } satisfies SubtitleSourceMessage,
+                        });
+                        // Generated annotations are separate from the source snapshot.
+                        const annotated = this.subtitleController.subtitles.filter(
+                            (subtitle) => subtitle.tokenization !== undefined
+                        );
+                        if (annotated.length) {
+                            void browser.runtime.sendMessage({
+                                sender: 'asbplayer-video',
+                                src: this._registeredVideoSrc,
+                                message: {
+                                    command: 'subtitlesUpdated',
+                                    updatedSubtitles: annotated,
+                                } satisfies SubtitlesUpdatedFromVideoMessage,
+                            });
+                        }
+                        break;
+                    }
                     case 'subtitles': {
+                        this.videoDataSyncController.cancelSubtitleLoad({ clearSubtitles: false });
                         this._subtitleSource = undefined;
                         const subtitlesMessage = request.message as SubtitlesToVideoMessage;
                         const subtitles: SubtitleModel[] = subtitlesMessage.value;
@@ -1424,10 +1484,14 @@ export default class Binding {
             void this.seek(timestamp);
         });
         this.unsubscribeStatisticsSubtitleMine = this.dictionary.onRequestStatisticsMineSentences(
-            (_mediaId, indexes) => {
-                const index = indexes[0];
-                if (index === undefined) return;
-                const [resolvedSubtitle, resolvedSurroundingSubtitles] = this.subtitleController.subtitleAtIndex(index);
+            (_mediaId, references) => {
+                const reference = references[0];
+                if (reference === undefined) return;
+                const subtitle = resolveSubtitleReference(this.subtitleController.subtitles, reference);
+                if (!subtitle) return;
+                const [resolvedSubtitle, resolvedSurroundingSubtitles] = this.subtitleController.subtitleAtIndex(
+                    subtitle.index
+                );
                 if (resolvedSubtitle === null || resolvedSurroundingSubtitles === null) return;
                 void this._copySubtitle({
                     command: 'copy-subtitle',
@@ -2083,8 +2147,12 @@ export default class Binding {
      * according to the subtitle-list preference. Local loading also syncs files
      * to an already-synced app, or the app explicitly named by syncWithAsbplayerId.
      */
-    async loadSubtitles(tracks: LoadableSubtitleTrack[], syncWithAsbplayerId?: string) {
+    async loadSubtitles(
+        tracks: LoadableSubtitleTrack[],
+        { syncWithAsbplayerId, signal }: { syncWithAsbplayerId?: string; signal?: AbortSignal } = {}
+    ) {
         this._subtitleSource = undefined;
+        if (!signal) this.videoDataSyncController.cancelSubtitleLoad({ clearSubtitles: true });
         const {
             streamingSubtitleListPreference,
             subtitleRegexFilter,
@@ -2128,7 +2196,8 @@ export default class Binding {
                 },
                 src: this._registeredVideoSrc,
             };
-            void browser.runtime.sendMessage(syncMessage);
+            signal?.throwIfAborted();
+            await browser.runtime.sendMessage(syncMessage);
         };
 
         switch (streamingSubtitleListPreference) {
@@ -2160,6 +2229,7 @@ export default class Binding {
                     asbWarn('video/binding', 'Failed to sync with asbplayer tab when loading subtitles:', error);
                 }
 
+                signal?.throwIfAborted();
                 this._subtitleSource = source;
                 this._updateSubtitles(
                     subtitles,
@@ -2174,6 +2244,45 @@ export default class Binding {
                 await syncWithAsbplayerTab(false, undefined);
                 break;
         }
+    }
+
+    /**
+     * The producer stays with the video in either list mode; app mode opens a list consuming its updates.
+     */
+    async loadProgressiveSubtitles(
+        tracks: LoadableSubtitleTrack[],
+        pending: readonly Pick<SubtitleSourceState, 'track' | 'loadId' | 'name'>[],
+        signal: AbortSignal,
+        { isNewSource, syncWithAsbplayerId }: { isNewSource: boolean; syncWithAsbplayerId?: string }
+    ): Promise<void> {
+        const settings = await this.settings.getAll();
+        const subtitles = await this._parseSubtitles({
+            tracks,
+            settings,
+            offset: this.playbackEngine.lastSubtitleOffset,
+        });
+        signal.throwIfAborted();
+        const source = new SubtitleStream();
+        source.replace(
+            subtitles,
+            tracks.map(({ fileParts }) => fileParts[0]?.name ?? '')
+        );
+        for (const track of pending) source.update({ type: 'start', ...track });
+        await browser.runtime.sendMessage({
+            sender: 'asbplayer-video',
+            src: this._registeredVideoSrc,
+            message: {
+                command: 'sync',
+                subtitles: [],
+                subtitleSource: { tracks: source.sourceStates() },
+                withSyncedAsbplayerOnly:
+                    settings.streamingSubtitleListPreference === SubtitleListPreference.noSubtitleList &&
+                    syncWithAsbplayerId === undefined,
+                withAsbplayerId: syncWithAsbplayerId,
+            } satisfies ExtensionSyncMessage,
+        });
+        signal.throwIfAborted();
+        this.updateSubtitleSource({ type: 'snapshot', ...source.sourceSnapshot() }, { isNewSource });
     }
 
     private async _parseSubtitles(source: SubtitleSource) {
@@ -2216,7 +2325,8 @@ export default class Binding {
                 (_, track) => subtitles.filter((subtitle) => subtitle.track === track).length
             ),
         });
-        this.subtitleController.subtitles = subtitles;
+        this.subtitleStream.replace(subtitles, subtitleFileNames);
+        this.subtitleController.subtitles = [...this.subtitleStream.snapshot().subtitles];
         this.subtitleController.cacheHtml();
         this.subtitleController.refreshCurrentSubtitle = true;
 
@@ -2230,7 +2340,75 @@ export default class Binding {
         void this.mobileVideoOverlayController.updateModel();
     }
 
+    /** Seals retained tracks whose producers were interrupted by a failed reload. */
+    failSubtitleLoad(error: string): void {
+        for (const { track, loadId, status } of this.subtitleStream.sourceStates()) {
+            if (status === 'loading') this.updateSubtitleSource({ type: 'failed', track, loadId, error });
+        }
+    }
+
+    /** Entry point for progressive producers owned by this video binding. */
+    updateSubtitleSource(update: SubtitleSourceUpdate, options?: { isNewSource: boolean }): void {
+        if (!this.applySubtitleSource(update, options)) return;
+        void browser.runtime.sendMessage({
+            sender: 'asbplayer-video',
+            src: this._registeredVideoSrc,
+            message: {
+                command: 'subtitleSource',
+                update:
+                    update.type === 'snapshot'
+                        ? { ...update, offset: this.playbackEngine.currentSubtitleOffset }
+                        : update,
+            } satisfies SubtitleSourceMessage,
+        });
+    }
+
+    private applySubtitleSource(
+        update: SubtitleSourceUpdate,
+        { isNewSource }: { isNewSource: boolean } = { isNewSource: update.type === 'start' }
+    ): boolean {
+        if (!this.subtitleStream.update(update)) return false;
+        this._subtitleSource = undefined;
+        const snapshot = this.subtitleStream.snapshot();
+        const subtitles = displaySubtitleSnapshot(
+            snapshot,
+            this.subtitleController.subtitles,
+            this.playbackEngine.currentSubtitleOffset
+        );
+        this.subtitleController.setSourceSubtitles(subtitles, snapshot.tracks);
+        const names = subtitleSourceNames(snapshot.tracks);
+        this.subtitleController.subtitleFileNames = names;
+        const initialized = update.type === 'start' || update.type === 'snapshot';
+        if (initialized && isNewSource) this.playbackEngine.dismissPlaybackPosition(); // Cancel the previous resume before new cues can satisfy it, then evaluate the new source's bounds
+        this.subtitlesChanged();
+        if (initialized) {
+            this.playbackEngine.playbackPositionKeysChanged(
+                this._playbackPositionKeys(
+                    snapshot.tracks.map((track) => track.track),
+                    names
+                ),
+                { isNewSource }
+            );
+            this.ankiUiSavedState = undefined;
+            this._syncedTimestamp = Date.now();
+            this._lastSyncedLocation = window.location.href;
+        }
+        this._synced = true;
+        if (update.type === 'failed') {
+            asbError('playback/subtitles', 'Progressive subtitle source failed', {
+                track: update.track,
+                loadId: update.loadId,
+                error: update.error,
+            });
+            this.subtitleController.notification({ locKey: 'info.error', replacements: { message: update.error } });
+        }
+        void this.mobileVideoOverlayController.updateModel();
+        return true;
+    }
+
     private _updateSubtitles(subtitles: IndexedSubtitleModel[], subtitleFileNames: string[]) {
+        this.subtitleStream.replace(subtitles, subtitleFileNames);
+        subtitles = [...this.subtitleStream.snapshot().subtitles];
         asbTrace('playback/binding', 'Updating media-owner subtitles', {
             subtitleCount: subtitles.length,
             trackCount: this._nonEmptyTrackIndexes(subtitles).length,
@@ -2302,13 +2480,14 @@ export default class Binding {
     }
 
     private _resetSubtitles() {
+        this.subtitleStream.replace([], []);
         this._subtitleSource = undefined;
         asbTrace('playback/binding', 'Resetting media-owner subtitles', {
             previousSubtitleCount: this.subtitleController.subtitles.length,
         });
         this.subtitleController.reset();
         this.playbackEngine.playbackPositionKeysChanged([], { isNewSource: true });
-        this.playbackEngine.subtitlesChanged([]);
+        this.playbackEngine.subtitlesChanged([], { sources: [] });
         this.ankiUiSavedState = undefined;
         this._synced = false;
         this._syncedTimestamp = undefined;

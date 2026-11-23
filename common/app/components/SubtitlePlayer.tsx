@@ -1,3 +1,4 @@
+import { subtitleKey } from '@project/common/subtitle-reader/subtitle-stream';
 import { effectiveSettings } from '@project/common/settings/settings-recipes';
 import type { ForwardedRef, ReactNode, Ref } from 'react';
 import React, { useCallback, useEffect, useMemo, useState, useRef, useImperativeHandle } from 'react';
@@ -531,7 +532,7 @@ const renderSubtitleRow = (index: number, subtitle: DisplaySubtitleModel, contex
     />
 );
 
-const computeSubtitleItemKey = (_index: number, subtitle: DisplaySubtitleModel) => subtitle.index;
+const computeSubtitleItemKey = (_index: number, subtitle: DisplaySubtitleModel) => subtitleKey(subtitle);
 
 const subtitleTableComponents: TableComponents<DisplaySubtitleModel, SubtitleRowContext> = {
     Scroller: SubtitleScroller,
