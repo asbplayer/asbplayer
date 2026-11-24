@@ -1,4 +1,3 @@
-import project from '@project/common/project';
 import Link from '@mui/material/Link';
 import Typography from '@mui/material/Typography';
 import { Trans, useTranslation } from 'react-i18next';
@@ -14,8 +13,9 @@ import CenteredGridItem from '@project/extension/src/ui/components/CenteredGridI
 import React, { useEffect, useState } from 'react';
 import Tutorial from '@project/extension/src/ui/components/Tutorial';
 import { ExtensionSettingsStorage } from '@/services/extension-settings-storage';
-import { SettingsProvider } from '@project/common/settings';
+import { SettingsProvider, supportedLanguages } from '@project/common/settings';
 import type { PaletteMode } from '@mui/material/styles';
+import { docsUrl, toAppLanguage } from '@project/common/util/project';
 
 const useStyles = makeStyles({
     container: {
@@ -31,7 +31,7 @@ const useStyles = makeStyles({
     },
 });
 
-const WelcomeMessage: React.FC<{ className: string }> = ({ className }) => {
+const WelcomeMessage: React.FC<{ className: string; lang: string }> = ({ className, lang }) => {
     const { t } = useTranslation();
 
     return (
@@ -52,7 +52,7 @@ const WelcomeMessage: React.FC<{ className: string }> = ({ className }) => {
                                 color="primary"
                                 target="_blank"
                                 rel="noreferrer"
-                                href={`${project.urls.docs}/docs/intro/`}
+                                href={docsUrl(lang, 'docs/intro')}
                             >
                                 readme
                             </Link>,
@@ -76,7 +76,8 @@ const FtueUi = () => {
     const [themeType, setThemeType] = useState<PaletteMode>('dark');
     const theme = createTheme(themeType);
     const langParam = useLangParam();
-    const { initialized: i18Initialized } = useI18n({ language: langParam ?? browser.i18n.getUILanguage() });
+    const language = langParam ?? toAppLanguage(browser.i18n.getUILanguage(), supportedLanguages);
+    const { initialized: i18Initialized } = useI18n({ language });
     const classes = useStyles();
     const [showTutorial, setShowTutorial] = useState<boolean>(false);
     const [hideWelcomePanel, setHideWelcomePanel] = useState<boolean>(false);
@@ -109,8 +110,8 @@ const FtueUi = () => {
         <ThemeProvider theme={theme}>
             <CssBaseline />
             <Paper ref={handleContainerRef} className={classes.container} square>
-                {!hideWelcomePanel && <WelcomeMessage className={classes.child} />}
-                <Tutorial show={showTutorial} className={classes.child} />
+                {!hideWelcomePanel && <WelcomeMessage className={classes.child} lang={language} />}
+                <Tutorial show={showTutorial} className={classes.child} lang={language} />
             </Paper>
         </ThemeProvider>
     );

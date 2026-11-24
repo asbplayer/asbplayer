@@ -723,7 +723,9 @@ const PlaybackSettingsFields: React.FC<Props> = ({
             </div>
             {supportsDictionaryPlayback && (
                 <div id="dictionary-playback-settings">
-                    <SettingsSection docs="docs/reference/settings#playback-annotation">
+                    <SettingsSection
+                        docs={{ path: 'docs/reference/settings#playback-annotation', lang: settings.language }}
+                    >
                         {t('settings.annotation')}
                     </SettingsSection>
                     <Typography variant="caption" color="textSecondary">

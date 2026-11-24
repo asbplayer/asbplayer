@@ -41,6 +41,7 @@ import type {
 } from '@project/common';
 import { PostMineAction } from '@project/common';
 import { SettingsProvider } from '@project/common/settings';
+import { toAppLanguage } from '@project/common/util/project';
 import { fetchSupportedLanguages, primeLocalization } from '@/services/localization-fetcher';
 import VideoDisappearedHandler from '@/handlers/video/video-disappeared-handler';
 import { ExtensionSettingsStorage } from '@/services/extension-settings-storage';
@@ -128,13 +129,9 @@ export default defineBackground(() => {
         }
 
         if (details.reason === browser.runtime.OnInstalledReason.INSTALL) {
-            // Remove subtag e.g. "en-US" is converted to "en"
-            const defaultUiLanguage = browser.i18n.getUILanguage().split('-')[0];
             const supportedLanguages = await fetchSupportedLanguages();
 
-            if (supportedLanguages.includes(defaultUiLanguage)) {
-                await settings.set({ language: defaultUiLanguage });
-            }
+            await settings.set({ language: toAppLanguage(browser.i18n.getUILanguage(), supportedLanguages) });
 
             await primeLocalization(await settings.getSingle('language'));
 

@@ -1,4 +1,4 @@
-import project from '@project/common/project';
+import { docsUrl } from '@project/common/util/project';
 import { asbError } from '@project/common/util/log';
 import type { LogProvider } from '@project/common/util/log';
 import Alert from '@mui/material/Alert';
@@ -439,7 +439,7 @@ const MiscSettingTab: React.FC<Props> = ({
                                     <Tooltip title={t('settings.subtitleRegexFilterDocs')}>
                                         <IconButton
                                             component="a"
-                                            href={`${project.urls.docs}/docs/guides/subtitle-text-filtering`}
+                                            href={docsUrl(settings.language, 'docs/guides/subtitle-text-filtering')}
                                             target="_blank"
                                             rel="noreferrer"
                                             aria-label={t('settings.subtitleRegexFilterDocs')}

@@ -1,4 +1,3 @@
-import project from '@project/common/project';
 import { asbError } from '@project/common/util/log';
 import {
     computeStyles,
@@ -102,10 +101,11 @@ import KeyboardShortcutLink from '@project/common/components/KeyboardShortcutLin
 import { hexToRgba, rgbToHex } from '@uiw/color-convert';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import NoWrapButton from '@project/common/components/NoWrapButton';
+import { docsUrl } from '@project/common/util/project';
 
 const yomitanInstallerUrl = 'https://github.com/yomidevs/yomitan-api';
 const yomitanMecabInstallerUrl = 'https://github.com/yomidevs/yomitan-mecab-installer';
-const waniKaniApiTokenSetupUrl = `${project.urls.docs}/docs/guides/annotation#setup`;
+const waniKaniApiTokenSetupUrl = (lang: string) => docsUrl(lang, 'docs/guides/annotation#setup');
 const maskApiToken = (apiToken: string) => '•'.repeat(Array.from(apiToken).length);
 
 // These values show all digits with an increasing number of digits
@@ -705,7 +705,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
     const dictionaryWaniKaniApiTokenSetupHelperText = (
         <Trans
             i18nKey="settings.dictionaryWaniKaniApiTokenHelperText"
-            components={[<Link key={0} target="_blank" href={waniKaniApiTokenSetupUrl} />]}
+            components={[<Link key={0} target="_blank" href={waniKaniApiTokenSetupUrl(settings.language)} />]}
         />
     );
     const dictionaryWaniKaniApiTokenCacheHelperText = getHelperTextForCacheSettingsDependencies(
@@ -1124,7 +1124,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                     )}
                 </Stack>
                 <div id="dictionary-annotation-settings">
-                    <SettingsSection docs="docs/reference/settings#annotation">
+                    <SettingsSection docs={{ path: 'docs/reference/settings#annotation', lang: settings.language }}>
                         {t('settings.annotation')}
                     </SettingsSection>
                 </div>
@@ -1332,7 +1332,10 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                             <Link key={0} component="button" onClick={onPlaybackSettingsClick} />,
                                             <Link
                                                 key={1}
-                                                href={`${project.urls.docs}/docs/common-issues#enable-or-disable-annotation-for-a-track`}
+                                                href={docsUrl(
+                                                    settings.language,
+                                                    'docs/common-issues#enable-or-disable-annotation-for-a-track'
+                                                )}
                                                 target="_blank"
                                                 rel="noreferrer"
                                             />,

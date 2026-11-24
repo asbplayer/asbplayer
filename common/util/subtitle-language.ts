@@ -1,6 +1,6 @@
 export function getLocale(language: string): Intl.Locale | undefined {
     try {
-        return new Intl.Locale(language.trim().replace(/_/g, '-'));
+        return new Intl.Locale(language.trim().replaceAll('_', '-'));
     } catch {
         return;
     }
