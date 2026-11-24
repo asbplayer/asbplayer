@@ -9,8 +9,9 @@ type DisneySeekRequest = {
 
 export default defineUnlistedScript(() => {
     // --- Disney+ player API access (reverse-engineered) ---
-    // The Disney+ web player attaches a media player object to the React fiber tree
-    // above the <video> element. It exposes seek(ms)/play()/pause() and
+    // The Disney+ web player exposes its media player on <disney-web-player>.
+    // Older player layouts may expose it in the React fiber tree above <video>.
+    // The media player provides seek(ms)/play()/pause() and
     // timeline.info.playheadPositionMs (true content time in ms). On Disney+,
     // video.currentTime is per-MediaSource relative time and direct writes to it are
     // ignored by the player, so we drive the player API directly (Netflix-style).
@@ -28,7 +29,8 @@ export default defineUnlistedScript(() => {
         typeof value.seek === 'function' &&
         typeof value.scrub === 'function' &&
         typeof value.play === 'function' &&
-        typeof value.pause === 'function';
+        typeof value.pause === 'function' &&
+        typeof value.on === 'function';
 
     const playerFromObject = (value: any): any => {
         if (!value || typeof value !== 'object') {
@@ -61,6 +63,11 @@ export default defineUnlistedScript(() => {
     };
 
     const findDisneyPlusPlayer = (): any => {
+        const directPlayer = document.querySelector<HTMLElement & { mediaPlayer?: unknown }>(
+            'disney-web-player'
+        )?.mediaPlayer;
+        if (isDisneyPlusPlayer(directPlayer)) return directPlayer;
+
         for (const video of document.querySelectorAll('video')) {
             let element: Element | null = video;
             let fiberKey: string | undefined;
