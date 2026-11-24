@@ -27,7 +27,6 @@ import {
     textSubtitleSettingsAreDirty,
     textSubtitleSettingsForTrack,
 } from '@project/common/settings';
-import { isNumeric } from '@project/common/util';
 import Typography from '@mui/material/Typography';
 import Switch from '@mui/material/Switch';
 import RadioGroup from '@mui/material/RadioGroup';
@@ -45,8 +44,23 @@ import SwitchLabelWithHoverEffect from '@project/common/components/SwitchLabelWi
 import SettingsSection from '@project/common/components/SettingsSection';
 import KeyboardShortcutLink from '@project/common/components/KeyboardShortcutLink';
 
-// Filter out keys that look like '0', '1', ... as those are invalid
-const cssStyles = Object.keys(document.body.style).filter((s) => !isNumeric(s));
+// Chromium exposes CSS properties as own keys of the style object, while Firefox defines them on its prototype,
+// where Object.keys() can't see them. Enumerate inherited keys too, keeping camelCase property names (the form
+// React styles use) and dropping indices like '0', '1', ..., methods, and non-property strings like cssText.
+const cssStyles = (() => {
+    const style = document.body.style;
+    const keys = new Set<string>();
+    for (const key in style) {
+        if (
+            /^[a-zA-Z]+$/.test(key) &&
+            key !== 'cssText' &&
+            typeof style[key as keyof CSSStyleDeclaration] === 'string'
+        ) {
+            keys.add(key);
+        }
+    }
+    return [...keys];
+})();
 
 interface AddCustomStyleProps {
     styleKey: string;
