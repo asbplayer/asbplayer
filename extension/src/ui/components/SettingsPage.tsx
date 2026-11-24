@@ -116,6 +116,7 @@ const SettingsPage = ({
                         extensionVersion={browser.runtime.getManifest().version}
                         extensionSupportsAppIntegration
                         extensionSupportsOverlay
+                        extensionSupportsOverlayPosition
                         extensionSupportsSidePanel
                         extensionSupportsOrderableAnkiFields
                         extensionSupportsTrackSpecificSettings

@@ -10,15 +10,28 @@ window.addEventListener('load', () => {
     const anchor = params.get('anchor');
 
     const scrollBufferDiv = document.createElement('div');
-    scrollBufferDiv.className = 'asbplayer-mobile-video-overlay-scroll-buffer';
+    const vertical = anchor === 'left' || anchor === 'right';
 
-    // Add div above or below the overlay to support scrolling the overlay out of view
-    if (anchor === 'bottom') {
-        root.style.bottom = '0px';
-        document.body.prepend(scrollBufferDiv);
+    // Add div above/below or beside the overlay to support scrolling the overlay out of view
+    if (vertical) {
+        scrollBufferDiv.className = 'asbplayer-mobile-video-overlay-scroll-buffer-horizontal';
+        document.body.classList.add('asbplayer-mobile-video-overlay-inner-container-vertical');
+        if (anchor === 'right') {
+            document.body.classList.add('asbplayer-mobile-video-overlay-inner-container-vertical-right');
+            document.body.prepend(scrollBufferDiv);
+            document.body.scrollLeft = document.body.scrollWidth;
+        } else {
+            document.body.appendChild(scrollBufferDiv);
+        }
     } else {
-        root.style.top = '0px';
-        document.body.appendChild(scrollBufferDiv);
+        scrollBufferDiv.className = 'asbplayer-mobile-video-overlay-scroll-buffer';
+        if (anchor === 'bottom') {
+            root.style.bottom = '0px';
+            document.body.prepend(scrollBufferDiv);
+        } else {
+            root.style.top = '0px';
+            document.body.appendChild(scrollBufferDiv);
+        }
     }
 
     void renderMobileVideoOverlay(root);

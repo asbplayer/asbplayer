@@ -258,6 +258,12 @@
             "takeScreenshot": "Take screenshot when mining",
             "updateAvailable": "Update Available",
             "enableOverlay": "Enable controls overlay",
+            "overlayPosition": "Controls overlay position",
+            "overlayPositionAuto": "Auto",
+            "overlayPositionTop": "Top",
+            "overlayPositionBottom": "Bottom",
+            "overlayPositionLeft": "Left",
+            "overlayPositionRight": "Right",
             "pages": {
                 "overridesWarning": "These settings have been modified.",
                 "host": "Host regex",

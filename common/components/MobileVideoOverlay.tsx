@@ -23,46 +23,60 @@ import ScrollableNumberControls from '@project/common/components/ScrollableNumbe
 import Tooltip from '@project/common/components/Tooltip';
 import { minimumPlaybackRate } from '@project/common/util';
 
-type Anchor = 'top' | 'bottom';
+export type Anchor = 'top' | 'bottom' | 'left' | 'right';
 
-const useStyles = makeStyles(({ anchor }: { anchor: Anchor }) => ({
-    button: {
-        color: 'white',
-    },
-    inactiveButton: {
-        color: 'rgba(120, 120, 120, 0.7)',
-    },
-    recordingButton: {
-        color: 'red',
-    },
-    container: {
-        display: 'inline-flex',
-        width: 'auto',
-        backgroundColor: 'rgba(0, 0, 0, .7)',
-        borderRadius: 16,
-    },
-    playModePopOver: {
-        '& .MuiPopover-paper': {
-            maxHeight: 'none',
-            maxWidth: 'calc(100% - 16px)',
-            overflowX: 'hidden',
+const useStyles = makeStyles(({ anchor }: { anchor: Anchor }) => {
+    const vertical = anchor === 'left' || anchor === 'right';
+    return {
+        button: {
+            color: 'white',
         },
-    },
-    tooltip: {
-        '& .MuiTooltip-tooltipPlacementTop':
-            anchor === 'top'
-                ? {
-                      marginTop: 16,
-                  }
-                : {},
-        '& .MuiTooltip-tooltipPlacementBottom':
-            anchor === 'bottom'
-                ? {
-                      marginBottom: 16,
-                  }
-                : {},
-    },
-}));
+        inactiveButton: {
+            color: 'rgba(120, 120, 120, 0.7)',
+        },
+        recordingButton: {
+            color: 'red',
+        },
+        container: {
+            display: 'inline-flex',
+            width: 'auto',
+            backgroundColor: 'rgba(0, 0, 0, .7)',
+            borderRadius: 16,
+        },
+        verticalNumberControlsSlot: {
+            width: 40,
+            height: 80,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+        },
+        verticalNumberControlsInner: {
+            flexShrink: 0,
+            transform: 'rotate(90deg)',
+        },
+        playModePopOver: {
+            '& .MuiPopover-paper': {
+                maxHeight: vertical ? 'calc(100% - 16px)' : 'none',
+                maxWidth: 'calc(100% - 16px)',
+                overflowX: 'hidden',
+            },
+        },
+        tooltip: {
+            '& .MuiTooltip-tooltipPlacementTop':
+                anchor === 'top'
+                    ? {
+                          marginTop: 16,
+                      }
+                    : {},
+            '& .MuiTooltip-tooltipPlacementBottom':
+                anchor === 'bottom'
+                    ? {
+                          marginBottom: 16,
+                      }
+                    : {},
+        },
+    };
+});
 
 interface GridContainerProps extends GridProps {
     children: React.ReactNode;
@@ -378,16 +392,52 @@ const MobileVideoOverlay = React.forwardRef<HTMLDivElement, Props>(function Mobi
         }
     }
 
+    const vertical = anchor === 'left' || anchor === 'right';
+    const tooltipPlacement: Anchor = anchor === 'left' ? 'right' : anchor === 'right' ? 'left' : anchor;
     const defaultTooltipProps = {
         className: classes.tooltip,
-        placement: anchor,
+        placement: tooltipPlacement,
         disabled: !tooltipsEnabled,
     };
+    const playModePopoverOrigins =
+        anchor === 'left'
+            ? {
+                  anchorOrigin: { vertical: 'center' as const, horizontal: 'right' as const },
+                  transformOrigin: { vertical: 'center' as const, horizontal: 'left' as const },
+              }
+            : anchor === 'right'
+              ? {
+                    anchorOrigin: { vertical: 'center' as const, horizontal: 'left' as const },
+                    transformOrigin: { vertical: 'center' as const, horizontal: 'right' as const },
+                }
+              : {
+                    anchorOrigin: { vertical: 'top' as const, horizontal: 'center' as const },
+                    transformOrigin: { vertical: 'bottom' as const, horizontal: 'center' as const },
+                };
+    const scrollableNumberControls = (
+        <ScrollableNumberControls
+            offsetInputRef={offsetInputRef}
+            playbackRateInputRef={playbackInputRef}
+            offset={model.offset}
+            onOffset={onOffset}
+            playbackRate={model.playbackRate}
+            onPlaybackRate={onPlaybackRate}
+            initialControlType={initialControlType}
+            onScrollTo={handleScrollToControlType}
+            currentMilliseconds={model.currentTimestamp}
+        />
+    );
 
     const containerClassName = className === undefined ? classes.container : `${className} ${classes.container}`;
     return (
         <>
-            <GridContainer ref={ref} direction="row" wrap="nowrap" className={containerClassName}>
+            <GridContainer
+                ref={ref}
+                direction={vertical ? 'column' : 'row'}
+                alignItems="center"
+                wrap="nowrap"
+                className={containerClassName}
+            >
                 {onLoadSubtitles && (
                     <Grid item>
                         <Tooltip {...defaultTooltipProps} title={t('action.loadSubtitles')}>
@@ -476,14 +526,7 @@ const MobileVideoOverlay = React.forwardRef<HTMLDivElement, Props>(function Mobi
                                     flexDirection: flexDirection ?? 'row',
                                 },
                                 className: classes.playModePopOver,
-                                anchorOrigin: {
-                                    vertical: 'top',
-                                    horizontal: 'center',
-                                },
-                                transformOrigin: {
-                                    vertical: 'bottom',
-                                    horizontal: 'center',
-                                },
+                                ...playModePopoverOrigins,
                             }}
                         />
                     </Grid>
@@ -499,6 +542,7 @@ const MobileVideoOverlay = React.forwardRef<HTMLDivElement, Props>(function Mobi
                                         disabled={leftNumberControlDisabled}
                                     >
                                         <NavigateBeforeIcon
+                                            style={vertical ? { transform: 'rotate(90deg)' } : undefined}
                                             className={
                                                 leftNumberControlDisabled ? classes.inactiveButton : classes.button
                                             }
@@ -508,18 +552,14 @@ const MobileVideoOverlay = React.forwardRef<HTMLDivElement, Props>(function Mobi
                             </Tooltip>
                         </Grid>
                         <Tooltip {...defaultTooltipProps} title={numberControlTitle}>
-                            <Grid item>
-                                <ScrollableNumberControls
-                                    offsetInputRef={offsetInputRef}
-                                    playbackRateInputRef={playbackInputRef}
-                                    offset={model.offset}
-                                    onOffset={onOffset}
-                                    playbackRate={model.playbackRate}
-                                    onPlaybackRate={onPlaybackRate}
-                                    initialControlType={initialControlType}
-                                    onScrollTo={handleScrollToControlType}
-                                    currentMilliseconds={model.currentTimestamp}
-                                />
+                            <Grid item className={vertical ? classes.verticalNumberControlsSlot : undefined}>
+                                {vertical ? (
+                                    <div className={classes.verticalNumberControlsInner}>
+                                        {scrollableNumberControls}
+                                    </div>
+                                ) : (
+                                    scrollableNumberControls
+                                )}
                             </Grid>
                         </Tooltip>
                         <Grid item>
@@ -531,6 +571,7 @@ const MobileVideoOverlay = React.forwardRef<HTMLDivElement, Props>(function Mobi
                                         disabled={rightNumberControlDisabled}
                                     >
                                         <NavigateNextIcon
+                                            style={vertical ? { transform: 'rotate(90deg)' } : undefined}
                                             className={
                                                 rightNumberControlDisabled ? classes.inactiveButton : classes.button
                                             }

@@ -350,6 +350,22 @@ div.asbplayer-fullscreen-subtitles > span {
     pointer-events: auto !important;
 }
 
+.asbplayer-mobile-video-overlay-container-left {
+    position: absolute !important;
+    transform: translateY(-50%) !important;
+    display: inline-block !important;
+    z-index: 2147483646 !important;
+    pointer-events: auto !important;
+}
+
+.asbplayer-mobile-video-overlay-container-right {
+    position: absolute !important;
+    transform: translate(-100%, -50%) !important;
+    display: inline-block !important;
+    z-index: 2147483646 !important;
+    pointer-events: auto !important;
+}
+
 .asbplayer-mobile-video-overlay {
 }
 

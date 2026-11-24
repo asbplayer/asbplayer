@@ -681,6 +681,144 @@ describe('CachingElementOverlay fullscreen transitions', () => {
         expect(responsiveContent?.style.width).toBe('640px');
         overlay.dispose();
     });
+
+    it('positions left and right overlays at the vertical midpoint of the horizontal video edges', () => {
+        const originalInnerWidth = Object.getOwnPropertyDescriptor(window, 'innerWidth');
+        const originalScrollX = Object.getOwnPropertyDescriptor(window, 'scrollX');
+        const originalScrollY = Object.getOwnPropertyDescriptor(window, 'scrollY');
+        Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1000 });
+        Object.defineProperty(window, 'scrollX', { configurable: true, value: 30 });
+        Object.defineProperty(window, 'scrollY', { configurable: true, value: 100 });
+        const targetElement = document.createElement('video');
+        targetElement.getBoundingClientRect = () => ({ left: 10, top: 20, width: 400, height: 200 }) as DOMRect;
+        const leftOverlay = new CachingElementOverlay({
+            targetElement,
+            nonFullscreenContainerClassName: 'left-container',
+            nonFullscreenContentClassName: 'left-content',
+            fullscreenContainerClassName: 'fullscreen-left-container',
+            fullscreenContentClassName: 'fullscreen-left-content',
+            offsetAnchor: OffsetAnchor.left,
+            contentPositionOffset: 8,
+            onMouseOver: () => {},
+            onMouseOut: () => {},
+        });
+        const rightOverlay = new CachingElementOverlay({
+            targetElement,
+            nonFullscreenContainerClassName: 'right-container',
+            nonFullscreenContentClassName: 'right-content',
+            fullscreenContainerClassName: 'fullscreen-right-container',
+            fullscreenContentClassName: 'fullscreen-right-content',
+            offsetAnchor: OffsetAnchor.right,
+            contentPositionOffset: 8,
+            onMouseOver: () => {},
+            onMouseOut: () => {},
+        });
+
+        try {
+            leftOverlay.setHtml([{ key: 'left', html: () => '<span>left</span>' }]);
+            rightOverlay.setHtml([{ key: 'right', html: () => '<span>right</span>' }]);
+
+            expect(document.querySelector<HTMLElement>('.left-container')?.style.left).toBe('48px');
+            expect(document.querySelector<HTMLElement>('.left-container')?.style.top).toBe('220px');
+            expect(document.querySelector<HTMLElement>('.right-container')?.style.left).toBe('432px');
+            expect(document.querySelector<HTMLElement>('.right-container')?.style.top).toBe('220px');
+        } finally {
+            leftOverlay.dispose();
+            rightOverlay.dispose();
+            if (originalInnerWidth) Object.defineProperty(window, 'innerWidth', originalInnerWidth);
+            else delete (window as unknown as { innerWidth?: number }).innerWidth;
+            if (originalScrollX) Object.defineProperty(window, 'scrollX', originalScrollX);
+            else delete (window as unknown as { scrollX?: number }).scrollX;
+            if (originalScrollY) Object.defineProperty(window, 'scrollY', originalScrollY);
+            else delete (window as unknown as { scrollY?: number }).scrollY;
+        }
+    });
+
+    it('keeps left and right overlays inside the viewport when the video covers it horizontally', () => {
+        const originalInnerWidth = Object.getOwnPropertyDescriptor(window, 'innerWidth');
+        Object.defineProperty(window, 'innerWidth', { configurable: true, value: 600 });
+        const targetElement = document.createElement('video');
+        targetElement.getBoundingClientRect = () => ({ left: -100, top: 20, width: 800, height: 200 }) as DOMRect;
+        const leftOverlay = new CachingElementOverlay({
+            targetElement,
+            nonFullscreenContainerClassName: 'left-container',
+            nonFullscreenContentClassName: 'left-content',
+            fullscreenContainerClassName: 'fullscreen-left-container',
+            fullscreenContentClassName: 'fullscreen-left-content',
+            offsetAnchor: OffsetAnchor.left,
+            contentPositionOffset: 8,
+            onMouseOver: () => {},
+            onMouseOut: () => {},
+        });
+        const rightOverlay = new CachingElementOverlay({
+            targetElement,
+            nonFullscreenContainerClassName: 'right-container',
+            nonFullscreenContentClassName: 'right-content',
+            fullscreenContainerClassName: 'fullscreen-right-container',
+            fullscreenContentClassName: 'fullscreen-right-content',
+            offsetAnchor: OffsetAnchor.right,
+            contentPositionOffset: 8,
+            onMouseOver: () => {},
+            onMouseOut: () => {},
+        });
+
+        try {
+            leftOverlay.setHtml([{ key: 'left', html: () => '<span>left</span>' }]);
+            rightOverlay.setHtml([{ key: 'right', html: () => '<span>right</span>' }]);
+
+            expect(document.querySelector<HTMLElement>('.left-container')?.style.left).toBe('8px');
+            expect(document.querySelector<HTMLElement>('.left-container')?.style.top).toBe('120px');
+            expect(document.querySelector<HTMLElement>('.right-container')?.style.left).toBe('592px');
+            expect(document.querySelector<HTMLElement>('.right-container')?.style.top).toBe('120px');
+        } finally {
+            leftOverlay.dispose();
+            rightOverlay.dispose();
+            if (originalInnerWidth) Object.defineProperty(window, 'innerWidth', originalInnerWidth);
+            else delete (window as unknown as { innerWidth?: number }).innerWidth;
+        }
+    });
+
+    it('does not pin left and right overlays to the viewport when the video is completely outside it', () => {
+        const originalInnerWidth = Object.getOwnPropertyDescriptor(window, 'innerWidth');
+        Object.defineProperty(window, 'innerWidth', { configurable: true, value: 600 });
+        const targetElement = document.createElement('video');
+        targetElement.getBoundingClientRect = () => ({ left: 700, top: 20, width: 200, height: 200 }) as DOMRect;
+        const leftOverlay = new CachingElementOverlay({
+            targetElement,
+            nonFullscreenContainerClassName: 'left-container',
+            nonFullscreenContentClassName: 'left-content',
+            fullscreenContainerClassName: 'fullscreen-left-container',
+            fullscreenContentClassName: 'fullscreen-left-content',
+            offsetAnchor: OffsetAnchor.left,
+            contentPositionOffset: 8,
+            onMouseOver: () => {},
+            onMouseOut: () => {},
+        });
+        const rightOverlay = new CachingElementOverlay({
+            targetElement,
+            nonFullscreenContainerClassName: 'right-container',
+            nonFullscreenContentClassName: 'right-content',
+            fullscreenContainerClassName: 'fullscreen-right-container',
+            fullscreenContentClassName: 'fullscreen-right-content',
+            offsetAnchor: OffsetAnchor.right,
+            contentPositionOffset: 8,
+            onMouseOver: () => {},
+            onMouseOut: () => {},
+        });
+
+        try {
+            leftOverlay.setHtml([{ key: 'left', html: () => '<span>left</span>' }]);
+            rightOverlay.setHtml([{ key: 'right', html: () => '<span>right</span>' }]);
+
+            expect(document.querySelector<HTMLElement>('.left-container')?.style.left).toBe('708px');
+            expect(document.querySelector<HTMLElement>('.right-container')?.style.left).toBe('892px');
+        } finally {
+            leftOverlay.dispose();
+            rightOverlay.dispose();
+            if (originalInnerWidth) Object.defineProperty(window, 'innerWidth', originalInnerWidth);
+            else delete (window as unknown as { innerWidth?: number }).innerWidth;
+        }
+    });
 });
 
 describe('CachingElementOverlay document focus', () => {

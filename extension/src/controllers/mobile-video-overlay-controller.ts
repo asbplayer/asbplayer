@@ -12,13 +12,15 @@ import { adjacentSubtitle } from '@project/common/util';
 import { frameColorScheme, frameColorSchemeClass } from '@project/extension/src/services/frame-color-scheme';
 import { v4 as uuidv4 } from 'uuid';
 import { PlayMode } from '@project/common';
+import type { Anchor } from '@project/common/components/MobileVideoOverlay';
+import { isMobile } from '@project/common/device-detection/mobile';
 
 const smallScreenVideoHeightThreshold = 300;
 
 interface FrameParams {
     width: number;
     height: number;
-    anchor: 'bottom' | 'top';
+    anchor: Anchor;
     src: string;
     tooltips: boolean;
 }
@@ -51,11 +53,25 @@ export class MobileVideoOverlayController {
         this._overlay = MobileVideoOverlayController._elementOverlay(context.video, offsetAnchor);
     }
 
+    private static _anchorForOffsetAnchor(offsetAnchor: OffsetAnchor): Anchor {
+        switch (offsetAnchor) {
+            case OffsetAnchor.top:
+                return 'top';
+            case OffsetAnchor.bottom:
+                return 'bottom';
+            case OffsetAnchor.left:
+                return 'left';
+            case OffsetAnchor.right:
+                return 'right';
+        }
+    }
+
+    private static _isVerticalAnchor(offsetAnchor: OffsetAnchor) {
+        return offsetAnchor === OffsetAnchor.left || offsetAnchor === OffsetAnchor.right;
+    }
+
     private static _elementOverlay(video: HTMLMediaElement, offsetAnchor: OffsetAnchor) {
-        const containerClassName =
-            offsetAnchor === OffsetAnchor.top
-                ? 'asbplayer-mobile-video-overlay-container-top'
-                : 'asbplayer-mobile-video-overlay-container-bottom';
+        const containerClassName = `asbplayer-mobile-video-overlay-container-${MobileVideoOverlayController._anchorForOffsetAnchor(offsetAnchor)}`;
         return new CachingElementOverlay({
             targetElement: video,
             nonFullscreenContainerClassName: containerClassName,
@@ -80,6 +96,7 @@ export class MobileVideoOverlayController {
             return false;
         }
 
+        this._playModeSelectorOpen = false;
         this._overlay.dispose();
         this._overlay = MobileVideoOverlayController._elementOverlay(this._context.video, value);
         this._overlayInstanceId = uuidv4();
@@ -159,9 +176,11 @@ export class MobileVideoOverlayController {
             if (message.message.command === 'playMode') {
                 const command = message as MobileOverlayToVideoCommand<PlayModeMessage>;
                 this._playModeSelectorOpen = true;
+                this._updateFrameDimensions();
                 this._context.togglePlayMode(command.message.playMode);
             } else if (message.message.command === 'playback-mode-selector-opened') {
                 this._playModeSelectorOpen = true;
+                this._updateFrameDimensions();
             } else if (message.message.command === 'hidden') {
                 this._doHide();
             } else if (message.message.command === 'playback-mode-selector-closed') {
@@ -251,6 +270,7 @@ export class MobileVideoOverlayController {
         if (!this._context.video.paused) this._doHide();
         const anchorChanged = this._setOverlayOffsetAnchor(this._configuredOffsetAnchor);
         if (this._showing && !anchorChanged) this._doShow();
+        this._updateFrameDimensions();
         void this.updateModel();
     }
 
@@ -293,15 +313,34 @@ export class MobileVideoOverlayController {
 
         this._frameParams = frameParams;
         this._showing = true;
+        this._updateFrameDimensions();
+    }
+
+    private _updateFrameDimensions() {
+        if (!this._frameParams) {
+            return;
+        }
+
+        const iframe = this._overlay.containerElement?.querySelector('iframe');
+        if (!iframe) {
+            return;
+        }
+
+        const vertical = MobileVideoOverlayController._isVerticalAnchor(this._overlay.offsetAnchor);
+        const width =
+            vertical && this._playModeSelectorOpen ? Math.min(window.innerWidth, 340) : this._frameParams.width;
+        iframe.style.width = `${width}px`;
+        iframe.style.height = `${this._frameParams.height}px`;
     }
 
     private _getFrameParams(): FrameParams {
-        const anchor = this._overlay.offsetAnchor === OffsetAnchor.bottom ? 'bottom' : 'top';
+        const anchor = MobileVideoOverlayController._anchorForOffsetAnchor(this._overlay.offsetAnchor);
         const videoRect = this._context.video.getBoundingClientRect();
         const smallScreen = videoRect.height < smallScreenVideoHeightThreshold;
-        const height = smallScreen ? 64 : 108;
-        const tooltips = !smallScreen;
-        const width = Math.min(window.innerWidth, 410);
+        const vertical = anchor === 'left' || anchor === 'right';
+        const tooltips = !smallScreen && (!vertical || !isMobile);
+        const width = vertical ? (tooltips ? 180 : 64) : Math.min(window.innerWidth, 410);
+        const height = vertical ? Math.min(window.innerHeight, 410) : smallScreen ? 64 : 108;
         const src = encodeURIComponent(this._context.registeredVideoSrc);
 
         return { width, height, anchor, src, tooltips };
@@ -348,6 +387,7 @@ export class MobileVideoOverlayController {
     }
 
     private _doHide() {
+        this._playModeSelectorOpen = false;
         this._overlay.hide();
         this._showing = false;
     }

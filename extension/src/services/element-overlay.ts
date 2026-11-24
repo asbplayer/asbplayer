@@ -1,11 +1,31 @@
 import { OffscreenDomCache } from '@project/common';
 import { ASB_OVERLAY_DOCUMENT_FOCUSED_CLASS } from '@project/common/annotations/dom-annotations';
-import type { SubtitlesWidthUnit } from '@project/common/settings';
+import type { StreamingOverlayPosition, SubtitleAlignment, SubtitlesWidthUnit } from '@project/common/settings';
 
 export enum OffsetAnchor {
     bottom,
     top,
+    left,
+    right,
 }
+
+export const overlayOffsetAnchor = (
+    position: StreamingOverlayPosition,
+    subtitleAlignment: SubtitleAlignment
+): OffsetAnchor => {
+    switch (position) {
+        case 'top':
+            return OffsetAnchor.top;
+        case 'bottom':
+            return OffsetAnchor.bottom;
+        case 'left':
+            return OffsetAnchor.left;
+        case 'right':
+            return OffsetAnchor.right;
+        case 'auto':
+            return subtitleAlignment === 'bottom' ? OffsetAnchor.top : OffsetAnchor.bottom;
+    }
+};
 
 export interface KeyedHtml {
     key?: string;
@@ -511,15 +531,30 @@ export class CachingElementOverlay implements ElementOverlay {
 
         container.style.removeProperty('visibility');
 
-        let left = rect.left + rect.width / 2;
+        let left: number;
+        let top: number;
         const videoBottom = rect.top + rect.height;
-        const videoIntersectsViewport = rect.top < window.innerHeight && videoBottom > 0;
-        const videoCoversViewport = rect.top < 0 && videoBottom > window.innerHeight;
-        let top =
-            this.offsetAnchor === OffsetAnchor.bottom
-                ? (videoIntersectsViewport ? Math.min(videoBottom, window.innerHeight) : videoBottom) -
-                  this.contentPositionOffset
-                : (videoCoversViewport ? 0 : rect.top) + this.contentPositionOffset;
+
+        if (this.offsetAnchor === OffsetAnchor.left || this.offsetAnchor === OffsetAnchor.right) {
+            const videoRight = rect.left + rect.width;
+            const videoIntersectsViewportX = rect.left < window.innerWidth && videoRight > 0;
+            const videoCoversViewportX = rect.left < 0 && videoRight > window.innerWidth;
+            left =
+                this.offsetAnchor === OffsetAnchor.right
+                    ? (videoIntersectsViewportX ? Math.min(videoRight, window.innerWidth) : videoRight) -
+                      this.contentPositionOffset
+                    : (videoCoversViewportX ? 0 : rect.left) + this.contentPositionOffset;
+            top = rect.top + rect.height / 2;
+        } else {
+            left = rect.left + rect.width / 2;
+            const videoIntersectsViewport = rect.top < window.innerHeight && videoBottom > 0;
+            const videoCoversViewport = rect.top < 0 && videoBottom > window.innerHeight;
+            top =
+                this.offsetAnchor === OffsetAnchor.bottom
+                    ? (videoIntersectsViewport ? Math.min(videoBottom, window.innerHeight) : videoBottom) -
+                      this.contentPositionOffset
+                    : (videoCoversViewport ? 0 : rect.top) + this.contentPositionOffset;
+        }
 
         const containingBlock =
             container.offsetParent instanceof HTMLElement

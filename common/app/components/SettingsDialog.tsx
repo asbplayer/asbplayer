@@ -110,6 +110,7 @@ export default function SettingsDialog({
                     extensionVersion={extension.installed ? extension.version : undefined}
                     extensionSupportsAppIntegration={extension.supportsAppIntegration}
                     extensionSupportsOverlay={extension.supportsStreamingVideoOverlay}
+                    extensionSupportsOverlayPosition={extension.supportsStreamingVideoOverlayPosition}
                     extensionSupportsSidePanel={extension.supportsSidePanel}
                     extensionSupportsOrderableAnkiFields={extension.supportsOrderableAnkiFields}
                     extensionSupportsTrackSpecificSettings={extension.supportsTrackSpecificSettings}
