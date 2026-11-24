@@ -17,7 +17,6 @@ import ExtensionIcon from '@mui/icons-material/Extension';
 import Paper from '@mui/material/Paper';
 import Link from '@mui/material/Link';
 import ButtonBase from '@mui/material/ButtonBase';
-import project from '@project/common/project';
 import { isFirefoxBuild } from '@/services/build-flags';
 import Tooltip from '@project/common/components/Tooltip';
 import DialogContentText from '@mui/material/DialogContentText';
@@ -25,8 +24,9 @@ import useConfirmation from '@project/common/hooks/use-confirmation';
 import BarChartIcon from '@mui/icons-material/BarChart';
 import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
+import { docsUrl } from '@project/common/util/project';
 
-const ExternalConnections: React.FC = () => {
+const ExternalConnections: React.FC<{ lang: string }> = ({ lang }) => {
     const { t } = useTranslation();
 
     const { externalConnections, approveExternalConnection, denyExternalConnection, removeExternalConnection } =
@@ -136,7 +136,7 @@ const ExternalConnections: React.FC = () => {
                             components={{
                                 docs: (
                                     <Link
-                                        href={`${project.urls.docs}/docs/guides/external-extensions`}
+                                        href={docsUrl(lang, 'docs/guides/external-extensions')}
                                         target="_blank"
                                         rel="noreferrer"
                                     />

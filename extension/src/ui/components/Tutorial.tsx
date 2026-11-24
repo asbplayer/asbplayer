@@ -1,4 +1,3 @@
-import project from '@project/common/project';
 import { useTheme } from '@mui/material/styles';
 import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
@@ -21,6 +20,7 @@ import type { AsbPlayerToVideoCommandV2, RequestSubtitlesMessage } from '@projec
 import TutorialBubble from '@project/common/components/TutorialBubble';
 import { asbError } from '@project/common/util/log';
 import { isFirefox } from '@project/common/browser-detection';
+import { docsUrl } from '@project/common/util/project';
 
 const settingsProvider = new SettingsProvider(new ExtensionSettingsStorage());
 const tabRegistry = new TabRegistry(settingsProvider);
@@ -198,7 +198,7 @@ const OverlayScrollBubble: React.FC<{ show: boolean; onConfirm: () => void }> = 
     );
 };
 
-const FinishedDialog: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClose }) => {
+const FinishedDialog: React.FC<{ open: boolean; onClose: () => void; lang: string }> = ({ open, onClose, lang }) => {
     return (
         <Dialog open={open} style={{ zIndex: zIndexTop }}>
             <DialogContent>
@@ -209,7 +209,7 @@ const FinishedDialog: React.FC<{ open: boolean; onClose: () => void }> = ({ open
                             Settings
                         </Link>,
                         <p key={1} />,
-                        <Link href={`${project.urls.docs}/docs/intro/`} target="_blank" rel="noreferrer" key={2}>
+                        <Link href={docsUrl(lang, 'docs/intro')} target="_blank" rel="noreferrer" key={2}>
                             user guide
                         </Link>,
                     ]}
@@ -222,7 +222,7 @@ const FinishedDialog: React.FC<{ open: boolean; onClose: () => void }> = ({ open
     );
 };
 
-const Tutorial: React.FC<{ className: string; show: boolean }> = ({ className, show }) => {
+const Tutorial: React.FC<{ className: string; show: boolean; lang: string }> = ({ className, show, lang }) => {
     const { sidePanelOpen, loadedSubtitlesCount } = useExtensionState();
     const [step, setStep] = useState<Step>(Step.toolbar);
 
@@ -332,7 +332,7 @@ const Tutorial: React.FC<{ className: string; show: boolean }> = ({ className, s
                 count={loadedSubtitlesCount}
                 onClose={() => setShowLoadSubtitles(false)}
             />
-            <FinishedDialog open={show && step === Step.almostDone} onClose={() => setStep(Step.done)} />
+            <FinishedDialog open={show && step === Step.almostDone} onClose={() => setStep(Step.done)} lang={lang} />
         </Paper>
     );
 };

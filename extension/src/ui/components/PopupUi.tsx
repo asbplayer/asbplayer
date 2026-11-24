@@ -1,4 +1,3 @@
-import project from '@project/common/project';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import CssBaseline from '@mui/material/CssBaseline';
 import ThemeProvider from '@mui/material/styles/ThemeProvider';
@@ -25,6 +24,7 @@ import { ExtensionDictionaryStorage } from '@/services/extension-dictionary-stor
 import { isFirefoxBuild } from '@/services/build-flags';
 import { openExtensionShortcuts } from '@/services/extension-shortcuts';
 import { extensionLogProvider } from '@/services/extension-log-provider';
+import { docsUrl } from '@project/common/util/project';
 
 interface Props {
     commands: any;
@@ -89,9 +89,12 @@ export function PopupUi({ commands }: Props) {
     }, []);
 
     const handleOpenUserGuide = useCallback(() => {
-        void browser.tabs.create({ active: true, url: `${project.urls.docs}/docs/intro` });
+        if (settings?.language === undefined) {
+            return;
+        }
+        void browser.tabs.create({ active: true, url: docsUrl(settings.language, 'docs/intro') });
         window.close();
-    }, []);
+    }, [settings?.language]);
 
     const { requestingActiveTabPermission, tabRequestingActiveTabPermission } = useRequestingActiveTabPermission();
 

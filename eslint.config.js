@@ -38,6 +38,15 @@ module.exports = [
                 { object: 'console', property: 'trace', message: 'Use the asbplayer logging functions.' },
                 { object: 'console', property: 'assert', message: 'Use the asbplayer logging functions.' },
             ],
+            'no-restricted-syntax': [
+                'error',
+                {
+                    // Only docsUrl() may assemble docs URLs; it appends the user's language to the path.
+                    selector:
+                        "MemberExpression[property.name='docs'][object.property.name='urls'][object.object.name='project']",
+                    message: 'Use docsUrl(lang, path) from @project/common/util/project so the docs URL includes the user\'s language.',
+                },
+            ],
             'no-restricted-imports': [
                 'error',
                 {
@@ -86,6 +95,20 @@ module.exports = [
         files: ['**/index.{js,mjs,cjs,jsx,mjsx,ts,tsx,mtsx}'],
         rules: {
             'no-restricted-imports': 'off',
+        },
+    },
+    {
+        // Test files may assert against the raw base URL when checking docsUrl output.
+        files: ['**/*.test.{js,mjs,cjs,jsx,mjsx,ts,tsx,mtsx}'],
+        rules: {
+            'no-restricted-syntax': 'off',
+        },
+    },
+    {
+        // docsUrl() itself is the only consumer allowed to assemble docs URLs from the raw base.
+        files: ['common/util/project.ts'],
+        rules: {
+            'no-restricted-syntax': 'off',
         },
     },
     {

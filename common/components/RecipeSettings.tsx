@@ -1,4 +1,4 @@
-import project from '@project/common/project';
+import { docsUrl } from '@project/common/util/project';
 import {
     maximumRecipeNameLength,
     activeRecipe,
@@ -215,7 +215,7 @@ export default function RecipeSettings({ settings, onSettingsChanged, children }
                         components={{
                             docs: (
                                 <Link
-                                    href={`${project.urls.docs}/docs/guides/recipes`}
+                                    href={docsUrl(settings.language, 'docs/guides/recipes')}
                                     target="_blank"
                                     rel="noreferrer"
                                 />

@@ -2019,6 +2019,7 @@ function App({
                                 onOpenSettings={handleOpenSettings}
                                 lastError={lastError}
                                 onCopyLastError={handleCopyLastError}
+                                lang={settings.language}
                             />
                             <input
                                 ref={fileInputRef}

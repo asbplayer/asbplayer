@@ -1,4 +1,3 @@
-import project from '@project/common/project';
 import { asbError } from '@project/common/util/log';
 import { download } from '@project/common/util';
 import { MediaFragment } from '@project/common';
@@ -66,6 +65,7 @@ import { useSidePanelRequestedLocation } from '@project/extension/src/ui/hooks/u
 import { clearExtensionRequestedLocation } from '@/services/side-panel';
 import { uiTabRegistry } from '@project/extension/src/ui/hooks/use-media-id';
 import { createStatisticsPopup } from '@/services/statistics-util';
+import { docsUrl } from '@project/common/util/project';
 
 interface Props {
     dictionaryProvider: DictionaryProvider;
@@ -634,8 +634,8 @@ export default function SidePanel({
     );
 
     const handleOpenUserGuide = useCallback(() => {
-        void browser.tabs.create({ active: true, url: `${project.urls.docs}/docs/intro` });
-    }, []);
+        void browser.tabs.create({ active: true, url: docsUrl(settings.language, 'docs/intro') });
+    }, [settings.language]);
     const noOp = useCallback(() => {}, []);
 
     const { initialized: i18nInitialized } = useI18n({ language: settings.language });

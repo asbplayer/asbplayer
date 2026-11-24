@@ -1,4 +1,5 @@
 import project from '@project/common/project';
+import { docsUrl } from '@project/common/util/project';
 import { makeStyles } from '@mui/styles';
 import type { Theme } from '@mui/material/styles';
 import { useTranslation } from 'react-i18next';
@@ -36,6 +37,7 @@ interface BarProps {
     title: string;
     canDownloadSubtitles: boolean;
     lastError?: any;
+    lang: string;
     onFileSelector?: () => void;
     onDownloadSubtitleFilesAsSrt: () => void;
     onDownloadSubtitleTimeline: () => void;
@@ -132,6 +134,7 @@ export default function Bar({
     title,
     canDownloadSubtitles,
     lastError,
+    lang,
     onOpenSettings,
     onOpenCopyHistory,
     onDownloadSubtitleFilesAsSrt,
@@ -293,7 +296,7 @@ export default function Bar({
                 }}
             >
                 <List className={classes.menu} onMouseLeave={handleMenuClose} dense>
-                    <Link href={`${project.urls.docs}/docs/intro`}>
+                    <Link href={docsUrl(lang, 'docs/intro')}>
                         <ListItem disablePadding>
                             <ListItemButton>
                                 <ListItemIcon>

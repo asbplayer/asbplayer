@@ -1,13 +1,18 @@
-import project from '@project/common/project';
+import { docsUrl } from '@project/common/util/project';
 import React from 'react';
 import Typography from '@mui/material/Typography';
 import Link from '@mui/material/Link';
 import IconButton from '@mui/material/IconButton';
 import InfoIcon from '@mui/icons-material/Info';
 
+interface Docs {
+    path: string;
+    lang: string;
+}
+
 interface Props {
     children: React.ReactNode;
-    docs?: string;
+    docs?: Docs;
 }
 
 interface SubSectionProps {
@@ -23,7 +28,7 @@ const SettingsSection = React.forwardRef<HTMLSpanElement, Props>(function Settin
         >
             {children}
             {docs && (
-                <Link href={`${project.urls.docs}/${docs}`} target="_blank">
+                <Link href={docsUrl(docs.lang, docs.path)} target="_blank">
                     <IconButton>
                         <InfoIcon />
                     </IconButton>

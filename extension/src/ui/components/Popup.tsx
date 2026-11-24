@@ -353,7 +353,7 @@ const Popup = ({
                             />
                         </Box>
                     )}
-                    {subView === 'external-extensions' && <ExternalConnections />}
+                    {subView === 'external-extensions' && <ExternalConnections lang={settings.language} />}
                 </Box>
                 {subView === 'settings' && (
                     <Box>
