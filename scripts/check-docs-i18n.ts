@@ -1,7 +1,14 @@
 import { realpathSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { DOCS_SOURCE_DIR, localeTreeDir, localesForProject, readOptional, walkFiles } from './docs-i18n-files.ts';
+import {
+    DOCS_SOURCE_DIR,
+    localeTreeDir,
+    localesForProject,
+    parseLocalesArg,
+    readOptional,
+    walkFiles,
+} from './docs-i18n-files.ts';
 
 type Violation = string;
 
@@ -161,7 +168,7 @@ function checkLinks(root: string, locales: string[]): Violation[] {
 
 if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
     const root = fileURLToPath(new URL('..', import.meta.url));
-    const locales = localesForProject(root);
+    const locales = parseLocalesArg(process.argv.slice(2), localesForProject(root));
     const sourceFiles = walkFiles(join(root, DOCS_SOURCE_DIR)) ?? [];
     const sources = new Map(sourceFiles.map((file) => [file, readOptional(join(root, DOCS_SOURCE_DIR, file)) ?? '']));
 
