@@ -40,7 +40,9 @@ Activa el cliente de WebSocket en los <a href={new URL('?view=settings#misc-sett
 
 Al minar oraciones con Yomitan, las tarjetas ya incluirán la definición, la imagen y el audio de la palabra.
 
-Para usar siempre el texto de los subtítulos de asbplayer en el campo Oración, activa [**Usar siempre el texto de los subtítulos en el campo de oración**](../reference/settings#always-use-subtitle-text-for-sentence-field) en los ajustes de **creación de tarjetas**. Esto reemplaza el texto de la oración proporcionado por Yomitan con el texto de los subtítulos usados de todas las pistas.
+Para usar siempre el texto de los subtítulos de asbplayer en el campo Oración, activa [**Usar siempre el texto de los subtítulos en el campo de oración**](../reference/settings.md#always-use-subtitle-text-for-sentence-field) en los ajustes de **creación de tarjetas**. Esto reemplaza el texto de la oración proporcionado por Yomitan con el texto de los subtítulos usados de todas las pistas.
+
+Si minas varias palabras del mismo subtítulo, **Actualizar última tarjeta** también puede actualizar tarjetas coincidentes anteriores. Activa [**actualizaciones de oración**](../reference/settings.md#update-sentence-for-cards-with-the-same-subtitle-text) para compartir la oración y las pistas de subtítulos configuradas, o [**actualizaciones de imagen y audio**](../reference/settings.md#update-all-cards-with-the-same-subtitle-text) para compartir la captura de pantalla y el clip de audio.
 
 ## Ajustes del complemento
 

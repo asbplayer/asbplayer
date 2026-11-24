@@ -80,11 +80,19 @@ Si está activado, copia el subtítulo seleccionado al portapapeles cada vez que
 
 Cuando está activado, rellena el campo Oración con el texto de los subtítulos minados de todas las pistas, aunque una aplicación externa proporcione un texto de oración diferente. Esto resulta útil al [minar con Yomitan](../guides/one-click-mining.md).
 
+### Al actualizar la última tarjeta, actualizar también la oración de las tarjetas con el mismo texto de subtítulos {#update-sentence-for-cards-with-the-same-subtitle-text}
+
+Cuando está activado, la acción de minado **Actualizar última tarjeta** también reemplaza el campo Oración y los campos configurados Pista de subtítulos 1–3 en las notas creadas consecutivamente cuya oración existente coincide con la oración exportada. La actualización intenta conservar el resaltado de cada nota. Los campos de pista sin texto exportado no cambian. Si un campo de subtítulos comparte un campo de Anki con uno que no es de subtítulos, como Definición, la actualización de la oración deja ese campo sin cambios en las notas anteriores.
+
+Este ajuste copia la oración seleccionada para la exportación actual. Activa [**Usar siempre el texto de los subtítulos en el campo de oración**](#always-use-subtitle-text-for-sentence-field) para usar el texto completo de los subtítulos minados. La [actualización de imagen y audio](#update-all-cards-with-the-same-subtitle-text) es independiente.
+
+La coincidencia se basa en el campo Oración principal, ignora el marcado de la oración y acepta que una oración esté contenida en la otra; así, una nota que solo contiene la primera línea puede coincidir con un subtítulo completo. La búsqueda incluye las notas añadidas durante los dos últimos días de Anki y se detiene en la primera oración distinta o ausente. Se necesita un campo de oración y una oración exportada no vacía, también al actualizar los campos de pista. Este ajuste está desactivado de forma predeterminada y no afecta a las actualizaciones de una tarjeta seleccionada específicamente.
+
 ### Al actualizar la última tarjeta, actualizar también la imagen y el audio de las tarjetas con el mismo texto de subtítulos {#update-all-cards-with-the-same-subtitle-text}
 
-Cuando está activado, la acción de minado **Actualizar la última tarjeta** también actualiza los campos de audio e imagen de las notas creadas consecutivamente a partir de la misma línea de subtítulos. Cada nota anterior conserva su oración, palabra, definición y campos personalizados. Para buscar coincidencias se ignora el marcado de la oración y se permite que esta forme parte del contexto del subtítulo minado.
+Cuando está activado, la acción de minado **Actualizar última tarjeta** también actualiza los campos de audio e imagen de las notas creadas consecutivamente a partir de la misma línea de subtítulos. Cada nota anterior conserva su palabra, definición y campos personalizados. Sus campos de subtítulos no cambian, salvo que también esté activada la [actualización de la oración](#update-sentence-for-cards-with-the-same-subtitle-text). Para buscar coincidencias se ignora el marcado de la oración y se permite que esta forme parte del contexto del subtítulo minado.
 
-La búsqueda incluye las notas añadidas durante los dos últimos días de Anki y se detiene en la primera oración distinta o ausente. Debe haber un campo de oración configurado. Este ajuste está desactivado de forma predeterminada y no afecta a las actualizaciones de una tarjeta seleccionada específicamente.
+La búsqueda incluye las notas añadidas durante los dos últimos días de Anki y se detiene en la primera oración distinta o ausente. Debe haber un campo de oración configurado, y la oración exportada debe contener texto, no solo espacios en blanco o marcado. Este ajuste está desactivado de forma predeterminada y no afecta a las actualizaciones de una tarjeta seleccionada específicamente.
 
 ### Reproducir audio mientras se graba desde un vídeo local {#play-audio-while-recording-from-local-video}
 

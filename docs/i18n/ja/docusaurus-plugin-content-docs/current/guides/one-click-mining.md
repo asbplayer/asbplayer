@@ -40,7 +40,9 @@ asbplayer拡張機能の<a href={new URL('?view=settings#misc-settings', project
 
 Yomitanで文をマイニングすると、単語の定義、画像、音声がすでに追加されたカードが作成されます。
 
-Sentenceフィールドで常にasbplayerの字幕テキストを使うには、**マイニング**設定で[**文フィールドに常に字幕テキストを使う**](../reference/settings#always-use-subtitle-text-for-sentence-field)を有効にします。Yomitanが提供する文のテキストが、すべてのトラックから取得したマイニング対象の字幕テキストに置き換わります。
+Sentenceフィールドで常にasbplayerの字幕テキストを使うには、**マイニング**設定で[**文フィールドに常に字幕テキストを使う**](../reference/settings.md#always-use-subtitle-text-for-sentence-field)を有効にします。Yomitanが提供する文のテキストが、すべてのトラックから取得したマイニング対象の字幕テキストに置き換わります。
+
+同じ字幕から複数の単語をマイニングすると、**最後のカードを更新する**で、それ以前に作成した一致するカードも更新できます。[**文の更新**](../reference/settings.md#update-sentence-for-cards-with-the-same-subtitle-text)を有効にすると文と設定済みの字幕トラックを共有し、[**画像・音声の更新**](../reference/settings.md#update-all-cards-with-the-same-subtitle-text)を有効にするとスクリーンショットと音声クリップを共有します。
 
 ## アドオンの設定
 

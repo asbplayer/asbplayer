@@ -80,11 +80,19 @@ Quando ativada, copia a legenda selecionada para a área de transferência sempr
 
 Quando ativada, preenche o campo Sentence com o texto minerado das legendas de todas as faixas, mesmo que um aplicativo externo forneça outro texto para a frase. Isso é útil ao [minerar com o Yomitan](../guides/one-click-mining.md).
 
+### Ao atualizar o último cartão, atualizar também a frase de cartões com o mesmo texto de legenda {#update-sentence-for-cards-with-the-same-subtitle-text}
+
+Quando ativada, a ação de mineração **Atualizar último card** também substitui o campo Frase e os campos configurados Faixa de legenda 1–3 em notas criadas em sequência cuja frase existente corresponda à frase exportada. A atualização tenta preservar os destaques de cada nota. Os campos de faixa sem texto exportado não são alterados. Se um campo de legenda compartilhar um campo do Anki com um campo que não seja de legenda, como Definição, a atualização da frase deixa esse campo inalterado nas notas anteriores.
+
+Essa configuração copia a frase selecionada para a exportação atual. Ative [**Sempre usar o texto da legenda no campo de frase**](#always-use-subtitle-text-for-sentence-field) para usar o texto completo da legenda minerada. A [atualização de imagem/áudio](#update-all-cards-with-the-same-subtitle-text) é independente.
+
+A correspondência usa o campo Frase principal, ignora a marcação da frase e aceita que uma frase esteja contida na outra. Assim, uma nota que contenha apenas a primeira linha pode corresponder à legenda completa. A pesquisa inclui notas adicionadas nos últimos dois dias do Anki e para na primeira frase diferente ou ausente. É necessário configurar um campo de frase e ter uma frase exportada não vazia, inclusive ao atualizar campos de faixa. Essa opção fica desativada por padrão e não afeta a atualização de um cartão selecionado especificamente.
+
 ### Ao atualizar o último cartão, atualizar também imagem/áudio de cartões com o mesmo texto de legenda {#update-all-cards-with-the-same-subtitle-text}
 
-Quando ativada, a ação de mineração **Atualizar último cartão** também atualiza os campos de áudio e imagem das notas criadas em sequência a partir da mesma linha de legenda. Cada nota anterior mantém sua frase, palavra, definição e campos personalizados. A correspondência ignora a marcação da frase e permite que ela faça parte do contexto de legendas minerado.
+Quando ativada, a ação de mineração **Atualizar último card** também atualiza os campos de áudio e imagem das notas criadas em sequência a partir da mesma linha de legenda. Cada nota anterior mantém sua palavra, definição e campos personalizados. Seus campos de legenda permanecem inalterados, a menos que a [atualização da frase](#update-sentence-for-cards-with-the-same-subtitle-text) também esteja ativada. A correspondência ignora a marcação da frase e permite que ela faça parte do contexto de legendas minerado.
 
-A pesquisa inclui notas adicionadas nos últimos dois dias do Anki e para na primeira frase diferente ou ausente. É necessário configurar um campo de frase. Essa opção fica desativada por padrão e não afeta a atualização de um cartão selecionado especificamente.
+A pesquisa inclui notas adicionadas nos últimos dois dias do Anki e para na primeira frase diferente ou ausente. É necessário configurar um campo de frase, e a frase exportada deve conter texto, não apenas espaços em branco ou marcação. Essa opção fica desativada por padrão e não afeta a atualização de um cartão selecionado especificamente.
 
 ### Reproduzir áudio durante a gravação de vídeo local {#play-audio-while-recording-from-local-video}
 

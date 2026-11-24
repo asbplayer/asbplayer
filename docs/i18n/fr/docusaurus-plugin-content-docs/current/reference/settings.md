@@ -80,11 +80,19 @@ Lorsque cette option est activée, le sous-titre cible est copié dans le presse
 
 Lorsque cette option est activée, le champ Sentence contient le texte extrait de toutes les pistes, même si une application externe fournit un texte de phrase différent. Cette option est utile pour [faire du mining avec Yomitan](../guides/one-click-mining.md).
 
+### Lors de la mise à jour de la dernière carte, mettre aussi à jour la phrase des cartes ayant le même texte de sous-titre {#update-sentence-for-cards-with-the-same-subtitle-text}
+
+Lorsque cette option est activée, l’action de minage **Mettre à jour la dernière carte** remplace également le champ Phrase et les champs Piste de sous-titres 1 à 3 configurés dans les notes créées successivement dont la phrase existante correspond à la phrase exportée. La mise à jour tente de préserver les mises en évidence de chaque note. Les champs de piste sans texte exporté restent inchangés. Si un champ de sous-titre partage un champ Anki avec un champ sans sous-titre, comme Définition, la mise à jour de la phrase laisse ce champ inchangé dans les notes précédentes.
+
+Ce paramètre copie la phrase sélectionnée pour l’export actuel. Activez [**Toujours utiliser le texte du sous-titre pour le champ Phrase**](#always-use-subtitle-text-for-sentence-field) pour utiliser le texte complet du sous-titre extrait. La [mise à jour de l’image et de l’audio](#update-all-cards-with-the-same-subtitle-text) est indépendante.
+
+La comparaison utilise le champ Phrase principal, ignore son balisage et accepte qu’une phrase soit contenue dans l’autre. Ainsi, une note qui ne contient que la première ligne peut correspondre à un sous-titre complet. La recherche inclut les notes ajoutées au cours des deux derniers jours Anki et s’arrête dès qu’une phrase est différente ou manquante. Un champ Phrase doit être configuré et la phrase exportée ne doit pas être vide, y compris pour mettre à jour les champs de piste. Cette option est désactivée par défaut et n’affecte pas la mise à jour d’une carte sélectionnée spécifiquement.
+
 ### Lors de la mise à jour de la dernière carte, mettre aussi à jour l’image/l’audio des cartes ayant le même texte de sous-titre {#update-all-cards-with-the-same-subtitle-text}
 
-Lorsque cette option est activée, l’action de mining **Mettre à jour la dernière carte** met également à jour les champs audio et image des notes créées successivement à partir de la même ligne de sous-titres. Chaque note précédente conserve sa phrase, son mot, sa définition et ses champs personnalisés. La comparaison ignore le balisage de la phrase et accepte que celle-ci fasse partie du contexte du sous-titre extrait.
+Lorsque cette option est activée, l’action de minage **Mettre à jour la dernière carte** met également à jour les champs audio et image des notes créées successivement à partir de la même ligne de sous-titres. Chaque note précédente conserve son mot, sa définition et ses champs personnalisés. Ses champs de sous-titres restent inchangés, sauf si la [mise à jour de la phrase](#update-sentence-for-cards-with-the-same-subtitle-text) est également activée. La comparaison ignore le balisage de la phrase et accepte que celle-ci fasse partie du contexte du sous-titre extrait.
 
-La recherche inclut les notes ajoutées au cours des deux derniers jours Anki et s’arrête dès qu’une phrase est différente ou manquante. Un champ Sentence doit être configuré. Cette option est désactivée par défaut et n’affecte pas la mise à jour d’une carte sélectionnée spécifiquement.
+La recherche inclut les notes ajoutées au cours des deux derniers jours Anki et s’arrête dès qu’une phrase est différente ou manquante. Un champ Phrase doit être configuré et la phrase exportée doit contenir du texte, et pas seulement des espaces ou du balisage. Cette option est désactivée par défaut et n’affecte pas la mise à jour d’une carte sélectionnée spécifiquement.
 
 ### Lire l’audio pendant son enregistrement depuis une vidéo locale {#play-audio-while-recording-from-local-video}
 

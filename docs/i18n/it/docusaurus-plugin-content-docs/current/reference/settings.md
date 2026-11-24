@@ -80,11 +80,19 @@ Se attiva, copia negli appunti il sottotitolo selezionato ogni volta che viene a
 
 Se attiva, inserisce nel campo Sentence il testo estratto da tutte le tracce, anche se un’applicazione esterna fornisce un testo diverso. È utile quando [crei carte con Yomitan](../guides/one-click-mining.md).
 
-### Aggiornare anche l’immagine e l’audio delle carte con lo stesso testo dei sottotitoli {#update-all-cards-with-the-same-subtitle-text}
+### Quando aggiorni l’ultima carta, aggiorna anche la frase delle carte con lo stesso testo dei sottotitoli {#update-sentence-for-cards-with-the-same-subtitle-text}
 
-Se attiva, l’azione di estrazione **Aggiorna l’ultima carta** aggiorna anche i campi audio e immagine delle note create consecutivamente dalla stessa riga di sottotitoli. Ogni nota precedente mantiene la frase, la parola, la definizione e i campi personalizzati. La corrispondenza ignora il markup della frase e consente che la frase faccia parte del contesto dei sottotitoli estratto.
+Se attiva, l’azione di estrazione **Aggiorna l'ultima carta** sostituisce anche il campo Frase e i campi Traccia sottotitoli 1–3 configurati nelle note create consecutivamente la cui frase esistente corrisponde a quella esportata. L’aggiornamento cerca di mantenere le evidenziazioni di ogni nota. I campi delle tracce senza testo esportato restano invariati. Se un campo dei sottotitoli condivide un campo Anki con un campo non relativo ai sottotitoli, come Definizione, l’aggiornamento della frase lascia quel campo invariato nelle note precedenti.
 
-La ricerca include le note aggiunte negli ultimi due giorni Anki e si interrompe alla prima frase diversa o mancante. È necessario configurare un campo frase. Questa impostazione è disattivata per impostazione predefinita e non influisce sugli aggiornamenti di una carta selezionata in modo specifico.
+Questa impostazione copia la frase selezionata per l’esportazione corrente. Attiva [**Usa sempre il testo dei sottotitoli per il campo Frase**](#always-use-subtitle-text-for-sentence-field) per usare il testo completo dei sottotitoli estratti. L’[aggiornamento di immagine e audio](#update-all-cards-with-the-same-subtitle-text) è indipendente.
+
+La corrispondenza usa il campo Frase principale, ignora il markup della frase e accetta che una frase sia contenuta nell’altra. Quindi una nota che contiene solo la prima riga può corrispondere a un sottotitolo completo. La ricerca include le note aggiunte negli ultimi due giorni Anki e si interrompe alla prima frase diversa o mancante. Per aggiornare i campi delle tracce è necessario configurare un campo frase e avere una frase esportata non vuota. Questa impostazione è disattivata per impostazione predefinita e non influisce sugli aggiornamenti di una carta selezionata in modo specifico.
+
+### Quando aggiorni l’ultima carta, aggiorna anche l’immagine e l’audio delle carte con lo stesso testo dei sottotitoli {#update-all-cards-with-the-same-subtitle-text}
+
+Se attiva, l’azione di estrazione **Aggiorna l'ultima carta** aggiorna anche i campi audio e immagine delle note create consecutivamente dalla stessa riga di sottotitoli. Ogni nota precedente mantiene la parola, la definizione e i campi personalizzati. I campi dei sottotitoli restano invariati, a meno che non sia attivo anche l’[aggiornamento della frase](#update-sentence-for-cards-with-the-same-subtitle-text). La corrispondenza ignora il markup della frase e consente che la frase faccia parte del contesto dei sottotitoli estratto.
+
+La ricerca include le note aggiunte negli ultimi due giorni Anki e si interrompe alla prima frase diversa o mancante. È necessario configurare un campo frase e la frase esportata deve contenere testo, non solo spazi o markup. Questa impostazione è disattivata per impostazione predefinita e non influisce sugli aggiornamenti di una carta selezionata in modo specifico.
 
 ### Riprodurre l’audio durante la registrazione da un video locale {#play-audio-while-recording-from-local-video}
 

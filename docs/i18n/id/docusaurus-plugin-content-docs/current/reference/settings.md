@@ -80,11 +80,19 @@ Jika diaktifkan, takarir sasaran akan disalin ke papan klip setiap kali tindakan
 
 Jika diaktifkan, kolom Sentence diisi dengan teks takarir yang ditambang dari semua trek, meskipun aplikasi eksternal menyediakan teks kalimat yang berbeda. Ini berguna saat [menambang dengan Yomitan](../guides/one-click-mining.md).
 
-### Saat memperbarui kartu terakhir, perbarui juga gambar/audio kartu dengan teks takarir yang sama" {#update-all-cards-with-the-same-subtitle-text}
+### Saat memperbarui kartu terakhir, perbarui juga kalimat kartu dengan teks takarir yang sama {#update-sentence-for-cards-with-the-same-subtitle-text}
 
-Jika diaktifkan, tindakan penambangan **Perbarui kartu terakhir** juga memperbarui kolom audio dan gambar pada catatan yang dibuat berurutan dari baris takarir yang sama. Setiap catatan sebelumnya tetap menyimpan kalimat, kata, definisi, dan kolom khususnya. Pencocokan mengabaikan markup kalimat dan memungkinkan kalimat menjadi bagian dari konteks takarir yang ditambang.
+Jika diaktifkan, tindakan penambangan **Perbarui Kartu Terakhir** juga mengganti kolom Kalimat dan kolom Trek Takarir 1–3 yang dikonfigurasikan pada catatan yang dibuat berurutan jika kalimat sebelumnya cocok dengan kalimat yang diekspor. Pembaruan akan berupaya mempertahankan sorotan pada setiap catatan. Kolom trek tanpa teks yang diekspor tidak diubah. Jika kolom takarir berbagi kolom Anki dengan kolom non-takarir, seperti Definisi, pembaruan kalimat tidak mengubah kolom tersebut pada catatan sebelumnya.
 
-Pencarian mencakup catatan yang ditambahkan dalam dua hari Anki terakhir dan berhenti saat menemukan kalimat yang berbeda atau tidak ada. Kolom kalimat harus dikonfigurasikan. Pengaturan ini nonaktif secara bawaan dan tidak memengaruhi pembaruan kartu yang dipilih secara khusus.
+Pengaturan ini menyalin kalimat yang dipilih untuk ekspor saat ini. Aktifkan [**Selalu gunakan teks takarir untuk kolom kalimat**](#always-use-subtitle-text-for-sentence-field) untuk menggunakan seluruh teks takarir yang ditambang. [Pembaruan gambar/audio](#update-all-cards-with-the-same-subtitle-text) tidak bergantung pada pengaturan ini.
+
+Pencocokan menggunakan kolom Kalimat utama, mengabaikan markup kalimat, dan menerima jika salah satu kalimat memuat kalimat lainnya. Jadi, catatan yang hanya berisi baris pertama dapat cocok dengan takarir lengkap. Pencarian mencakup catatan yang ditambahkan dalam dua hari Anki terakhir dan berhenti saat menemukan kalimat yang berbeda atau tidak ada. Kolom kalimat harus dikonfigurasikan dan kalimat yang diekspor tidak boleh kosong, termasuk saat memperbarui kolom trek. Pengaturan ini nonaktif secara bawaan dan tidak memengaruhi pembaruan kartu yang dipilih secara khusus.
+
+### Saat memperbarui kartu terakhir, perbarui juga gambar/audio kartu dengan teks takarir yang sama {#update-all-cards-with-the-same-subtitle-text}
+
+Jika diaktifkan, tindakan penambangan **Perbarui Kartu Terakhir** juga memperbarui kolom audio dan gambar pada catatan yang dibuat berurutan dari baris takarir yang sama. Setiap catatan sebelumnya tetap menyimpan kata, definisi, dan kolom khususnya. Kolom takarirnya tidak berubah kecuali [pembaruan kalimat](#update-sentence-for-cards-with-the-same-subtitle-text) juga diaktifkan. Pencocokan mengabaikan markup kalimat dan memungkinkan kalimat menjadi bagian dari konteks takarir yang ditambang.
+
+Pencarian mencakup catatan yang ditambahkan dalam dua hari Anki terakhir dan berhenti saat menemukan kalimat yang berbeda atau tidak ada. Kolom kalimat harus dikonfigurasikan, dan kalimat yang diekspor harus berisi teks, bukan hanya spasi atau markup. Pengaturan ini nonaktif secara bawaan dan tidak memengaruhi pembaruan kartu yang dipilih secara khusus.
 
 ### Putar audio saat merekam dari video lokal {#play-audio-while-recording-from-local-video}
 

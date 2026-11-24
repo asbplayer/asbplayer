@@ -40,7 +40,9 @@ asbplayer 擅长将字幕和视频内容连接到 AnkiConnect，但无法自行�
 
 使用 Yomitan 挖掘句子时，生成的卡片会自动包含单词释义、图像和音频。
 
-要始终将 asbplayer 的字幕文本用于句子字段，请在**挖掘**设置中启用[**句子字段始终使用字幕文本**](../reference/settings#always-use-subtitle-text-for-sentence-field)。这会用所有轨道中挖掘到的字幕文本替换 Yomitan 提供的句子文本。
+要始终将 asbplayer 的字幕文本用于句子字段，请在**挖掘**设置中启用[**句子字段始终使用字幕文本**](../reference/settings.md#always-use-subtitle-text-for-sentence-field)。这会用所有轨道中挖掘到的字幕文本替换 Yomitan 提供的句子文本。
+
+如果从同一字幕中挖掘多个单词，**更新上一张卡片**也可以更新之前匹配的卡片。启用[**句子更新**](../reference/settings.md#update-sentence-for-cards-with-the-same-subtitle-text)可共享句子和已配置的字幕轨道，启用[**图像/音频更新**](../reference/settings.md#update-all-cards-with-the-same-subtitle-text)可共享截图和音频片段。
 
 ## 插件设置
 

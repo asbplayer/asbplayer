@@ -80,11 +80,19 @@ Wenn diese Option aktiviert ist, wird der Zieluntertitel bei jeder ausgelösten 
 
 Wenn diese Option aktiviert ist, wird das Satzfeld mit dem ausgewerteten Untertiteltext aller Spuren gefüllt, selbst wenn eine externe Anwendung einen anderen Satztext bereitstellt. Das ist nützlich beim [Mining mit Yomitan](../guides/one-click-mining.md).
 
+### Beim Aktualisieren der letzten Karte auch den Satztext auf Karten mit demselben Untertiteltext aktualisieren {#update-sentence-for-cards-with-the-same-subtitle-text}
+
+Wenn diese Option aktiviert ist, ersetzt die Aktion **Letzte Karte aktualisieren** auch das Satzfeld und alle konfigurierten Untertitelfeld 1–3 in aufeinanderfolgenden Notizen, deren vorhandener Satz mit dem exportierten Satz übereinstimmt. Die Aktualisierung versucht, die Hervorhebungen jeder Notiz beizubehalten. Untertitelfelder ohne exportierten Text bleiben unverändert. Wenn ein Untertitelfeld dasselbe Anki-Feld wie ein Feld ohne Untertitelinhalt verwendet, etwa Definition, lässt die Satzaktualisierung dieses Feld in früheren Notizen unverändert.
+
+Diese Option übernimmt den für den aktuellen Export ausgewählten Satz. Aktivieren Sie [**Immer Untertiteltext für das Satzfeld verwenden**](#always-use-subtitle-text-for-sentence-field), um den vollständigen ausgewerteten Untertiteltext zu verwenden. Die [Bild-/Audioaktualisierung](#update-all-cards-with-the-same-subtitle-text) ist davon unabhängig.
+
+Für den Abgleich wird das Hauptsatzfeld verwendet, Satz-Markup ignoriert und akzeptiert, dass ein Satz im anderen enthalten ist. Daher kann auch eine Notiz, die nur die erste Zeile enthält, einem vollständigen Untertitel entsprechen. Die Suche umfasst Notizen, die innerhalb der letzten beiden Anki-Tage hinzugefügt wurden, und endet beim ersten abweichenden oder fehlenden Satz. Auch für die Aktualisierung von Untertitelfeldern müssen ein Satzfeld konfiguriert und ein nichtleerer Exportsatz vorhanden sein. Diese Option ist standardmäßig deaktiviert und wirkt sich nicht auf Aktualisierungen einer gezielt ausgewählten Karte aus.
+
 ### Beim Aktualisieren der letzten Karte auch Bild und Audio von Karten mit demselben Untertiteltext aktualisieren {#update-all-cards-with-the-same-subtitle-text}
 
-Wenn diese Option aktiviert ist, aktualisiert die Mining-Aktion **Letzte Karte aktualisieren** auch die Audio- und Bildfelder aufeinanderfolgender Notizen aus derselben Untertitelzeile. Jede vorherige Notiz behält ihren Satz, ihr Wort, ihre Definition und ihre benutzerdefinierten Felder. Beim Abgleich wird Satz-Markup ignoriert; der Satz darf Teil des ausgewerteten Untertitelkontexts sein.
+Wenn diese Option aktiviert ist, aktualisiert die Aktion **Letzte Karte aktualisieren** auch die Audio- und Bildfelder aufeinanderfolgender Notizen aus derselben Untertitelzeile. Jede vorherige Notiz behält ihr Wort, ihre Definition und ihre benutzerdefinierten Felder. Ihre Untertitelfelder bleiben unverändert, sofern nicht auch die [Satzaktualisierung](#update-sentence-for-cards-with-the-same-subtitle-text) aktiviert ist. Beim Abgleich wird Satz-Markup ignoriert; der Satz darf Teil des ausgewerteten Untertitelkontexts sein.
 
-Die Suche umfasst Notizen, die innerhalb der letzten beiden Anki-Tage hinzugefügt wurden, und endet beim ersten abweichenden oder fehlenden Satz. Ein Satzfeld muss konfiguriert sein. Diese Option ist standardmäßig deaktiviert und wirkt sich nicht auf Aktualisierungen einer gezielt ausgewählten Karte aus.
+Die Suche umfasst Notizen, die innerhalb der letzten beiden Anki-Tage hinzugefügt wurden, und endet beim ersten abweichenden oder fehlenden Satz. Ein Satzfeld muss konfiguriert sein, und der Exportsatz muss Text enthalten, nicht nur Leerraum oder Markup. Diese Option ist standardmäßig deaktiviert und wirkt sich nicht auf Aktualisierungen einer gezielt ausgewählten Karte aus.
 
 ### Audio bei der Aufnahme aus lokalem Video abspielen {#play-audio-while-recording-from-local-video}
 

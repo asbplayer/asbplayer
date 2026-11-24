@@ -40,7 +40,9 @@ Aktivieren Sie den WebSocket-Client in den <a href={new URL('?view=settings#misc
 
 Wenn Sie Sätze mit Yomitan auswerten, werden Karten erstellt, für die Wortdefinition, Bild und Audio bereits vorhanden sind.
 
-Wenn im Feld „Satz“ immer der Untertiteltext von asbplayer verwendet werden soll, aktivieren Sie in den Einstellungen unter **Mining** die Option [**Für das Satzfeld immer den Untertiteltext verwenden**](../reference/settings#always-use-subtitle-text-for-sentence-field). Dadurch wird der von Yomitan bereitgestellte Satztext durch den ausgewerteten Untertiteltext aus allen Spuren ersetzt.
+Wenn im Feld „Satz“ immer der Untertiteltext von asbplayer verwendet werden soll, aktivieren Sie in den Einstellungen unter **Mining** die Option [**Für das Satzfeld immer den Untertiteltext verwenden**](../reference/settings.md#always-use-subtitle-text-for-sentence-field). Dadurch wird der von Yomitan bereitgestellte Satztext durch den ausgewerteten Untertiteltext aus allen Spuren ersetzt.
+
+Wenn Sie mehrere Wörter aus demselben Untertitel extrahieren, kann **Letzte Karte aktualisieren** auch frühere passende Karten aktualisieren. Aktivieren Sie [**Satzaktualisierungen**](../reference/settings.md#update-sentence-for-cards-with-the-same-subtitle-text), um den Satz und konfigurierte Untertitelspuren zu übernehmen, oder [**Bild-/Audioaktualisierungen**](../reference/settings.md#update-all-cards-with-the-same-subtitle-text), um Screenshot und Audioausschnitt zu übernehmen.
 
 ## Add-on-Einstellungen
 
