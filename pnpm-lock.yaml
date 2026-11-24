@@ -293,8 +293,8 @@ importers:
         specifier: ^6.3.0
         version: 6.3.0
       i18next:
-        specifier: ^25.3.2
-        version: 25.3.2(typescript@5.8.3)
+        specifier: ^26.3.4
+        version: 26.7.2(typescript@5.8.3)
       react:
         specifier: ^19.1.0
         version: 19.1.0
@@ -306,7 +306,7 @@ importers:
         version: 19.1.0(react@19.1.0)
       react-i18next:
         specifier: ^15.6.1
-        version: 15.6.1(i18next@25.3.2(typescript@5.8.3))(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(typescript@5.8.3)
+        version: 15.6.1(i18next@26.7.2(typescript@5.8.3))(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(typescript@5.8.3)
       typescript:
         specifier: 'catalog:'
         version: 5.8.3
@@ -399,8 +399,8 @@ importers:
         specifier: ^3.10.0
         version: 3.10.0
       i18next:
-        specifier: ^25.3.2
-        version: 25.3.2(typescript@5.8.3)
+        specifier: ^26.3.4
+        version: 26.7.2(typescript@5.8.3)
       i18next-browser-languagedetector:
         specifier: ^7.0.1
         version: 7.0.2
@@ -424,7 +424,7 @@ importers:
         version: 19.1.0(react@19.1.0)
       react-i18next:
         specifier: ^15.6.1
-        version: 15.6.1(i18next@25.3.2(typescript@5.8.3))(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(typescript@5.8.3)
+        version: 15.6.1(i18next@26.7.2(typescript@5.8.3))(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(typescript@5.8.3)
       react-virtuoso:
         specifier: ^4.18.7
         version: 4.18.7(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
@@ -581,8 +581,8 @@ importers:
         specifier: ^10.0.0
         version: 10.0.0
       i18next:
-        specifier: ^25.3.2
-        version: 25.3.2(typescript@5.8.3)
+        specifier: ^26.3.4
+        version: 26.7.2(typescript@5.8.3)
       i18next-resources-to-backend:
         specifier: ^1.2.1
         version: 1.2.1
@@ -603,7 +603,7 @@ importers:
         version: 19.1.0(react@19.1.0)
       react-i18next:
         specifier: ^15.6.1
-        version: 15.6.1(i18next@25.3.2(typescript@5.8.3))(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(typescript@5.8.3)
+        version: 15.6.1(i18next@26.7.2(typescript@5.8.3))(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(typescript@5.8.3)
       regenerator-runtime:
         specifier: ^0.14.1
         version: 0.14.1
@@ -6045,10 +6045,10 @@ packages:
   i18next-resources-to-backend@1.2.1:
     resolution: {integrity: sha512-okHbVA+HZ7n1/76MsfhPqDou0fptl2dAlhRDu2ideXloRRduzHsqDOznJBef+R3DFZnbvWoBW+KxJ7fnFjd6Yw==}
 
-  i18next@25.3.2:
-    resolution: {integrity: sha512-JSnbZDxRVbphc5jiptxr3o2zocy5dEqpVm9qCGdJwRNO+9saUJS0/u4LnM/13C23fUEWxAylPqKU/NpMV/IjqA==}
+  i18next@26.7.2:
+    resolution: {integrity: sha512-RsOY3BeaCDdkk52NeJSFAXELQ2rQXBO/tOub6L8ue2ICPfR/FRDWDOfEDg4xMPd1SqO5goVYQ6i72qWEUB/PPw==}
     peerDependencies:
-      typescript: ^5
+      typescript: ^5 || ^6 || ^7
     peerDependenciesMeta:
       typescript:
         optional: true
@@ -17036,9 +17036,7 @@ snapshots:
     dependencies:
       '@babel/runtime': 7.28.2
 
-  i18next@25.3.2(typescript@5.8.3):
-    dependencies:
-      '@babel/runtime': 7.28.2
+  i18next@26.7.2(typescript@5.8.3):
     optionalDependencies:
       typescript: 5.8.3
 
@@ -20092,11 +20090,11 @@ snapshots:
 
   react-fast-compare@3.2.2: {}
 
-  react-i18next@15.6.1(i18next@25.3.2(typescript@5.8.3))(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(typescript@5.8.3):
+  react-i18next@15.6.1(i18next@26.7.2(typescript@5.8.3))(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(typescript@5.8.3):
     dependencies:
       '@babel/runtime': 7.28.2
       html-parse-stringify: 3.0.1
-      i18next: 25.3.2(typescript@5.8.3)
+      i18next: 26.7.2(typescript@5.8.3)
       react: 19.1.0
     optionalDependencies:
       react-dom: 19.1.0(react@19.1.0)
