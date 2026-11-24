@@ -18,7 +18,7 @@
         "@types/react-dom": "^19.1.6",
         "@vitejs/plugin-react": "^6.1.1",
         "gh-pages": "^6.3.0",
-        "i18next": "^25.3.2",
+        "i18next": "^26.3.4",
         "react": "^19.1.0",
         "react-device-detect": "^2.2.3",
         "react-dom": "^19.1.0",
