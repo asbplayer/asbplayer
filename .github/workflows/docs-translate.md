@@ -89,14 +89,28 @@ pre-agent-steps:
       else
         node scripts/docs-translation-worklist.ts
       fi
+
+post-steps:
+  - name: Verify docs i18n
+    env:
+      DOCS_TRANSLATE_LOCALES: ${{ inputs.locales }}
+    run: |
+      set -euo pipefail
+      # Deterministic check, separate from the agent's own verification.
+      if [ -n "${DOCS_TRANSLATE_LOCALES:-}" ]; then
+        LOCALES=$(node scripts/docs-translation-worklist.ts --locales="${DOCS_TRANSLATE_LOCALES}" --print-locales | tr ' ' ',')
+      else
+        LOCALES=$(node scripts/docs-translation-worklist.ts --print-locales | tr ' ' ',')
+      fi
+      node scripts/check-docs-i18n.ts --locales="${LOCALES}"
 ---
 
 # Docs translation agent
 
-You translate asbplayer's English documentation into the locales listed in
-`translation-worklist.json` at the repo root, then open a PR. This repo's
-docs localization is agent-sourced by design: Crowdin handles only app and
-extension strings.
+You translate asbplayer's English documentation into the run's target
+locales — the `locales` field of `translation-worklist.json` at the repo
+root — then open a PR. This repo's docs localization is agent-sourced by
+design: Crowdin handles only app and extension strings.
 
 ## Terminology (read before translating anything)
 
@@ -180,17 +194,21 @@ above.
 
 ## Verification
 
-Run the repo's docs i18n check and fix every reported violation before
-continuing:
+Run the repo's docs i18n check, scoped to the run's target locales, and fix
+every reported violation before continuing:
 
 ```sh
-node scripts/check-docs-i18n.ts
+node scripts/check-docs-i18n.ts --locales=<comma-separated locales field from translation-worklist.json>
 ```
 
-Re-run until it passes. Node is available in the sandbox; no package
-installation is needed for this check. If a failure looks like a check bug
-rather than a translation error, stop and report it rather than editing
-files to satisfy the check.
+Re-run until it passes. The check cannot fail on locales outside the
+`locales` field, so out-of-scope drift cannot block this run. The same
+check also runs as a deterministic workflow step after you finish: a
+violation fails the run even if you stopped early, so fix violations
+before calling `create_pull_request`. Node is available in the sandbox;
+no package installation is needed for this check. If a failure looks like
+a check bug rather than a translation error, stop and report it rather
+than editing files to satisfy the check.
 
 ## Emit PR
 
@@ -209,13 +227,13 @@ for local staging works and is expected:
 2. Commit exactly the files you changed under `docs/i18n/` (stage them
    individually) with a commit message matching the PR title below. Two
    exclusions: do not commit `translation-worklist.json`, and do not commit
-   generated-but-untranslated files for locales outside this run's
-   worklist; those skeletons are what keep such locales pending.
+   generated-but-untranslated files for locales outside the worklist's
+   `locales` field; those skeletons are what keep such locales pending.
 
 3. Call the `create_pull_request` tool with:
 
-   - `title`: compare the locales in `translation-worklist.json` against
-     `project.json`'s `languages`. If the worklist covers every language, no
+   - `title`: compare the `locales` field in `translation-worklist.json`
+     against `project.json`'s `languages`. If it covers every language, no
      locale filter was specified: the title is just `Translate docs` and the
      locale list is omitted. If it targets one locale (a bootstrap run),
      `Translate docs into <locale>`. Any other subset: `Translate docs
@@ -233,7 +251,7 @@ for local staging works and is expected:
 
    ## Verification
 
-   - [x] `node scripts/check-docs-i18n.ts`: passed
+   - [x] `node scripts/check-docs-i18n.ts --locales=<worklist locales field>`: passed
    ```
 
    - `branch`: the `docs-i18n/<short>` branch you created above.

@@ -115,6 +115,18 @@ test('theme strings are pending until committed clean, and again when dirtied', 
     assert.deepEqual(computeWorklist(root, ['de']).theme, ['de']);
 });
 
+test("records the run's target locales, including locales with no pending work", (t) => {
+    const { root, write, commit } = repo(t);
+    write('docs/docs/page.md', 'English source.\n');
+    write(`${localeTreeDir('de')}/page.md`, 'Deutsche Übersetzung.\n');
+    commit('de done');
+
+    // ja is targeted but has nothing pending; the run's target list must
+    // still include it so the check scope matches the --locales filter.
+    const worklist = computeWorklist(root, ['de', 'ja']);
+    assert.deepEqual(worklist.locales, ['de', 'ja']);
+});
+
 test('a fully translated, in-sync tree produces an empty worklist', (t) => {
     const { root, write, commit } = repo(t);
     write('docs/docs/page.md', 'English source.\n');

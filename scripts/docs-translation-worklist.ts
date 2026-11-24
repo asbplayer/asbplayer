@@ -7,6 +7,7 @@ import {
     DOCS_SOURCE_DIR,
     localeTreeDir,
     localesForProject,
+    parseLocalesArg,
     readOptional,
     walkFiles,
 } from './docs-i18n-files.ts';
@@ -14,6 +15,8 @@ import {
 export type WorklistFile = { file: string; reason: 'untranslated' | 'changed' };
 
 export type Worklist = {
+    /** Locales this run targets: every configured locale, or the --locales filter. */
+    locales: string[];
     translate: { locale: string; files: WorklistFile[] }[];
     theme: string[];
     deleted: { locale: string; files: string[] }[];
@@ -100,7 +103,7 @@ export function computeWorklist(root: string, locales: string[]): Worklist {
             .filter((path) => path !== '')
     );
 
-    const worklist: Worklist = { translate: [], theme: [], deleted: [], sidebar: [] };
+    const worklist: Worklist = { locales, translate: [], theme: [], deleted: [], sidebar: [] };
     for (const locale of locales) {
         const treeDir = join(root, localeTreeDir(locale));
         const treeFiles = walkFiles(treeDir) ?? [];
@@ -153,20 +156,7 @@ export function worklistIsEmpty(worklist: Worklist): boolean {
 
 if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
     const root = fileURLToPath(new URL('..', import.meta.url));
-    const configured = localesForProject(root);
-    const localeArg = /^--locales=(.+)$/.exec(process.argv.slice(2).find((arg) => arg.startsWith('--locales=')) ?? '');
-    const locales = localeArg
-        ? localeArg[1]
-              .split(',')
-              .map((locale) => locale.trim())
-              .filter(Boolean)
-        : configured;
-    for (const locale of locales) {
-        if (!configured.includes(locale)) {
-            console.error(`Locale "${locale}" is not configured in project.json`);
-            process.exit(1);
-        }
-    }
+    const locales = parseLocalesArg(process.argv.slice(2), localesForProject(root));
     if (process.argv.includes('--print-locales')) {
         // Honors --locales so the skeleton step generates only targeted locales;
         // other locales' skeletons must stay uncommitted until translated.
