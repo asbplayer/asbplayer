@@ -477,6 +477,21 @@ export const generateSubtitleMedia = async (root) => {
             pgsBlock(9, resized, 0),
         ])
     );
+    const truncatedPgs = subtitleBlock(4000, Buffer.from([pgsPresentationCompositionSegment]));
+    const [composition, ...segments] = displaySegments(4);
+    composition[10] = 0; // Normal composition references objects and palette from the preceding display.
+    const dependentPgs = subtitleBlock(4000, Buffer.concat([composition, segments.at(-1)]));
+    await writeFile(
+        resolve(root, 'damaged-pgs.mkv'),
+        matroskaSubtitles('S_HDMV/PGS', [
+            pgsBlock(2, undefined, 0),
+            pgsBlock(3, undefined, 0),
+            truncatedPgs,
+            dependentPgs,
+            pgsBlock(5),
+        ])
+    );
+    await writeFile(resolve(root, 'undecodable-pgs.mkv'), matroskaSubtitles('S_HDMV/PGS', [truncatedPgs]));
     await writeFile(
         resolve(root, 'reordered.mkv'),
         subtitleMedia(subtitleBlock(3000, 'Later cue'), subtitleBlock(2000, 'Earlier cue'))

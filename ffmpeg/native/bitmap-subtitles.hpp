@@ -5,6 +5,7 @@
 #include "host_io.hpp"
 #include <algorithm>
 #include <cstring>
+#include <memory>
 #include <string>
 #include <utility>
 
@@ -26,8 +27,15 @@ inline bool supported_bitmap_codec(AVCodecID id) {
  * Keeps one pending cue so contiguous displays of the same image can share its interval.
  */
 struct BitmapSubtitleOutput {
+private:
+    struct FrameDeleter {
+        void operator()(AVFrame* frame) const { av_frame_free(&frame); }
+    };
+    using Frame = std::unique_ptr<AVFrame, FrameDeleter>;
+
     static constexpr int maximum_dimension = 8192;
     static constexpr int maximum_png_bytes = 16 * 1024 * 1024;
+    static constexpr size_t maximum_cached_rgba_bytes = 16 * 1024 * 1024;
     static constexpr int max_palette_colors = 256;
     static constexpr int rgba_bytes_per_pixel = 4;
     uint32_t track_key;
@@ -37,7 +45,11 @@ struct BitmapSubtitleOutput {
     int64_t end = AV_NOPTS_VALUE;
     int64_t latest_display_start = 0;
     std::string image;
+    Frame previous_frame;
+    int previous_screen_width = 0;
+    int previous_screen_height = 0;
 
+public:
     BitmapSubtitleOutput(uint32_t track_key, int screen_width, int screen_height)
         : track_key(track_key), screen_width(screen_width), screen_height(screen_height) {}
 
@@ -65,17 +77,35 @@ struct BitmapSubtitleOutput {
         }
 
         this->image.clear();
+        this->previous_frame.reset();
         return result;
     }
 
-    int display(const AVSubtitle& subtitle, int64_t start, int64_t end, AVCodecContext* decoder) {
+    int interrupt(int64_t boundary) {
+        // Without a packet timestamp only the prefix confirmed by a prior display is safe to emit.
+        return this->finish(boundary == AV_NOPTS_VALUE ? this->latest_display_start : boundary);
+    }
+
+    int display(const AVSubtitle& subtitle, int64_t start, int64_t end, const AVCodecContext* decoder) {
         if (subtitle.num_rects == 0) return this->finish(start);
 
+        const int width = decoder->width > 0 ? decoder->width : this->screen_width;
+        const int height = decoder->height > 0 ? decoder->height : this->screen_height;
+        Frame frame;
+        int error = compose_image(subtitle, width, height, frame);
+        const bool contiguous = start > std::max<int64_t>(0, this->latest_display_start) &&
+            (this->end == AV_NOPTS_VALUE || start <= this->end);
+        const bool comparable = contiguous && error >= 0 && frame && this->previous_frame &&
+            width == this->previous_screen_width && height == this->previous_screen_height;
+        bool repeat = comparable && same_pixels(*frame, *this->previous_frame);
+
         std::string next_image;
-        const int encode_error = this->encode_image(subtitle, decoder, next_image);
-        // A new start caps the previous display. The serialized image includes the PNG and both sets of dimensions.
-        if (encode_error >= 0 && !next_image.empty() && start > std::max<int64_t>(0, this->latest_display_start) &&
-            (this->end == AV_NOPTS_VALUE || start <= this->end) && next_image == this->image) {
+        if (error >= 0 && frame && !repeat) {
+            error = encode_image(*frame, width, height, next_image);
+            // Large images use exact serialized comparison without retaining a second representation.
+            repeat = !comparable && contiguous && error >= 0 && next_image == this->image;
+        }
+        if (repeat) {
             this->latest_display_start = start;
             this->end = end;
             return 0;
@@ -83,9 +113,14 @@ struct BitmapSubtitleOutput {
 
         const int write_error = this->finish(start);
         if (write_error < 0) return write_error;
-        if (encode_error < 0 || next_image.empty()) return encode_error;
+        if (error < 0 || !frame) return error;
 
         this->image = std::move(next_image);
+        if (frame->buf[0]->size <= maximum_cached_rgba_bytes) {
+            this->previous_frame = std::move(frame);
+            this->previous_screen_width = width;
+            this->previous_screen_height = height;
+        }
         this->start = start;
         this->latest_display_start = start;
         this->end = end;
@@ -93,9 +128,17 @@ struct BitmapSubtitleOutput {
     }
 
 private:
-    int encode_image(const AVSubtitle& subtitle, const AVCodecContext* decoder, std::string& image) const {
-        const int width = decoder->width > 0 ? decoder->width : this->screen_width;
-        const int height = decoder->height > 0 ? decoder->height : this->screen_height;
+    static bool same_pixels(const AVFrame& frame, const AVFrame& previous) {
+        if (frame.width != previous.width || frame.height != previous.height) return false;
+        const size_t row_bytes = frame.width * rgba_bytes_per_pixel;
+        for (int y = 0; y < frame.height; ++y) {
+            if (std::memcmp(frame.data[0] + y * frame.linesize[0],
+                            previous.data[0] + y * previous.linesize[0], row_bytes) != 0) return false;
+        }
+        return true;
+    }
+
+    static int compose_image(const AVSubtitle& subtitle, int width, int height, Frame& frame) {
         if (width <= 0 || height <= 0 || width > maximum_dimension || height > maximum_dimension) {
             return AVERROR_INVALIDDATA;
         }
@@ -119,36 +162,13 @@ private:
 
         if (right <= left || bottom <= top) return 0;
 
-        const auto* png = avcodec_find_encoder(AV_CODEC_ID_PNG);
-        if (!png) return AVERROR(ENOMEM);
-
-        struct PngResources {
-            AVCodecContext* encoder = nullptr;
-            AVFrame* frame = nullptr;
-            AVPacket* packet = nullptr;
-
-            ~PngResources() {
-                av_packet_free(&this->packet);
-                av_frame_free(&this->frame);
-                avcodec_free_context(&this->encoder);
-            }
-        } resources;
-        resources.encoder = avcodec_alloc_context3(png);
-        resources.frame = av_frame_alloc();
-        resources.packet = av_packet_alloc();
-        if (!resources.encoder || !resources.frame || !resources.packet) return AVERROR(ENOMEM);
-
-        auto* encoder = resources.encoder;
-        auto* frame = resources.frame;
-        auto* packet = resources.packet;
-        encoder->width = frame->width = right - left;
-        encoder->height = frame->height = bottom - top;
-        encoder->pix_fmt = AV_PIX_FMT_RGBA;
+        frame.reset(av_frame_alloc());
+        if (!frame) return AVERROR(ENOMEM);
+        frame->width = right - left;
+        frame->height = bottom - top;
         frame->format = AV_PIX_FMT_RGBA;
-        encoder->time_base = milliseconds;
-        int error = avcodec_open2(encoder, png, nullptr);
+        const int error = av_frame_get_buffer(frame.get(), 0);
         if (error < 0) return error;
-        if ((error = av_frame_get_buffer(frame, 0)) < 0) return error;
 
         for (int y = 0; y < frame->height; ++y) {
             std::memset(frame->data[0] + y * frame->linesize[0], 0, frame->width * rgba_bytes_per_pixel);
@@ -178,8 +198,33 @@ private:
                 }
             }
         }
+        return 0;
+    }
 
-        if ((error = avcodec_send_frame(encoder, frame)) < 0) return error;
+    static int encode_image(const AVFrame& frame, int width, int height, std::string& image) {
+        const auto* png = avcodec_find_encoder(AV_CODEC_ID_PNG);
+        if (!png) return AVERROR(ENOMEM);
+
+        struct PngResources {
+            AVCodecContext* encoder;
+            AVPacket* packet;
+
+            ~PngResources() {
+                av_packet_free(&this->packet);
+                avcodec_free_context(&this->encoder);
+            }
+        } resources{avcodec_alloc_context3(png), av_packet_alloc()};
+        auto* encoder = resources.encoder;
+        auto* packet = resources.packet;
+        if (!encoder || !packet) return AVERROR(ENOMEM);
+
+        encoder->width = frame.width;
+        encoder->height = frame.height;
+        encoder->pix_fmt = AV_PIX_FMT_RGBA;
+        encoder->time_base = milliseconds;
+        int error = avcodec_open2(encoder, png, nullptr);
+        if (error < 0) return error;
+        if ((error = avcodec_send_frame(encoder, &frame)) < 0) return error;
         if ((error = avcodec_receive_packet(encoder, packet)) < 0) return error;
         if (packet->size > maximum_png_bytes) return AVERROR(ENOMEM);
 
@@ -189,7 +234,7 @@ private:
         image = "{\"dataUrl\":\"data:image/png;base64," + base64 +
                 "\",\"screen\":{\"width\":" + std::to_string(width) +
                 ",\"height\":" + std::to_string(height) + "},\"image\":{\"width\":" +
-                std::to_string(frame->width) + ",\"height\":" + std::to_string(frame->height) +
+                std::to_string(frame.width) + ",\"height\":" + std::to_string(frame.height) +
                 "}}";
         return 0;
     }

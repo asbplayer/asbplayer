@@ -232,6 +232,20 @@ try {
     assert.notDeepEqual(changed.screen, resized.screen);
     assert.deepEqual(afterGap, resized);
     assert.deepEqual(afterClear, afterGap);
+    await load('damaged-pgs.mkv');
+    const recovered = imageRecords(0);
+    assert.deepEqual(
+        recovered.map(({ start, end }) => [start, end]),
+        [
+            [2000, 4000],
+            [5000, 6000],
+        ],
+        'A bad packet closes the previous cue, and decoding resumes with a complete display'
+    );
+    assert.deepEqual(recovered[0].textImage, original);
+    assert.deepEqual(recovered[1].textImage, original);
+    await load('undecodable-pgs.mkv');
+    assert.throws(() => imageRecords(0), /Could not finish subtitle output/);
     process.stdout.write(
         'WASM subtitle regressions passed: track identity, presentation timing, reordered cues, text normalization, slow reads, zlib, PGS/DVD/DVB bitmaps\n'
     );

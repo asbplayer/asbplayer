@@ -324,7 +324,7 @@ struct SubtitleOutput {
         avformat_free_context(this->format);
     }
 
-    int open(int video_width, int video_height) {
+    int open_decoder() {
         const auto* codec = avcodec_find_decoder(this->source->codecpar->codec_id);
         this->decoder = avcodec_alloc_context3(codec);
         if (!codec || !this->decoder) return AVERROR(ENOMEM);
@@ -334,7 +334,12 @@ struct SubtitleOutput {
 
         this->decoder->pkt_timebase = this->source->time_base;
         this->decoder->sub_charenc_mode = FF_SUB_CHARENC_MODE_IGNORE;
-        if ((error = avcodec_open2(this->decoder, codec, nullptr)) < 0) return error;
+        return avcodec_open2(this->decoder, codec, nullptr);
+    }
+
+    int open(int video_width, int video_height) {
+        int error = this->open_decoder();
+        if (error < 0) return error;
 
         if (supported_bitmap_codec(this->source->codecpar->codec_id)) {
             this->bitmap = std::make_unique<BitmapSubtitleOutput>(this->track_key, video_width, video_height);
@@ -514,7 +519,20 @@ struct SubtitleOutput {
         int error = avcodec_decode_subtitle2(this->decoder, &subtitle, &got_subtitle, decode_packet);
         if (produced) *produced = got_subtitle != 0;
         if (error < 0) {
-            if (this->bitmap || error == AVERROR(ENOMEM)) return error;
+            if (this->bitmap) {
+                // The PGS and DVB decoders also return -1 for truncated packets.
+                if (packet->size == 0 || (error != AVERROR_INVALIDDATA && error != -1)) return error;
+
+                const int64_t boundary = packet->pts == AV_NOPTS_VALUE
+                    ? AV_NOPTS_VALUE
+                    : av_rescale_q(packet->pts, this->source->time_base, milliseconds);
+                if ((error = this->bitmap->interrupt(boundary)) < 0) return error;
+                ++this->decode_errors;
+                // PGS and DVB can leave partially updated state and have no decoder flush callback.
+                avcodec_free_context(&this->decoder);
+                return this->open_decoder();
+            }
+            if (error == AVERROR(ENOMEM)) return error;
             ++this->decode_errors;
             return 0;
         }
@@ -652,8 +670,8 @@ struct SubtitleOutput {
     }
 
     int finish(int64_t duration) {
-        if (this->bitmap) return this->bitmap->finish(duration);
         if (this->decode_errors > 0 && this->decoded_cues == 0) return AVERROR_INVALIDDATA;
+        if (this->bitmap) return this->bitmap->finish(duration);
         const int error = flush_cues(INT64_MAX);
         return error < 0 ? error : av_write_trailer(this->format);
     }
