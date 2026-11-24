@@ -8,6 +8,9 @@
 # Locale selection: PR paths under docs/i18n/<locale>/ map to that locale's
 # build; any other docs/ change maps to the English build. Blog-only PRs
 # therefore still verify the English site, which includes the blog.
+#
+# The i18n check runs only in a changed locale's job: English changes must
+# merge without translations; docs-translate supplies them in a follow-up PR.
 
 name: Verify docs
 
@@ -67,6 +70,12 @@ jobs:
 
             - name: Install docs dependencies
               run: pnpm install --frozen-lockfile --filter asbplayer-docs
+
+            - name: Check docs i18n
+              # A matrix locale other than 'en' means this PR changed that
+              # locale's tree.
+              if: matrix.locale != 'en'
+              run: node scripts/check-docs-i18n.ts --locales=${{ matrix.locale }}
 
             - name: Build docs
               run: |

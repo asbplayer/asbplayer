@@ -54,3 +54,25 @@ export function localesForProject(root: string): string[] {
     const project = JSON.parse(readFileSync(join(root, 'project.json'), 'utf8'));
     return docsLocales(project.languages);
 }
+
+/**
+ * Parses the shared --locales=<a,b> flag: a comma-separated subset of the
+ * configured locales, or all of them when the flag is absent. Exits when a
+ * requested locale is not configured.
+ */
+export function parseLocalesArg(argv: string[], configured: string[]): string[] {
+    const localeArg = /^--locales=(.+)$/.exec(argv.find((arg) => arg.startsWith('--locales=')) ?? '');
+    const locales = localeArg
+        ? localeArg[1]
+              .split(',')
+              .map((locale) => locale.trim())
+              .filter(Boolean)
+        : configured;
+    for (const locale of locales) {
+        if (!configured.includes(locale)) {
+            console.error(`Locale "${locale}" is not configured in project.json`);
+            process.exit(1);
+        }
+    }
+    return locales;
+}
