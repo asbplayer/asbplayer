@@ -40,7 +40,9 @@ Włącz klienta WebSocket w <a href={new URL('?view=settings#misc-settings', pro
 
 Kopanie zdań za pomocą Yomitan od razu uzupełni definicję słowa, obraz i dźwięk.
 
-Aby zawsze używać tekstu napisów asbplayera w polu Zdanie, włącz w ustawieniach **Tworzenia fiszek** opcję [**Zawsze używaj tekstu napisów w polu zdania**](../reference/settings#always-use-subtitle-text-for-sentence-field). Zastąpi ona tekst zdania dostarczony przez Yomitan tekstem napisu z wszystkich ścieżek, z którego tworzysz fiszkę.
+Aby zawsze używać tekstu napisów asbplayera w polu Zdanie, włącz w ustawieniach **Tworzenia fiszek** opcję [**Zawsze używaj tekstu napisów w polu zdania**](../reference/settings.md#always-use-subtitle-text-for-sentence-field). Zastąpi ona tekst zdania dostarczony przez Yomitan tekstem napisu z wszystkich ścieżek, z którego tworzysz fiszkę.
+
+Jeśli tworzysz fiszki na podstawie kilku słów z tego samego napisu, **Zaktualizuj ostatnią kartę** może również aktualizować wcześniejsze pasujące karty. Włącz [**aktualizacje zdań**](../reference/settings.md#update-sentence-for-cards-with-the-same-subtitle-text), aby udostępniać zdanie i skonfigurowane ścieżki napisów, albo [**aktualizacje obrazu/dźwięku**](../reference/settings.md#update-all-cards-with-the-same-subtitle-text), aby udostępniać zrzut ekranu i klip audio.
 
 ## Ustawienia dodatku
 

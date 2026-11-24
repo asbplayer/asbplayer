@@ -41,7 +41,9 @@ Attiva il client WebSocket nelle <a href={new URL('?view=settings#misc-settings'
 
 Creando flashcard da frasi con Yomitan, le carte includeranno già la definizione della parola, l'immagine e l'audio.
 
-Per usare sempre il testo dei sottotitoli di asbplayer nel campo Sentence, attiva [**Usa sempre il testo dei sottotitoli nel campo della frase**](../reference/settings#always-use-subtitle-text-for-sentence-field) nelle impostazioni di **Creazione flashcard**. Il testo della frase fornito da Yomitan verrà sostituito con il testo dei sottotitoli selezionati in tutti i canali.
+Per usare sempre il testo dei sottotitoli di asbplayer nel campo Sentence, attiva [**Usa sempre il testo dei sottotitoli nel campo della frase**](../reference/settings.md#always-use-subtitle-text-for-sentence-field) nelle impostazioni di **Creazione flashcard**. Il testo della frase fornito da Yomitan verrà sostituito con il testo dei sottotitoli selezionati in tutti i canali.
+
+Se estrai più parole dallo stesso sottotitolo, **Aggiorna l'ultima carta** può aggiornare anche le carte corrispondenti create in precedenza. Attiva gli [**aggiornamenti della frase**](../reference/settings.md#update-sentence-for-cards-with-the-same-subtitle-text) per condividere la frase e le tracce dei sottotitoli configurate, oppure gli [**aggiornamenti di immagine e audio**](../reference/settings.md#update-all-cards-with-the-same-subtitle-text) per condividere lo screenshot e la clip audio.
 
 ## Impostazioni dell'add-on
 

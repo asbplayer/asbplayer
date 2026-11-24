@@ -40,7 +40,9 @@ asbplayer 확장 프로그램의 <a href={new URL('?view=settings#misc-settings'
 
 Yomitan으로 문장을 마이닝하면 단어 정의, 이미지, 오디오가 이미 포함된 카드가 만들어집니다.
 
-문장 필드에 항상 asbplayer의 자막 텍스트를 사용하려면 **마이닝** 설정에서 [**문장 필드에 항상 자막 텍스트 사용**](../reference/settings#always-use-subtitle-text-for-sentence-field)을 사용 설정합니다. 그러면 Yomitan이 제공한 문장 텍스트가 모든 트랙에서 마이닝한 자막 텍스트로 바뀝니다.
+문장 필드에 항상 asbplayer의 자막 텍스트를 사용하려면 **마이닝** 설정에서 [**문장 필드에 항상 자막 텍스트 사용**](../reference/settings.md#always-use-subtitle-text-for-sentence-field)을 사용 설정합니다. 그러면 Yomitan이 제공한 문장 텍스트가 모든 트랙에서 마이닝한 자막 텍스트로 바뀝니다.
+
+같은 자막에서 여러 단어를 추출하면 **이전 카드 업데이트**로 이전에 일치한 카드도 업데이트할 수 있습니다. [**문장 업데이트**](../reference/settings.md#update-sentence-for-cards-with-the-same-subtitle-text)를 사용 설정하면 문장과 구성된 자막 트랙을 공유하고, [**이미지/오디오 업데이트**](../reference/settings.md#update-all-cards-with-the-same-subtitle-text)를 사용 설정하면 스크린샷과 오디오 클립을 공유합니다.
 
 ## 추가 기능 설정
 

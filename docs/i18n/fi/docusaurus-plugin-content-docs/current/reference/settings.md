@@ -80,11 +80,19 @@ Kun tämä on käytössä, kohdetekstitys kopioidaan leikepöydälle aina louhin
 
 Kun tämä on käytössä, Lause-kenttään lisätään louhintahetken tekstitysteksti kaikilta raidoilta, vaikka ulkoinen sovellus tarjoaisi eri lausetekstin. Tämä on hyödyllistä, kun [louhit kortteja Yomitanilla](../guides/one-click-mining.md).
 
+### Päivitä edellisen kortin lisäksi samaa tekstitystä käyttävien korttien lauseet {#update-sentence-for-cards-with-the-same-subtitle-text}
+
+Kun tämä on käytössä, **Päivitä edellinen kortti** -louhintatoiminto korvaa myös lausekentän ja määritetyt tekstitysraita 1–3 -kentät peräkkäin luoduissa muistiinpanoissa, joiden nykyinen lause vastaa vietyä lausetta. Päivitys yrittää säilyttää kunkin muistiinpanon korostukset. Raitakentät, joihin ei viedä tekstiä, pysyvät ennallaan. Jos tekstityskenttä käyttää samaa Anki-kenttää kuin muu kuin tekstityskenttä, kuten määritelmä, lausepäivitys jättää kentän ennalleen aiemmissa muistiinpanoissa.
+
+Tämä asetus kopioi nykyiseen vientiin valitun lauseen. Ota [**Käytä tekstityksen tekstiä aina lausekentässä**](#always-use-subtitle-text-for-sentence-field) käyttöön, jos haluat käyttää koko louhittua tekstitystä. [Kuvan ja äänen päivitys](#update-all-cards-with-the-same-subtitle-text) toimii tästä asetuksesta riippumatta.
+
+Vastaavuus tarkistetaan pääasiallisesta lausekentästä, lauseen merkkaus ohitetaan ja myös toisen lauseen sisältävä lause hyväksytään. Siksi vain ensimmäisen rivin sisältävä muistiinpano voi vastata koko tekstitystä. Haku sisältää kahden viimeisen Anki-päivän aikana lisätyt muistiinpanot ja päättyy ensimmäiseen erilaiseen tai puuttuvaan lauseeseen. Myös raitakenttien päivitys edellyttää määritettyä lausekenttää ja ei-tyhjää vientilausetta. Asetus on oletuksena poissa käytöstä, eikä se vaikuta erikseen valitun kortin päivitykseen.
+
 ### Päivitä viimeisimmän kortin lisäksi kuvat ja äänet korteista, joissa on sama tekstitys {#update-all-cards-with-the-same-subtitle-text}
 
-Kun tämä on käytössä, **Päivitä viimeisin kortti** -louhintatoiminto päivittää myös samasta tekstitysrivistä peräkkäin luotujen muistiinpanojen ääni- ja kuvakentät. Kunkin edeltävän muistiinpanon lause, sana, määritelmä ja mukautetut kentät säilyvät. Vastaavuuden haussa ohitetaan lauseen merkkaus, ja lause voi olla osa louhittua tekstityskontekstia.
+Kun tämä on käytössä, **Päivitä edellinen kortti** -louhintatoiminto päivittää myös samasta tekstitysrivistä peräkkäin luotujen muistiinpanojen ääni- ja kuvakentät. Kunkin edeltävän muistiinpanon sana, määritelmä ja mukautetut kentät säilyvät. Sen tekstityskentät pysyvät ennallaan, ellei myös [lausepäivitys](#update-sentence-for-cards-with-the-same-subtitle-text) ole käytössä. Vastaavuuden haussa ohitetaan lauseen merkkaus, ja lause voi olla osa louhittua tekstityskontekstia.
 
-Haku sisältää kahden viimeisen Anki-päivän aikana lisätyt muistiinpanot ja päättyy ensimmäiseen erilaiseen tai puuttuvaan lauseeseen. Lausekenttä on määritettävä. Asetus on oletuksena poissa käytöstä, eikä se vaikuta erikseen valitun kortin päivitykseen.
+Haku sisältää kahden viimeisen Anki-päivän aikana lisätyt muistiinpanot ja päättyy ensimmäiseen erilaiseen tai puuttuvaan lauseeseen. Lausekenttä on määritettävä, ja vientilauseessa on oltava tekstiä, ei vain välilyöntejä tai merkkausta. Asetus on oletuksena poissa käytöstä, eikä se vaikuta erikseen valitun kortin päivitykseen.
 
 ### Toista ääntä tallennettaessa paikallisesta videosta {#play-audio-while-recording-from-local-video}
 

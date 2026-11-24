@@ -40,7 +40,9 @@ Ative o cliente WebSocket nas <a href={new URL('?view=settings#misc-settings', p
 
 Ao minerar frases com o Yomitan, os cartões já serão criados com a definição da palavra, a imagem e o áudio.
 
-Para sempre usar o texto das legendas do asbplayer no campo Sentence, ative [**Sempre usar o texto das legendas no campo da frase**](../reference/settings#always-use-subtitle-text-for-sentence-field) nas configurações de **Mineração**. Isso substitui o texto da frase fornecido pelo Yomitan pelo texto minerado das legendas em todas as faixas.
+Para sempre usar o texto das legendas do asbplayer no campo Sentence, ative [**Sempre usar o texto das legendas no campo da frase**](../reference/settings.md#always-use-subtitle-text-for-sentence-field) nas configurações de **Mineração**. Isso substitui o texto da frase fornecido pelo Yomitan pelo texto minerado das legendas em todas as faixas.
+
+Se você minerar várias palavras da mesma legenda, **Atualizar último card** também poderá atualizar cartões correspondentes anteriores. Ative [**atualizações de frase**](../reference/settings.md#update-sentence-for-cards-with-the-same-subtitle-text) para compartilhar a frase e as faixas de legenda configuradas, ou [**atualizações de imagem/áudio**](../reference/settings.md#update-all-cards-with-the-same-subtitle-text) para compartilhar a captura de tela e o clipe de áudio.
 
 ## Configurações do complemento
 

@@ -40,7 +40,9 @@ Activez le client WebSocket dans les <a href={new URL('?view=settings#misc-setti
 
 Le mining de phrases avec Yomitan crée des cartes contenant déjà la définition du mot, une image et un fichier audio.
 
-Pour toujours utiliser le texte des sous-titres d’asbplayer dans le champ Sentence, activez [**Toujours utiliser le texte des sous-titres pour le champ de la phrase**](../reference/settings#always-use-subtitle-text-for-sentence-field) dans les paramètres de **Mining**. Le texte de la phrase fourni par Yomitan sera remplacé par le texte des sous-titres extraits de toutes les pistes.
+Pour toujours utiliser le texte des sous-titres d’asbplayer dans le champ Sentence, activez [**Toujours utiliser le texte des sous-titres pour le champ de la phrase**](../reference/settings.md#always-use-subtitle-text-for-sentence-field) dans les paramètres de **Mining**. Le texte de la phrase fourni par Yomitan sera remplacé par le texte des sous-titres extraits de toutes les pistes.
+
+Si vous extrayez plusieurs mots du même sous-titre, **Mettre à jour la dernière carte** peut également mettre à jour les cartes correspondantes précédentes. Activez les [**mises à jour de phrase**](../reference/settings.md#update-sentence-for-cards-with-the-same-subtitle-text) pour partager la phrase et les pistes de sous-titres configurées, ou les [**mises à jour de l’image et de l’audio**](../reference/settings.md#update-all-cards-with-the-same-subtitle-text) pour partager la capture d’écran et le clip audio.
 
 ## Paramètres du module complémentaire
 

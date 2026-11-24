@@ -40,7 +40,9 @@ Ota WebSocket-asiakas käyttöön asbplayer-laajennuksen <a href={new URL('?view
 
 Kun louhit lauseita Yomitanilla, kortteihin lisätään valmiiksi sanan määritelmä, kuva ja ääni.
 
-Jos haluat käyttää Lause-kentässä aina asbplayerin tekstitystekstiä, ota **Louhinta**-asetuksissa käyttöön [**Käytä tekstitystekstiä aina lausekentässä**](../reference/settings#always-use-subtitle-text-for-sentence-field). Se korvaa Yomitanin lisäämän lausetekstin kaikilta raidoilta louhitulla tekstitystekstillä.
+Jos haluat käyttää Lause-kentässä aina asbplayerin tekstitystekstiä, ota **Louhinta**-asetuksissa käyttöön [**Käytä tekstitystekstiä aina lausekentässä**](../reference/settings.md#always-use-subtitle-text-for-sentence-field). Se korvaa Yomitanin lisäämän lausetekstin kaikilta raidoilta louhitulla tekstitystekstillä.
+
+Jos louhit useita sanoja samasta tekstityksestä, **Päivitä edellinen kortti** voi päivittää myös aiempia vastaavia kortteja. Ota [**lausepäivitykset**](../reference/settings.md#update-sentence-for-cards-with-the-same-subtitle-text) käyttöön, jos haluat jakaa lauseen ja määritetyt tekstitysraidat, tai [**kuvan ja äänen päivitykset**](../reference/settings.md#update-all-cards-with-the-same-subtitle-text), jos haluat jakaa kuvakaappauksen ja äänileikkeen.
 
 ## Lisäosan asetukset
 

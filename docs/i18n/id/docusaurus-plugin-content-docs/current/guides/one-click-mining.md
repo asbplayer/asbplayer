@@ -40,7 +40,9 @@ Aktifkan klien WebSocket di <a href={new URL('?view=settings#misc-settings', pro
 
 Menambang kalimat menggunakan Yomitan akan membuat kartu yang sudah berisi definisi kata, gambar, dan audio.
 
-Agar selalu menggunakan teks takarir asbplayer untuk kolom Sentence, aktifkan [**Selalu gunakan teks takarir untuk kolom kalimat**](../reference/settings#always-use-subtitle-text-for-sentence-field) di pengaturan **Penambangan**. Teks kalimat dari Yomitan akan diganti dengan teks takarir yang ditambang dari semua trek.
+Agar selalu menggunakan teks takarir asbplayer untuk kolom Sentence, aktifkan [**Selalu gunakan teks takarir untuk kolom kalimat**](../reference/settings.md#always-use-subtitle-text-for-sentence-field) di pengaturan **Penambangan**. Teks kalimat dari Yomitan akan diganti dengan teks takarir yang ditambang dari semua trek.
+
+Jika Anda menambang beberapa kata dari takarir yang sama, **Perbarui Kartu Terakhir** juga dapat memperbarui kartu cocok yang dibuat sebelumnya. Aktifkan [**pembaruan kalimat**](../reference/settings.md#update-sentence-for-cards-with-the-same-subtitle-text) untuk membagikan kalimat dan trek takarir yang dikonfigurasikan, atau [**pembaruan gambar/audio**](../reference/settings.md#update-all-cards-with-the-same-subtitle-text) untuk membagikan cuplikan layar dan klip audio.
 
 ## Pengaturan add-on
 

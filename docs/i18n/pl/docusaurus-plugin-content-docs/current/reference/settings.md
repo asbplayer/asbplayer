@@ -80,11 +80,19 @@ Po włączeniu tej opcji wybrany napis jest kopiowany do schowka przy każdym ur
 
 Po włączeniu tej opcji pole Zdanie jest wypełniane tekstem napisu ze wszystkich ścieżek, z którego tworzysz fiszkę, nawet jeśli aplikacja zewnętrzna dostarczy inny tekst zdania. Przydaje się to podczas [kopania z Yomitanem](../guides/one-click-mining.md).
 
+### Podczas aktualizowania ostatniej karty aktualizuj też zdanie na kartach z tym samym tekstem napisów {#update-sentence-for-cards-with-the-same-subtitle-text}
+
+Po włączeniu tej opcji czynność **Zaktualizuj ostatnią kartę** zastępuje również pole Zdanie i skonfigurowane pola Ścieżka napisów 1–3 w kolejnych notatkach, których dotychczasowe zdanie jest zgodne ze zdaniem eksportowanym. Aktualizacja próbuje zachować wyróżnienia każdej notatki. Pola ścieżek bez eksportowanego tekstu pozostają bez zmian. Jeśli pole napisów korzysta z tego samego pola Anki co pole niezwiązane z napisami, np. Definicja, aktualizacja zdania pozostawia to pole bez zmian we wcześniejszych notatkach.
+
+To ustawienie kopiuje zdanie wybrane do bieżącego eksportu. Włącz [**Zawsze używaj tekstu napisów w polu zdania**](#always-use-subtitle-text-for-sentence-field), aby używać pełnego tekstu wydobytych napisów. [Aktualizacja obrazu i dźwięku](#update-all-cards-with-the-same-subtitle-text) działa niezależnie.
+
+Dopasowanie korzysta z głównego pola Zdanie, ignoruje jego znaczniki i uznaje dopasowanie, gdy jedno zdanie zawiera się w drugim. Dlatego notatka zawierająca tylko pierwszy wiersz może pasować do całych napisów. Wyszukiwanie obejmuje notatki dodane w ciągu ostatnich dwóch dni Anki i kończy się na pierwszym innym lub brakującym zdaniu. Do aktualizacji pól ścieżek również wymagane jest skonfigurowane pole zdania i niepuste zdanie eksportowane. Domyślnie ta opcja jest wyłączona i nie wpływa na aktualizację konkretnej, wybranej karty.
+
 ### Przy aktualizacji ostatniej karty aktualizuj też obraz i dźwięk kart z tym samym tekstem napisu {#update-all-cards-with-the-same-subtitle-text}
 
-Po włączeniu tej opcji czynność **Zaktualizuj ostatnią kartę** aktualizuje również pola dźwięku i obrazu w kolejnych notatkach utworzonych na podstawie tego samego wiersza napisów. Każda wcześniejsza notatka zachowuje swoje zdanie, słowo, definicję i pola niestandardowe. Podczas dopasowywania pomijane jest formatowanie zdania, a samo zdanie może stanowić część kontekstu napisu użytego do ukopania fiszki.
+Po włączeniu tej opcji czynność **Zaktualizuj ostatnią kartę** aktualizuje również pola dźwięku i obrazu w kolejnych notatkach utworzonych na podstawie tego samego wiersza napisów. Każda wcześniejsza notatka zachowuje swoje słowo, definicję i pola niestandardowe. Jej pola napisów pozostają bez zmian, chyba że włączono też [aktualizację zdania](#update-sentence-for-cards-with-the-same-subtitle-text). Podczas dopasowywania pomijane jest formatowanie zdania, a samo zdanie może stanowić część kontekstu napisu użytego do ukopania fiszki.
 
-Wyszukiwanie obejmuje notatki dodane w ciągu ostatnich dwóch dni Anki i kończy się na pierwszym innym lub brakującym zdaniu. Pole zdania musi być skonfigurowane. Domyślnie ta opcja jest wyłączona i nie wpływa na aktualizację konkretnej, wybranej karty.
+Wyszukiwanie obejmuje notatki dodane w ciągu ostatnich dwóch dni Anki i kończy się na pierwszym innym lub brakującym zdaniu. Pole zdania musi być skonfigurowane, a eksportowane zdanie musi zawierać tekst, nie tylko białe znaki lub znaczniki. Domyślnie ta opcja jest wyłączona i nie wpływa na aktualizację konkretnej, wybranej karty.
 
 ### Odtwarzaj dźwięk podczas nagrywania z lokalnego wideo {#play-audio-while-recording-from-local-video}
 
