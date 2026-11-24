@@ -206,6 +206,10 @@ export default class ChromeExtension {
         window.addEventListener('message', this.windowEventListener);
     }
 
+    get supportsUpdateLastSentenceWithSameSubtitleText() {
+        return this.installed && gte(this.version, '1.24.0');
+    }
+
     get supportsProgressiveSubtitles() {
         return this.installed && gte(this.version, '1.24.0');
     }

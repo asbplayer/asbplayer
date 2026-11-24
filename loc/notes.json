@@ -528,6 +528,7 @@
         "settings.fastForwardPlaybackMinimumSkipInterval": "Numeric setting for the minimum length in milliseconds of a skip in fast-forward playback mode. Skips shorter than this are not performed.",
         "settings.coloringStrategy": "Section heading for settings that determine how subtitle words are colored by known-status.",
         "settings.alwaysUseSubtitleForSentence": "Mining setting that always fills the card creator's sentence field with the full subtitle text, even when the user has selected only part of it.",
+        "settings.updateLastCardSentenceForSameSubtitle": "Mining setting that also updates sentence and subtitle-track fields on preceding cards with matching subtitle text when updating the last card.",
         "settings.updateLastCardForSameSubtitle": "Mining setting that also updates the image and audio of cards that have the same subtitle text when updating the last card.",
         "settings.exportDialog": "Section heading in the mining settings for the card creator's surrounding-subtitles settings.",
         "settings.hideInCardCreator": "Menu item that hides an Anki field from the card creator.",
