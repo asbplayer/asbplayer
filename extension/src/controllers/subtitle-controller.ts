@@ -43,6 +43,7 @@ import {
 } from '@project/common/annotations';
 import type { RestorableTokenSelection, SelectTokenInRootOptions } from '@project/common/annotations/dom-annotations';
 import type { TokenSelectionLocation } from '@project/common/annotations/token-navigation';
+import { registerSubtitleCopyScope } from '@project/common/annotations/subtitle-copy';
 import {
     arrayEquals,
     compareSubtitlesForDisplay,
@@ -450,6 +451,10 @@ export default class SubtitleController {
     }
 
     private _elementOverlayParams() {
+        const configureSubtitleContainer = (container: HTMLElement) => {
+            registerSubtitleCopyScope(container, `[${ASB_SUBTITLE_INDEX_ATTRIBUTE}]`);
+            container.classList.toggle(ASB_PLAYBACK_PAUSED_CLASS, this.playbackPaused);
+        };
         const subtitleOverlayParams: ElementOverlayParams = {
             targetElement: this.context.video,
             nonFullscreenContainerClassName: ASB_SUBTITLE_CONTAINER_BOTTOM_CLASS,
@@ -458,8 +463,7 @@ export default class SubtitleController {
             fullscreenContentClassName: 'asbplayer-fullscreen-subtitles',
             offsetAnchor: OffsetAnchor.bottom,
             contentWidth: -1,
-            onContainerStyles: (container) =>
-                container.classList.toggle(ASB_PLAYBACK_PAUSED_CLASS, this.playbackPaused),
+            onContainerStyles: configureSubtitleContainer,
             onMouseOver: (event: MouseEvent) => this.onMouseOver?.(event),
             onMouseOut: (event: MouseEvent) => this.onMouseOut?.(event),
         };
@@ -471,8 +475,7 @@ export default class SubtitleController {
             fullscreenContentClassName: 'asbplayer-fullscreen-subtitles',
             offsetAnchor: OffsetAnchor.top,
             contentWidth: -1,
-            onContainerStyles: (container) =>
-                container.classList.toggle(ASB_PLAYBACK_PAUSED_CLASS, this.playbackPaused),
+            onContainerStyles: configureSubtitleContainer,
             onMouseOver: (event: MouseEvent) => this.onMouseOver?.(event),
             onMouseOut: (event: MouseEvent) => this.onMouseOut?.(event),
         };

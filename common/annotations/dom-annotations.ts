@@ -2,6 +2,7 @@ import type { IndexedSubtitleModel } from '@project/common';
 import { tokenAtLocation } from '@project/common/annotations/token-navigation';
 import type { TokenSelectionLocation } from '@project/common/annotations/token-navigation';
 import { asbTrace } from '@project/common/util/log';
+import { selectedSubtitleText } from '@project/common/annotations/subtitle-copy';
 
 export const ASB_TOKEN_CLASS = 'asb-token';
 export const ASB_TOKEN_ADAPTIVE_HIDDEN_CLASS = 'asb-token-adaptive-hidden';
@@ -90,26 +91,45 @@ const appendSelectionEndpoints = (selection: Selection | null | undefined, endpo
     if (selection && !selection.isCollapsed) endpoints.push(selection.anchorNode, selection.focusNode);
 };
 
-const nativeSelectionEndpoints = (document: Document, shadowRoots: readonly ShadowRoot[]) => {
+const nativeTokenSelection = (document: Document, shadowRoots: readonly ShadowRoot[]) => {
     const selection:
         | (Selection & { getComposedRanges?: (options: { shadowRoots: readonly ShadowRoot[] }) => StaticRange[] })
         | null = document.getSelection();
-    if (!selection?.rangeCount) return [];
+    if (!selection?.rangeCount) return;
 
     // Document-level endpoints can be retargeted to a shadow host rather than the selected text.
     if (shadowRoots.length && selection.getComposedRanges) {
-        return selection
-            .getComposedRanges({ shadowRoots })
-            .flatMap((range) => (range.collapsed ? [] : [range.startContainer, range.endContainer]));
+        return { composedRanges: selection.getComposedRanges({ shadowRoots }) };
     }
 
-    const endpoints: (Node | null)[] = [];
-    appendSelectionEndpoints(selection, endpoints);
+    const selections = [selection];
     for (const root of shadowRoots) {
         const shadowRoot: ShadowRoot & { getSelection?: () => Selection | null } = root;
-        appendSelectionEndpoints(shadowRoot.getSelection?.(), endpoints);
+        const rootSelection = shadowRoot.getSelection?.();
+        if (rootSelection) selections.push(rootSelection);
     }
+    return { selections };
+};
+
+const nativeSelectionEndpoints = (document: Document, shadowRoots: readonly ShadowRoot[]) => {
+    const native = nativeTokenSelection(document, shadowRoots);
+    if (!native) return [];
+    if (native.composedRanges) {
+        return native.composedRanges.flatMap((range) =>
+            range.collapsed ? [] : [range.startContainer, range.endContainer]
+        );
+    }
+    const endpoints: (Node | null)[] = [];
+    for (const selection of native.selections) appendSelectionEndpoints(selection, endpoints);
     return endpoints;
+};
+
+const nativeCopyRange = (document: Document, shadowRoots: readonly ShadowRoot[]) => {
+    const native = nativeTokenSelection(document, shadowRoots);
+    if (!native) return;
+    if (native.composedRanges) return native.composedRanges.length === 1 ? native.composedRanges[0] : undefined;
+    const selections = native.selections.filter((selection) => !selection.isCollapsed);
+    if (selections.length === 1 && selections[0].rangeCount === 1) return selections[0].getRangeAt(0);
 };
 
 const trackNativeTokenSelection = (document: Document, getShadowRoots: () => readonly ShadowRoot[]) => {
@@ -147,15 +167,29 @@ const trackNativeTokenSelection = (document: Document, getShadowRoots: () => rea
         pressedBranch = null;
         sync();
     };
+    const copy = (event: ClipboardEvent) => {
+        if (event.defaultPrevented || !event.clipboardData) return;
+        const target = event.composedPath()[0];
+        if (target instanceof HTMLElement && (target.isContentEditable || target.closest('input, textarea'))) {
+            return;
+        }
+        const range = nativeCopyRange(document, getShadowRoots());
+        const text = range && selectedSubtitleText(document, range);
+        if (text === undefined) return;
+        event.clipboardData.setData('text/plain', text);
+        event.preventDefault();
+    };
 
     document.addEventListener('mousedown', press, true);
     document.addEventListener('mouseup', release, true);
     document.addEventListener('selectionchange', sync);
+    document.addEventListener('copy', copy);
     document.defaultView?.addEventListener('blur', release);
     return () => {
         document.removeEventListener('mousedown', press, true);
         document.removeEventListener('mouseup', release, true);
         document.removeEventListener('selectionchange', sync);
+        document.removeEventListener('copy', copy);
         document.defaultView?.removeEventListener('blur', release);
         for (const branch of pinned) branch.classList.remove(ASB_TOKEN_NATIVE_SELECTION_CLASS);
     };

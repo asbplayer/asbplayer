@@ -80,6 +80,7 @@ import {
     ASB_TOKEN_CONTAINER_CLASS,
 } from '@project/common/annotations';
 import type { TokenJumpMatch } from '@project/common/annotations/token-navigation';
+import { registerSubtitleCopyScope } from '@project/common/annotations/subtitle-copy';
 import Clock from '@project/common/playback/media/clock';
 
 import VideoFrameTimingDriver from '@project/common/playback/media/video-frame-timing-driver';
@@ -260,6 +261,7 @@ const CachedShowingSubtitle = React.memo(function CachedShowingSubtitle({
     const attach = useCallback(
         (element: HTMLDivElement | null) => {
             if (!element) return;
+            registerSubtitleCopyScope(element, `[${ASB_SUBTITLE_INDEX_ATTRIBUTE}]`);
             while (element.firstChild) domCache.return(element.lastChild! as HTMLElement);
             element.appendChild(domCache.get(key, () => renderHtml(currentSubtitle.current)));
         },
