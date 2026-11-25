@@ -1,10 +1,6 @@
 import type { ConfirmedVideoDataSubtitleTrack, LoadableSubtitleTrack, VideoDataSubtitleTrack } from '@project/common';
 import type { FileWithId } from '@project/common/file-selector';
-import type {
-    SubtitleSourceProducer,
-    SubtitleSourceState,
-    SubtitleSourceStatus,
-} from '@project/common/subtitle-reader/subtitle-stream';
+import type { SubtitleSourceProducer, SubtitleSourceState } from '@project/common/subtitle-reader/subtitle-stream';
 import { subtitleSourceNames, subtitleSourceStatus } from '@project/common/subtitle-reader/subtitle-stream';
 import type { EmbeddedSubtitleDescriptor, SubtitleHost } from '@project/common/embedded-subtitles/subtitle-source';
 import { embeddedSubtitleId } from '@project/common/embedded-subtitles/subtitle-source';
@@ -53,6 +49,12 @@ export interface MediaSourcesState {
     readonly canRestoreLastSession: boolean;
 }
 
+type SubtitleSourceOwner = EmbeddedSelection | MediaSources['subtitleTracks'] | undefined;
+
+/** Audio changes and saved extraction output preserve this load identity. Remote sources use undefined. */
+export const subtitleSourceOwner = ({ sources, embeddedSelection }: MediaSourcesState): SubtitleSourceOwner =>
+    sources.subtitleSource.kind === 'remote' ? undefined : (embeddedSelection ?? sources.subtitleTracks);
+
 export interface SourcesAppliedEvent {
     readonly sources: MediaSources;
     readonly newVideo: boolean;
@@ -64,7 +66,6 @@ export interface MediaSourcesControllerConfig {
     subtitleHost: SubtitleHost;
     sessionStore?: FileSessionStore;
     onSourcesApplied?: (event: SourcesAppliedEvent) => void;
-    getSubtitleSourceStatus: () => SubtitleSourceStatus;
     onError: (error: unknown) => void;
 }
 
@@ -148,7 +149,6 @@ export class MediaSourcesController {
     private readonly embeddedSubtitles: EmbeddedSubtitles;
     private readonly session: FileSession;
     private readonly onSourcesApplied: ((event: SourcesAppliedEvent) => void) | undefined;
-    private readonly getSubtitleSourceStatus: () => SubtitleSourceStatus;
     private readonly onError: (error: unknown) => void;
     private readonly listeners = new Set<() => void>();
 
@@ -172,6 +172,7 @@ export class MediaSourcesController {
     private pendingRequest: { kind: 'confirm' | 'restore'; controller: AbortController } | undefined;
     private draftFileInputSignal: AbortSignal | undefined;
     private standaloneSubtitlesNeedSaving = false;
+    private subtitleLoadFailed = false;
     private settledSelection = new WeakMap<
         EmbeddedSelection,
         { tracks: LoadableSubtitleTrack<FileWithId>[]; pendingDescriptors: EmbeddedSubtitleDescriptor[] }
@@ -180,7 +181,6 @@ export class MediaSourcesController {
     constructor(config: MediaSourcesControllerConfig) {
         this.embeddedSubtitles = new EmbeddedSubtitles(config.subtitleHost);
         this.onSourcesApplied = config.onSourcesApplied;
-        this.getSubtitleSourceStatus = config.getSubtitleSourceStatus;
         this.onError = config.onError;
         this.session = new FileSession(config.sessionStore, {
             onCanRestoreChanged: (canRestoreLastSession) => this.setState({ ...this.state, canRestoreLastSession }),
@@ -351,11 +351,16 @@ export class MediaSourcesController {
         return true;
     }
 
-    updateRemoteSubtitleSources(sourceStates: readonly SubtitleSourceState[]): void {
+    updateSubtitleSources(owner: SubtitleSourceOwner, sourceStates: readonly SubtitleSourceState[]): void {
+        if (owner !== subtitleSourceOwner(this.state)) return;
+        const status = subtitleSourceStatus(sourceStates);
+        if (owner) {
+            this.subtitleLoadFailed = status === 'failed';
+            return;
+        }
         const current = this.state.sources;
         if (current.subtitleSource.kind !== 'remote') return;
         const names = subtitleSourceNames(sourceStates);
-        const status = subtitleSourceStatus(sourceStates);
         if (
             status === current.subtitleSource.status &&
             names.length === current.subtitleFileNames.length &&
@@ -481,7 +486,7 @@ export class MediaSourcesController {
                     !picker.selectionError &&
                     !this.session.selectionSaveFailed &&
                     sources.matchesSubtitleSelection(tracks) &&
-                    (audioTrackIndex !== sources.audioTrackIndex || this.getSubtitleSourceStatus() !== 'failed')
+                    (audioTrackIndex !== sources.audioTrackIndex || !this.subtitleLoadFailed)
                 ) {
                     this.confirmUnchangedSubtitles(sources, audioTrackIndex);
                     return;
@@ -508,7 +513,7 @@ export class MediaSourcesController {
                     pending.length &&
                     video &&
                     !this.session.selectionSaveFailed &&
-                    this.getSubtitleSourceStatus() !== 'failed' &&
+                    !this.subtitleLoadFailed &&
                     this.matchesActiveExtraction(video, files)
                 ) {
                     this.confirmUnchangedSubtitles(sources, audioTrackIndex);
@@ -875,6 +880,9 @@ export class MediaSourcesController {
     }
 
     private setState(next: MediaSourcesState): void {
+        if (this.subtitleLoadFailed && subtitleSourceOwner(next) !== subtitleSourceOwner(this.state)) {
+            this.subtitleLoadFailed = false;
+        }
         this.state = next;
         for (const listener of this.listeners) listener();
     }

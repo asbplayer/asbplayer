@@ -39,7 +39,6 @@ import type { AsbplayerSettings, DictionaryTrack, Profile, SettingsProvider } fr
 import { AudioClip, Mp3Encoder } from '@project/common/audio-clip';
 import type { ExportParams } from '@project/common/anki';
 import { SubtitleReader } from '@project/common/subtitle-reader';
-import type { SubtitleSourceState } from '@project/common/subtitle-reader/subtitle-stream';
 import { v4 as uuidv4 } from 'uuid';
 import clsx from 'clsx';
 import Alert from '@project/common/app/components/Alert';
@@ -344,7 +343,6 @@ function App({
     const keyBinder = useAppKeyBinder(settings.keyBindSet, extension);
     const videoFrameRef = useRef<HTMLIFrameElement>(null);
     const videoChannelRef = useRef<VideoChannel>(null);
-    const playerRef = useRef<PlayerRef>(null);
     const [videoPlayerSeekRequest, setVideoPlayerSeekRequest] = useState<SeekRequest>();
     const [width] = useWindowSize(!inVideoPlayer);
     const drawerRatio = videoFrameRef.current ? 0.2 : 0.3;
@@ -413,12 +411,12 @@ function App({
         sources,
         canRestoreLastSession: canRestoreLastFileSession,
         subtitleProducer,
+        onSubtitleSourcesChanged,
         picker: subtitlePicker,
     } = useMediaSources({
         subtitleHost,
         subtitleReader,
         onSourcesApplied: handleSourcesApplied,
-        getSubtitleSourceStatus: () => playerRef.current?.getSubtitleSourceStatus() ?? 'complete',
         onError: handleError,
     });
     const { subtitleFileNames } = sources;
@@ -459,6 +457,7 @@ function App({
     const [isSidePanelOpen, setIsSidePanelOpen] = useState<boolean>(false);
     const [statisticsOverlayOpen, setStatisticsOverlayOpen] = useState<boolean>(false);
     const [statisticsOverlayDismissed, setStatisticsOverlayDismissed] = useState<boolean>(false);
+    const playerRef = useRef<PlayerRef>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const draftFileInputRef = useRef<HTMLInputElement>(null);
 
@@ -1367,12 +1366,6 @@ function App({
         [extension, sources.videoFileUrl, handleUnloadVideo, handleSources]
     );
 
-    const handleSubtitleSourcesChanged = useCallback(
-        (sourceStates: readonly SubtitleSourceState[]) =>
-            mediaSourcesController.updateRemoteSubtitleSources(sourceStates),
-        [mediaSourcesController]
-    );
-
     const handleDownloadSubtitleFilesAsSrt = useCallback(async () => {
         try {
             const tracks = await sources.subtitleTracksForExport(subtitleReader, subtitles);
@@ -1825,7 +1818,7 @@ function App({
                                     onError={handleError}
                                     onUnloadVideo={handleUnloadVideo}
                                     onLoaded={handleFilesLoaded}
-                                    onSubtitleSourcesChanged={handleSubtitleSourcesChanged}
+                                    onSubtitleSourcesChanged={onSubtitleSourcesChanged}
                                     onTabSelected={handleTabSelected}
                                     onAnkiDialogRequest={handleAnkiDialogRequest}
                                     onAnkiDialogRewind={handleAnkiDialogRewind}

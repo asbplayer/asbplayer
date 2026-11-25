@@ -9,12 +9,9 @@ export const useSubtitlePickerPlayback = (open: boolean, channel: VideoChannel |
         if (!open) {
             const previous = saved.current;
             saved.current = undefined;
-            if (previous && previous.channel === channel) {
-                const remove = previous.channel.onReady(() => {
-                    if (previous.paused) previous.channel.pause();
-                    else void previous.channel.play();
-                });
-                remove();
+            if (previous && previous.channel === channel && channel.isReady) {
+                if (previous.paused) channel.pause();
+                else void channel.play();
             }
             return;
         }

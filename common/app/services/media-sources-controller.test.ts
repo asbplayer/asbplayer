@@ -5,7 +5,7 @@ import type { ConfirmedVideoDataSubtitleTrack, DisplaySubtitleModel } from '@pro
 import type { FileWithId } from '@project/common/file-selector';
 import type { FileSessionRecord } from '@project/common/file-system-access';
 import type { FileSessionStore } from '@project/common/app/services/file-session';
-import { MediaSourcesController } from '@project/common/app/services/media-sources-controller';
+import { MediaSourcesController, subtitleSourceOwner } from '@project/common/app/services/media-sources-controller';
 import type { EmbeddedSelection } from '@project/common/app/services/media-sources-controller';
 import { SubtitleTracksController } from '@project/common/app/services/subtitle-tracks-controller';
 import { TestVideoProtocol } from '@project/common/app/services/subtitle-tracks-test-utils';
@@ -18,7 +18,7 @@ import type {
 import { mkv, mkvTrack } from '@project/common/media-probe/test-media';
 import SubtitleReader from '@project/common/subtitle-reader/subtitle-reader';
 import { subtitleKey } from '@project/common/subtitle-reader/subtitle-stream';
-import type { SubtitleSourceStatus } from '@project/common/subtitle-reader/subtitle-stream';
+import type { SubtitleSourceState } from '@project/common/subtitle-reader/subtitle-stream';
 
 const encoder = new TextEncoder();
 const srt = '1\n00:00:01,000 --> 00:00:02,000\nFirst\n\n';
@@ -132,7 +132,6 @@ let session: jest.Mocked<FileSessionStore>;
 let video: FileWithId;
 let choice: ConfirmedVideoDataSubtitleTrack;
 let protocol: TestVideoProtocol;
-let subtitleStatus: SubtitleSourceStatus;
 const onError = jest.fn<(error: unknown) => void>();
 const extract = jest.fn<(options: SubtitleExtractionOptions) => Promise<ExtractedSubtitleFile[]>>();
 
@@ -140,7 +139,6 @@ const createController = (sessionStore: FileSessionStore | undefined = session) 
     controller = new MediaSourcesController({
         subtitleHost: { extractSubtitles: extract },
         sessionStore,
-        getSubtitleSourceStatus: () => subtitleStatus,
         onError,
     });
     return controller;
@@ -154,14 +152,30 @@ const attachTracksController = () => {
     let activeSelection: EmbeddedSelection | undefined;
     let activeTracks: unknown;
     const makeSource = () => {
-        const { embeddedSelection, sources } = controller.getState();
+        const state = controller.getState();
+        const { embeddedSelection, sources } = state;
+        const owner = subtitleSourceOwner(state);
+        const onSourcesChanged = (states: readonly SubtitleSourceState[]) =>
+            controller.updateSubtitleSources(owner, states);
         const producer = controller.createProducer(embeddedSelection, {
             reader,
             errorMessage: () => 'Failed to load embedded subtitles',
         });
         return producer
-            ? { kind: 'producer' as const, producer, supportsProgressiveSubtitles: true, onInitialized: () => {} }
-            : { kind: 'local' as const, tracks: sources.subtitleTracks, reader, onInitialized: () => {} };
+            ? {
+                  kind: 'producer' as const,
+                  producer,
+                  supportsProgressiveSubtitles: true,
+                  onInitialized: () => {},
+                  onSourcesChanged,
+              }
+            : {
+                  kind: 'local' as const,
+                  tracks: sources.subtitleTracks,
+                  reader,
+                  onInitialized: () => {},
+                  onSourcesChanged,
+              };
     };
     tracksController = new SubtitleTracksController(
         {
@@ -215,7 +229,6 @@ beforeEach(() => {
         });
     });
     record = undefined;
-    subtitleStatus = 'complete';
     video = immediateVideo();
     choice = embeddedChoice(video);
     session = {
@@ -783,14 +796,40 @@ it('changes audio and switches back to Default while keeping the active extracti
 
 it('only retries failed subtitles when the audio choice also stays the same', async () => {
     const local = { ...subtitle('local'), name: 'local', label: 'Local', extension: 'srt' };
+    let readFails = true;
+    Object.defineProperty(local.file, 'text', {
+        value: async () => {
+            if (readFails) throw new Error('Read failed');
+            return srt;
+        },
+    });
     controller.loadSourceFiles([video, local]);
-    subtitleStatus = 'failed';
+    attachTracksController();
+    await flush();
+    expect(onError).toHaveBeenCalledWith(new Error('Read failed'));
+
+    readFails = false;
     await openAndConfirm([local], undefined, 1);
     expect(controller.getState().sources.audioTrackIndex).toBe(1);
+    expect(subtitles).toEqual([]);
     expect(session.setCachedSubtitleFiles).not.toHaveBeenCalled();
 
     await openAndConfirm([local], undefined, 1);
+    expect(subtitles?.map(({ text }) => text)).toEqual(['First']);
     expect(session.setCachedSubtitleFiles).toHaveBeenCalledTimes(1);
+});
+
+it('ignores a failed load reported after a different subtitle selection is applied', async () => {
+    controller.loadSourceFiles([subtitle('old')]);
+    const oldOwner = subtitleSourceOwner(controller.getState());
+    const local = { ...subtitle('local'), name: 'local', label: 'Local', extension: 'srt' };
+    controller.loadSourceFiles([local]);
+    controller.updateSubtitleSources(oldOwner, [
+        { track: 0, loadId: 'old', name: 'old.srt', status: 'failed', error: 'Read failed' },
+    ]);
+
+    await openAndConfirm([local]);
+    expect(session.setCachedSubtitleFiles).not.toHaveBeenCalled();
 });
 
 it('retries saving a selection after a session write fails', async () => {

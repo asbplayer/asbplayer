@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useRef, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { VideoDataSubtitleTrack } from '@project/common';
 import type { SubtitleReader } from '@project/common/subtitle-reader';
-import type { SubtitleSourceStatus } from '@project/common/subtitle-reader/subtitle-stream';
+import type { SubtitleSourceState } from '@project/common/subtitle-reader/subtitle-stream';
 import type { SubtitleHost } from '@project/common/embedded-subtitles/subtitle-source';
 import { embeddedDescriptor, embeddedSubtitleId } from '@project/common/embedded-subtitles/subtitle-source';
 import { genericSubtitleDisplayLabel } from '@project/common/util/subtitle-language';
@@ -10,7 +10,7 @@ import { subtitleCodecDisplayName } from '@project/common/media-probe';
 import { emptySubtitleTrack } from '@project/common/components/VideoDataSyncDialog';
 import { defaultFileSessionStore } from '@project/common/app/services/file-session';
 import { LocalizedError } from '@project/common/app/components/localized-error';
-import { MediaSourcesController } from '@project/common/app/services/media-sources-controller';
+import { MediaSourcesController, subtitleSourceOwner } from '@project/common/app/services/media-sources-controller';
 import type { SourcesAppliedEvent } from '@project/common/app/services/media-sources-controller';
 
 /** Connects MediaSourcesController to React state, i18n formatting, and the player's subtitle producer. */
@@ -18,25 +18,21 @@ export const useMediaSources = ({
     subtitleHost,
     subtitleReader,
     onSourcesApplied,
-    getSubtitleSourceStatus,
     onError,
 }: {
     subtitleHost: SubtitleHost;
     subtitleReader: SubtitleReader;
     onSourcesApplied: (event: SourcesAppliedEvent) => void;
-    getSubtitleSourceStatus: () => SubtitleSourceStatus;
     onError: (error: unknown) => void;
 }) => {
     const { t } = useTranslation();
     const callbacksRef = useRef({
         onSourcesApplied,
-        getSubtitleSourceStatus,
         onError,
         embeddedErrorMessage: t('error.embeddedSubtitlesLoadFailed'),
     });
     callbacksRef.current = {
         onSourcesApplied,
-        getSubtitleSourceStatus,
         onError,
         embeddedErrorMessage: t('error.embeddedSubtitlesLoadFailed'),
     };
@@ -47,7 +43,6 @@ export const useMediaSources = ({
                 subtitleHost,
                 sessionStore: defaultFileSessionStore(),
                 onSourcesApplied: (event) => callbacksRef.current.onSourcesApplied(event),
-                getSubtitleSourceStatus: () => callbacksRef.current.getSubtitleSourceStatus(),
                 onError: (error) => callbacksRef.current.onError(error),
             }),
         [subtitleHost]
@@ -59,6 +54,11 @@ export const useMediaSources = ({
     }, [controller]);
 
     const state = useSyncExternalStore(controller.subscribe, controller.getState);
+    const owner = subtitleSourceOwner(state);
+    const onSubtitleSourcesChanged = useCallback(
+        (sourceStates: readonly SubtitleSourceState[]) => controller.updateSubtitleSources(owner, sourceStates),
+        [controller, owner]
+    );
 
     const pickerTracks = useMemo<VideoDataSubtitleTrack[]>(() => {
         const tracksById = new Map<string, VideoDataSubtitleTrack>();
@@ -115,6 +115,7 @@ export const useMediaSources = ({
         sources: state.sources,
         canRestoreLastSession: state.canRestoreLastSession,
         subtitleProducer,
+        onSubtitleSourcesChanged,
         picker: {
             open: state.picker.open,
             tracks: pickerTracks,

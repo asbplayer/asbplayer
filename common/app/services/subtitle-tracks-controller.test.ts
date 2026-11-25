@@ -538,11 +538,15 @@ describe('SubtitleTracksController', () => {
             producer: source.producer,
             supportsProgressiveSubtitles: true,
             onInitialized,
+            onSourcesChanged,
         });
         source.append('First');
         source.publish({ type: 'failed', track: 0, loadId: 'producer', error: 'Disconnected' });
         expect(options.subtitles?.map((cue) => cue.text)).toEqual(['First']);
         expect(state.sources[0].status).toBe('failed');
+        expect(onSourcesChanged).toHaveBeenLastCalledWith([
+            expect.objectContaining({ track: 0, status: 'failed', error: 'Disconnected' }),
+        ]);
         expect(onError).toHaveBeenCalledWith(expect.objectContaining({ message: 'Disconnected' }));
         expect(protocol.sent.at(-1)).toEqual({
             command: 'subtitleSource',

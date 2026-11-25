@@ -14,7 +14,7 @@ import type {
 } from '@project/common/subtitle-reader/subtitle-stream';
 import { asbTrace } from '@project/common/util/log';
 
-type SubtitleTrackSource =
+type SubtitleTrackSource = (
     | {
           /** App-owned files parsed in full before publishing their subtitles. */
           kind: 'local';
@@ -28,7 +28,6 @@ type SubtitleTrackSource =
           kind: 'remote';
           supportsProgressiveSubtitles: boolean;
           onOffset: (offset: number) => void;
-          onSourcesChanged?: (sources: readonly SubtitleSourceState[]) => void;
       }
     | {
           /** App-owned incremental source that emits subtitle updates while loading. */
@@ -37,7 +36,8 @@ type SubtitleTrackSource =
           supportsProgressiveSubtitles: boolean;
           /** Releases the initial loading UI after startup; progressive track loading may continue. */
           onInitialized: () => void;
-      };
+      }
+) & { onSourcesChanged?: (sources: readonly SubtitleSourceState[]) => void };
 
 type SubtitleTrackChannel = Pick<
     VideoChannel,
@@ -82,6 +82,7 @@ export class SubtitleTracksController {
     setSource(source: SubtitleTrackSource): void {
         this.options.source = source;
         this.cancelSource();
+        if (source.kind !== 'remote') source.onSourcesChanged?.([]);
         switch (source.kind) {
             case 'remote':
                 this.activity = { kind: 'remote' };
@@ -182,7 +183,7 @@ export class SubtitleTracksController {
         }
         if (this.activity !== activity) return;
         this.activity = { kind: 'files' };
-        this.updateDisplayedSubtitles();
+        this.updateDisplayedSubtitles(source);
         this.sendSnapshotToVideo();
         const current = this.options.source;
         if (current.kind === 'local') current.onInitialized();
@@ -191,7 +192,7 @@ export class SubtitleTracksController {
     private async produce(source: Extract<SubtitleTrackSource, { kind: 'producer' }>, signal: AbortSignal) {
         try {
             await source.producer((update) => {
-                if (!signal.aborted) this.receiveProducer(update);
+                if (!signal.aborted) this.receiveProducer(source, update);
             }, signal);
         } catch (error) {
             if (!signal.aborted) this.options.onError(error);
@@ -203,32 +204,37 @@ export class SubtitleTracksController {
         if (source.kind !== 'remote' || this.activity.kind !== 'remote') return;
         if (!this.stream.update(update)) return;
         if (update.type === 'snapshot') source.onOffset(update.offset);
-        this.updateDisplayedSubtitles();
-        source.onSourcesChanged?.(this.sources);
+        this.updateDisplayedSubtitles(source);
         if (update.type === 'failed') this.options.onError(new Error(update.error));
     }
 
-    private receiveProducer(update: SubtitleSourceUpdate): void {
+    private receiveProducer(
+        source: Extract<SubtitleTrackSource, { kind: 'producer' }>,
+        update: SubtitleSourceUpdate
+    ): void {
         if (!this.stream.update(update)) return;
-        this.updateDisplayedSubtitles();
+        this.updateDisplayedSubtitles(source);
         if (update.type === 'failed') this.options.onError(new Error(update.error));
-        const source = this.options.source;
-        if (!this.channel || !this.ready || source.kind !== 'producer') return;
-        if (source.supportsProgressiveSubtitles) {
+        const current = this.options.source;
+        if (!this.channel || !this.ready || current.kind !== 'producer') return;
+        if (current.supportsProgressiveSubtitles) {
             this.channel.subtitleSource(update);
         } else {
             this.sendSnapshotToVideo();
         }
     }
 
-    private updateDisplayedSubtitles(): void {
+    private updateDisplayedSubtitles(source: SubtitleTrackSource): void {
         const snapshot = this.stream.snapshot();
-        const source = this.options.source;
+        // Publish through the source that produced the snapshot, even if a render has replaced options.source.
+        const onSourcesChanged = source.onSourcesChanged;
+        const current = this.options.source;
         if (
-            source.kind === 'producer' &&
-            !source.supportsProgressiveSubtitles &&
+            current.kind === 'producer' &&
+            !current.supportsProgressiveSubtitles &&
             snapshot.tracks.some((track) => track.status === 'loading')
         ) {
+            onSourcesChanged?.(snapshot.tracks);
             return; // Older extensions need completed tracks because their messages identify cues by index.
         }
         this.sources = snapshot.tracks;
@@ -236,6 +242,7 @@ export class SubtitleTracksController {
         this.options.onSubtitles((previous) =>
             displaySubtitleSnapshot(snapshot, previous ?? [], this.options.getSubtitleOffset())
         );
+        onSourcesChanged?.(snapshot.tracks);
     }
 
     private notifyTrackStateChanged(): void {

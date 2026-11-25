@@ -1,9 +1,5 @@
-import { resolveSubtitleReference, subtitleSourceStatus } from '@project/common/subtitle-reader/subtitle-stream';
-import type {
-    SubtitleSourceProducer,
-    SubtitleSourceState,
-    SubtitleSourceStatus,
-} from '@project/common/subtitle-reader/subtitle-stream';
+import { resolveSubtitleReference } from '@project/common/subtitle-reader/subtitle-stream';
+import type { SubtitleSourceProducer, SubtitleSourceState } from '@project/common/subtitle-reader/subtitle-stream';
 import { effectiveSettings } from '@project/common/settings/settings-recipes';
 import { AudioClip } from '@project/common/audio-clip';
 import { canMineWithAudio } from '@project/common/audio-transcode/mining-audio';
@@ -210,7 +206,6 @@ interface PlayerProps {
 
 export interface PlayerRef {
     downloadSubtitleTimeline: () => void;
-    getSubtitleSourceStatus: () => SubtitleSourceStatus;
 }
 
 const Player = React.memo(React.forwardRef<PlayerRef, PlayerProps>(PlayerComponent));
@@ -751,12 +746,15 @@ function PlayerComponent(
                         producer: subtitleProducer,
                         supportsProgressiveSubtitles: !tab || extension.supportsProgressiveSubtitles,
                         onInitialized: handleSubtitleSourceInitialized,
+                        onSourcesChanged: onSubtitleSourcesChanged,
                     }
                   : {
                         kind: 'local',
                         tracks: subtitleTracks,
                         reader: subtitleReader,
                         onInitialized: handleSubtitleSourceInitialized,
+                        onSourcesChanged:
+                            sources?.subtitleSource.kind === 'files' ? onSubtitleSourcesChanged : undefined,
                     },
         subtitles,
         channel,
@@ -777,14 +775,9 @@ function PlayerComponent(
         });
     }, [subtitles, sourceStates, syntheticPlayback]);
 
-    useImperativeHandle(
-        ref,
-        () => ({
-            downloadSubtitleTimeline: handleDownloadSubtitleTimeline,
-            getSubtitleSourceStatus: () => subtitleSourceStatus(sourceStatesRef.current),
-        }),
-        [handleDownloadSubtitleTimeline]
-    );
+    useImperativeHandle(ref, () => ({ downloadSubtitleTimeline: handleDownloadSubtitleTimeline }), [
+        handleDownloadSubtitleTimeline,
+    ]);
 
     const applyOffset = useCallback(
         (offset: number, forwardToVideo: boolean) => {
