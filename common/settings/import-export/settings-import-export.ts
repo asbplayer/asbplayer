@@ -50,6 +50,7 @@ const ankiFieldSchema = z.strictObject({
 
 const tokenAnnotationDisplaySchema = z.strictObject({
     onHoverEnabled: z.boolean(),
+    hoverPerToken: z.boolean(),
     size: z.number(),
 });
 

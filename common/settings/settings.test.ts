@@ -255,10 +255,10 @@ it.each([
         const visualAnnotations = { color: false, reading: false, frequency: false, gloss: false, pitchAccent: false };
         expect(getEnabledAnnotations(track)).toEqual(visualAnnotations);
         for (const target of ['video', 'subtitlePlayer'] as const) {
-            expect(getEnabledAnnotationsForHover(getEnabledAnnotations(track), track, target, false)).toEqual(
+            expect(getEnabledAnnotationsForHover(getEnabledAnnotations(track), track, target, 'none')).toEqual(
                 visualAnnotations
             );
-            expect(getEnabledAnnotationsForHover(getEnabledAnnotations(track), track, target, true)).toEqual(
+            expect(getEnabledAnnotationsForHover(getEnabledAnnotations(track), track, target, 'token')).toEqual(
                 visualAnnotations
             );
         }
