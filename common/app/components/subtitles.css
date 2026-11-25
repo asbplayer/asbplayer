@@ -173,6 +173,18 @@
     display: inline;
 }
 
+:is(.asb-subtitles, .asbplayer-subtitles, .asbplayer-fullscreen-subtitles)
+    .asb-token-hover:where(:not(.asb-token-selected)):has(> .asb-token-native-selection)
+    > :not(.asb-token-native-selection) {
+    display: none;
+}
+
+:is(.asb-subtitles, .asbplayer-subtitles, .asbplayer-fullscreen-subtitles)
+    .asb-token-hover:where(:not(.asb-token-selected)):has(> .asb-token-native-selection)
+    > .asb-token-native-selection {
+    display: inline;
+}
+
 .asb-token-container:focus-within .asb-token-highlight:hover,
 .asb-token-container:focus-within .asb-token-selected {
     background-color: rgb(0, 123, 255) !important;

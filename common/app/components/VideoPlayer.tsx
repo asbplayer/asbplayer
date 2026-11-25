@@ -71,6 +71,7 @@ import type {
 
 import { asbTrace } from '@project/common/util/log';
 import {
+    bindNativeTokenSelection,
     HoveredToken,
     mergeSubtitleAnnotations,
     renderRichTextOntoSubtitles,
@@ -2222,6 +2223,7 @@ export default function VideoPlayer({
     const isPausedDueToHoverRef = useRef<boolean>(undefined);
 
     const hoveredToken = useMemo(() => new HoveredToken(), []);
+    useEffect(() => bindNativeTokenSelection(document), []);
 
     const handleSubtitleMouseOver = useCallback(
         (e: React.MouseEvent) => {

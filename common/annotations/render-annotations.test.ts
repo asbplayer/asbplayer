@@ -68,7 +68,7 @@ const tokenVariantClasses = {
     word: ASB_TOKEN_ON_WORD_HOVER_CLASS,
 } as const;
 
-// Read one token's rendered variant without depending on CSS layout in jsdom.
+/** Read one token's rendered variant without depending on CSS layout in jsdom. */
 const tokenVariant = (html: string | undefined, variant: keyof typeof tokenVariantClasses) => {
     const root = document.createElement('div');
     root.innerHTML = html ?? '';
@@ -296,7 +296,7 @@ describe('rich text rendering', () => {
         expect(rendered.get(0)?.richText).toBe('<span data-asb-token-start="0">語</span>。');
     });
 
-    it('keeps hover-only annotations in each token’s cue variant', () => {
+    it("keeps hover-only annotations in each token's cue variant", () => {
         const rendered = renderRichTextOntoSubtitles(
             [
                 makeSubtitle({

@@ -64,7 +64,7 @@ export const getAnnotationsForRender = (dt: DictionaryTrack, target: TokenAnnota
     const hasHoverAnnotations = (Object.keys(enabledAnnotations) as (keyof EnabledAnnotations)[]).some(
         (annotation) => enabledAnnotations[annotation] && config[annotation].onHoverEnabled
     );
-    const glossSize = dt.dictionaryTokenAnnotationConfig[target].gloss.size;
+    const glossSize = config.gloss.size;
     return {
         dt,
         glossSize,
@@ -265,7 +265,7 @@ export const computeRichText = (fullText: string, tokenization: Tokenization, ss
         fullText,
         (_, blockIndex) => tokenization.tokens[blockIndex],
         (left, right, token?: Token) => {
-            if (token === undefined) {
+            if (!token) {
                 for (const variant of variants) clearPitchAccentContext(variant.pitch);
                 parts.push(fullText.substring(left, right));
             } else {
