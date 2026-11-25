@@ -12,6 +12,7 @@ import type {
 } from '@project/common/file-system-access/file-system-access-repository';
 import { embeddedSubtitleId, subtitleSourceMatches } from '@project/common/embedded-subtitles/subtitle-source';
 import type { EmbeddedSubtitleDescriptor } from '@project/common/embedded-subtitles/subtitle-source';
+import { emptySubtitleSlotId } from '@project/common/util';
 import { asbError } from '@project/common/util/log';
 import { subtitleOutputFormats } from '@project/ffmpeg/protocol';
 import { v4 as uuidv4 } from 'uuid';
@@ -149,11 +150,11 @@ export async function restoreSessionFiles(
         files: [
             ...(video ? [video] : []),
             ...record.subtitleTrackIds.flatMap((ids, track) =>
-                (ids.length ? ids : ['-']).map((id) => {
+                (ids.length ? ids : [emptySubtitleSlotId]).map((id) => {
                     const pending = pendingById.get(id);
                     return {
-                        ...((id === '-' ? undefined : filesById.get(id)) ?? {
-                            id: pending ? id : '-',
+                        ...((id === emptySubtitleSlotId ? undefined : filesById.get(id)) ?? {
+                            id: pending ? id : emptySubtitleSlotId,
                             embedded: pending,
                             file: new File([''], `.${pending?.format ?? 'srt'}`),
                         }),

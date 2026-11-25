@@ -15,6 +15,7 @@ import type { FileWithId } from '@project/common/file-selector';
 import { LocalizedError } from '@project/common/app/components/localized-error';
 import { ffmpegSubtitleFormats } from '@project/ffmpeg/protocol';
 import { subtitleSourceMatches } from '@project/common/embedded-subtitles/subtitle-source';
+import { isEmptySubtitleSlot } from '@project/common/util';
 
 /** A selected media source. Omitted track indexes assign each subtitle file its own track. */
 export type MediaSourceFile = FileWithId & { track?: number };
@@ -123,7 +124,7 @@ export class MediaSources {
                 subtitleSource = {
                     kind: 'files',
                     pendingEmbedded: false,
-                    tracks: tracks.some(({ fileParts }) => fileParts.some(({ id }) => id !== '-')) ? tracks : [],
+                    tracks: tracks.some(({ fileParts }) => !fileParts.every(isEmptySubtitleSlot)) ? tracks : [],
                 };
             } else if (this.subtitleSource.pendingEmbedded) {
                 const tracks = this.subtitleTracks.map(({ fileParts }) => ({
@@ -134,7 +135,7 @@ export class MediaSources {
                 subtitleSource = {
                     kind: 'files',
                     pendingEmbedded: false,
-                    tracks: tracks.some(({ fileParts }) => fileParts.some(({ id }) => id !== '-')) ? tracks : [],
+                    tracks: tracks.some(({ fileParts }) => !fileParts.every(isEmptySubtitleSlot)) ? tracks : [],
                 };
             } else {
                 subtitleSource = this.subtitleSource;
@@ -158,7 +159,7 @@ export class MediaSources {
         const source = this.subtitleSource;
         if (source.kind !== 'files') return new MediaSources(source);
         if (!source.pendingEmbedded && !this.subtitleSourceFiles.some(({ embedded }) => embedded)) {
-            if (!this.subtitleSourceFiles.some(({ id }) => id !== '-')) return new MediaSources();
+            if (this.subtitleSourceFiles.every(isEmptySubtitleSlot)) return new MediaSources();
             return new MediaSources(source);
         }
         const tracks = source.tracks.map(({ fileParts }) => ({
@@ -169,7 +170,7 @@ export class MediaSources {
                 return [file];
             }),
         }));
-        if (!tracks.some(({ fileParts }) => fileParts.some(({ id }) => id !== '-'))) return new MediaSources();
+        if (tracks.every(({ fileParts }) => fileParts.every(isEmptySubtitleSlot))) return new MediaSources();
         return new MediaSources({ kind: 'files', pendingEmbedded: false, tracks });
     }
 
@@ -236,10 +237,15 @@ export class MediaSources {
         return (
             !this.subtitleSource.pendingEmbedded &&
             this.subtitleTracks.some(({ fileParts }) =>
-                fileParts.some(
-                    ({ id, file }) =>
-                        id !== '-' && file.size > 0 && file.name.length > 0 && getExtension(file.name) !== '.sup'
-                )
+                fileParts.some((part) => {
+                    const { file } = part;
+                    return (
+                        !isEmptySubtitleSlot(part) &&
+                        file.size > 0 &&
+                        file.name.length > 0 &&
+                        getExtension(file.name) !== '.sup'
+                    );
+                })
             )
         );
     }
@@ -295,10 +301,11 @@ export class MediaSources {
             const selected = tracks[index];
             const parts = this.subtitleTracks[index]?.fileParts;
             const first = parts?.[0];
-            if ((!selected || selected.id === '-') && !parts?.some((part) => part.id !== '-')) continue;
-            if (!selected || selected.id === '-' || !first || selected.disabledReason || selected.id !== first.id) {
-                return false;
+            if (!selected || isEmptySubtitleSlot(selected)) {
+                if (parts && !parts.every(isEmptySubtitleSlot)) return false;
+                continue;
             }
+            if (!first || selected.disabledReason || selected.id !== first.id) return false;
             if (selected.embedded) {
                 const previous = first.embedded;
                 if (

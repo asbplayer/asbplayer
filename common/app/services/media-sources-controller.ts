@@ -15,12 +15,12 @@ import type { FileSessionStore } from '@project/common/app/services/file-session
 import { MediaSources, getExtension } from '@project/common/app/services/media-sources';
 import type { MediaSourceFile, SubtitleSourceFile } from '@project/common/app/services/media-sources';
 import type { FileSystemFileHandleWithId } from '@project/common/file-system-access';
+import { emptySubtitleSlotId, isEmptySubtitleSlot } from '@project/common/util';
 import { asbError, asbWarn } from '@project/common/util/log';
 
 class EmbeddedSelectionError extends Error {}
 
-const initialTrackIds: readonly string[] = ['-', '-', '-'];
-const isEmptySubtitleSlot = ({ id }: { readonly id: string }) => id === '-';
+const initialTrackIds: readonly string[] = [emptySubtitleSlotId, emptySubtitleSlotId, emptySubtitleSlotId];
 
 interface TrackDiscoveryRequest {
     readonly file: File;
@@ -92,7 +92,7 @@ const initialPickerState: SubtitlePickerState = {
 const buildExternalTracks = (candidates: readonly (FileWithId | undefined)[]): VideoDataSubtitleTrack[] => {
     const tracksById = new Map<string, VideoDataSubtitleTrack>();
     for (const candidate of candidates) {
-        if (!candidate || candidate.id === '-') continue;
+        if (!candidate || isEmptySubtitleSlot(candidate)) continue;
         const { file, id, embedded } = candidate;
         tracksById.set(id, {
             id,
@@ -132,8 +132,8 @@ const resolveSubtitleSelection = async (
             const file = preparedById?.get(track.id);
             if (!file) throw new EmbeddedSelectionError('Unresolved embedded subtitle');
             files.push(file);
-        } else if (track.id === '-') {
-            files.push({ id: '-', file: new File([''], '.srt') });
+        } else if (isEmptySubtitleSlot(track)) {
+            files.push({ id: emptySubtitleSlotId, file: new File([''], '.srt') });
         } else if (track.file) {
             files.push({ id: track.id, file: track.file });
         } else {
@@ -258,15 +258,17 @@ export class MediaSourcesController {
         );
         const tracksById = new Map<string, VideoDataSubtitleTrack>();
         for (const track of tracks) {
-            if (track.id === '-') continue;
+            if (isEmptySubtitleSlot(track)) continue;
             if (track.embedded && discoveredIds.has(track.id)) continue;
             tracksById.set(track.id, track);
         }
         const externalTracks = [...tracksById.values()];
-        const validIds = new Set(['-', ...discoveredIds, ...tracksById.keys()]);
+        const validIds = new Set([emptySubtitleSlotId, ...discoveredIds, ...tracksById.keys()]);
         this.updatePicker({
             externalTracks,
-            selectedTrackIds: this.state.picker.selectedTrackIds.map((id) => (validIds.has(id) ? id : '-')),
+            selectedTrackIds: this.state.picker.selectedTrackIds.map((id) =>
+                validIds.has(id) ? id : emptySubtitleSlotId
+            ),
             selectionError: undefined,
         });
     }
@@ -320,7 +322,7 @@ export class MediaSourcesController {
                 tracksById.set(track.id, { ...track, file: completed.file, embedded: undefined });
             }
             for (const candidate of nextSources.firstSubtitleSourceFiles) {
-                if (!candidate || candidate.id === '-' || tracksById.has(candidate.id)) continue;
+                if (!candidate || isEmptySubtitleSlot(candidate) || tracksById.has(candidate.id)) continue;
                 tracksById.set(candidate.id, {
                     id: candidate.id,
                     label: candidate.file.name,
@@ -329,8 +331,10 @@ export class MediaSourcesController {
                 });
             }
             externalTracks = [...tracksById.values()];
-            const validIds = new Set(['-', ...externalTracks.map(({ id }) => id)]);
-            selectedTrackIds = this.state.picker.selectedTrackIds.map((id) => (validIds.has(id) ? id : '-'));
+            const validIds = new Set([emptySubtitleSlotId, ...externalTracks.map(({ id }) => id)]);
+            selectedTrackIds = this.state.picker.selectedTrackIds.map((id) =>
+                validIds.has(id) ? id : emptySubtitleSlotId
+            );
         }
         this.embeddedSubtitles.retain([]);
         this.setState({
@@ -460,7 +464,7 @@ export class MediaSourcesController {
         }
         this.updatePicker({
             externalTracks: [...tracksById.values()],
-            selectedTrackIds: initialTrackIds.map((_, index) => files[index]?.id ?? '-'),
+            selectedTrackIds: initialTrackIds.map((_, index) => files[index]?.id ?? emptySubtitleSlotId),
             selectionError: undefined,
         });
     }
@@ -795,7 +799,7 @@ export class MediaSourcesController {
         this.updatePicker({
             open: true,
             externalTracks: buildExternalTracks(candidates),
-            selectedTrackIds: initialTrackIds.map((_, index) => candidates[index]?.id ?? '-'),
+            selectedTrackIds: initialTrackIds.map((_, index) => candidates[index]?.id ?? emptySubtitleSlotId),
             embeddedTracks: cachedTracks,
             discoveryError: false,
             selectionError: undefined,
@@ -856,8 +860,8 @@ export class MediaSourcesController {
         ) {
             return false;
         }
-        const current = subtitleSourceFiles.filter(({ id }) => id !== '-');
-        const selected = files.filter(({ id }) => id !== '-');
+        const current = subtitleSourceFiles.filter((file) => !isEmptySubtitleSlot(file));
+        const selected = files.filter((file) => !isEmptySubtitleSlot(file));
         return (
             current.length === selected.length &&
             selected.every(({ id, track, file, embedded }, index) => {

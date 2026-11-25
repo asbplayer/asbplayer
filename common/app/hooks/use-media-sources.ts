@@ -6,6 +6,7 @@ import type { SubtitleSourceState } from '@project/common/subtitle-reader/subtit
 import type { SubtitleHost } from '@project/common/embedded-subtitles/subtitle-source';
 import { embeddedDescriptor, embeddedSubtitleId } from '@project/common/embedded-subtitles/subtitle-source';
 import { genericSubtitleDisplayLabel } from '@project/common/util/subtitle-language';
+import { emptySubtitleSlotId } from '@project/common/util';
 import { subtitleCodecDisplayName } from '@project/common/media-probe';
 import { emptySubtitleTrack } from '@project/common/components/VideoDataSyncDialog';
 import { defaultFileSessionStore } from '@project/common/app/services/file-session';
@@ -62,7 +63,8 @@ export const useMediaSources = ({
 
     const pickerTracks = useMemo<VideoDataSubtitleTrack[]>(() => {
         const tracksById = new Map<string, VideoDataSubtitleTrack>();
-        tracksById.set('-', { ...emptySubtitleTrack(t), file: new File([''], '.srt') }); // A zero-byte SRT preserves empty slots without making confirmation fetch the "-" URL.
+        // A zero-byte SRT preserves empty slots without making confirmation fetch the "-" URL.
+        tracksById.set(emptySubtitleSlotId, { ...emptySubtitleTrack(t), file: new File([''], '.srt') });
         for (const track of state.picker.externalTracks) tracksById.set(track.id, track);
         const video = state.sources.videoFile;
         if (video && state.picker.embeddedTracks) {

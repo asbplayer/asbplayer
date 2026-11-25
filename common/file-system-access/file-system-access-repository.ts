@@ -2,7 +2,7 @@ import type { EmbeddedSubtitleDescriptor } from '@project/common/embedded-subtit
 import Dexie from 'dexie';
 import { v4 as uuidv4 } from 'uuid';
 import type { FileWithId } from '@project/common/file-selector';
-import { AsyncSemaphore } from '@project/common/util';
+import { AsyncSemaphore, emptySubtitleSlotId, isEmptySubtitleSlot } from '@project/common/util';
 import { asbError, asbWarn } from '@project/common/util/log';
 
 const totalSize = (files: FileWithId[]) => {
@@ -140,7 +140,9 @@ export class IndexedDBFileSessionRepository implements FileSessionRepository {
             ...next,
             // Preserve slot positions when stored files are removed. Newly selected IDs
             // may still be awaiting their handle/cache save and must be kept.
-            subtitleTrackIds: next.subtitleTrackIds?.map((ids) => ids.map((id) => (discarded.has(id) ? '-' : id))),
+            subtitleTrackIds: next.subtitleTrackIds?.map((ids) =>
+                ids.map((id) => (discarded.has(id) ? emptySubtitleSlotId : id))
+            ),
         };
     }
 
@@ -353,7 +355,7 @@ export class IndexedDBFileSessionRepository implements FileSessionRepository {
             });
 
         try {
-            const candidates = files.filter(({ id }) => id !== '-');
+            const candidates = files.filter((file) => !isEmptySubtitleSlot(file));
             const estimate = candidates.length ? await this._storageEstimate() : {};
             return await save(candidates, estimate);
         } catch (e) {

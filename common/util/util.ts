@@ -57,6 +57,11 @@ let subtitleHtmlHelperElement: HTMLDivElement | undefined;
 const subtitleGraphemeSegmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
 const invisibleGraphemePattern = /^[\s\p{Default_Ignorable_Code_Point}]*$/u;
 
+/** Reserved subtitle selection ID for an unfilled slot, including in saved sessions. */
+export const emptySubtitleSlotId = '-';
+
+export const isEmptySubtitleSlot = ({ id }: { readonly id: string }) => id === emptySubtitleSlotId;
+
 /** The playback container supplies --asb-video-width so cached image DOM resizes with the video. */
 export const imageSubtitleHtml = (
     image: SubtitleTextImage,

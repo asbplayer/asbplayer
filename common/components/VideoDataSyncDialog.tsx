@@ -34,6 +34,7 @@ import type { TFunction } from 'i18next';
 import type { FileSelector, FileWithId } from '@project/common/file-selector';
 import type { ProbedAudioTrack } from '@project/common/media-probe';
 import { audioCodecDisplayName } from '@project/common/media-probe';
+import { emptySubtitleSlotId, isEmptySubtitleSlot } from '@project/common/util';
 import { genericSubtitleDisplayLabel } from '@project/common/util/subtitle-language';
 import { AUDIO_EXT_SET, VIDEO_EXT_SET, getExtension } from '@project/common/app/services/media-sources';
 
@@ -121,7 +122,7 @@ const normalizeOnlineSubtitleFileName = (name: string, sourceUrl: string) => {
 
 export const emptySubtitleTrack = (t: TFunction) => {
     return {
-        id: '-',
+        id: emptySubtitleSlotId,
         language: '-',
         url: '-',
         label: t('extension.videoDataSync.emptySubtitleTrack'),
@@ -129,7 +130,7 @@ export const emptySubtitleTrack = (t: TFunction) => {
     };
 };
 
-const initialTrackIds = ['-', '-', '-'];
+const initialTrackIds = [emptySubtitleSlotId, emptySubtitleSlotId, emptySubtitleSlotId];
 
 export const useVideoDataSyncDialogState = (files?: readonly (FileWithId | undefined)[]) => {
     const { t } = useTranslation();
@@ -140,7 +141,7 @@ export const useVideoDataSyncDialogState = (files?: readonly (FileWithId | undef
     ]);
     useEffect(() => {
         for (const track of subtitleTrackSelectorTracks) {
-            if (track.id === '-') {
+            if (isEmptySubtitleSlot(track)) {
                 track.label = t('extension.videoDataSync.emptySubtitleTrack');
             }
         }
@@ -152,7 +153,7 @@ export const useVideoDataSyncDialogState = (files?: readonly (FileWithId | undef
             if (candidates !== undefined) {
                 const loadedTracks = new Map<string, VideoDataSubtitleTrack>();
                 for (const candidate of candidates) {
-                    if (!candidate || candidate.id === '-') continue;
+                    if (!candidate || isEmptySubtitleSlot(candidate)) continue;
                     const { file, id, embedded } = candidate;
                     loadedTracks.set(id, {
                         id,
@@ -168,7 +169,7 @@ export const useVideoDataSyncDialogState = (files?: readonly (FileWithId | undef
                     ...loadedTracks.values(),
                 ]);
                 setSubtitleTrackSelectorSelectedTrackIds(
-                    initialTrackIds.map((_, index) => candidates[index]?.id ?? '-')
+                    initialTrackIds.map((_, index) => candidates[index]?.id ?? emptySubtitleSlotId)
                 );
             }
             setSubtitleTrackSelectorOpen(true);
@@ -348,8 +349,8 @@ export default function VideoDataSyncDialog({
         const selectedSubtitleTracks: ConfirmedVideoDataSubtitleTrack[] = selectedSubtitleTrackIds
             .map((selected): ConfirmedVideoDataSubtitleTrack | undefined => {
                 const subtitle = subtitleTracks.find((subtitle) => subtitle.id === selected) ??
-                    subtitleTracks.find((subtitle) => subtitle.id === '-') ?? {
-                        id: '-',
+                    subtitleTracks.find(isEmptySubtitleSlot) ?? {
+                        id: emptySubtitleSlotId,
                         label: '',
                         language: '-',
                         url: '-',
@@ -389,7 +390,10 @@ export default function VideoDataSyncDialog({
                             variant="filled"
                             label={`${t('extension.videoDataSync.subtitleTrack')} ${i + 1}`}
                             helperText={error || ''}
-                            value={subtitleTracks.find((track) => track.id === selectedSubtitleTrackIds[i])?.id ?? '-'}
+                            value={
+                                subtitleTracks.find((track) => track.id === selectedSubtitleTrackIds[i])?.id ??
+                                emptySubtitleSlotId
+                            }
                             disabled={isLoading || disabled}
                             onChange={(e) => {
                                 if (e.target.value === undefined) return;
@@ -410,7 +414,7 @@ export default function VideoDataSyncDialog({
                                         key={subtitle.id}
                                         disabled={!!subtitle.disabledReason}
                                     >
-                                        {subtitle.id !== '-' && (
+                                        {!isEmptySubtitleSlot(subtitle) && (
                                             <Icon fontSize="small" sx={{ mr: 1, verticalAlign: 'middle' }} />
                                         )}
                                         {subtitle.label}
@@ -544,7 +548,7 @@ export default function VideoDataSyncDialog({
             if (onlineDialogTrackNumber !== undefined) {
                 newSelectedSubtitleTrackIds[onlineDialogTrackNumber] = track.id;
             } else {
-                const firstEmptyIndex = newSelectedSubtitleTrackIds.findIndex((id) => id === '-');
+                const firstEmptyIndex = newSelectedSubtitleTrackIds.findIndex((id) => id === emptySubtitleSlotId);
                 if (firstEmptyIndex >= 0) {
                     newSelectedSubtitleTrackIds[firstEmptyIndex] = track.id;
                 } else {
