@@ -135,7 +135,7 @@ export default class VideoDataSyncController {
             extension: 'srt',
         };
         this._domain = new URL(window.location.href).host;
-        this._frame = uiFrameForHtml(html);
+        this._frame = uiFrameForHtml(html, 'asbplayer-video-data-sync-frame');
         this._isTutorial = isOnTutorialPage();
     }
 

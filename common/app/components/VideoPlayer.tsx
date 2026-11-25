@@ -1136,7 +1136,8 @@ export default function VideoPlayer({
         playerChannel.onAlert((message, severity) => {
             setAlert({
                 open: true,
-                notifications: [{ message, severity: severity as AlertNotification['severity'] }],
+                // A stable key replaces older alerts and gives tests a non-localized selector.
+                notifications: [{ key: 'app-alert', message, severity: severity as AlertNotification['severity'] }],
             });
         });
 

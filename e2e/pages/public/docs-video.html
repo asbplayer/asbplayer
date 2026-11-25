@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <title>The Engineering of the Drinking Bird</title>
+        <style>
+            body {
+                margin: 0;
+                background: #1e1e1e;
+                min-height: 100vh;
+                display: grid;
+                place-items: center;
+            }
+            video {
+                max-width: 90%;
+                border-radius: 8px;
+            }
+        </style>
+    </head>
+    <body>
+        <video src="/docs-video.mp4" muted autoplay loop playsinline controls></video>
+        <script>
+            // A site fetching its subtitle track; generic detection offers it in the picker.
+            fetch('/subtitles/en.srt');
+        </script>
+    </body>
+</html>

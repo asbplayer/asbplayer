@@ -36,7 +36,12 @@ jobs:
                       exit 1
                   fi
 
-            - run: pnpm install --frozen-lockfile --filter @project/extension --filter @project/common --filter @project/client --filter @project/ffmpeg
+            - run: pnpm install --frozen-lockfile --filter @project/extension --filter @project/common --filter @project/client --filter @project/ffmpeg --filter @project/e2e
+
+            - name: Install Playwright Chromium
+              # The e2e suite loads the MV3 extension into Playwright's Chromium
+              # (branded Chrome blocks --load-extension).
+              run: pnpm --filter @project/e2e exec playwright install chromium
 
             - run: pnpm run verify
 

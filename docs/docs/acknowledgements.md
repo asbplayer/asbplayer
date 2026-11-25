@@ -154,3 +154,9 @@ shiki,
 kansha-gratitude
 
 and those who have donated privately.
+
+## Media credits {#media-credits}
+
+Documentation screenshots use an excerpt from [The Engineering of the Drinking Bird](https://commons.wikimedia.org/wiki/File:The_Engineering_of_the_Drinking_Bird.webm) by Bill Hammack (engineerguy), re-encoded and licensed under [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/).
+
+The Anki logo in the mining guide is from [apps.ankiweb.net](https://apps.ankiweb.net/), © Ankitects Pty Ltd, used to identify the Anki application.

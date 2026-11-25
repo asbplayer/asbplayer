@@ -69,7 +69,7 @@ export default class AnkiUiController {
     private _inTutorial: boolean;
 
     constructor() {
-        this.frame = uiFrameForHtml(html);
+        this.frame = uiFrameForHtml(html, 'asbplayer-anki-frame');
         this._inTutorial = isOnTutorialPage();
     }
 

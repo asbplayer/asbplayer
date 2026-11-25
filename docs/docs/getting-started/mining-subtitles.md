@@ -6,6 +6,7 @@ import project, { appOrigin } from '@site/src/project';
 import CodeBlock from '@theme/CodeBlock';
 
 import NoteAddIcon from '@site/src/components/NoteAddIcon';
+import Screenshot from '@site/src/components/Screenshot';
 
 # Mining subtitles {#mining-subtitles}
 
@@ -77,5 +78,43 @@ asbplayer does not have a built-in dictionary. We recommend installing a diction
 ## Mine subtitles {#mine-subtitles}
 
 1. [Load subtitles](./loading-subtitles.md) onto any video source.
-2. Click the **Mine Subtitle** <NoteAddIcon /> button .
+2. Click the **Mine Subtitle** <NoteAddIcon /> button.
+
+<div style={{ marginBottom: 24 }}>
+    <Screenshot
+        src="/img/generated/mining-player.png"
+        alt="The asbplayer player in theater mode with a subtitle row's Mine button hovered"
+        width={640}
+    />
+</div>
+
 3. Fill out the dialog that appears and click **Export**.
+
+<div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 32 }}>
+    <Screenshot
+        src="/img/generated/mining-dialog.png"
+        alt="The Anki export dialog with the mined sentence, definition, image thumbnail, and audio"
+        width={400}
+    />
+    <div style={{ position: 'relative', display: 'inline-block' }}>
+        <Screenshot
+            src="/img/generated/anki-card.png"
+            alt="The resulting Anki card showing the sentence, definition, image, audio, source, and URL"
+            width={400}
+        />
+        <img
+            src="/img/anki-logo.svg"
+            alt="Anki"
+            height={28}
+            style={{
+                position: 'absolute',
+                top: -10,
+                left: -10,
+                padding: 3,
+                background: '#ffffff',
+                borderRadius: 8,
+                boxShadow: '0 1px 4px rgba(0, 0, 0, 0.25)',
+            }}
+        />
+    </div>
+</div>

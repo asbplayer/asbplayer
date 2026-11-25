@@ -3,6 +3,7 @@ sidebar_position: 1
 ---
 
 import project from '@site/src/project';
+import Screenshot from '@site/src/components/Screenshot';
 
 # Loading subtitles {#loading-subtitles}
 
@@ -15,6 +16,19 @@ The first step to using asbplayer is to load subtitles onto a video source.
 1. Install the Chrome extension from Google's <a href={project.extension.chrome.storeUrl}>web store</a> or from the <a href={`${project.urls.repo}/releases/latest`}>GitHub release</a>.
 2. Click 🧩 icon in browser toolbar → asbplayer → **Open Side Panel**
 3. Click **Load Subtitles** to load subtitles onto any video on the current page.
+
+<div style={{ display: 'flex', gap: 24, alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap' }}>
+    <Screenshot
+        src="/img/generated/side-panel-load-subtitles.png"
+        alt="The asbplayer side panel with the Load Subtitles button selected"
+        width={220}
+    />
+    <Screenshot
+        src="/img/generated/subtitle-file-dialog.png"
+        alt="The asbplayer subtitle dialog opened over a video, with a detected subtitle track selected"
+        width={460}
+    />
+</div>
 
 ### Firefox {#firefox}
 

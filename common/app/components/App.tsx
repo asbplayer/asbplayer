@@ -2023,6 +2023,7 @@ function App({
                             />
                             <input
                                 ref={fileInputRef}
+                                data-testid="load-files-input"
                                 onChange={handleFileInputChange}
                                 type="file"
                                 accept={inputAcceptFileExtensions}

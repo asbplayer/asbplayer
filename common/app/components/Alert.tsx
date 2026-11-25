@@ -139,6 +139,7 @@ function AlertItem({
     useAppLogo,
     dismissible,
     autoHideResetKey,
+    notificationKey,
     onClose,
     onExitedAnimation,
     onMouseEnter,
@@ -163,6 +164,7 @@ function AlertItem({
             <Grow in={open} onExited={() => onExitedAnimation(id)}>
                 <MuiAlert
                     severity={severity}
+                    data-alert-key={notificationKey}
                     onClose={dismissible ? () => onClose(id) : undefined}
                     icon={useAppLogo ? <LogoIcon fontSize="small" /> : undefined}
                     onMouseEnter={onMouseEnter}
