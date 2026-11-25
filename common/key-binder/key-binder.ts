@@ -20,7 +20,7 @@ export interface KeyBinder {
         capture?: boolean
     ): () => void;
     bindCopyCurrentSubtitle(
-        copyCurrentSubtitle: () => boolean,
+        copyCurrentSubtitle: (event: KeyboardEvent) => boolean,
         disabledGetter: () => boolean,
         capture?: boolean
     ): () => void;
@@ -194,12 +194,16 @@ export class DefaultKeyBinder implements KeyBinder {
         this.keyBindSet = keyBindSet;
     }
 
-    bindCopyCurrentSubtitle(copyCurrentSubtitle: () => boolean, disabledGetter: () => boolean, capture = false) {
+    bindCopyCurrentSubtitle(
+        copyCurrentSubtitle: (event: KeyboardEvent) => boolean,
+        disabledGetter: () => boolean,
+        capture = false
+    ) {
         const shortcut = this.keyBindSet.copyCurrentSubtitle.keys;
         if (!shortcut) return () => {};
 
         return this._bind(shortcut, capture, (event) => {
-            if (disabledGetter() || !copyCurrentSubtitle()) return false;
+            if (disabledGetter() || !copyCurrentSubtitle(event)) return false;
 
             event.preventDefault();
             event.stopImmediatePropagation();

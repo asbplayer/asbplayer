@@ -26,7 +26,7 @@ import type {
     TranscodedAudioPayload,
 } from '@project/common';
 
-import { ApplyStrategy, isTrackAutoCopyable, TokenState, VideoSubtitleSplitBehavior } from '@project/common/settings';
+import { ApplyStrategy, TokenState, VideoSubtitleSplitBehavior } from '@project/common/settings';
 import type { AsbplayerSettings, SettingsProvider } from '@project/common/settings';
 
 import type { DictionaryProvider } from '@project/common/dictionary-db';
@@ -36,6 +36,7 @@ import type { SubtitleReader } from '@project/common/subtitle-reader';
 import type { KeyBinder } from '@project/common/key-binder';
 import { asbTrace } from '@project/common/util/log';
 import {
+    autoCopySubtitleText,
     clampMediaTimestamp,
     download,
     formatAsSignedMs,
@@ -1421,22 +1422,15 @@ function PlayerComponent(
 
     const handleSubtitlesHighlighted = useCallback(
         (subtitles: SubtitleModel[]) => {
-            if (subtitles.length === 0 || !settings.autoCopyCurrentSubtitle || !document.hasFocus()) {
-                return;
-            }
-
-            const text = subtitles
-                .filter((s) => isTrackAutoCopyable(settings.autoCopyableTracks, s.track))
-                .map((s) => s.text)
-                .join('\n');
-
-            if (text) {
-                navigator.clipboard.writeText(text).catch(() => {
-                    // ignore
-                });
-            }
+            if (!settings.autoCopyCurrentSubtitle || tab || (videoFileUrl && videoPopOut)) return; // A streaming tab or popped-out player copies its own cues. The app owns embedded playback.
+            autoCopySubtitleText(
+                subtitles,
+                settings.autoCopyableTracks,
+                extension.clipboardWriteFallback,
+                'app/clipboard'
+            );
         },
-        [settings.autoCopyCurrentSubtitle, settings.autoCopyableTracks]
+        [extension, settings.autoCopyCurrentSubtitle, settings.autoCopyableTracks, tab, videoFileUrl, videoPopOut]
     );
 
     useEffect(() => {

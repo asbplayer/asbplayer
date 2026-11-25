@@ -41,6 +41,7 @@ import {
     extractText,
     copySubtitleText,
     enabledSubtitlesInDisplayOrder,
+    setsEqual,
 } from '@project/common/util';
 import type { SubtitleCollection } from '@project/common/subtitle-collection';
 import type { RichTextWindow, RenderedRichText, SubtitleAnnotations } from '@project/common/annotations';
@@ -804,6 +805,7 @@ export default function SubtitlePlayer({
     subtitleCollectionRef.current = subtitleCollection;
 
     const highlightedSubtitleIndexesRef = useRef<ReadonlySet<number>>(new Set());
+    const autoCopySubtitleIndexesRef = useRef<ReadonlySet<number>>(new Set());
     const [currentSubtitleIndexes, setCurrentSubtitleIndexes] = useState<ReadonlySet<number>>(new Set());
     const [selectedSubtitleIndexes, setSelectedSubtitleIndexes] = useState<boolean[]>();
     const [highlightedJumpToSubtitleIndex, setHighlightedJumpToSubtitleIndex] = useState<number>();
@@ -879,55 +881,66 @@ export default function SubtitlePlayer({
         clearTokenSelection,
     });
 
-    const updateShowingSubtitles = useCallback((showing: readonly IndexedSubtitleModel[]) => {
-        const currentSubtitleIndexes = new Set<number>();
-        let smallestIndex: number | undefined;
+    const updateShowingSubtitles = useCallback(
+        ({
+            highlighted,
+            autoCopy,
+        }: {
+            highlighted: readonly IndexedSubtitleModel[];
+            autoCopy: readonly IndexedSubtitleModel[];
+        }) => {
+            const currentSubtitleIndexes = new Set<number>();
+            let smallestIndex: number | undefined;
 
-        for (const subtitle of showing) {
-            currentSubtitleIndexes.add(subtitle.index);
-
-            if (smallestIndex === undefined || subtitle.index < smallestIndex) {
-                smallestIndex = subtitle.index;
+            for (const subtitle of highlighted) {
+                currentSubtitleIndexes.add(subtitle.index);
+                if (smallestIndex === undefined || subtitle.index < smallestIndex) smallestIndex = subtitle.index;
             }
-        }
 
-        const indexesChanged =
-            currentSubtitleIndexes.size !== highlightedSubtitleIndexesRef.current.size ||
-            [...currentSubtitleIndexes].some((index) => !highlightedSubtitleIndexesRef.current.has(index));
-        if (indexesChanged) {
-            highlightedSubtitleIndexesRef.current = currentSubtitleIndexes;
-            setCurrentSubtitleIndexes(currentSubtitleIndexes);
-            onSubtitlesHighlightedRef.current?.([...showing]);
+            if (!setsEqual(currentSubtitleIndexes, highlightedSubtitleIndexesRef.current)) {
+                highlightedSubtitleIndexesRef.current = currentSubtitleIndexes;
+                setCurrentSubtitleIndexes(currentSubtitleIndexes);
 
-            if (smallestIndex !== undefined) {
-                const allowScroll = shouldAutoScroll({
-                    hidden: hiddenRef.current,
-                    lastScrollTimestamp: lastScrollTimestampRef.current,
-                    userScrollActive: userScrollActiveRef.current,
-                    now: Date.now(),
-                });
-
-                if (allowScroll) {
-                    virtuosoRef.current?.scrollToIndex({
-                        index: smallestIndex,
-                        align: 'center',
-                        behavior: 'smooth',
+                if (smallestIndex !== undefined) {
+                    const allowScroll = shouldAutoScroll({
+                        hidden: hiddenRef.current,
+                        lastScrollTimestamp: lastScrollTimestampRef.current,
+                        userScrollActive: userScrollActiveRef.current,
+                        now: Date.now(),
                     });
+
+                    if (allowScroll) {
+                        virtuosoRef.current?.scrollToIndex({
+                            index: smallestIndex,
+                            align: 'center',
+                            behavior: 'smooth',
+                        });
+                    }
                 }
             }
-        }
-    }, []);
+
+            const autoCopySubtitleIndexes = new Set(autoCopy.map((subtitle) => subtitle.index));
+            if (!setsEqual(autoCopySubtitleIndexes, autoCopySubtitleIndexesRef.current)) {
+                autoCopySubtitleIndexesRef.current = autoCopySubtitleIndexes;
+                if (autoCopy.length) onSubtitlesHighlightedRef.current?.([...autoCopy]);
+            }
+        },
+        []
+    );
 
     useEffect(() => {
         if (playbackState === undefined) return;
 
-        let showingSubtitles: IndexedSubtitleModel[] = playbackState.showingSubtitleIndexes
+        const showingSubtitles = playbackState.showingSubtitleIndexes
             .map((index) => subtitleListRef.current[index])
             .filter((subtitle): subtitle is DisplaySubtitleModel => subtitle !== undefined);
-        if (!showingSubtitles.length) {
-            showingSubtitles = subtitleCollectionRef.current.subtitlesAt(playbackState.timestampMs).lastShown ?? [];
-        }
-        updateShowingSubtitles(showingSubtitles);
+        const hiddenSubtitleIndexes = playbackState.hiddenSubtitleIndexes ?? [];
+        updateShowingSubtitles({
+            highlighted: showingSubtitles.length
+                ? showingSubtitles
+                : (subtitleCollectionRef.current.subtitlesAt(playbackState.timestampMs).lastShown ?? []),
+            autoCopy: showingSubtitles.filter((subtitle) => !hiddenSubtitleIndexes.includes(subtitle.index)),
+        });
     }, [playbackState, subtitles, updateShowingSubtitles]);
 
     useEffect(() => {
@@ -936,7 +949,10 @@ export default function SubtitlePlayer({
         const update = () => {
             const timestamp = clockRef.current.time({ maxMs: lengthRef.current });
             const slice = subtitleCollectionRef.current.subtitlesAt(timestamp);
-            updateShowingSubtitles(slice.showing.length === 0 ? (slice.lastShown ?? []) : slice.showing);
+            updateShowingSubtitles({
+                highlighted: slice.showing.length ? slice.showing : (slice.lastShown ?? []),
+                autoCopy: slice.showing,
+            });
             requestAnimationRef.current = requestAnimationFrame(update);
         };
 

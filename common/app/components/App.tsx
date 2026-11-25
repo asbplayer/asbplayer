@@ -1,5 +1,6 @@
 import project from '@project/common/project';
 import { asbError, asbWarn } from '@project/common/util/log';
+import { clipboardWrite } from '@project/common/util/clipboard';
 import type { AudioTranscodeHost } from '@project/common/audio-transcode';
 import { humanReadableTime, download, extractText, timeDurationDisplay } from '@project/common/util';
 import type { ComponentProps } from 'react';
@@ -584,7 +585,9 @@ function App({
     const handleCopy = useCallback(
         async (card: CardModel, postMineAction?: PostMineAction, id?: string) => {
             if (card.subtitle && settingsRef.current.copyToClipboardOnMine) {
-                void navigator.clipboard.writeText(card.subtitle.text);
+                void clipboardWrite(card.subtitle.text, extension.clipboardWriteFallback).catch((error) =>
+                    asbError('app/clipboard', error)
+                );
             }
 
             const newCard = {
@@ -665,6 +668,7 @@ function App({
             saveCopyHistoryItem,
             handleAnkiDialogProceed,
             handleAnkiDialogRequest,
+            extension,
             t,
         ]
     );
@@ -1655,9 +1659,7 @@ function App({
     }, [sources.videoFile, alert, alertSeverity, alertOpen]);
 
     const handleCopyToClipboard = useCallback((blob: Blob) => {
-        navigator.clipboard
-            .write([new ClipboardItem({ [blob.type]: blob })])
-            .catch((error) => asbError('app/clipboard', error));
+        void clipboardWrite(blob).catch((error) => asbError('app/clipboard', error));
     }, []);
 
     useEffect(() => {

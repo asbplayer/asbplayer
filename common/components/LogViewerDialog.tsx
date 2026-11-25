@@ -10,6 +10,7 @@ import TextField from '@mui/material/TextField';
 import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { download, getCurrentTimeString } from '@project/common/util';
+import { clipboardWrite } from '@project/common/util/clipboard';
 import { defaultSettings } from '@project/common/settings';
 import { formatLogLine, formatRedactedLogText } from '@project/common/util/log-utils';
 import type { LogLevel, LogLine } from '@project/common/util/log-utils';
@@ -108,7 +109,7 @@ const LogViewerDialog: React.FC<Props> = ({ open, onClose, logProvider, streamin
     const handleCopyLogs = async () => {
         try {
             const logText = formatRedactedLogText(displayedLogLines, streamingAppUrl, defaultSettings.streamingAppUrl);
-            await navigator.clipboard.writeText(logText);
+            await clipboardWrite(logText);
             setLoadError(undefined);
         } catch (error) {
             setLoadError(error instanceof Error ? error.message : String(error));

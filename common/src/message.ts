@@ -823,6 +823,11 @@ export interface CopyToClipboardMessage extends Message {
     readonly dataUrl: string;
 }
 
+export interface WriteClipboardMessage extends Message {
+    readonly command: 'clipboard-write';
+    readonly data: string;
+}
+
 export interface LoadSubtitlesMessage extends Message {
     readonly command: 'load-subtitles';
     readonly fromAsbplayerId?: string;

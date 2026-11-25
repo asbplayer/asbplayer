@@ -1,4 +1,6 @@
-import { asbError, asbWarn } from '@project/common/util/log';
+import { asbError, asbTrace, asbWarn } from '@project/common/util/log';
+import { clipboardWrite } from '@project/common/util/clipboard';
+import type { ClipboardFallback } from '@project/common/util/clipboard';
 import sanitize from 'sanitize-filename';
 export { arrayEquals } from '@project/common/util/array-equals'; // Necessary to break an import cycle between settings and util
 import { arrayEquals } from '@project/common/util/array-equals';
@@ -12,8 +14,8 @@ import type {
     Tokenization,
     TokenReading,
 } from '@project/common/src/model';
-import type { SeekableTracks, TextSubtitleSettings } from '@project/common/settings';
-import { isTrackSeekable } from '@project/common/settings/settings';
+import type { AutoCopyableTracks, SeekableTracks, TextSubtitleSettings } from '@project/common/settings';
+import { isTrackAutoCopyable, isTrackSeekable } from '@project/common/settings/settings';
 import { TokenStatus } from '@project/common/settings/settings-dictionary';
 import type { Progress } from '..';
 import type { TokenStatusInfo } from '@project/common/dictionary-db';
@@ -67,20 +69,57 @@ export const removeSubtitleHtml = (text: string): string => {
     return content.textContent ?? '';
 };
 
+/** Formats subtitle cues in display order, joining cues within a track with newlines and tracks with blank lines. */
+export const formatSubtitlesForClipboard = (subtitles: readonly SubtitleModel[]): string => {
+    const sorted = [...subtitles].sort(compareSubtitlesForDisplay);
+    const trackGroups: string[] = [];
+    let currentTrack: number | undefined;
+    let currentLines: string[] = [];
+
+    for (const subtitle of sorted) {
+        const text = removeSubtitleHtml(subtitle.originalText ?? subtitle.text).trim();
+        if (!text) continue;
+        if (subtitle.track !== currentTrack) {
+            if (currentLines.length) trackGroups.push(currentLines.join('\n'));
+            currentTrack = subtitle.track;
+            currentLines = [text];
+        } else {
+            currentLines.push(text);
+        }
+    }
+
+    if (currentLines.length) trackGroups.push(currentLines.join('\n'));
+    return trackGroups.join('\n\n');
+};
+
 /**
- * Copies visible text from the given subtitles to the clipboard.
- * @returns whether non-empty subtitle text was found and sent to the clipboard writer.
+ * Copies the formatted subtitle text to the clipboard.
+ * @returns `true` if there was non-empty text to copy.
  */
-export const copySubtitleText = (
-    subtitles: readonly SubtitleModel[],
-    writeText: (text: string) => Promise<unknown> = async (text) => navigator.clipboard.writeText(text)
-): boolean => {
-    const text = subtitles
-        .map((subtitle) => removeSubtitleHtml(subtitle.originalText ?? subtitle.text))
-        .filter((line) => line.trim())
-        .join('\n');
+export const copySubtitleText = (subtitles: readonly SubtitleModel[], fallback?: ClipboardFallback): boolean => {
+    const text = formatSubtitlesForClipboard(subtitles);
     if (!text) return false;
-    void writeText(text).catch((error) => asbError('subtitles/clipboard', 'Could not copy subtitle text', error));
+    void clipboardWrite(text, fallback).catch((error) =>
+        asbError('subtitles/clipboard', 'Could not copy subtitle text', error)
+    );
+    return true;
+};
+
+/**
+ * Copies the formatted text of auto-copyable subtitle tracks to the clipboard.
+ * @returns `true` if there was non-empty eligible text to copy.
+ */
+export const autoCopySubtitleText = (
+    subtitles: readonly SubtitleModel[],
+    autoCopyableTracks: AutoCopyableTracks,
+    fallback?: ClipboardFallback,
+    logLabel = 'subtitles/clipboard'
+): boolean => {
+    const text = formatSubtitlesForClipboard(
+        subtitles.filter((subtitle) => isTrackAutoCopyable(autoCopyableTracks, subtitle.track))
+    );
+    if (!text) return false;
+    void clipboardWrite(text, fallback).catch((error) => asbTrace(logLabel, error));
     return true;
 };
 
@@ -175,6 +214,16 @@ export function keysAreEqual(a: any, b: any) {
     const bKeys = Object.keys(b);
     if (aKeys.length !== bKeys.length) return false;
     return aKeys.every((key) => Object.prototype.hasOwnProperty.call(b, key));
+}
+
+export function setsEqual<T>(a: ReadonlySet<T> | undefined, b: ReadonlySet<T> | undefined): boolean {
+    if (a === b) return true;
+    if (!a || !b) return false;
+    if (a.size !== b.size) return false;
+    for (const item of a) {
+        if (!b.has(item)) return false;
+    }
+    return true;
 }
 
 export interface LocalizeDateTimeOptions {

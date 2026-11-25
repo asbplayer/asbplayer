@@ -82,8 +82,10 @@ export default class KeyBindings {
             true
         );
 
+        // Reject synthetic KeyboardEvents (!event.isTrusted) so a host page cannot dispatch fake keypresses to
+        // trigger background clipboard writes through the content script.
         this._unbindCopyCurrentSubtitle = this._keyBinder.bindCopyCurrentSubtitle(
-            () => context.subtitleController.copyCurrentSubtitle(),
+            (event) => event.isTrusted && context.subtitleController.copyCurrentSubtitle(),
             () => !context.synced,
             true
         );
