@@ -324,6 +324,7 @@ export const settingsSchema = z
             moveBottomSubtitlesDown: keyBindSchema,
             moveTopSubtitlesUp: keyBindSchema,
             moveTopSubtitlesDown: keyBindSchema,
+            copyCurrentSubtitle: keyBindSchema,
             openStatistics: keyBindSchema,
             jumpToNextToken: keyBindSchema,
             jumpToPreviousToken: keyBindSchema,

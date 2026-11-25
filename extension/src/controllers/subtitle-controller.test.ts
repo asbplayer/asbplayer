@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, jest } from '@jest/globals';
+import type { CopyToClipboardMessage, VideoToExtensionCommand } from '@project/common';
 import { ASB_TOKEN_SELECTED_CLASS } from '@project/common/annotations';
 import {
     makeDictionaryTrack,
@@ -15,6 +16,7 @@ import { defaultSettings, TokenStatus } from '@project/common/settings';
 import type { SettingsProvider, SubtitlesWidthUnit } from '@project/common/settings';
 import SubtitleController from '@project/extension/src/controllers/subtitle-controller';
 import type Binding from '@project/extension/src/services/binding';
+import KeyBindings from '@project/extension/src/services/key-bindings';
 
 describe('SubtitleController appearance rendering', () => {
     const controllers: SubtitleController[] = [];
@@ -48,6 +50,83 @@ describe('SubtitleController appearance rendering', () => {
         controllers.push(controller);
         return controller;
     };
+
+    it('copies only current, enabled text cues when the clipboard shortcut is assigned', () => {
+        const subtitleController = controllerForVideo();
+        subtitleController.setSubtitleSettings(defaultSettings);
+        subtitleController.subtitles = [
+            makeSubtitle({
+                index: 0,
+                text: '<span>Annotated cue</span>',
+                originalText: '<ruby>字幕<rt>じまく</rt></ruby><br>次の行',
+            }),
+            makeSubtitle({ index: 1, track: 1, text: 'Translation &amp; notes', originalText: undefined }),
+            makeSubtitle({ index: 2, track: 2, text: 'Hidden', originalText: undefined }),
+            makeSubtitle({ index: 3, track: 3, text: '', originalText: undefined }),
+        ];
+        const context = { synced: true, subtitleController } as unknown as Binding;
+        const bindings = new KeyBindings();
+        const sendMessage = jest
+            .fn<(command: VideoToExtensionCommand<CopyToClipboardMessage>) => Promise<void>>()
+            .mockResolvedValue(undefined);
+        const originalBrowser = Object.getOwnPropertyDescriptor(globalThis, 'browser');
+        Object.defineProperty(globalThis, 'browser', { configurable: true, value: { runtime: { sendMessage } } });
+
+        const pressCopyKey = () => {
+            const keydown = new KeyboardEvent('keydown', { key: 'c', bubbles: true, cancelable: true });
+            const keyup = new KeyboardEvent('keyup', { key: 'c', bubbles: true, cancelable: true });
+            for (const event of [keydown, keyup]) {
+                Object.defineProperty(event, 'keyCode', { value: 67 });
+                document.dispatchEvent(event);
+            }
+            return keydown.defaultPrevented;
+        };
+        const showSubtitles = (showingSubtitleIndexes: number[]) =>
+            subtitleController.playbackStateChanged({
+                showingSubtitleIndexes,
+                hiddenSubtitleIndexes: [2],
+                timestampMs: 0,
+                paused: true,
+            });
+        const copiedText = () =>
+            sendMessage.mock.calls.map(([command]) =>
+                decodeURIComponent(command.message.dataUrl.slice('data:text/plain,'.length))
+            );
+
+        try {
+            showSubtitles([1, 0, 2, 3]);
+            bindings.setKeyBindSet(context, defaultSettings.keyBindSet);
+            expect(pressCopyKey()).toBe(false);
+            expect(copiedText()).toEqual([]);
+
+            bindings.setKeyBindSet(context, {
+                ...defaultSettings.keyBindSet,
+                copyCurrentSubtitle: { keys: 'c' },
+            });
+            expect(pressCopyKey()).toBe(true);
+            expect(copiedText()).toEqual(['字幕\n次の行\nTranslation & notes']);
+            expect(sendMessage.mock.calls[0][0].message.command).toBe('copy-to-clipboard');
+
+            subtitleController.disabledSubtitleTracks[1] = true;
+            subtitleController.refreshShowingSubtitles();
+            expect(pressCopyKey()).toBe(true);
+            expect(copiedText()).toEqual(['字幕\n次の行\nTranslation & notes', '字幕\n次の行']);
+
+            showSubtitles([2, 3]);
+            expect(pressCopyKey()).toBe(false);
+            showSubtitles([]);
+            expect(pressCopyKey()).toBe(false);
+
+            showSubtitles([0]);
+            bindings.setKeyBindSet(context, defaultSettings.keyBindSet);
+            expect(pressCopyKey()).toBe(false);
+            expect(copiedText()).toHaveLength(2);
+        } finally {
+            bindings.unbind();
+            if (originalBrowser) Object.defineProperty(globalThis, 'browser', originalBrowser);
+            else Reflect.deleteProperty(globalThis, 'browser');
+        }
+    });
 
     it('keeps the visible cue node and selection when another track inserts earlier cues', () => {
         const controller = controllerForVideo();

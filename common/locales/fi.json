@@ -131,6 +131,7 @@
         "adjustOffsetToSubtitle": "Muuta tekstityksen siirtymää niin, että edellinen/seuraava tekstitys on nykyisellä aikaleimalla",
         "adjustPlaybackRate": "Säädä toistonopeutta ±0,1",
         "ankiExport": "Lähetä nykyinen tekstitys Anki-valintaikkunaan",
+        "copyCurrentSubtitle": "Copy current subtitle",
         "copySubtitle": "Lähetä nykyinen tekstitys",
         "decreaseOffset": "Säädä tekstityksen nopeutta -100 ms",
         "decreasePlaybackRate": "Hidasta toistoa",

@@ -1,4 +1,4 @@
-import { asbWarn } from '@project/common/util/log';
+import { asbError, asbWarn } from '@project/common/util/log';
 import sanitize from 'sanitize-filename';
 export { arrayEquals } from '@project/common/util/array-equals'; // Necessary to break an import cycle between settings and util
 import { arrayEquals } from '@project/common/util/array-equals';
@@ -53,17 +53,35 @@ export const retryWithAnimationFrame = (
     };
 };
 
-let subtitleHtmlHelperElement: HTMLDivElement | undefined;
+let subtitleHtmlTemplate: HTMLTemplateElement | undefined;
 const subtitleGraphemeSegmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
 const invisibleGraphemePattern = /^[\s\p{Default_Ignorable_Code_Point}]*$/u;
 
 /** Removes presentation markup, ruby readings, and ruby fallback text from subtitle text. */
 export const removeSubtitleHtml = (text: string): string => {
-    subtitleHtmlHelperElement ??= document.createElement('div');
-    subtitleHtmlHelperElement.innerHTML = text;
-    for (const element of subtitleHtmlHelperElement.querySelectorAll('br')) element.replaceWith('\n');
-    for (const element of subtitleHtmlHelperElement.querySelectorAll('rt, rp')) element.remove();
-    return subtitleHtmlHelperElement.textContent ?? subtitleHtmlHelperElement.innerText;
+    subtitleHtmlTemplate ??= document.createElement('template');
+    subtitleHtmlTemplate.innerHTML = text;
+    const { content } = subtitleHtmlTemplate;
+    for (const element of content.querySelectorAll('br')) element.replaceWith('\n');
+    for (const element of content.querySelectorAll('rt, rp')) element.remove();
+    return content.textContent ?? '';
+};
+
+/**
+ * Copies visible text from the given subtitles to the clipboard.
+ * @returns whether non-empty subtitle text was found and sent to the clipboard writer.
+ */
+export const copySubtitleText = (
+    subtitles: readonly SubtitleModel[],
+    writeText: (text: string) => Promise<unknown> = async (text) => navigator.clipboard.writeText(text)
+): boolean => {
+    const text = subtitles
+        .map((subtitle) => removeSubtitleHtml(subtitle.originalText ?? subtitle.text))
+        .filter((line) => line.trim())
+        .join('\n');
+    if (!text) return false;
+    void writeText(text).catch((error) => asbError('subtitles/clipboard', 'Could not copy subtitle text', error));
+    return true;
 };
 
 /** Counts visible subtitle graphemes, excluding markup, ruby annotations, whitespace, and formatting controls. */
@@ -84,6 +102,13 @@ export function compareSubtitlesForDisplay(
     s2: Pick<SubtitleModel, 'track' | 'index'>
 ): number {
     return s1.track - s2.track || (s1.index ?? 0) - (s2.index ?? 0);
+}
+
+export function enabledSubtitlesInDisplayOrder<T extends Pick<SubtitleModel, 'track' | 'index'>>(
+    subtitles: readonly T[],
+    disabledTracks: Readonly<Record<number, boolean | undefined>>
+): T[] {
+    return subtitles.filter((subtitle) => !disabledTracks[subtitle.track]).sort(compareSubtitlesForDisplay);
 }
 
 /** Maps separately sorted showing and invisible subtitles into canonical display order. */

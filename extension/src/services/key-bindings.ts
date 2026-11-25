@@ -21,6 +21,7 @@ export default class KeyBindings {
     private _keyBinder: DefaultKeyBinder | undefined;
 
     private _unbindRecipes?: () => void;
+    private _unbindCopyCurrentSubtitle?: () => void;
     private _unbindPlay: Unbinder = false;
     private _unbindAutoPause: Unbinder = false;
     private _unbindCondensedPlayback: Unbinder = false;
@@ -78,6 +79,12 @@ export default class KeyBindings {
             },
             () => !context.synced,
             () => context.subtitleController.subtitles,
+            true
+        );
+
+        this._unbindCopyCurrentSubtitle = this._keyBinder.bindCopyCurrentSubtitle(
+            () => context.subtitleController.copyCurrentSubtitle(),
+            () => !context.synced,
             true
         );
 
@@ -452,6 +459,9 @@ export default class KeyBindings {
     }
 
     unbind() {
+        this._unbindCopyCurrentSubtitle?.();
+        this._unbindCopyCurrentSubtitle = undefined;
+
         if (this._unbindPlay) {
             this._unbindPlay();
             this._unbindPlay = false;

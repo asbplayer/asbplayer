@@ -202,6 +202,7 @@ Keyboard shortcuts can be used to access most of asbplayer's features.
 | Move bottom subtitles down           |                  |
 | Move top subtitles up                |                  |
 | Move top subtitles down              |                  |
+| Copy current subtitle               |                  |
 
 ### <a href={new URL('?view=settings#mining-settings', project.urls.app).href}>Mining</a> keyboard shortcuts {#mining-keyboard-shortcuts}
 

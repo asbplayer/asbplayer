@@ -131,6 +131,7 @@
         "adjustOffsetToSubtitle": "Ajuster le décalage des sous-titres pour que le sous-titre précédent/suivant soit à l’horodatage actuel",
         "adjustPlaybackRate": "Ajuster la vitesse de lecture de ±0.1",
         "ankiExport": "Miner le sous-titre actuel et ouvrir la boîte de dialogue Anki",
+        "copyCurrentSubtitle": "Copy current subtitle",
         "copySubtitle": "Miner le sous-titre actuel",
         "decreaseOffset": "Ajuster le décalage des sous-titres par -100ms",
         "decreasePlaybackRate": "Diminuer la vitesse de lecture",

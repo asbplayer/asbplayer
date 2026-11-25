@@ -65,6 +65,7 @@
         "binds.adjustOffsetToSubtitle": "Refers to the two keyboard shortcuts above as a category. This is the label for the toggle that enables/disables the above two shortcuts for the extension only.",
         "binds.adjustPlaybackRate": "Refers to the two keyboard shortcuts above as a category. This is the label for the toggle that enables/disables the above two shortcuts for the extension only.",
         "binds.ankiExport": "Keyboard shortcut to mine the current subtitle, and open asbplayer's card creator.",
+        "binds.copyCurrentSubtitle": "Keyboard shortcut to copy the currently displayed subtitle text to the clipboard.",
         "binds.copySubtitle": "Keyboard shortcut to mine the current subtitle. Does not open the card creator. However, the card creator for the mined subtitle can be opened from the mining history.",
         "binds.decreaseOffset": "Keyboard shortcut to speed up subtitles by 100ms.",
         "binds.decreasePlaybackRate": "Keyboard shortcut to decrease the playback rate by 0.1. E.g. if the video is playing at normal speed, decreases the speed to 0.9x. Using the shortcut again would increase the speed to 0.8x and so on.",

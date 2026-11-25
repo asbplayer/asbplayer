@@ -131,6 +131,7 @@
         "adjustOffsetToSubtitle": "Ajustar offset de los subtítulos para que el subtítulo anterior/siguiente esté en el momento actual",
         "adjustPlaybackRate": "Ajustar velocidad de reproducción en ±0.1",
         "ankiExport": "Minar subtítulo actual y abrir ventana de Anki",
+        "copyCurrentSubtitle": "Copy current subtitle",
         "copySubtitle": "Minar subtítulo actual",
         "decreaseOffset": "Ajustar offset de los subtítulos en -100 ms",
         "decreasePlaybackRate": "Reducir velocidad de reproducción",
