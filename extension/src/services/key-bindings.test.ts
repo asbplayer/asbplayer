@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it, jest } from '@jest/globals';
 import { PlayMode } from '@project/common';
-import { currentTokenSelectionLocation, HoveredToken, selectTokenInRoot } from '@project/common/annotations';
 import { makeSubtitle, makeToken } from '@project/common/annotations/annotations-test-utils';
+import { HoveredToken } from '@project/common/annotations/dom-hovered-token';
+import { currentTokenSelectionLocation, selectTokenInRoot } from '@project/common/annotations/dom-token-selection';
 import { ApplyStrategy, defaultSettings, TokenStatus } from '@project/common/settings';
 import type Binding from '@project/extension/src/services/binding';
 import KeyBindings from '@project/extension/src/services/key-bindings';

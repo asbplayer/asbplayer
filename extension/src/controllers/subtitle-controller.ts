@@ -33,17 +33,22 @@ import {
     ASB_SUBTITLE_CONTAINER_TOP_CLASS,
     ASB_SUBTITLE_INDEX_ATTRIBUTE,
     ASB_PLAYBACK_PAUSED_CLASS,
-    clearTokenSelectionInRoot,
-    currentTokenSelectionLocation,
     renderRichTextOntoSubtitles,
-    selectTokenInRoot,
-    clearAutoPauseTokenSelectionInRoot,
-    restorableTokenSelectionInRoot,
     SubtitleAnnotations,
 } from '@project/common/annotations';
-import type { RestorableTokenSelection, SelectTokenInRootOptions } from '@project/common/annotations/dom-annotations';
+import { registerSubtitleCopyScope } from '@project/common/annotations/dom-native-copy';
+import {
+    clearAutoPauseTokenSelectionInRoot,
+    clearTokenSelectionInRoot,
+    currentTokenSelectionLocation,
+    restorableTokenSelectionInRoot,
+    selectTokenInRoot,
+} from '@project/common/annotations/dom-token-selection';
+import type {
+    RestorableTokenSelection,
+    SelectTokenInRootOptions,
+} from '@project/common/annotations/dom-token-selection';
 import type { TokenSelectionLocation } from '@project/common/annotations/token-navigation';
-import { registerSubtitleCopyScope } from '@project/common/annotations/subtitle-copy';
 import {
     arrayEquals,
     compareSubtitlesForDisplay,

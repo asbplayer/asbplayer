@@ -4,8 +4,8 @@ import { join } from 'path';
 import {
     ASB_SUBTITLE_CONTAINER_BOTTOM_CLASS,
     ASB_TOKEN_CONTAINER_CLASS,
-    selectTokenInRoot,
 } from '@project/common/annotations/dom-annotations';
+import { selectTokenInRoot } from '@project/common/annotations/dom-token-selection';
 import { CachingElementOverlay, OffsetAnchor } from '@project/extension/src/services/element-overlay';
 
 describe('CachingElementOverlay fullscreen transitions', () => {

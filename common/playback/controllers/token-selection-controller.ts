@@ -1,7 +1,7 @@
 import type { IndexedSubtitleModel } from '@project/common';
 import { indexCuesByKey, subtitleKey, sameSubtitleText } from '@project/common/subtitle-reader/subtitle-stream';
 import type { TokenSelectionLocation } from '@project/common/annotations/token-navigation';
-import type { SelectTokenInRootOptions } from '@project/common/annotations';
+import type { SelectTokenInRootOptions } from '@project/common/annotations/dom-token-selection';
 import type { PlaybackPlanTokenSelection } from '@project/common/playback/plan/playback-plan';
 import { asbTrace } from '@project/common/util/log';
 

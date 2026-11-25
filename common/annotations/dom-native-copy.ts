@@ -1,18 +1,17 @@
-const copyScopes = new WeakMap<Element, string | null>();
+const cueSelectorByScope = new WeakMap<Element, string | null>();
 
 /** Register a cue itself, or a container with a selector for its cues. */
 export const registerSubtitleCopyScope = (element: HTMLElement | null, cueSelector: string | null = null) => {
-    if (element) copyScopes.set(element, cueSelector);
+    if (element) cueSelectorByScope.set(element, cueSelector);
 };
 
 const subtitleCueFor = (element: Element) => {
     for (let ancestor: Element | null = element; ancestor; ancestor = ancestor.parentElement) {
-        const selector = copyScopes.get(ancestor);
+        const selector = cueSelectorByScope.get(ancestor);
         if (selector === undefined) continue;
         if (selector === null) return ancestor;
         const cue = element.closest(selector);
-        if (cue && ancestor.contains(cue)) return cue;
-        return;
+        return cue && ancestor.contains(cue) ? cue : undefined;
     }
 };
 
@@ -32,7 +31,7 @@ function* textFragments(node: Node, range: Range, skipElement: (node: Element) =
     for (const child of node.childNodes) yield* textFragments(child, range, skipElement);
 }
 
-export const selectedSubtitleText = (document: Document, selection: AbstractRange) => {
+const selectedSubtitleText = (document: Document, selection: AbstractRange) => {
     const view = document.defaultView;
     if (!view) return;
     const { startContainer, startOffset, endContainer, endOffset } = selection;
@@ -87,4 +86,19 @@ export const selectedSubtitleText = (document: Document, selection: AbstractRang
     }
     const text = parts.join('');
     if (!crossesShadowBoundary && text.trim()) return text;
+};
+
+export const createSubtitleCopyHandler = (document: Document, getRange: () => AbstractRange | undefined) => {
+    return (event: ClipboardEvent) => {
+        if (event.defaultPrevented || !event.clipboardData) return;
+        const target = event.composedPath()[0];
+        if (target instanceof HTMLElement && (target.isContentEditable || target.closest('input, textarea'))) {
+            return;
+        }
+        const range = getRange();
+        const text = range && selectedSubtitleText(document, range);
+        if (!text) return;
+        event.clipboardData.setData('text/plain', text);
+        event.preventDefault();
+    };
 };
