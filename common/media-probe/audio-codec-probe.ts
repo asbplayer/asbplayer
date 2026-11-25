@@ -81,7 +81,7 @@ const codecFromIsoBmffFormat = (format: string) => isoBmffCodecs[format] ?? form
 interface ProbedContainer {
     /** MIME type used to ask the browser whether it can play this container at all. */
     readonly mimeType: string;
-    readonly audioTracks: ProbedAudioTrack[];
+    readonly audioTracks: readonly ProbedAudioTrack[];
 }
 
 /** Recognizes the container signature and normalizes its format-specific audio codec IDs. */
@@ -128,9 +128,32 @@ const probeContainer = async (reader: ByteReader): Promise<ProbedContainer | und
     return;
 };
 
+// Picker discovery and playback can start at the same time. Share the pending read as well as its result.
+const audioMetadataByBlob = new WeakMap<Blob, Promise<ProbedContainer | undefined>>();
+
+const probeAudioContainer = async (blob: Blob, signal?: AbortSignal): Promise<ProbedContainer | undefined> => {
+    if (signal?.aborted) throw signal.reason;
+    let metadata = audioMetadataByBlob.get(blob);
+    if (!metadata) {
+        metadata = probeContainer(new ByteReader(blob)).catch((error) => {
+            audioMetadataByBlob.delete(blob);
+            throw error;
+        });
+        audioMetadataByBlob.set(blob, metadata);
+    }
+    if (!signal) return metadata;
+
+    // Cancelling one caller's wait must leave the shared read available to other callers.
+    return new Promise((resolve, reject) => {
+        const onAbort = () => reject(signal.reason);
+        signal.addEventListener('abort', onAbort, { once: true });
+        void metadata.then(resolve, reject).finally(() => signal.removeEventListener('abort', onAbort));
+    });
+};
+
 /** Discover audio choices without loading FFmpeg or guessing the browser's selected track. */
 export const probeAudioTracks = async (blob: Blob, signal?: AbortSignal): Promise<readonly ProbedAudioTrack[]> =>
-    (await probeContainer(new ByteReader(blob, { signal })))?.audioTracks ?? [];
+    (await probeAudioContainer(blob, signal))?.audioTracks ?? [];
 
 // A video element, since this is asked about video containers as well as audio codecs.
 let probeElement: HTMLVideoElement | undefined;
@@ -170,7 +193,7 @@ export const audioTrackRequiringTranscode = async (blob: Blob): Promise<ProbedAu
     let container: ProbedContainer | undefined;
 
     try {
-        container = await probeContainer(new ByteReader(blob));
+        container = await probeAudioContainer(blob);
     } catch (e) {
         asbWarn('media/probe', 'Failed to probe audio codecs:', e);
         return;

@@ -20,6 +20,14 @@ import { asbError, asbWarn } from '@project/common/util/log';
 class EmbeddedSelectionError extends Error {}
 
 const initialTrackIds: readonly string[] = ['-', '-', '-'];
+const isEmptySubtitleSlot = ({ id }: { readonly id: string }) => id === '-';
+
+interface TrackDiscoveryRequest {
+    readonly file: File;
+    readonly controller: AbortController;
+    readonly probingSubtitles: boolean;
+    autoOpenPicker: boolean;
+}
 
 export type SubtitlePickerError = { readonly kind: 'embedded' } | { readonly kind: 'selection'; readonly error: Error };
 
@@ -161,14 +169,7 @@ export class MediaSourcesController {
 
     private sourceLifetime = new AbortController();
     private pickerDraft = new AbortController();
-    private discovery:
-        | {
-              file: File;
-              controller: AbortController;
-              openOnSupported: boolean;
-              discoverSubtitles: boolean;
-          }
-        | undefined;
+    private discovery: TrackDiscoveryRequest | undefined;
     private pendingRequest: { kind: 'confirm' | 'restore'; controller: AbortController } | undefined;
     private draftFileInputSignal: AbortSignal | undefined;
     private standaloneSubtitlesNeedSaving = false;
@@ -396,8 +397,8 @@ export class MediaSourcesController {
             const activeVideo = this.state.sources.videoFile;
             if (activeVideo) {
                 void this.discoverTracks(activeVideo, {
-                    openOnSupported: true,
-                    discoverSubtitles: !this.state.sources.subtitleSourceFiles.some(({ id }) => id !== '-'),
+                    autoOpenPicker: true,
+                    discoverSubtitles: this.state.sources.subtitleSourceFiles.every(isEmptySubtitleSlot),
                 });
             }
         }
@@ -561,6 +562,7 @@ export class MediaSourcesController {
     async restoreSession(): Promise<void> {
         this.cancelPendingRequest();
         this.cancelDiscovery();
+        if (this.state.picker.discovering) this.updatePicker({ discovering: false });
         const controller = new AbortController();
         this.pendingRequest = { kind: 'restore', controller };
         const { signal } = controller;
@@ -721,17 +723,37 @@ export class MediaSourcesController {
 
     private async discoverTracks(
         video: FileWithId,
-        { openOnSupported, discoverSubtitles }: { openOnSupported: boolean; discoverSubtitles: boolean }
+        { autoOpenPicker, discoverSubtitles }: { autoOpenPicker: boolean; discoverSubtitles: boolean }
     ): Promise<void> {
+        const cachedSubtitles = this.embeddedSubtitles.discoveredTracks(video);
+        const cachedAudio = this.state.picker.audioTracks;
+        const needsSubtitleProbe = discoverSubtitles && !cachedSubtitles;
+        const active = this.discovery;
+        // An automatic scan may only be looking for audio. An explicitly opened picker needs subtitles too.
+        if (
+            active?.file === video.file &&
+            !active.controller.signal.aborted &&
+            (!needsSubtitleProbe || active.probingSubtitles)
+        ) {
+            if (!autoOpenPicker) active.autoOpenPicker = false;
+            return;
+        }
+        if (!autoOpenPicker && !needsSubtitleProbe && cachedAudio) return;
+
         this.cancelDiscovery();
         const controller = new AbortController();
-        const entry = { file: video.file, controller, openOnSupported, discoverSubtitles };
+        const entry: TrackDiscoveryRequest = {
+            file: video.file,
+            controller,
+            autoOpenPicker,
+            probingSubtitles: needsSubtitleProbe,
+        };
         this.discovery = entry;
         const { signal } = controller;
         this.updatePicker({ discovering: true, discoveryError: false });
         const [subtitles, audio] = await Promise.allSettled([
-            discoverSubtitles ? this.embeddedSubtitles.discover(video, signal) : this.state.picker.embeddedTracks,
-            this.state.picker.audioTracks ?? probeAudioTracks(video.file, signal),
+            needsSubtitleProbe ? this.embeddedSubtitles.discover(video, signal) : cachedSubtitles,
+            cachedAudio ?? probeAudioTracks(video.file, signal),
         ]);
         if (signal.aborted || this.discovery !== entry) return;
         this.discovery = undefined;
@@ -742,7 +764,7 @@ export class MediaSourcesController {
             asbWarn('media/probe', 'Could not discover audio tracks:', audio.reason);
         }
         const embeddedTracks = subtitles.status === 'fulfilled' ? subtitles.value : undefined;
-        const audioTracks = audio.status === 'fulfilled' ? audio.value : [];
+        const audioTracks = audio.status === 'fulfilled' ? audio.value : undefined;
         this.updatePicker({
             embeddedTracks,
             audioTracks,
@@ -750,12 +772,12 @@ export class MediaSourcesController {
             discoveryError: subtitles.status === 'rejected',
         });
         if (
-            entry.openOnSupported &&
+            entry.autoOpenPicker &&
             !this.state.picker.open &&
-            (audioTracks.length > 1 ||
+            ((audioTracks?.length ?? 0) > 1 ||
                 (discoverSubtitles &&
                     embeddedTracks?.some((track) => track.outputFormat) &&
-                    !this.state.sources.subtitleSourceFiles.some(({ id }) => id !== '-')))
+                    this.state.sources.subtitleSourceFiles.every(isEmptySubtitleSlot)))
         ) {
             this.openPicker();
         }
@@ -770,26 +792,15 @@ export class MediaSourcesController {
         if (!this.state.picker.open) this.resetPickerDraft();
         const video = this.state.sources.videoFile;
         const cachedTracks = video ? this.embeddedSubtitles.discoveredTracks(video) : undefined;
-        const activeDiscovery =
-            video &&
-            this.discovery?.file === video.file &&
-            !this.discovery.controller.signal.aborted &&
-            (cachedTracks || this.discovery.discoverSubtitles)
-                ? this.discovery
-                : undefined;
-        if (activeDiscovery) activeDiscovery.openOnSupported = false;
         this.updatePicker({
             open: true,
             externalTracks: buildExternalTracks(candidates),
             selectedTrackIds: initialTrackIds.map((_, index) => candidates[index]?.id ?? '-'),
             embeddedTracks: cachedTracks,
-            discovering: Boolean(activeDiscovery),
             discoveryError: false,
             selectionError: undefined,
         });
-        if (video && (!cachedTracks || !this.state.picker.audioTracks) && !activeDiscovery) {
-            void this.discoverTracks(video, { openOnSupported: false, discoverSubtitles: !cachedTracks });
-        }
+        if (video) void this.discoverTracks(video, { autoOpenPicker: false, discoverSubtitles: true });
     }
 
     private confirmUnchangedSubtitles(sources: MediaSources, audioTrackIndex: number | undefined): void {

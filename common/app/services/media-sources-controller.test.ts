@@ -338,6 +338,43 @@ it('retains external subtitles while discovering audio and discovers embedded su
     expect(extract).not.toHaveBeenCalled();
 });
 
+it('keeps the active discovery and spinner when the picker opens during a full scan', async () => {
+    const reads: DeferredRead[] = [];
+    controller.importManualFiles([deferredVideo(reads, 'episode', 'S_TEXT/UTF8', ['A_AAC', 'A_OPUS'])]);
+
+    controller.openPicker();
+    expect(controller.getState().picker).toMatchObject({ open: true, discovering: true });
+    expect(reads).toHaveLength(2);
+    finishProbeReads(reads, 0);
+    await flush();
+
+    const { picker } = controller.getState();
+    expect(picker).toMatchObject({ open: true, discovering: false });
+    expect(picker.embeddedTracks).toHaveLength(1);
+    expect(picker.audioTracks?.map(({ codec }) => codec)).toEqual(['aac', 'opus']);
+});
+
+it('adds subtitle discovery when the picker opens during an audio-only scan', async () => {
+    const reads: DeferredRead[] = [];
+    controller.loadSourceFiles([subtitle('en')]);
+    controller.importManualFiles([deferredVideo(reads, 'episode', 'S_TEXT/UTF8', ['A_AAC', 'A_OPUS'])]);
+
+    expect(reads).toHaveLength(1);
+    controller.openPicker();
+    reads[0].finish();
+    await flush();
+    expect(controller.getState().picker).toMatchObject({ open: true, discovering: true });
+
+    // The upgraded request shares the audio read and only starts a new subtitle read.
+    expect(reads).toHaveLength(2);
+    reads[1].finish();
+    await flush();
+    const { picker } = controller.getState();
+    expect(picker).toMatchObject({ open: true, discovering: false, selectedTrackIds: ['en', '-', '-'] });
+    expect(picker.embeddedTracks).toHaveLength(1);
+    expect(picker.audioTracks?.map(({ codec }) => codec)).toEqual(['aac', 'opus']);
+});
+
 it('does not reopen after cancellation, ignores late reads, and rediscovers on explicit open', async () => {
     const reads: DeferredRead[] = [];
     controller.importManualFiles([deferredVideo(reads, 'episode')]);
@@ -348,7 +385,8 @@ it('does not reopen after cancellation, ignores late reads, and rediscovers on e
     expect(controller.getState().picker.embeddedTracks).toBeUndefined();
 
     controller.openPicker();
-    finishProbeReads(reads, 2);
+    expect(reads).toHaveLength(3);
+    reads[2].finish();
     await flush();
     expect(controller.getState().picker.open).toBe(true);
     expect(controller.getState().picker.embeddedTracks).toHaveLength(1);
@@ -363,7 +401,8 @@ it.each([false, true])('ignores cancelled discovery for a replacement import (sa
     finishProbeReads(reads, 0);
     await flush();
     expect(controller.getState().picker.open).toBe(false);
-    finishProbeReads(reads, 2);
+    if (sameFile) reads[2].finish();
+    else finishProbeReads(reads, 2);
     await flush();
     expect(controller.getState().picker.open).toBe(true);
     expect(extract).not.toHaveBeenCalled();
@@ -443,6 +482,20 @@ it('reports failed discovery and retries on explicit open or new video without l
     expect(controller.getState().picker.open).toBe(true);
     expect(controller.getState().picker.discoveryError).toBe(false);
     expect(extract).not.toHaveBeenCalled();
+});
+
+it('can retry audio discovery when the picker opens after an audio read failure', async () => {
+    const reads: DeferredRead[] = [];
+    controller.importManualFiles([deferredVideo(reads, 'episode', '', ['A_AAC', 'A_OPUS'])]);
+    reads[0].finish();
+    reads[1].reject(new Error('Audio read failed'));
+    await flush();
+    expect(controller.getState().picker.open).toBe(false);
+
+    controller.openPicker();
+    reads[2].finish();
+    await flush();
+    expect(controller.getState().picker.audioTracks?.map(({ codec }) => codec)).toEqual(['aac', 'opus']);
 });
 
 it.each([0, 1, 2])('opens for %i audio tracks only when there are multiple choices', async (count) => {

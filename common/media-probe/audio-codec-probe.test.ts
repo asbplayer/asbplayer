@@ -236,6 +236,26 @@ describe('audioTrackRequiringTranscode', () => {
             .spyOn(HTMLMediaElement.prototype, 'canPlayType')
             .mockImplementation((type) => (playableContainers.includes(type) ? 'maybe' : ''));
 
+    it.each([false, true])('shares one metadata read with picker discovery (picker cancelled: %s)', async (cancel) => {
+        playsContainersButNoDolby();
+        const media = blobOf(matroskaFile({ audioCodecIds: ['A_EAC3'] }));
+        const read = jest.spyOn(media, 'slice');
+        const controller = new AbortController();
+        const discovery = probeAudioTracks(media, controller.signal);
+        const playback = audioTrackRequiringTranscode(media);
+
+        if (cancel) {
+            const reason = new Error('Picker closed');
+            controller.abort(reason);
+            await expect(discovery).rejects.toBe(reason);
+        } else {
+            await expect(discovery).resolves.toMatchObject([{ trackIndex: 0, codec: 'eac3' }]);
+        }
+        expect(await playback).toEqual({ trackIndex: 0, codec: 'eac3' });
+        expect(await probeAudioTracks(media)).toMatchObject([{ trackIndex: 0, codec: 'eac3' }]);
+        expect(read).toHaveBeenCalledTimes(1);
+    });
+
     it.each(['MP4', 'Matroska'] as const)(
         'detects Dolby audio despite an oversized subtitle title in %s',
         async (kind) => {
@@ -398,6 +418,16 @@ describe('audioCodecDisplayName', () => {
 });
 
 describe('audio track discovery', () => {
+    it('retries a failed metadata read for the same file', async () => {
+        const media = blobOf(matroskaFile({ audioCodecIds: ['A_AAC'] }));
+        const read = jest.spyOn(media, 'slice').mockImplementationOnce(() => {
+            throw new Error('File temporarily unavailable');
+        });
+        await expect(probeAudioTracks(media)).rejects.toThrow('File temporarily unavailable');
+        await expect(probeAudioTracks(media)).resolves.toMatchObject([{ trackIndex: 0, codec: 'aac' }]);
+        expect(read).toHaveBeenCalledTimes(2);
+    });
+
     it.each([0, 1, 2])('discovers %i audio tracks with metadata and audio-relative indexes', async (count) => {
         const bytes = mkv(
             mkvTrack(1, 'V_VP8'),

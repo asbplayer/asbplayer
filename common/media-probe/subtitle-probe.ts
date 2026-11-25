@@ -18,6 +18,7 @@ export interface EmbeddedSubtitleTrack {
     readonly codec: string;
     readonly language?: string;
     readonly title?: string;
+    /** Absent when the track is listed but cannot be extracted, such as an unsupported codec or unusable track key. */
     readonly outputFormat?: SubtitleOutputFormat;
 }
 
