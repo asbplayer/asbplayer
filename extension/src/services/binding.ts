@@ -1303,6 +1303,8 @@ export default class Binding {
                         break;
                     case 'recording-finished':
                         this.recordingState = RecordingState.notRecording;
+                        this.recordingPostMineAction = undefined;
+                        this.recordingCardId = undefined;
                         this.recordingMediaStartedTimestamp = undefined;
 
                         switch (this.postMinePlayback) {

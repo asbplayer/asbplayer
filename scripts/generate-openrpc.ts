@@ -6,13 +6,15 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { externalApiMethods } from '../common/external-commands/external-api.ts';
+import { externalApiMethods, externalExtensionPortName } from '../common/external-commands/external-api.ts';
 import { generateOpenRpcDocument, serializeOpenRpcDocument } from '../common/external-commands/openrpc.ts';
 
 /** Check or update the committed OpenRPC document. Returns true when it matches the schemas. */
 export function syncOpenRpcDocument(root: string, check = false): boolean {
     const path = join(root, 'external-api', 'openrpc.json');
-    const contents = serializeOpenRpcDocument(generateOpenRpcDocument({ methods: externalApiMethods }));
+    const contents = serializeOpenRpcDocument(
+        generateOpenRpcDocument({ methods: externalApiMethods, externalExtensionPortName })
+    );
     let existing: string | undefined;
 
     try {

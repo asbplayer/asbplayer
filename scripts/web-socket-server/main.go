@@ -697,7 +697,11 @@ func (forwarder forwarder) handleAsbplayerMiningHistoryRequest(c echo.Context) e
 	body["limit"] = limit
 
 	if cardIds := c.QueryParam("cardIds"); cardIds != "" {
-		body["filter"] = map[string]any{"cardIds": strings.Split(cardIds, ",")}
+		cardIdsSlice := strings.Split(cardIds, ",")
+		for i := range cardIdsSlice {
+			cardIdsSlice[i] = strings.TrimSpace(cardIdsSlice[i])
+		}
+		body["filter"] = map[string]any{"cardIds": cardIdsSlice}
 	}
 
 	command := clientCommand{Command: "get-mining-history", MessageId: uuid.NewString(), Body: body}

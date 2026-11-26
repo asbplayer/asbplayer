@@ -367,9 +367,12 @@ export const externalApiMethods = {
             'target specific media. If the media is not found or has no subtitles, `published` is `false`.\n\n' +
             'When `postMineAction` is `2`, `noteId` selects the Anki note to update. If omitted, the last-added ' +
             'note is updated. `noteId` applies to streaming media only and is ignored for local media.\n\n' +
+            "When `asbplayerCardId` is set, the card is saved into asbplayer's mining history under that id, " +
+            'replacing any existing card with the same id.\n\n' +
             'The response means the flow was accepted (dispatched), not that a card was completed. Invoked as a ' +
             'notification (no id), it is published fire-and-forget and never answered, even on error.\n\n' +
-            '`mediaId` and `noteId` require extension v1.20.0 or later.',
+            '`mediaId` and `noteId` require extension v1.20.0 or later; `asbplayerCardId` requires extension ' +
+            'v1.23.0 or later.',
         tags: [],
         paramsSchema: mineSubtitleParamsSchema,
         resultSchema: mineSubtitleResultSchema,

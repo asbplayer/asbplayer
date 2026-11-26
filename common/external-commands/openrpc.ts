@@ -3,6 +3,7 @@ import { z } from 'zod';
 
 export interface OpenRpcDocumentSource {
     methods: Record<string, ExternalApiMethod>;
+    externalExtensionPortName: string;
 }
 
 // scripts/generate-openrpc.ts commits the result to external-api/openrpc.json.
@@ -37,12 +38,12 @@ function methodDefinition(method: ExternalApiMethod): MethodDefinition {
     const propertyNames = Object.keys(schema.properties ?? {});
 
     if (propertyNames.length > 0) {
-        params = propertyNames.map((name) => ({
-            name,
-            required: required.includes(name),
-            schema: schema.properties![name],
-            description: (schema.properties![name] as { description?: string })?.description,
-        }));
+        params = propertyNames.map((name) => {
+            const { description, ...paramSchema } = schema.properties![name] as JsonSchemaObject & {
+                description?: string;
+            };
+            return { name, required: required.includes(name), schema: paramSchema, description };
+        });
     }
 
     return {
@@ -60,13 +61,16 @@ function methodDefinition(method: ExternalApiMethod): MethodDefinition {
     };
 }
 
-export function generateOpenRpcDocument({ methods }: OpenRpcDocumentSource): object {
+export function generateOpenRpcDocument({ methods, externalExtensionPortName }: OpenRpcDocumentSource): object {
     return {
         openrpc: '1.0.0',
         info: {
             title: 'asbplayer External API',
             version: '1.0.0',
-            description: 'JSON-RPC 2.0 API for external clients of asbplayer.',
+            description:
+                'JSON-RPC 2.0 API for external clients of asbplayer: the WebSocket servers (Go server, Anki addon ' +
+                `server) and the external extension API (browser.runtime port \`${externalExtensionPortName}\`). See ` +
+                'external-api/README.md for transport framings, error codes, and licensing.',
             license: {
                 name: 'Unlicense',
             },

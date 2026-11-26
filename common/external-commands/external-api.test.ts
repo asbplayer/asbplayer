@@ -2,6 +2,7 @@ import { describe, expect, it } from '@jest/globals';
 import { z } from 'zod';
 import {
     externalApiMethods,
+    externalExtensionPortName,
     isInvalidJsonRpcRequest,
     jsonRpcErrorResponseSchema,
     jsonRpcNotificationSchema,
@@ -141,7 +142,10 @@ describe('external API schemas', () => {
     });
 
     describe('OpenRPC document', () => {
-        const document = generateOpenRpcDocument({ methods: externalApiMethods }) as any;
+        const document = generateOpenRpcDocument({
+            methods: externalApiMethods,
+            externalExtensionPortName,
+        }) as any;
 
         it('matches the runtime copy', () => {
             expect(document).toEqual(openRpcDocument);
