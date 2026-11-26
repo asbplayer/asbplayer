@@ -293,33 +293,37 @@ export class MediaSources {
             : new MediaSources(this.subtitleSource, this.videoFile, this.videoFileUrl, audioTrackIndex);
     }
 
-    /** Picker slots identify a whole track by its first part. Unfilled trailing slots have no source. */
-    matchesSubtitleSelection(tracks: readonly ConfirmedVideoDataSubtitleTrack[]): boolean {
+    /** Compares incoming picker slots with the applied tracks. Each choice identifies a whole track by its first file. */
+    matchesSubtitleSelection(incomingTracks: readonly ConfirmedVideoDataSubtitleTrack[]): boolean {
         if (this.subtitleSource.kind !== 'files') return false;
-        const count = Math.max(tracks.length, this.subtitleTracks.length);
-        for (let index = 0; index < count; index++) {
-            const selected = tracks[index];
-            const parts = this.subtitleTracks[index]?.fileParts;
-            const first = parts?.[0];
-            if (!selected || isEmptySubtitleSlot(selected)) {
-                if (parts && !parts.every(isEmptySubtitleSlot)) return false;
+        const slotCount = Math.max(incomingTracks.length, this.subtitleTracks.length);
+        for (let slot = 0; slot < slotCount; slot++) {
+            const incomingTrack = incomingTracks[slot];
+            const currentFileParts = this.subtitleTracks[slot]?.fileParts;
+            if (!incomingTrack || isEmptySubtitleSlot(incomingTrack)) {
+                if (currentFileParts && !currentFileParts.every(isEmptySubtitleSlot)) return false;
                 continue;
             }
-            if (!first || selected.disabledReason || selected.id !== first.id) return false;
-            if (selected.embedded) {
-                const previous = first.embedded;
-                if (
-                    !this.videoFile ||
-                    !previous ||
-                    !subtitleSourceMatches(this.videoFile, selected.embedded) ||
-                    !subtitleSourceMatches(this.videoFile, previous) ||
-                    selected.embedded.trackIndex !== previous.trackIndex ||
-                    selected.embedded.codec !== previous.codec ||
-                    selected.embedded.format !== previous.format
-                ) {
-                    return false;
-                }
-            } else if (first.embedded || selected.file !== first.file) {
+            const currentFirstPart = currentFileParts?.[0];
+            if (!currentFirstPart || incomingTrack.disabledReason || incomingTrack.id !== currentFirstPart.id) {
+                return false;
+            }
+
+            const incomingEmbedded = incomingTrack.embedded;
+            const currentEmbedded = currentFirstPart.embedded;
+            if (!incomingEmbedded && !currentEmbedded) {
+                if (incomingTrack.file !== currentFirstPart.file) return false;
+                continue;
+            }
+
+            if (!incomingEmbedded || !currentEmbedded || !this.videoFile) return false;
+            if (
+                !subtitleSourceMatches(this.videoFile, incomingEmbedded) ||
+                !subtitleSourceMatches(this.videoFile, currentEmbedded) ||
+                incomingEmbedded.trackIndex !== currentEmbedded.trackIndex ||
+                incomingEmbedded.codec !== currentEmbedded.codec ||
+                incomingEmbedded.format !== currentEmbedded.format
+            ) {
                 return false;
             }
         }

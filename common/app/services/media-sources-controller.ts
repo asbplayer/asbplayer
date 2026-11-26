@@ -487,6 +487,7 @@ export class MediaSourcesController {
                 ) {
                     throw new Error('Subtitle selection has changed');
                 }
+                // Changing only audio preserves subtitles. Confirming the same choices retries a failed subtitle load.
                 if (
                     !picker.selectionError &&
                     !this.session.selectionSaveFailed &&
