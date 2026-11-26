@@ -4,10 +4,19 @@ sidebar_position: 10
 
 # Audio track selection {#audio-track-selection}
 
-For local video files, select an audio track at the top of the subtitle picker. The picker opens automatically when the file has multiple audio tracks. You can reopen it with the subtitle loading button.
+## Subtitle picker
 
-With multiple audio tracks, the **Default** option keeps the browser's default audio behavior as asbplayer cannot reliably determine which track the browser selected. Choosing a specific track transcodes the audio to a universally playable format, even when the browser supports its original codec. The choice is saved when restoring the last file session.
+When you open a local video with multiple audio tracks, the subtitle picker opens automatically. You can reopen it with **Load Subtitles** in the playback controls. Choose an audio track at the top of the picker.
 
-With a single audio track, the browser plays it directly or asbplayer automatically converts unsupported audio without opening the picker.
+- **Default** lets your browser choose the audio track. If it can't play any of the tracks, asbplayer can convert one automatically.
+- When you choose a specific track, asbplayer converts it for playback and remembers your choice when you restore your last session.
 
-When the browser exposes multiple audio tracks, the music-note/list button in the playback controls can switch between them directly. This native selector is available with the **Default** picker option and is hidden while asbplayer overrides the original audio with a converted track. Returning to **Default** restores access to the native selector when available.
+If the file has one audio track, it appears as the only choice whenever you open the picker. A single audio track never opens the picker on its own.
+
+## Playback controls
+
+With **Default** selected in the subtitle picker, look for the music-note **Select Audio Track** button. It appears when your browser offers at least two tracks and asbplayer doesn't need to convert the audio.
+
+:::warning
+In Chrome, the playback button requires **Experimental Web Platform features** in `chrome://flags`. Enabling this setting can cause many issues with Chrome on various websites. The subtitle picker works with this setting off.
+:::
