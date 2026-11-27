@@ -92,6 +92,63 @@ describe('audio clips from a file', () => {
     });
 });
 
+describe('audio clips from card', () => {
+    it('falls back to serialized audio if file pointer is dead', async () => {
+        const card = AudioClip.fromCard(
+            {
+                subtitle: { text: 'test', start: 0, end: 1, originalStart: 0, originalEnd: 1, track: 0 },
+                surroundingSubtitles: [],
+                subtitleFileName: 'asdf.jkl',
+                mediaTimestamp: 0,
+                audio: {
+                    base64: '1234',
+                    extension: 'webm',
+                    paddingStart: 0,
+                    paddingEnd: 0,
+                },
+                file: {
+                    name: 'a.mkv',
+                    blobUrl: 'dead url',
+                },
+            },
+            0,
+            0,
+            false
+        );
+        expect(card).toBeDefined();
+        expect(card?.extension).toBe('webm');
+    });
+
+    it('prefers file pointer if pointer is alive', async () => {
+        const blobUrl = 'active url for live file pointer audio clip test';
+        addBlobUrl(blobUrl);
+        const card = AudioClip.fromCard(
+            {
+                subtitle: { text: 'test', start: 0, end: 1, originalStart: 0, originalEnd: 1, track: 0 },
+                surroundingSubtitles: [],
+                subtitleFileName: 'asdf.jkl',
+                mediaTimestamp: 0,
+                audio: {
+                    base64: '1234',
+                    extension: 'ogg',
+                    paddingStart: 0,
+                    paddingEnd: 0,
+                },
+                file: {
+                    name: 'a.mkv',
+                    blobUrl,
+                },
+            },
+            0,
+            0,
+            false
+        );
+        expect(card).toBeDefined();
+        // Should be the extension of format returned from MediaRecorder
+        expect(card?.extension).toBe('ogg');
+    });
+});
+
 describe('audio model from card', () => {
     beforeAll(() => {
         (globalThis as any).MediaRecorder = { isTypeSupported: () => true };

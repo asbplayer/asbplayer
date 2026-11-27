@@ -922,6 +922,22 @@ export default class AudioClip {
     }
 
     static fromCard(card: CardModel, paddingStart: number, paddingEnd: number, recordAudibly: boolean) {
+        const preferFile =
+            !card.audio || // No serialized audio - file is the only choice
+            (card.file?.blobUrl && isActiveBlobUrl(card.file.blobUrl)); // File pointer is alive
+
+        if (card.file && preferFile) {
+            if (card.file.transcodedAudio !== undefined && card.file.transcodedAudio.blobUrl === undefined) return;
+            return AudioClip.fromFile(
+                card.file,
+                Math.max(0, card.subtitle.start - paddingStart),
+                card.subtitle.end + paddingEnd,
+                card.file?.playbackRate ?? 1,
+                recordAudibly,
+                card.file?.audioTrack
+            );
+        }
+
         if (card.audio) {
             const start = card.audio.start ?? card.subtitle.start;
             const end = card.audio.end ?? card.subtitle.end;
@@ -934,18 +950,6 @@ export default class AudioClip {
                 card.audio.base64,
                 card.audio.extension,
                 card.audio.error
-            );
-        }
-
-        if (card.file) {
-            if (card.file.transcodedAudio !== undefined && card.file.transcodedAudio.blobUrl === undefined) return;
-            return AudioClip.fromFile(
-                card.file,
-                Math.max(0, card.subtitle.start - paddingStart),
-                card.subtitle.end + paddingEnd,
-                card.file?.playbackRate ?? 1,
-                recordAudibly,
-                card.file?.audioTrack
             );
         }
 

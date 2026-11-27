@@ -592,29 +592,27 @@ function App({
     // Only the saved entry gets the serialized media; the dialog/export flows keep the unserialized card.
     const saveCopyHistoryItemWithForcedCapture = useCallback(
         async (card: CopyHistoryItem, forceCapture?: ForceCaptureKind[]) => {
-            let { audio, image } = card;
-
-            if (forceCapture?.includes('audio')) {
-                audio = await audioModelFromCard(card, {
-                    paddingStart: settingsRef.current.audioPaddingStart,
-                    paddingEnd: settingsRef.current.audioPaddingEnd,
-                    recordAudibly: settingsRef.current.recordWithAudioPlayback,
-                    mp3WorkerFactory: settingsRef.current.preferMp3 ? () => new mp3WorkerFactory() : undefined,
-                });
-            }
-
-            if (forceCapture?.includes('image')) {
-                image = await imageModelFromCard(card, {
-                    maxWidth: settingsRef.current.maxImageWidth,
-                    maxHeight: settingsRef.current.maxImageHeight,
-                    mediaFragmentFormat: settingsRef.current.mediaFragmentFormat,
-                    trimStart: settingsRef.current.mediaFragmentTrimStart,
-                    trimEnd: settingsRef.current.mediaFragmentTrimEnd,
-                    maxClipLength: settingsRef.current.mediaFragmentMaxClipLength,
-                    trimBlackBars: settingsRef.current.trimBlackBars,
-                });
-            }
-
+            const [audio, image] = await Promise.all([
+                forceCapture?.includes('audio')
+                    ? audioModelFromCard(card, {
+                          paddingStart: settingsRef.current.audioPaddingStart,
+                          paddingEnd: settingsRef.current.audioPaddingEnd,
+                          recordAudibly: settingsRef.current.recordWithAudioPlayback,
+                          mp3WorkerFactory: settingsRef.current.preferMp3 ? () => new mp3WorkerFactory() : undefined,
+                      })
+                    : card.audio,
+                forceCapture?.includes('image')
+                    ? imageModelFromCard(card, {
+                          maxWidth: settingsRef.current.maxImageWidth,
+                          maxHeight: settingsRef.current.maxImageHeight,
+                          mediaFragmentFormat: settingsRef.current.mediaFragmentFormat,
+                          trimStart: settingsRef.current.mediaFragmentTrimStart,
+                          trimEnd: settingsRef.current.mediaFragmentTrimEnd,
+                          maxClipLength: settingsRef.current.mediaFragmentMaxClipLength,
+                          trimBlackBars: settingsRef.current.trimBlackBars,
+                      })
+                    : card.image,
+            ]);
             await saveCopyHistoryItem({ ...card, audio, image });
         },
         [saveCopyHistoryItem]

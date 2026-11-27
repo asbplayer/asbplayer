@@ -307,7 +307,11 @@ export default class MediaFragment {
         mediaFragmentMaxClipLength: number = 0,
         trimBlackBars: boolean = false
     ) {
-        if (card.file && mediaFragmentFormat === 'webm' && isWebmMediaFragmentSupported()) {
+        const preferFile =
+            !card.image || // No serialized image - file is the only choice
+            (card.file?.blobUrl && isActiveBlobUrl(card.file.blobUrl)); // File pointer is alive
+
+        if (card.file && mediaFragmentFormat === 'webm' && isWebmMediaFragmentSupported() && preferFile) {
             const { startTimestamp, endTimestamp } = resolveWebmMediaFragmentRange(
                 card.subtitle.start,
                 card.subtitle.end,
@@ -319,6 +323,16 @@ export default class MediaFragment {
             return MediaFragment.fromWebmFile(card.file, startTimestamp, endTimestamp, maxWidth, maxHeight);
         }
 
+        if (card.file && preferFile) {
+            return MediaFragment.fromFile(
+                card.file,
+                card.mediaTimestamp ?? card.subtitle.start,
+                maxWidth,
+                maxHeight,
+                trimBlackBars
+            );
+        }
+
         if (card.image) {
             return MediaFragment.fromBase64(
                 card.subtitleFileName,
@@ -327,16 +341,6 @@ export default class MediaFragment {
                 card.image.extension,
                 card.image.error,
                 card.image.animated
-            );
-        }
-
-        if (card.file) {
-            return MediaFragment.fromFile(
-                card.file,
-                card.mediaTimestamp ?? card.subtitle.start,
-                maxWidth,
-                maxHeight,
-                trimBlackBars
             );
         }
 
@@ -523,5 +527,7 @@ export const imageModelFromCard = async (
         };
     } catch {
         return { base64: '', extension: 'jpeg', error: MediaFragmentErrorCode.captureFailed };
+    } finally {
+        fragment.dispose();
     }
 };

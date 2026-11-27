@@ -7,6 +7,7 @@ import {
 } from '@project/common/src/media-fragment';
 import type { CardModel } from '@project/common/src/model';
 import { afterEach, expect, it } from '@jest/globals';
+import { addBlobUrl } from '../blob-url';
 
 const originalMediaRecorder = (globalThis as any).MediaRecorder;
 const originalCaptureStream = (HTMLCanvasElement.prototype as any).captureStream;
@@ -95,18 +96,19 @@ it('returns true for WebM support when MediaRecorder and captureStream are avail
     expect(isWebmMediaFragmentSupported()).toEqual(true);
 });
 
-it('still upgrades legacy screenshots to WebM when a source file is available', () => {
+it('still upgrades legacy screenshots to WebM when a source file is available and the blob URL is still alive', () => {
     const mediaRecorder: any = function () {};
     mediaRecorder.isTypeSupported = (mimeType: string) => mimeType === 'video/webm';
 
     (globalThis as any).MediaRecorder = mediaRecorder;
     (HTMLCanvasElement.prototype as any).captureStream = () => undefined;
 
+    addBlobUrl('blob:sample:legacy-upgrade-test');
     const mediaFragment = MediaFragment.fromCard(
         makeCard({
             file: {
                 name: 'sample.mp4',
-                blobUrl: 'blob:sample',
+                blobUrl: 'blob:sample:legacy-upgrade-test',
             },
             image: {
                 base64: 'dGVzdA==',
@@ -120,6 +122,32 @@ it('still upgrades legacy screenshots to WebM when a source file is available', 
 
     expect(mediaFragment?.extension).toEqual('webm');
     expect(mediaFragment?.canChangeTimestamp).toEqual(true);
+});
+
+it('falls back to serialized screenshot if the file pointer is dead and a serialized screenshot exists', () => {
+    const mediaRecorder: any = function () {};
+    mediaRecorder.isTypeSupported = (mimeType: string) => mimeType === 'video/webm';
+    (globalThis as any).MediaRecorder = mediaRecorder;
+    (HTMLCanvasElement.prototype as any).captureStream = () => undefined;
+    expect(isWebmMediaFragmentSupported()).toBeTruthy();
+
+    const mediaFragment = MediaFragment.fromCard(
+        makeCard({
+            file: {
+                name: 'sample.mp4',
+                blobUrl: 'blob:sample:dead-file-pointer',
+            },
+            image: {
+                base64: 'dGVzdA==',
+                extension: 'jpeg',
+            },
+        }),
+        0,
+        0,
+        'webm'
+    );
+    expect(mediaFragment?.error).toBeUndefined();
+    expect(mediaFragment?.extension).toEqual('jpeg');
 });
 
 it('exposes the resolved WebM end timestamp on the media fragment', () => {

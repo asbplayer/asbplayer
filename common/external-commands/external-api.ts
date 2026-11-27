@@ -379,7 +379,7 @@ export const externalApiMethods = {
             '`audio.error` or `image.error`.\n\n' +
             'The response means the flow was accepted (dispatched), not that a card was completed. Invoked as a ' +
             'notification (no id), it is published fire-and-forget and never answered, even on error.\n\n' +
-            '`mediaId` and `noteId` require extension v1.20.0+. `asbplayerCardId`and `forceCapture` require' +
+            '`mediaId` and `noteId` require extension v1.20.0+. `asbplayerCardId` and `forceCapture` require' +
             ' extension v1.24.0+.',
         tags: [],
         paramsSchema: mineSubtitleParamsSchema,
