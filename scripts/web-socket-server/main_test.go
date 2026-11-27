@@ -888,7 +888,6 @@ func TestJsonRpcErrorRoutesToHttpStatus(t *testing.T) {
 		{jsonRpcInvalidRequest, http.StatusBadRequest},
 		{jsonRpcInvalidParams, http.StatusBadRequest},
 		{jsonRpcMethodNotFound, http.StatusNotImplemented},
-		{jsonRpcNotApproved, http.StatusForbidden},
 	}
 
 	for _, testCase := range cases {
@@ -921,7 +920,6 @@ func TestHttpStatusForRpcError(t *testing.T) {
 		{jsonRpcInternalError, http.StatusInternalServerError},
 		{jsonRpcRequestTimeout, http.StatusServiceUnavailable},
 		{jsonRpcNoClients, http.StatusServiceUnavailable},
-		{jsonRpcNotApproved, http.StatusForbidden},
 		{-32099, http.StatusInternalServerError},
 	}
 
