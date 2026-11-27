@@ -417,7 +417,7 @@ export default function VideoPlayer({
     const videoLoadNotifications = useVideoLoadNotifications({
         video,
         source: videoFile,
-        conversionState: convertedAudio.state,
+        conversion: convertedAudio,
     });
     const [audioSeekableRange, setAudioSeekableRange] = useState<AudioSeekableRange>();
     const [externalAudio, setExternalAudio] = useState<HTMLAudioElement | null>(null);

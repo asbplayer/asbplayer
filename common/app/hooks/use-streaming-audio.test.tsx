@@ -32,7 +32,14 @@ const Harness = ({ conversion }: { conversion: TranscodedAudioPayload }) => {
     });
     return <output>{url}</output>;
 };
-const render = async (conversion: TranscodedAudioPayload = { state: 'transcoding', required: true, audio: prefix }) => {
+const render = async (
+    conversion: TranscodedAudioPayload = {
+        state: 'transcoding',
+        conversionId: 1,
+        required: true,
+        audio: prefix,
+    }
+) => {
     await act(async () => root.render(<Harness conversion={conversion} />));
 };
 const url = () => container.querySelector('output')!.textContent;
@@ -59,12 +66,17 @@ it.each(['absent', 'unsupported'])('waits for a completed Blob when MSE is %s', 
     if (support === 'absent') delete (globalThis as { MediaSource?: unknown }).MediaSource;
     else jest.spyOn(Source, 'isTypeSupported').mockReturnValue(false);
     await render();
-    await render({ state: 'transcoding', required: true, audio: new Blob([prefix, 'more']) });
+    await render({
+        state: 'transcoding',
+        conversionId: 1,
+        required: true,
+        audio: new Blob([prefix, 'more']),
+    });
     expect(url()).toBe('');
     expect(created).toEqual([]);
     expect(buffered).toEqual([{ start: 0, end: 0 }]);
 
-    await render({ audio: completed, state: 'ready', required: true });
+    await render({ audio: completed, state: 'ready', conversionId: 1, required: true });
     expect(url()).toBe('blob:audio-1');
     expect(created).toEqual([completed]);
     expect(buffered.at(-1)).toBeUndefined();
@@ -79,10 +91,15 @@ it.each(['idle', 'failed'] as const)(
         await render();
         expect(url()).toBe('blob:audio-1');
         expect(created[0]).toBeInstanceOf(Source);
-        await render({ state: 'transcoding', required: true, audio: new Blob([prefix, 'more']) });
+        await render({
+            state: 'transcoding',
+            conversionId: 1,
+            required: true,
+            audio: new Blob([prefix, 'more']),
+        });
         expect(url()).toBe('blob:audio-1');
         expect(created).toHaveLength(1);
-        await render({ audio: completed, state: 'ready', required: true });
+        await render({ audio: completed, state: 'ready', conversionId: 1, required: true });
         expect(url()).toBe('blob:audio-2');
         expect(created[1]).toBe(completed);
         expect(released).toEqual(['blob:audio-1']);
@@ -91,3 +108,31 @@ it.each(['idle', 'failed'] as const)(
         expect(url()).toBe('');
     }
 );
+
+it('recreates the MSE source and completed Blob URL when switching conversions without leaving the state', async () => {
+    await render({ state: 'transcoding', conversionId: 1, required: true, audio: prefix });
+    expect(url()).toBe('blob:audio-1');
+    expect(created).toHaveLength(1);
+    await render({
+        state: 'transcoding',
+        conversionId: 2,
+        required: true,
+        audio: new Blob(['second track']),
+    });
+    expect(url()).toBe('blob:audio-2');
+    expect(created).toHaveLength(2);
+    expect(created[1]).toBeInstanceOf(Source);
+    expect(released).toEqual(['blob:audio-1']);
+    expect(buffered).toEqual([
+        { start: 0, end: 0 },
+        { start: 0, end: 0 },
+    ]);
+
+    const secondCompleted = new Blob(['second track complete']);
+    await render({ state: 'ready', conversionId: 2, required: true, audio: completed });
+    expect(url()).toBe('blob:audio-3');
+    await render({ state: 'ready', conversionId: 3, required: true, audio: secondCompleted });
+    expect(url()).toBe('blob:audio-4');
+    expect(created[3]).toBe(secondCompleted);
+    expect(released).toEqual(['blob:audio-1', 'blob:audio-2', 'blob:audio-3']);
+});

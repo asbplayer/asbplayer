@@ -24,6 +24,7 @@ export const useTranscodedAudio = (
     const [conversion, setConversion] = useState<AudioConversion>({ state: 'idle' });
     const [track, setTrack] = useState<ProbedAudioTrack>();
     const abortControllerRef = useRef<AbortController>(undefined);
+    const nextConversionIdRef = useRef(0);
 
     /** Never rejects: failures become the 'failed' state unless the conversion was superseded. */
     const convert = useCallback(async (videoFile: FileWithId, trackIndex: number, host: AudioTranscodeHost) => {
@@ -31,7 +32,8 @@ export const useTranscodedAudio = (
         abortControllerRef.current?.abort();
         abortControllerRef.current = abortController;
         const { signal } = abortController;
-        setConversion({ state: 'transcoding' });
+        const conversionId = ++nextConversionIdRef.current;
+        setConversion({ state: 'transcoding', conversionId });
 
         try {
             const blob = await host.transcodeAudio({
@@ -40,13 +42,13 @@ export const useTranscodedAudio = (
                 trackIndex,
                 onAudio: (audio) => {
                     if (signal.aborted) return;
-                    setConversion({ state: 'transcoding', blob: audio });
+                    setConversion({ state: 'transcoding', conversionId, blob: audio });
                 },
                 signal,
             });
             if (signal.aborted) return;
 
-            setConversion({ state: 'ready', blob });
+            setConversion({ state: 'ready', conversionId, blob });
             asbTrace('audio/transcode', 'Converted audio is ready for playback', {
                 fileId: videoFile.id,
                 outputBytes: blob.size,

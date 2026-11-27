@@ -18,14 +18,21 @@ export const useResumePlaybackSnackbar = ({
     subtitlesReady: boolean;
     onDismiss: () => void;
 }) => {
-    const [available, setAvailable] = useState<{ source: string; position: number }>();
+    const [available, setAvailable] = useState<{
+        source: string;
+        position: number;
+        conversionId: number;
+    }>();
     const latestAudio = useRef(conversion.audio);
     latestAudio.current = conversion.audio;
     const hasAudio = conversion.audio !== undefined;
     // Only ongoing conversion restricts resuming. Failure/unavailability permits video-only playback;
     // completion also permits resuming into the video's silent tail after audio EOF.
     const audioReady =
-        conversion.state !== 'transcoding' || (available?.source === source && available.position === position);
+        conversion.state !== 'transcoding' ||
+        (available?.source === source &&
+            available.position === position &&
+            available.conversionId === conversion.conversionId);
     const ready = audioReady && subtitlesReady;
     const snackbar = useSnackbar({
         open: position !== undefined,
@@ -54,7 +61,7 @@ export const useResumePlaybackSnackbar = ({
                 // Encoded audio can extend beyond MSE's two-minute look-ahead buffer.
                 const snapshot = await snapshotWebmAudio(audio);
                 if (!cancelled && snapshot !== undefined && snapshot.durationMs >= position) {
-                    setAvailable({ source, position });
+                    setAvailable({ source, position, conversionId: conversion.conversionId });
                 }
             } catch (error) {
                 if (!cancelled) asbWarn('audio/playback', 'Could not check converted audio for resuming', { error });
@@ -69,7 +76,7 @@ export const useResumePlaybackSnackbar = ({
             cancelled = true;
             clearInterval(interval);
         };
-    }, [position, source, hasAudio, conversion.state, audioReady]);
+    }, [position, source, hasAudio, conversion.state, conversion.conversionId, audioReady]);
 
     return snackbar;
 };

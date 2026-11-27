@@ -16,10 +16,10 @@ export interface AudioTranscodeHost {
 
 /** Conversion data is carried only by the state that can use it. */
 export type AudioConversion =
-    | { readonly state: 'idle'; readonly blob?: never; readonly error?: never }
-    | { readonly state: 'transcoding'; readonly blob?: Blob; readonly error?: never }
-    | { readonly state: 'ready'; readonly blob: Blob; readonly error?: never }
-    | { readonly state: 'failed'; readonly blob?: never; readonly error: unknown };
+    | { readonly state: 'idle'; readonly conversionId?: never; readonly blob?: never; readonly error?: never }
+    | { readonly state: 'transcoding'; readonly conversionId: number; readonly blob?: Blob; readonly error?: never }
+    | { readonly state: 'ready'; readonly conversionId: number; readonly blob: Blob; readonly error?: never }
+    | { readonly state: 'failed'; readonly conversionId?: never; readonly blob?: never; readonly error: unknown };
 
 export type AudioConversionState = AudioConversion['state'];
 

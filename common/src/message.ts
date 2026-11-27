@@ -461,9 +461,9 @@ export type TranscodedAudioPayload = {
     readonly required: boolean;
     readonly codecName?: string;
 } & (
-    | { readonly state: 'idle' | 'failed'; readonly audio?: never }
-    | { readonly state: 'transcoding'; readonly audio?: Blob }
-    | { readonly state: 'ready'; readonly audio: Blob }
+    | { readonly state: 'idle' | 'failed'; readonly conversionId?: never; readonly audio?: never }
+    | { readonly state: 'transcoding'; readonly conversionId: number; readonly audio?: Blob }
+    | { readonly state: 'ready'; readonly conversionId: number; readonly audio: Blob }
 );
 
 export type TranscodedAudioToVideoMessage = Message &

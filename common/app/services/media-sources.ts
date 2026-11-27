@@ -58,6 +58,9 @@ export const getExtension = (fileName: string) => {
     return index === -1 ? '' : fileName.substring(index).toLowerCase();
 };
 
+const imageSubtitleExtensions = new Set(['.sup', `.${ffmpegSubtitleFormats.image.extension}`]);
+const isImageSubtitleFile = (fileName: string) => imageSubtitleExtensions.has(getExtension(fileName));
+
 /** Replace the instance when sources change; derived arrays stay stable between renders. */
 export class MediaSources {
     readonly subtitleTracks: LoadableSubtitleTrack<SubtitleSourceFile>[];
@@ -231,7 +234,7 @@ export class MediaSources {
         if (this.subtitleSource.kind === 'remote') {
             return (
                 this.subtitleSource.status === 'complete' &&
-                this.subtitleFileNames.some((name) => name.length > 0 && getExtension(name) !== '.sup')
+                this.subtitleFileNames.some((name) => name.length > 0 && !isImageSubtitleFile(name))
             );
         }
         return (
@@ -243,7 +246,7 @@ export class MediaSources {
                         !isEmptySubtitleSlot(part) &&
                         file.size > 0 &&
                         file.name.length > 0 &&
-                        getExtension(file.name) !== '.sup'
+                        !isImageSubtitleFile(file.name)
                     );
                 })
             )
@@ -258,7 +261,7 @@ export class MediaSources {
         if (!this.canDownloadSubtitles) return [];
         if (this.subtitleSource.kind === 'remote') {
             return this.subtitleFileNames.flatMap((name, track) => {
-                if (name.length === 0 || getExtension(name) === '.sup') return [];
+                if (name.length === 0 || isImageSubtitleFile(name)) return [];
                 const cues = subtitles
                     .filter((cue) => cue.track === track && cue.textImage === undefined)
                     .map((cue) => ({
@@ -273,7 +276,7 @@ export class MediaSources {
         const sourceTracks = this.subtitleTracks.map(({ fileParts }) => ({
             fileParts: fileParts
                 .map(({ file }) => file)
-                .filter((file) => file.size > 0 && getExtension(file.name) !== '.sup'),
+                .filter((file) => file.size > 0 && !isImageSubtitleFile(file.name)),
         }));
         const parsed = await reader.subtitles(sourceTracks);
         return sourceTracks.flatMap(({ fileParts }, track) =>

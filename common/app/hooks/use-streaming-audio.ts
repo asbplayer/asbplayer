@@ -22,7 +22,7 @@ export const useStreamingAudio = ({
     const stream = useRef<StreamingAudioSource>(undefined);
     const latest = useRef({ conversion, video, onBuffered, onError });
     latest.current = { conversion, video, onBuffered, onError };
-    const { state, audio } = conversion;
+    const { state, audio, conversionId } = conversion;
 
     useEffect(() => {
         const conversion = latest.current.conversion;
@@ -60,11 +60,11 @@ export const useStreamingAudio = ({
             source.dispose();
             stream.current = undefined;
         };
-    }, [state]);
+    }, [state, conversionId]);
 
     useEffect(() => {
         if (audio !== undefined && state === 'transcoding') stream.current?.append(audio);
-    }, [audio, state]);
+    }, [audio, state, conversionId]);
 
     return url;
 };

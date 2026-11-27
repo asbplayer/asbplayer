@@ -159,10 +159,11 @@ const mpeg4ObjectType = async (reader: ByteReader, children: number, limit: numb
 };
 
 /** mp4a is a generic MPEG-4 audio entry. Its descriptor can identify DTS or Dolby audio. */
-const mp4aFormat = async (reader: ByteReader, entry: Box) => {
+const mp4aFormat = async (reader: ByteReader, entry: Box, stsdVersion: number) => {
     if (entry.dataOffset + audioSampleEntryHeaderBytes > entry.end) return;
     const version = (await reader.unsignedInt(entry.dataOffset + soundVersionOffset, soundVersionBytes))!;
-    const extensionBytes = soundVersionExtensionBytes[version];
+    // ISO BMFF AudioSampleEntryV1 (stsd version 1, entry_version 1) omits QuickTime's 16-byte extension.
+    const extensionBytes = stsdVersion === 1 && version === 1 ? 0 : soundVersionExtensionBytes[version];
     if (extensionBytes === undefined) return;
     const objectType = await mpeg4ObjectType(
         reader,
@@ -178,17 +179,18 @@ const sampleEntryFormat = async (reader: ByteReader, mdia: Box) => {
     const stsd = stbl && (await findBox(reader, 'stsd', stbl.dataOffset, stbl.end));
     if (!stsd) return;
 
+    const stsdVersion = await reader.unsignedInt(stsd.dataOffset, versionBytes);
     const entry = await readBox(
         reader,
         stsd.dataOffset + fullBoxVersionAndFlagsBytes + sampleEntryCountBytes,
         stsd.end
     ); // FullBox version/flags, then entry_count, then the first sample entry.
-    if (!entry) return;
+    if (stsdVersion === undefined || !entry) return;
     if (entry.type === 'mp4s' && entry.dataOffset + genericSampleEntryHeaderBytes <= entry.end) {
         const objectType = await mpeg4ObjectType(reader, entry.dataOffset + genericSampleEntryHeaderBytes, entry.end);
         if (objectType === objectTypeDvdSubtitle) return 'dvd_subtitle';
     }
-    return entry.type === 'mp4a' ? ((await mp4aFormat(reader, entry)) ?? entry.type) : entry.type;
+    return entry.type === 'mp4a' ? ((await mp4aFormat(reader, entry, stsdVersion)) ?? entry.type) : entry.type;
 };
 
 interface IsoBmffTrackMetadata {

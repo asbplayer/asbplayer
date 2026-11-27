@@ -227,6 +227,33 @@ describe('audio container parsing', () => {
         const reader = new ByteReader(blobOf(mp4aFile(0xa9, 0, { soundVersion: 3 })));
         expect((await isoBmffAudioTracks(reader))?.map((track) => track.format)).toEqual(['mp4a']);
     });
+
+    it('reads ISO BMFF AudioSampleEntryV1 without skipping QuickTime extension bytes', async () => {
+        const decoder = descriptor(4, concat([0xa9, 0x15], new Uint8Array(11)));
+        const es = descriptor(3, concat([0, 1, 0], decoder, descriptor(6, new Uint8Array([2]))));
+        const header = new Uint8Array(28);
+        header.set([0, 1], 8); // entry_version = 1, 0 extension bytes when stsd version = 1
+        const entry = box('mp4a', concat(header, box('esds', concat(new Uint8Array(4), es))));
+        const stsd = box('stsd', concat([1, 0, 0, 0], [0, 0, 0, 1], entry));
+        const media = concat(
+            box('ftyp', ascii('isom')),
+            box(
+                'moov',
+                box(
+                    'trak',
+                    box(
+                        'mdia',
+                        concat(
+                            box('hdlr', concat(new Uint8Array(8), ascii('soun'), new Uint8Array(12))),
+                            box('minf', box('stbl', stsd))
+                        )
+                    )
+                )
+            )
+        );
+        const reader = new ByteReader(blobOf(media));
+        expect((await isoBmffAudioTracks(reader))?.map((track) => track.format)).toEqual(['dtsc']);
+    });
 });
 
 describe('audioTrackRequiringTranscode', () => {
@@ -378,6 +405,21 @@ describe('audioTrackRequiringTranscode', () => {
         playsContainersButNoDolby();
         const track = await audioTrackRequiringTranscode(blobOf(matroskaFile({ audioCodecIds: ['A_EAC3', 'A_DTS'] })));
         expect(track).toEqual({ trackIndex: 0, codec: 'eac3' });
+    });
+
+    it('prefers the Matroska default audio track when none are browser-decodable', async () => {
+        playsContainersButNoDolby();
+        const withDefaultSecond = mkv(
+            mkvTrack(2, 'A_EAC3', element('88', new Uint8Array([0]))),
+            mkvTrack(2, 'A_DTS', element('88', new Uint8Array([1])))
+        );
+        expect(await audioTrackRequiringTranscode(blobOf(withDefaultSecond))).toEqual({ trackIndex: 1, codec: 'dts' });
+
+        const allNonDefault = mkv(
+            mkvTrack(2, 'A_EAC3', element('88', new Uint8Array([0]))),
+            mkvTrack(2, 'A_DTS', element('88', new Uint8Array([0])))
+        );
+        expect(await audioTrackRequiringTranscode(blobOf(allNonDefault))).toEqual({ trackIndex: 0, codec: 'eac3' });
     });
 
     // Browsers fall back to a track they can decode, so these files already play.

@@ -103,6 +103,7 @@ it('generates compiler inputs using the locked runtime version independently of 
             '--enable-parser=ac3',
             '--enable-parser=dca',
             '--enable-parser=mlp',
+            '--enable-parser=mpegaudio',
         ].sort()
     );
 });

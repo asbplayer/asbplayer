@@ -6,6 +6,7 @@ const idSegment = 0x18538067;
 const idTracks = 0x1654ae6b;
 const idTrackEntry = 0xae;
 const idTrackType = 0x83;
+const idFlagDefault = 0x88;
 const idCodecId = 0x86;
 const idLanguage = 0x22b59c;
 const idLanguageIetf = 0x22b59d;
@@ -18,11 +19,11 @@ const audioCodecPrefix = 'A';
 const webVttCodecs = ['D_WEBVTT/SUBTITLES', 'D_WEBVTT/CAPTIONS', 'D_WEBVTT/DESCRIPTIONS', 'D_WEBVTT/METADATA'];
 
 /** Match the codec ID prefixes used by the FFmpeg Matroska demuxer. */
-export const isMatroskaWebVttCodec = (codecId: string) =>
-    codecId === 'S_TEXT/WEBVTT' || webVttCodecs.some((codec) => codecId.startsWith(codec));
+export const isMatroskaWebVttCodec = (codecId: string) => webVttCodecs.some((codec) => codecId.startsWith(codec));
 
 interface MatroskaTrack {
     codecId: string;
+    isDefault: boolean;
     language?: string;
     title?: string;
 }
@@ -59,15 +60,21 @@ const readTrack = async (
         if (!codecId?.startsWith(audioCodecPrefix)) return;
     } else {
         if (!codecId) throw new Error('Incomplete Matroska track metadata');
-        // FFmpeg treats recognized WebVTT metadata tracks as subtitle streams.
+        // FFmpeg skips subtitle entries whose codec ID does not start with S or D (e.g. B_VOBBTN),
+        // and treats recognized WebVTT metadata tracks as subtitle streams.
+        if (type === trackTypeSubtitle && !codecId.startsWith('S') && !codecId.startsWith('D')) return;
         if (type === trackTypeMetadata && !isMatroskaWebVttCodec(codecId)) return;
     }
 
+    let isDefault = true; // Matroska's default when FlagDefault is absent.
     let language = 'eng'; // Matroska's default when Language is absent.
     let languageIetf: string | undefined;
     let title: string | undefined;
     for (const child of fields) {
         switch (child.id) {
+            case idFlagDefault:
+                isDefault = (await reader.unsignedInt(child.dataOffset, child.dataSize)) !== 0;
+                break;
             case idLanguage:
                 language = await reader.utf8(child.dataOffset, child.dataSize);
                 break;
@@ -80,7 +87,7 @@ const readTrack = async (
         }
     }
     const tag = languageIetf || language;
-    return { codecId, language: tag && tag !== 'und' ? tag : undefined, title: title || undefined };
+    return { codecId, isDefault, language: tag && tag !== 'und' ? tag : undefined, title: title || undefined };
 };
 
 const trackEntries = async (reader: ByteReader): Promise<EbmlElement[] | undefined> => {

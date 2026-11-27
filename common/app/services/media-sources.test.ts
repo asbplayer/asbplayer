@@ -330,18 +330,21 @@ describe('subtitle downloads', () => {
         expect(cues[0]).toMatchObject({ text: '<b>annotated</b>', start: 1500 });
     });
 
-    it.each([{ names: [] }, { names: ['image.sup'] }, { names: ['image.SUP'] }])(
-        'hides downloads for an empty or image-only selection $names',
-        ({ names }) => {
-            expect(new MediaSources({ kind: 'remote', names, status: 'complete' }).canDownloadSubtitles).toBe(false);
-            expect(
-                MediaSources.fromFiles(
-                    names.map((name) => source(name)),
-                    { pendingEmbedded: false }
-                ).canDownloadSubtitles
-            ).toBe(false);
-        }
-    );
+    it.each([
+        { names: [] },
+        { names: ['image.sup'] },
+        { names: ['image.SUP'] },
+        { names: ['image.asbimg'] },
+        { names: ['image.ASBIMG'] },
+    ])('hides downloads for an empty or image-only selection $names', ({ names }) => {
+        expect(new MediaSources({ kind: 'remote', names, status: 'complete' }).canDownloadSubtitles).toBe(false);
+        expect(
+            MediaSources.fromFiles(
+                names.map((name) => ({ id: name, file: new File(['image data'], name) })),
+                { pendingEmbedded: false }
+            ).canDownloadSubtitles
+        ).toBe(false);
+    });
 
     it('reparses complete file fragments with current settings and excludes image and empty tracks', async () => {
         const vtt = (name: string, text: string, second: number, track: number): MediaSourceFile => {
@@ -357,6 +360,7 @@ describe('subtitle downloads', () => {
                 source('.srt', 1),
                 vtt('companion.vtt', 'Companion', 1, 2),
                 { id: 'image', file: new File(['image data'], 'image.SUP'), track: 3 },
+                { id: 'embedded-image', file: new File(['{"start":0,"end":1000}\n'], 'embedded.asbimg'), track: 4 },
             ],
             { pendingEmbedded: false }
         );

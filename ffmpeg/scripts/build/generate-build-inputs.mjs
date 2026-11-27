@@ -56,6 +56,7 @@ const ffmpegConfigureArguments = [
     '--enable-parser=ac3',
     '--enable-parser=dca',
     '--enable-parser=mlp',
+    '--enable-parser=mpegaudio',
     '--nm=emnm',
     '--ar=emar',
     '--ranlib=emranlib',

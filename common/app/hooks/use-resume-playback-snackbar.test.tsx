@@ -51,11 +51,13 @@ const Harness = ({ conversion, source, onDismiss, subtitlesReady }: Props) => {
 let root: Root;
 let container: HTMLDivElement;
 let onDismiss: jest.Mock;
-const render = async (
-    conversion: TranscodedAudioPayload = { state: 'transcoding', required: true },
-    source = 'video',
-    subtitlesReady = true
-) => {
+const transcoding = (audio?: Blob, conversionId = 1): TranscodedAudioPayload => ({
+    state: 'transcoding',
+    conversionId,
+    required: true,
+    ...(audio ? { audio } : {}),
+});
+const render = async (conversion: TranscodedAudioPayload = transcoding(), source = 'video', subtitlesReady = true) => {
     await act(async () =>
         root.render(
             <Harness conversion={conversion} source={source} onDismiss={onDismiss} subtitlesReady={subtitlesReady} />
@@ -85,9 +87,9 @@ it('reoffers a timed-out position when encoded audio reaches it, beyond the play
     expect(button().dataset.open).toBe('false');
     expect(button().dataset.position).toBe('600000');
     expect(onDismiss).not.toHaveBeenCalled();
-    await render({ state: 'transcoding', required: true, audio: prefix(120_000) });
+    await render(transcoding(prefix(120_000)));
     expect(button().dataset.open).toBe('false');
-    await render({ state: 'transcoding', required: true, audio: prefix(600_000) });
+    await render(transcoding(prefix(600_000)));
     await advance(1_000);
     expect(button().dataset.open).toBe('true');
     await advance(6_000);
@@ -108,11 +110,11 @@ it('retains a timed-out offer until subtitles catch up and gives it a fresh time
 });
 
 it('waits for both subtitle coverage and encoded audio before reoffering', async () => {
-    await render({ state: 'transcoding', required: true }, 'video', false);
+    await render(transcoding(), 'video', false);
     await advance(6_000);
-    await render({ state: 'transcoding', required: true }, 'video', true);
+    await render(transcoding(), 'video', true);
     expect(button().dataset.open).toBe('false');
-    await render({ state: 'transcoding', required: true, audio: prefix(600_000) }, 'video', true);
+    await render(transcoding(prefix(600_000)), 'video', true);
     await advance(1_000);
     expect(button().dataset.open).toBe('true');
 });
@@ -120,10 +122,10 @@ it('waits for both subtitle coverage and encoded audio before reoffering', async
 it('gives a visible offer six fresh seconds once audio reaches the position, without resetting on later chunks', async () => {
     await render();
     await advance(5_000);
-    await render({ state: 'transcoding', required: true, audio: prefix(600_000) });
+    await render(transcoding(prefix(600_000)));
     await advance(5_000);
     expect(button().dataset.open).toBe('true');
-    await render({ state: 'transcoding', required: true, audio: prefix(610_000) });
+    await render(transcoding(prefix(610_000)));
     await advance(999);
     expect(onDismiss).not.toHaveBeenCalled();
     await advance(1);
@@ -134,7 +136,7 @@ it('gives a visible offer six fresh seconds once audio reaches the position, wit
 it('does not reoffer a position explicitly dismissed while conversion was catching up', async () => {
     await render();
     await act(async () => button().click());
-    await render({ state: 'transcoding', required: true, audio: prefix(600_000) });
+    await render(transcoding(prefix(600_000)));
     expect(button().dataset.open).toBe('false');
     expect(onDismiss).toHaveBeenCalledTimes(1);
 });
@@ -142,7 +144,7 @@ it('does not reoffer a position explicitly dismissed while conversion was catchi
 it('reoffers on completion even if the saved position lies in the silent video tail', async () => {
     await render();
     await advance(6_000);
-    await render({ state: 'ready', required: true, audio: prefix(120_000) });
+    await render({ state: 'ready', conversionId: 1, required: true, audio: prefix(120_000) });
     expect(button().dataset.open).toBe('true');
     await advance(6_000);
     expect(onDismiss).toHaveBeenCalledTimes(1);
@@ -158,7 +160,7 @@ it('keeps the original timeout for playback that does not need conversion', asyn
 it('keeps a refreshed offer open while hovered', async () => {
     await render();
     await act(async () => button().dispatchEvent(new MouseEvent('mouseover', { bubbles: true })));
-    await render({ state: 'transcoding', required: true, audio: prefix(600_000) });
+    await render(transcoding(prefix(600_000)));
     await advance(10_000);
     expect(button().dataset.open).toBe('true');
     expect(onDismiss).not.toHaveBeenCalled();
@@ -169,12 +171,23 @@ it('keeps a refreshed offer open while hovered', async () => {
 });
 
 it('waits for the new file rather than reusing availability from the previous file', async () => {
-    await render({ state: 'transcoding', required: true, audio: prefix(600_000) }, 'old');
-    await render({ state: 'transcoding', required: true, audio: prefix(120_000) }, 'new');
+    await render(transcoding(prefix(600_000)), 'old');
+    await render(transcoding(prefix(120_000), 2), 'new');
     await advance(6_000);
     expect(onDismiss).not.toHaveBeenCalled();
     expect(button().dataset.open).toBe('false');
-    await render({ state: 'transcoding', required: true, audio: prefix(600_000) }, 'new');
+    await render(transcoding(prefix(600_000), 2), 'new');
+    await advance(1_000);
+    expect(button().dataset.open).toBe('true');
+});
+
+it('waits for a new audio track conversion on the same video rather than reusing availability', async () => {
+    await render(transcoding(prefix(600_000), 1), 'video');
+    await render(transcoding(prefix(120_000), 2), 'video');
+    await advance(6_000);
+    expect(onDismiss).not.toHaveBeenCalled();
+    expect(button().dataset.open).toBe('false');
+    await render(transcoding(prefix(600_000), 2), 'video');
     await advance(1_000);
     expect(button().dataset.open).toBe('true');
 });

@@ -82,6 +82,7 @@ interface ProbedContainer {
     /** MIME type used to ask the browser whether it can play this container at all. */
     readonly mimeType: string;
     readonly audioTracks: readonly ProbedAudioTrack[];
+    readonly defaultAudioTrackIndex?: number;
 }
 
 /** Recognizes the container signature and normalizes its format-specific audio codec IDs. */
@@ -94,9 +95,11 @@ const probeContainer = async (reader: ByteReader): Promise<ProbedContainer | und
 
     if ((await reader.unsignedInt(0, ebmlHeaderIdBytes)) === ebmlHeaderId) {
         const tracks = await matroskaAudioTracks(reader);
+        const defaultIndex = tracks?.findIndex((track) => track.isDefault) ?? -1;
         return (
             tracks && {
                 mimeType: 'video/x-matroska',
+                defaultAudioTrackIndex: defaultIndex === -1 ? undefined : defaultIndex,
                 audioTracks: tracks.map((track, trackIndex) => ({
                     trackIndex,
                     codec: codecFromMatroskaCodecId(track.codecId),
@@ -226,6 +229,7 @@ export const audioTrackRequiringTranscode = async (blob: Blob): Promise<ProbedAu
         return;
     }
 
-    asbTrace('media/probe', 'Audio conversion required', { trackIndex: 0, codec: container.audioTracks[0].codec });
-    return { trackIndex: 0, codec: container.audioTracks[0].codec };
+    const selected = container.audioTracks[container.defaultAudioTrackIndex ?? 0];
+    asbTrace('media/probe', 'Audio conversion required', { trackIndex: selected.trackIndex, codec: selected.codec });
+    return { trackIndex: selected.trackIndex, codec: selected.codec };
 };

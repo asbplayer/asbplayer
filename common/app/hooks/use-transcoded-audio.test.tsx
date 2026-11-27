@@ -17,6 +17,7 @@ const Harness = ({ file, host, audioTrackIndex }: { file?: FileWithId; host: Tes
         <>
             <output
                 data-state={conversion.state}
+                data-conversion-id={conversion.conversionId}
                 data-bytes={conversion.blob?.size}
                 data-complete={conversion.state === 'ready'}
                 data-required={conversion.required}
@@ -290,10 +291,15 @@ it('always transcodes an explicit supported track and cancels it when switching 
     await render(source, host, 0);
     await waitForWorker(host);
     expect(host.workers[0].pending).toMatchObject({ operation: 'transcodeAudio', trackIndex: 0 });
+    const firstConversionId = container.querySelector('output')!.getAttribute('data-conversion-id');
+    expect(firstConversionId).toBeTruthy();
     await render(source, host, 1);
     await waitForWorker(host, 1);
     expect(host.workers[0].active).toBe(false);
     expect(host.workers[1].pending).toMatchObject({ operation: 'transcodeAudio', trackIndex: 1 });
+    const secondConversionId = container.querySelector('output')!.getAttribute('data-conversion-id');
+    expect(secondConversionId).toBeTruthy();
+    expect(secondConversionId).not.toBe(firstConversionId);
     await render(source, host);
     expect(host.workers[1].active).toBe(false);
     await waitForState('idle');

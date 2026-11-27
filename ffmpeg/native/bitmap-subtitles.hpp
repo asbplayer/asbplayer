@@ -4,6 +4,7 @@
 #include "diagnostics.hpp"
 #include "host_io.hpp"
 #include <algorithm>
+#include <climits>
 #include <cstring>
 #include <memory>
 #include <string>
@@ -81,6 +82,11 @@ public:
         return result;
     }
 
+    int finish_at_eof(int64_t duration) {
+        // Container duration only bounds a final display that lacks an explicit end time.
+        return this->finish(this->end == AV_NOPTS_VALUE ? duration : this->end);
+    }
+
     int interrupt(int64_t boundary) {
         // Without a packet timestamp only the prefix confirmed by a prior display is safe to emit.
         return this->finish(boundary == AV_NOPTS_VALUE ? this->latest_display_start : boundary);
@@ -89,8 +95,8 @@ public:
     int display(const AVSubtitle& subtitle, int64_t start, int64_t end, const AVCodecContext* decoder) {
         if (subtitle.num_rects == 0) return this->finish(start);
 
-        const int width = decoder->width > 0 ? decoder->width : this->screen_width;
-        const int height = decoder->height > 0 ? decoder->height : this->screen_height;
+        int width = decoder->width > 0 ? decoder->width : this->screen_width;
+        int height = decoder->height > 0 ? decoder->height : this->screen_height;
         Frame frame;
         int error = compose_image(subtitle, width, height, frame);
         const bool contiguous = start > std::max<int64_t>(0, this->latest_display_start) &&
@@ -138,19 +144,20 @@ private:
         return true;
     }
 
-    static int compose_image(const AVSubtitle& subtitle, int width, int height, Frame& frame) {
+    static int compose_image(const AVSubtitle& subtitle, int& width, int& height, Frame& frame) {
         if (width <= 0 || height <= 0 || width > maximum_dimension || height > maximum_dimension) {
             return AVERROR_INVALIDDATA;
         }
 
-        int left = width, top = height, right = 0, bottom = 0;
+        int left = INT_MAX, top = INT_MAX, right = 0, bottom = 0;
         for (unsigned i = 0; i < subtitle.num_rects; ++i) {
             const auto* rect = subtitle.rects[i];
             if (rect->w == 0 || rect->h == 0) continue;
 
             if (rect->type != SUBTITLE_BITMAP || rect->x < 0 || rect->y < 0 || rect->w < 0 || rect->h < 0 ||
-                rect->x > width - rect->w || rect->y > height - rect->h || !rect->data[0] || !rect->data[1] ||
-                rect->linesize[0] < rect->w || rect->nb_colors <= 0 || rect->nb_colors > max_palette_colors) {
+                rect->x > maximum_dimension - rect->w || rect->y > maximum_dimension - rect->h || !rect->data[0] ||
+                !rect->data[1] || rect->linesize[0] < rect->w || rect->nb_colors <= 0 ||
+                rect->nb_colors > max_palette_colors) {
                 return AVERROR_INVALIDDATA;
             }
 
@@ -161,6 +168,10 @@ private:
         }
 
         if (right <= left || bottom <= top) return 0;
+
+        // Cropped DVD/VOBSUB, edge-aligned PGS, or reset DVB frames can place rectangles past the fallback video size.
+        width = std::max(width, right);
+        height = std::max(height, bottom);
 
         frame.reset(av_frame_alloc());
         if (!frame) return AVERROR(ENOMEM);

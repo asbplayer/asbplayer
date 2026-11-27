@@ -570,6 +570,40 @@ it('uses the quota for downloaded bytes when a large subtitle already has a file
     expect(files.map(({ id }) => id)).toEqual([video.id, large.id, online.id]);
 });
 
+it('keeps co-selected online subtitles when an oversized embedded image subtitle exceeds the cache limit', async () => {
+    const repository = new IndexedDBFileSessionRepository();
+    const embeddedTrack = embeddedDescriptor(video, {
+        trackIndex: 0,
+        codec: 'hdmv_pgs_subtitle',
+        outputFormat: 'asbimg',
+    });
+    const embeddedId = embeddedSubtitleId(video.id, 0);
+    const smallOnline = { id: 'online-srt', file: new File(['1\n00:00:01,000 --> 00:00:02,000\nHi\n'], 'online.srt') };
+    const largeEmbedded = {
+        id: embeddedId,
+        embedded: embeddedTrack,
+        file: new File(['x'.repeat(2048)], 'movie.track-1.asbimg'),
+    };
+    await repository.merge({ videoHandle: handleFor(video), subtitleHandles: [] });
+    // First save the online subtitle alone, then add an oversized embedded bitmap track.
+    await repository.setCachedSubtitleFiles([smallOnline], externalSelection([[smallOnline.id]]));
+    Object.defineProperty(navigator, 'storage', {
+        configurable: true,
+        value: { estimate: async () => ({ quota: (smallOnline.file.size + 512) * 2, usage: 0 }) },
+    });
+
+    expect(
+        await repository.setCachedSubtitleFiles([smallOnline, largeEmbedded], {
+            subtitleTrackIds: [[smallOnline.id], [embeddedId]],
+            embeddedSubtitles: { [embeddedId]: embeddedTrack },
+        })
+    ).toBe(false);
+    const saved = (await repository.fetch())!;
+    expect(saved.cachedSubtitleFiles?.map(({ id }) => id)).toEqual([smallOnline.id]);
+    expect(saved.subtitleTrackIds).toEqual([[smallOnline.id], [embeddedId]]);
+    expect(saved.embeddedSubtitles).toEqual({ [embeddedId]: embeddedTrack });
+});
+
 describe('embedded subtitle sessions', () => {
     const video = { id: 'video', file: new File(['movie'], 'episode.mkv', { lastModified: 1 }) };
     const descriptor = embeddedDescriptor(video, {

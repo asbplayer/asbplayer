@@ -333,18 +333,34 @@ export class IndexedDBFileSessionRepository implements FileSessionRepository {
                 const fileSizeLimit = this._fileSizeLimit(estimate, totalSize(existing?.cachedSubtitleFiles ?? []));
                 const newTotalFileSize = totalSize(cachedSubtitleFiles);
                 const exceedsLimit = cachedSubtitleFiles.length > 0 && newTotalFileSize >= fileSizeLimit;
+                let keptCachedSubtitleFiles = cachedSubtitleFiles;
                 if (exceedsLimit) {
                     asbWarn('file-session/repository', 'Did not cache file because it exceeds the size limit', {
                         newTotalFileSize,
                         fileSizeLimit,
                     });
+                    // Keep non-embedded tracks first since embedded tracks can be re-extracted from the video on restore.
+                    const isEmbedded = (id: string) => Boolean(embeddedSubtitles?.[id]);
+                    const prioritized = [...cachedSubtitleFiles].sort((a, b) => {
+                        const embeddedOrder = Number(isEmbedded(a.id)) - Number(isEmbedded(b.id));
+                        return embeddedOrder !== 0 ? embeddedOrder : a.file.size - b.file.size;
+                    });
+                    const keptIds = new Set<string>();
+                    let keptSize = 0;
+                    for (const file of prioritized) {
+                        if (keptSize + file.file.size < fileSizeLimit) {
+                            keptIds.add(file.id);
+                            keptSize += file.file.size;
+                        }
+                    }
+                    keptCachedSubtitleFiles = cachedSubtitleFiles.filter(({ id }) => keptIds.has(id));
                 }
 
                 await this._replace(
                     this._clearDiscardedSubtitleSlots(existing, {
                         ...existing,
                         subtitleHandles,
-                        cachedSubtitleFiles: exceedsLimit ? [] : cachedSubtitleFiles,
+                        cachedSubtitleFiles: keptCachedSubtitleFiles,
                         subtitleTrackIds,
                         embeddedSubtitles,
                         id: 1,

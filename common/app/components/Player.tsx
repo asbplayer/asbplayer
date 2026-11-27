@@ -218,9 +218,21 @@ function toTranscodedAudioPayload(conversion: ReturnType<typeof useTranscodedAud
         case 'failed':
             return { state: conversion.state, required, codecName };
         case 'transcoding':
-            return { state: 'transcoding', audio: conversion.blob, required, codecName };
+            return {
+                state: 'transcoding',
+                conversionId: conversion.conversionId,
+                audio: conversion.blob,
+                required,
+                codecName,
+            };
         case 'ready':
-            return { state: 'ready', audio: conversion.blob, required, codecName };
+            return {
+                state: 'ready',
+                conversionId: conversion.conversionId,
+                audio: conversion.blob,
+                required,
+                codecName,
+            };
     }
 }
 
