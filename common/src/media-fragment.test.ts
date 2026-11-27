@@ -7,7 +7,7 @@ import {
 } from '@project/common/src/media-fragment';
 import type { CardModel } from '@project/common/src/model';
 import { afterEach, expect, it } from '@jest/globals';
-import { addBlobUrl } from '../blob-url';
+import { addBlobUrl } from '@project/common/blob-url';
 
 const originalMediaRecorder = (globalThis as any).MediaRecorder;
 const originalCaptureStream = (HTMLCanvasElement.prototype as any).captureStream;
