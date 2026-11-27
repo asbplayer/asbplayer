@@ -27,9 +27,11 @@ Mines from the active tab by default. Set `mediaId` to an ID returned by [`get-b
 
 When `postMineAction` is `2`, `noteId` selects the Anki note to update. If omitted, the last-added note is updated. `noteId` applies to streaming media only and is ignored for local media.
 
+When `forceCapture` lists `audio` and/or `image`, that media is captured onto the saved card for this mine regardless of the recording settings: local media is extracted from the video file, streaming media is recorded from the tab. Capture failures are reported via the card's `audio.error`/`image.error` fields (see [`get-mining-history`](#get-mining-history)).
+
 > `mediaId` and `noteId` require extension v1.20.0 or later.
 
-> `asbplayerCardId` requires extension v1.23.0 or later.
+> `asbplayerCardId` and `forceCapture` requires extension v1.24.0 or later.
 
 ### Request {#mine-subtitle-request}
 
@@ -52,7 +54,9 @@ When `postMineAction` is `2`, `noteId` selects the Anki note to update. If omitt
             "noteId": 1752856898044,
             // Optional card UUID for card that is saved into asbplayer's mining history.
             // If the specified card ID already exists in mining history, then the saved card is replaced.
-            "asbplayerCardId": "9cc59267-1a4d-4070-a020-3a4d0d4e508a"
+            "asbplayerCardId": "9cc59267-1a4d-4070-a020-3a4d0d4e508a",
+            // Optional media to force onto the saved card, overriding the recording settings for this mine.
+            "forceCapture": ["audio", "image"]
         }
     }
     ```

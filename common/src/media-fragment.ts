@@ -1,5 +1,5 @@
 import { asbWarn } from '@project/common/util/log';
-import type { CardModel, FileModel } from '@project/common/src/model';
+import type { CardModel, FileModel, MediaFragmentModel } from '@project/common/src/model';
 import { MediaFragmentErrorCode } from '@project/common/src/model';
 import { isActiveBlobUrl } from '@project/common/blob-url';
 import { download } from '@project/common/util/util';
@@ -372,6 +372,54 @@ export default class MediaFragment {
         return new MediaFragment(
             new WebmFileMediaFragmentData(file, startTimestamp, endTimestamp, maxWidth, maxHeight)
         );
+    }
+
+    /**
+     * The card's serialized image model: verbatim when already serialized, otherwise rendered
+     * from the card's image source. Rendering failures return empty base64 with the error set.
+     */
+    static async imageModelFromCard(
+        card: CardModel,
+        maxWidth: number,
+        maxHeight: number,
+        mediaFragmentFormat: MediaFragmentFormat,
+        trimStart: number,
+        trimEnd: number,
+        maxClipLength: number,
+        trimBlackBars: boolean
+    ): Promise<MediaFragmentModel | undefined> {
+        if (card.image !== undefined) {
+            return card.image;
+        }
+
+        const fragment = MediaFragment.fromCard(
+            card,
+            maxWidth,
+            maxHeight,
+            mediaFragmentFormat,
+            trimStart,
+            trimEnd,
+            maxClipLength,
+            trimBlackBars
+        );
+
+        if (fragment === undefined) {
+            return undefined;
+        }
+
+        if (fragment.error !== undefined) {
+            return { base64: '', extension: 'jpeg', error: fragment.error };
+        }
+
+        try {
+            return {
+                base64: await fragment.base64(),
+                extension: fragment.extension as MediaFragmentModel['extension'],
+                animated: fragment.animated,
+            };
+        } catch {
+            return { base64: '', extension: 'jpeg', error: MediaFragmentErrorCode.captureFailed };
+        }
     }
 
     get name() {

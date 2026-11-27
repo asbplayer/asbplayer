@@ -73,6 +73,7 @@ type (
 		MediaId         *string           `json:"mediaId,omitempty"`
 		NoteId          *int64            `json:"noteId,omitempty"`
 		AsbplayerCardId *string           `json:"asbplayerCardId,omitempty"`
+		ForceCapture    []string          `json:"forceCapture,omitempty"`
 	}
 	asbplayerSeekRequest struct {
 		Timestamp float64 `json:"timestamp"`

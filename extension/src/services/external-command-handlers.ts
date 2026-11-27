@@ -63,7 +63,14 @@ const mineSubtitle = async (
     command: MineSubtitleCommand
 ): Promise<boolean> => {
     const {
-        body: { fields: receivedFields, postMineAction: receivedPostMineAction, mediaId, noteId, asbplayerCardId },
+        body: {
+            fields: receivedFields,
+            postMineAction: receivedPostMineAction,
+            mediaId,
+            noteId,
+            asbplayerCardId,
+            forceCapture,
+        },
     } = command;
     const targets = (await resolveMediaTargets(tabRegistry, mediaId)).filter((target) =>
         isVideoElementTarget(target) ? target.videoElement.loadedSubtitles : target.asbplayer.loadedSubtitles
@@ -85,6 +92,7 @@ const mineSubtitle = async (
                 postMineAction,
                 noteId,
                 id: asbplayerCardId,
+                forceCapture,
             },
             src,
         })),

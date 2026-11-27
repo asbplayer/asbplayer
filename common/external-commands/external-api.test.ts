@@ -129,6 +129,25 @@ describe('external API schemas', () => {
             ).toBe(true);
         });
 
+        it('accepts forced capture kinds on mine-subtitle params', () => {
+            expect(
+                mineSubtitleParamsSchema.safeParse({
+                    fields: {},
+                    postMineAction: 1,
+                    forceCapture: ['audio', 'image'],
+                }).success
+            ).toBe(true);
+        });
+
+        it('rejects invalid forceCapture params', () => {
+            expect(
+                mineSubtitleParamsSchema.safeParse({ fields: {}, postMineAction: 1, forceCapture: ['video'] }).success
+            ).toBe(false);
+            expect(
+                mineSubtitleParamsSchema.safeParse({ fields: {}, postMineAction: 1, forceCapture: 'audio' }).success
+            ).toBe(false);
+        });
+
         it('rejects out-of-range postMineAction values', () => {
             expect(mineSubtitleParamsSchema.safeParse({ fields: {}, postMineAction: 5 }).success).toBe(false);
             expect(mineSubtitleParamsSchema.safeParse({ fields: {}, postMineAction: 'showAnkiDialog' }).success).toBe(
@@ -171,6 +190,7 @@ describe('external API schemas', () => {
                 ['mediaId', false],
                 ['noteId', false],
                 ['asbplayerCardId', false],
+                ['forceCapture', false],
             ]);
             expect(mineSubtitle.params[1].schema.anyOf.map((literal: any) => literal.const)).toEqual([0, 1, 2, 3, 4]);
         });

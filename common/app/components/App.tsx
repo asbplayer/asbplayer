@@ -30,6 +30,7 @@ import type {
     ConfirmedVideoDataSubtitleTrack,
 } from '@project/common';
 import { MediaFragment, PostMineAction, MediaFragmentErrorCode, VideoDataUiOpenReason } from '@project/common';
+import type { ForceCaptureKind } from '@project/common/external-commands/commands';
 import { createTheme } from '@project/common/theme';
 import type { AsbplayerSettings, DictionaryTrack, Profile, SettingsProvider } from '@project/common/settings';
 import { AudioClip, Mp3Encoder } from '@project/common/audio-clip';
@@ -581,8 +582,41 @@ function App({
     // Avoid unnecessary re-renders by having handleCopy operate on a ref to settings
     const settingsRef = useRef(settings);
     settingsRef.current = settings;
+
+    // Only the saved entry gets the serialized media; the dialog/export flows keep the unserialized card.
+    const saveCopyHistoryItemWithForcedCapture = useCallback(
+        async (card: CopyHistoryItem, forceCapture?: ForceCaptureKind[]) => {
+            let { audio, image } = card;
+
+            if (forceCapture?.includes('audio')) {
+                audio = await AudioClip.audioModelFromCard(
+                    card,
+                    settingsRef.current.audioPaddingStart,
+                    settingsRef.current.audioPaddingEnd,
+                    settingsRef.current.preferMp3 ? () => new mp3WorkerFactory() : undefined
+                );
+            }
+
+            if (forceCapture?.includes('image')) {
+                image = await MediaFragment.imageModelFromCard(
+                    card,
+                    settingsRef.current.maxImageWidth,
+                    settingsRef.current.maxImageHeight,
+                    settingsRef.current.mediaFragmentFormat,
+                    settingsRef.current.mediaFragmentTrimStart,
+                    settingsRef.current.mediaFragmentTrimEnd,
+                    settingsRef.current.mediaFragmentMaxClipLength,
+                    settingsRef.current.trimBlackBars
+                );
+            }
+
+            await saveCopyHistoryItem({ ...card, audio, image });
+        },
+        [saveCopyHistoryItem]
+    );
+
     const handleCopy = useCallback(
-        async (card: CardModel, postMineAction?: PostMineAction) => {
+        async (card: CardModel, postMineAction?: PostMineAction, forceCapture?: ForceCaptureKind[]) => {
             if (card.subtitle && settingsRef.current.copyToClipboardOnMine) {
                 void navigator.clipboard.writeText(card.subtitle.text);
             }
@@ -595,7 +629,7 @@ function App({
             };
 
             retainCardAudioSource(newCard);
-            void saveCopyHistoryItem(newCard).catch(handleError);
+            void saveCopyHistoryItemWithForcedCapture(newCard, forceCapture).catch(handleError);
 
             switch (postMineAction ?? PostMineAction.none) {
                 case PostMineAction.none:
@@ -662,7 +696,7 @@ function App({
             miningContext,
             retainCardAudioSource,
             handleError,
-            saveCopyHistoryItem,
+            saveCopyHistoryItemWithForcedCapture,
             handleAnkiDialogProceed,
             handleAnkiDialogRequest,
             t,

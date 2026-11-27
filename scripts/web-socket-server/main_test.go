@@ -595,7 +595,7 @@ func TestAsbplayerMineSubtitleRequest(t *testing.T) {
 	h.waitForClients(t, 1)
 
 	result := h.requestAsync(t, http.MethodPost, "/asbplayer/mine-subtitle",
-		`{"fields":{"Word":"ねこ"},"postMineAction":2,"mediaId":"abc","noteId":42,"asbplayerCardId":"c1"}`)
+		`{"fields":{"Word":"ねこ"},"postMineAction":2,"mediaId":"abc","noteId":42,"asbplayerCardId":"c1","forceCapture":["audio","image"]}`)
 	command := client.nextCommand(t)
 	body := command.bodyAsMap(t)
 
@@ -603,6 +603,12 @@ func TestAsbplayerMineSubtitleRequest(t *testing.T) {
 		body["postMineAction"] != float64(2) || body["mediaId"] != "abc" ||
 		body["noteId"] != float64(42) || body["asbplayerCardId"] != "c1" {
 		t.Fatalf("unexpected mine-subtitle command: %v", command.Body)
+	}
+
+	forceCapture, ok := body["forceCapture"].([]any)
+
+	if !ok || len(forceCapture) != 2 || forceCapture[0] != "audio" || forceCapture[1] != "image" {
+		t.Fatalf("expected the forced capture kinds, got %v", body["forceCapture"])
 	}
 
 	client.respond(t, command.MessageId, `{"published":true}`)

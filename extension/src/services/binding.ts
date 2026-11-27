@@ -1757,12 +1757,16 @@ export default class Binding {
         isBulkExport,
         noteId,
         id: cardId,
+        forceCapture,
     }: CopySubtitleMessage) {
         if (!subtitle || !surroundingSubtitles) {
             return;
         }
 
-        if (this.recordMedia && this.recordingMedia) {
+        const recordMedia = this.recordMedia || (forceCapture?.includes('audio') ?? false);
+        const takeScreenshot = this.takeScreenshot || (forceCapture?.includes('image') ?? false);
+
+        if (recordMedia && this.recordingMedia) {
             return;
         }
 
@@ -1772,28 +1776,28 @@ export default class Binding {
 
         const mediaTimestamp = subtitleTimestampWithDelay(subtitle, this.imageDelay);
 
-        if (this.takeScreenshot) {
+        if (takeScreenshot) {
             await this._prepareScreenshot();
         }
 
-        if (this.recordMedia && this.recordingMedia) {
+        if (recordMedia && this.recordingMedia) {
             // In case recording state changed during the await above
             return;
         }
 
         let animatedWebpArmed = false;
 
-        if (this.recordMedia) {
+        if (recordMedia) {
             this.recordingState = RecordingState.requested;
             this.recordingPostMineAction = postMineAction;
             this.recordingCardId = cardId;
             this.wasPlayingBeforeRecordingMedia = !this.video.paused;
             this.recordingMediaStartedTimestamp = this.currentTimeMs;
-            this.recordingMediaWithScreenshot = this.takeScreenshot;
+            this.recordingMediaWithScreenshot = takeScreenshot;
 
             // Negotiate and open the tab-capture stream before seeking, so it's already flowing by the
             // time playback resumes at the padding-adjusted start (see animated-webp-capture.ts).
-            if (this.takeScreenshot && this.mediaFragmentFormat === 'webp' && !isFirefoxBuild) {
+            if (takeScreenshot && this.mediaFragmentFormat === 'webp' && !isFirefoxBuild) {
                 animatedWebpArmed = await this._armAnimatedWebpCapture();
             }
 
@@ -1814,8 +1818,8 @@ export default class Binding {
                 command: 'record-media-and-forward-subtitle',
                 subtitle: subtitle,
                 surroundingSubtitles: surroundingSubtitles,
-                record: this.recordMedia,
-                screenshot: this.takeScreenshot,
+                record: recordMedia,
+                screenshot: takeScreenshot,
                 url: this.url(subtitle.start, subtitle.end),
                 mediaTimestamp,
                 subtitleFileName: this.subtitleFileName(subtitle.track),

@@ -217,6 +217,15 @@ export const mineSubtitleParamsSchema = z.object({
         .uuidv4()
         .optional()
         .describe("Optional UUID for card that is saved into asbplayer's mining history."),
+    forceCapture: z
+        .array(z.enum(['image', 'audio']))
+        .optional()
+        .describe(
+            'Force capture of the listed media onto the card saved to mining history, overriding the recording ' +
+                'settings for this mine. `audio` is extracted from the video file for local media and recorded from ' +
+                "the tab for streaming media; `image` likewise. Capture failures are reported via the card's " +
+                '`audio.error`/`image.error` fields.'
+        ),
 });
 
 export const mineSubtitleResultSchema = z.object({
@@ -369,10 +378,14 @@ export const externalApiMethods = {
             'note is updated. `noteId` applies to streaming media only and is ignored for local media.\n\n' +
             "When `asbplayerCardId` is set, the card is saved into asbplayer's mining history under that id, " +
             'replacing any existing card with the same id.\n\n' +
+            'When `forceCapture` lists `audio` and/or `image`, that media is captured onto the saved card for ' +
+            'this mine regardless of the recording settings: local media is extracted from the video file, ' +
+            "streaming media is recorded from the tab. Capture failures are reported via the card's " +
+            '`audio.error`/`image.error` fields.\n\n' +
             'The response means the flow was accepted (dispatched), not that a card was completed. Invoked as a ' +
             'notification (no id), it is published fire-and-forget and never answered, even on error.\n\n' +
             '`mediaId` and `noteId` require extension v1.20.0 or later; `asbplayerCardId` requires extension ' +
-            'v1.23.0 or later.',
+            'v1.23.0 or later; `forceCapture` requires extension v1.24.0 or later.',
         tags: [],
         paramsSchema: mineSubtitleParamsSchema,
         resultSchema: mineSubtitleResultSchema,

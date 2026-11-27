@@ -2,7 +2,7 @@ import { asbError } from '@project/common/util/log';
 import { download } from '@project/common/util';
 import Mp3Encoder from '@project/common/audio-clip/mp3-encoder';
 
-import type { CardModel, FileModel, TranscodedAudioModel, TranscodedAudioState } from '@project/common';
+import type { AudioModel, CardModel, FileModel, TranscodedAudioModel, TranscodedAudioState } from '@project/common';
 import { AudioErrorCode } from '@project/common';
 import { snapshotMiningAudio } from '@project/common/audio-transcode/mining-audio';
 import { createBlobUrl, isActiveBlobUrl } from '@project/common/blob-url';
@@ -1000,6 +1000,47 @@ export default class AudioClip {
                       recordAudibly
                   )
         );
+    }
+
+    /**
+     * The card's serialized audio model: verbatim when already serialized, otherwise extracted
+     * silently from the card's audio source. Extraction failures return empty base64 with the
+     * error set, matching how streamed cards record capture failures.
+     */
+    static async audioModelFromCard(
+        card: CardModel,
+        paddingStart: number,
+        paddingEnd: number,
+        mp3WorkerFactory?: () => Worker
+    ): Promise<AudioModel | undefined> {
+        if (card.audio !== undefined) {
+            return card.audio;
+        }
+
+        const clip = AudioClip.fromCard(card, paddingStart, paddingEnd, false);
+
+        if (clip === undefined) {
+            return undefined;
+        }
+
+        if (clip.error !== undefined) {
+            return { base64: '', extension: 'webm', paddingStart, paddingEnd, error: clip.error };
+        }
+
+        const encoded = mp3WorkerFactory === undefined ? clip : clip.toMp3(mp3WorkerFactory);
+
+        try {
+            return {
+                base64: await encoded.base64(),
+                // AudioModel only knows webm and mp3; raw recordings are labeled webm, as streamed cards are.
+                extension: encoded.extension === 'mp3' ? 'mp3' : 'webm',
+                paddingStart,
+                paddingEnd,
+                playbackRate: card.file?.playbackRate ?? 1,
+            };
+        } catch {
+            return { base64: '', extension: 'webm', paddingStart, paddingEnd, error: AudioErrorCode.captureFailed };
+        }
     }
 
     get start() {

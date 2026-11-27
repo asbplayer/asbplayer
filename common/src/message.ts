@@ -38,7 +38,11 @@ import type {
 } from '@project/common/src/model';
 import type { AsbPlayerToVideoCommandV2 } from '@project/common/src/command';
 import type { LogLine, LogSnapshot } from '@project/common/util/log-utils';
-import type { Response as ExternalResponse, ExternalCommand } from '@project/common/external-commands/commands';
+import type {
+    Response as ExternalResponse,
+    ExternalCommand,
+    ForceCaptureKind,
+} from '@project/common/external-commands/commands';
 import type {
     DictionaryLocalTokenInput,
     DictionaryTokenKey,
@@ -204,6 +208,7 @@ export interface StopRecordingMediaMessage extends Message, ImageCaptureParams {
 export interface CopyMessage extends Message, CardModel {
     readonly command: 'copy';
     readonly postMineAction?: PostMineAction;
+    readonly forceCapture?: ForceCaptureKind[];
 }
 
 export interface PublishCardMessage extends Message, CardModel {
@@ -216,6 +221,7 @@ export interface CopyToVideoMessage extends Message, CardTextFieldValues {
     readonly subtitle?: SubtitleModel;
     readonly surroundingSubtitles?: SubtitleModel[];
     readonly id?: string;
+    readonly forceCapture?: ForceCaptureKind[];
 }
 
 export interface CopySubtitleMessage extends Message, CardTextFieldValues {
@@ -224,6 +230,7 @@ export interface CopySubtitleMessage extends Message, CardTextFieldValues {
     readonly subtitle?: SubtitleModel;
     readonly surroundingSubtitles?: SubtitleModel[];
     readonly isBulkExport?: boolean;
+    readonly forceCapture?: ForceCaptureKind[];
     readonly noteId?: number;
     // Optional, declared card ID that the card should be persisted with in mining history
     readonly id?: string;

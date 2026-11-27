@@ -12,6 +12,7 @@ import Button from '@mui/material/Button';
 import { useTranslation } from 'react-i18next';
 import { v4 as uuidv4 } from 'uuid';
 import { AutoPausePreference, PlayMode, PostMinePlayback } from '@project/common';
+import type { ForceCaptureKind } from '@project/common/external-commands/commands';
 import type {
     AudioTrackModel,
     CardModel,
@@ -178,7 +179,7 @@ interface PlayerProps {
     statisticsOverlay?: React.ReactNode;
     onError: (error: any) => void;
     onUnloadVideo: (url: string) => void;
-    onCopy: (card: CardModel, postMineAction: PostMineAction | undefined) => void;
+    onCopy: (card: CardModel, postMineAction: PostMineAction | undefined, forceCapture?: ForceCaptureKind[]) => void;
     onLoaded: (file: File[]) => void;
     onTabSelected: (tab: VideoTabModel) => void;
     onAnkiDialogRequest: () => void;
@@ -1130,7 +1131,8 @@ function PlayerComponent(
                     url,
                     postMineAction,
                     id,
-                    mediaTimestamp
+                    mediaTimestamp,
+                    forceCapture
                 ) => {
                     try {
                         const currentAudio = transcodedAudioRef.current;
@@ -1160,7 +1162,8 @@ function PlayerComponent(
                                 url,
                                 id,
                             },
-                            postMineAction
+                            postMineAction,
+                            forceCapture
                         );
                     } catch (error) {
                         onError(error);
@@ -1302,14 +1305,22 @@ function PlayerComponent(
             postMineAction: PostMineAction,
             forceUseGivenSubtitle?: boolean,
             cardTextFieldValues?: CardTextFieldValues,
-            cardId?: string
+            cardId?: string,
+            forceCapture?: ForceCaptureKind[]
         ) => {
             if (videoFileUrl) {
                 if (forceUseGivenSubtitle) {
-                    channel?.copy(postMineAction, subtitle, surroundingSubtitles, cardTextFieldValues, cardId);
+                    channel?.copy(
+                        postMineAction,
+                        subtitle,
+                        surroundingSubtitles,
+                        cardTextFieldValues,
+                        cardId,
+                        forceCapture
+                    );
                 } else {
                     // Let VideoPlayer do the copying to ensure copied subtitle is consistent with the VideoPlayer clock
-                    channel?.copy(postMineAction, undefined, undefined, undefined, cardId);
+                    channel?.copy(postMineAction, undefined, undefined, undefined, cardId, forceCapture);
                 }
             } else {
                 try {
@@ -1349,7 +1360,8 @@ function PlayerComponent(
                                       },
                             ...cardTextFieldValues,
                         },
-                        postMineAction
+                        postMineAction,
+                        forceCapture
                     );
                 } catch (error) {
                     onError(error);

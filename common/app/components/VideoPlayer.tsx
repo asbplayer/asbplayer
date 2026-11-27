@@ -9,6 +9,7 @@ import { isMobile } from 'react-device-detect';
 import { makeStyles } from '@mui/styles';
 import { useWindowSize } from '@project/common/app/hooks/use-window-size';
 import { PostMineAction, PlayMode, PostMinePlayback } from '@project/common';
+import type { ForceCaptureKind } from '@project/common/external-commands/commands';
 import type {
     FileModel,
     SubtitleModel,
@@ -1648,7 +1649,8 @@ export default function VideoPlayer({
             surroundingSubtitles: SubtitleModel[],
             cardTextFieldValues: CardTextFieldValues,
             timestamp: number,
-            cardId?: string
+            cardId?: string,
+            forceCapture?: ForceCaptureKind[]
         ) => {
             try {
                 const miningAudio = convertedAudioRef.current;
@@ -1674,7 +1676,8 @@ export default function VideoPlayer({
                     videoFileName ?? '',
                     timestamp,
                     showAnkiDialog ? PostMineAction.none : postMineAction,
-                    cardId
+                    cardId,
+                    forceCapture
                 );
                 if (showAnkiDialog) {
                     onAnkiDialogRequest(
@@ -1714,7 +1717,8 @@ export default function VideoPlayer({
             subtitle?: SubtitleModel,
             surroundingSubtitles?: SubtitleModel[],
             cardTextFieldValues?: CardTextFieldValues,
-            cardId?: string
+            cardId?: string,
+            forceCapture?: ForceCaptureKind[]
         ) => {
             const video = videoRef.current;
 
@@ -1751,7 +1755,8 @@ export default function VideoPlayer({
                 surroundingSubtitles,
                 cardTextFieldValues ?? {},
                 mediaTimestamp,
-                cardId
+                cardId,
+                forceCapture
             );
         },
         [
@@ -1767,7 +1772,12 @@ export default function VideoPlayer({
     );
 
     const toggleSelectMiningInterval = useCallback(
-        (postMineAction: PostMineAction, cardTextFieldValues?: CardTextFieldValues, cardId?: string) => {
+        (
+            postMineAction: PostMineAction,
+            cardTextFieldValues?: CardTextFieldValues,
+            cardId?: string,
+            forceCapture?: ForceCaptureKind[]
+        ) => {
             if (mineIntervalStartTimestamp === undefined) {
                 setMineIntervalStartTimestamp(clock.time({ maxMs: lengthMs }));
 
@@ -1836,7 +1846,8 @@ export default function VideoPlayer({
                         surroundingSubtitles,
                         cardTextFieldValues ?? {},
                         mineIntervalStartTimestamp,
-                        cardId
+                        cardId,
+                        forceCapture
                     );
                 }
 
@@ -1864,10 +1875,11 @@ export default function VideoPlayer({
             subtitle?: SubtitleModel,
             surroundingSubtitles?: SubtitleModel[],
             cardTextFieldValues?: CardTextFieldValues,
-            cardId?: string
+            cardId?: string,
+            forceCapture?: ForceCaptureKind[]
         ) => {
             if (!subtitle && !surroundingSubtitles && subtitles.length === 0) {
-                toggleSelectMiningInterval(postMineAction, cardTextFieldValues, cardId);
+                toggleSelectMiningInterval(postMineAction, cardTextFieldValues, cardId, forceCapture);
             } else {
                 if (mineIntervalStartTimestamp !== undefined) {
                     // Edge case: user started manually recording but are now using an "automatic" mining shortcut
@@ -1877,7 +1889,14 @@ export default function VideoPlayer({
                     setMineIntervalStartTimestamp(undefined);
                 }
 
-                mineCurrentSubtitle(postMineAction, subtitle, surroundingSubtitles, cardTextFieldValues, cardId);
+                mineCurrentSubtitle(
+                    postMineAction,
+                    subtitle,
+                    surroundingSubtitles,
+                    cardTextFieldValues,
+                    cardId,
+                    forceCapture
+                );
             }
         },
         [mineCurrentSubtitle, toggleSelectMiningInterval, mineIntervalStartTimestamp, subtitles]

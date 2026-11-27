@@ -74,7 +74,11 @@ import { useSubtitleFind } from '@project/common/app/hooks/use-subtitle-find';
 import { isMobile } from 'react-device-detect';
 import type { ExtensionMessage } from '@project/common/app/services/chrome-extension';
 import type ChromeExtension from '@project/common/app/services/chrome-extension';
-import type { MineSubtitleCommand, ExternalCommandDispatcher } from '@project/common/external-commands';
+import type {
+    MineSubtitleCommand,
+    ExternalCommandDispatcher,
+    ForceCaptureKind,
+} from '@project/common/external-commands';
 import { localMediaId } from '@project/common/external-commands/media';
 import { clampSubtitlePlayerWidth } from '@project/common/app/components/video-subtitle-split';
 import { useTokenSelection } from '@project/common/app/hooks/use-token-selection';
@@ -672,7 +676,8 @@ interface SubtitlePlayerProps {
         postMineAction: PostMineAction,
         forceUseGivenSubtitle?: boolean,
         cardTextFieldValues?: CardTextFieldValues,
-        cardId?: string
+        cardId?: string,
+        forceCapture?: ForceCaptureKind[]
     ) => void;
     onOffsetChange: (offset: number) => void;
     onToggleSubtitleTrack: (track: number) => void;
@@ -1198,7 +1203,7 @@ export default function SubtitlePlayer({
     ]);
 
     const copyFromExternalCommandClient = useCallback(
-        ({ postMineAction, text, word, definition, customFieldValues, cardId }: MineSubtitleParams) => {
+        ({ postMineAction, text, word, definition, customFieldValues, cardId, forceCapture }: MineSubtitleParams) => {
             if (!subtitles || subtitles.length === 0) {
                 return false;
             }
@@ -1231,7 +1236,7 @@ export default function SubtitlePlayer({
                     definition,
                     customFieldValues,
                 };
-                onCopy(subtitle, surroundingSubtitles, postMineAction, true, cardTextFieldValues, cardId);
+                onCopy(subtitle, surroundingSubtitles, postMineAction, true, cardTextFieldValues, cardId, forceCapture);
                 return true;
             }
 
@@ -1249,7 +1254,13 @@ export default function SubtitlePlayer({
 
     useEffect(() => {
         const onMineSubtitle = async ({
-            body: { fields: receivedFields, postMineAction: receivedPostMineAction, mediaId, asbplayerCardId },
+            body: {
+                fields: receivedFields,
+                postMineAction: receivedPostMineAction,
+                mediaId,
+                asbplayerCardId,
+                forceCapture,
+            },
         }: MineSubtitleCommand) => {
             if (mediaId !== undefined && mediaId !== localMediaId(extension.id)) {
                 return false;
@@ -1280,6 +1291,7 @@ export default function SubtitlePlayer({
                 definition,
                 customFieldValues,
                 cardId: asbplayerCardId,
+                forceCapture,
             });
         };
 

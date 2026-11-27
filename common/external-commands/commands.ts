@@ -2,6 +2,8 @@ import type { AudioModel, MediaFragmentModel, SubtitleTrack } from '@project/com
 
 export type { SubtitleTrack };
 
+export type ForceCaptureKind = 'image' | 'audio';
+
 export interface MineSubtitleCommand {
     command: 'mine-subtitle';
     messageId: string;
@@ -11,6 +13,7 @@ export interface MineSubtitleCommand {
         mediaId?: string;
         noteId?: number;
         asbplayerCardId?: string;
+        forceCapture?: ForceCaptureKind[];
     };
 }
 

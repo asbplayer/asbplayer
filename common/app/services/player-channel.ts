@@ -41,6 +41,7 @@ import type {
     SaveTokenLocalToVideoMessage,
     IndexedSubtitleModel,
 } from '@project/common';
+import type { ForceCaptureKind } from '@project/common/external-commands/commands';
 import type { SubtitleSourceUpdate } from '@project/common/subtitle-reader/subtitle-stream';
 import { asbError } from '@project/common/util/log';
 import type {
@@ -88,7 +89,8 @@ export default class PlayerChannel {
         subtitle?: SubtitleModel,
         surroundingSubtitles?: SubtitleModel[],
         cardTextFieldValues?: CardTextFieldValues,
-        cardId?: string
+        cardId?: string,
+        forceCapture?: ForceCaptureKind[]
     ) => void)[];
 
     constructor(channel: string) {
@@ -301,7 +303,8 @@ export default class PlayerChannel {
                             copyMessage.subtitle,
                             copyMessage.surroundingSubtitles,
                             cardTextFieldValues,
-                            cardId
+                            cardId,
+                            copyMessage.forceCapture
                         );
                     }
                     break;
@@ -447,7 +450,8 @@ export default class PlayerChannel {
             subtitle?: SubtitleModel,
             surroundingSubtitles?: SubtitleModel[],
             cardTextFieldValues?: CardTextFieldValues,
-            cardId?: string
+            cardId?: string,
+            forceCapture?: ForceCaptureKind[]
         ) => void
     ) {
         this.copyCallbacks.push(callback);
@@ -546,7 +550,8 @@ export default class PlayerChannel {
         subtitleFileName: string,
         mediaTimestamp: number,
         postMineAction: PostMineAction,
-        cardId?: string
+        cardId?: string,
+        forceCapture?: ForceCaptureKind[]
     ) {
         const message: CopyMessage = {
             command: 'copy',
@@ -557,6 +562,7 @@ export default class PlayerChannel {
             subtitleFileName,
             postMineAction,
             mediaTimestamp,
+            forceCapture,
         };
 
         this.channel?.postMessage(message);
