@@ -283,10 +283,6 @@ export const getMiningHistoryParamsSchema = z.object({
 export const cardSchema = z.object({
     id: z.string().describe("ID of card in asbplayer's mining history."),
     subtitle: subtitleCueSchema,
-    text: z.string().optional().describe('Card text'),
-    word: z.string().optional().describe('Card word'),
-    definition: z.string().optional().describe('Card definition'),
-    customFieldValues: z.record(z.string(), z.string()).optional().describe('Map of custom field names to values'),
     url: z
         .string()
         .optional()

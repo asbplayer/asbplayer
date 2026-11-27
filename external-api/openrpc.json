@@ -437,28 +437,6 @@
                                         ],
                                         "additionalProperties": false
                                     },
-                                    "text": {
-                                        "description": "Card text",
-                                        "type": "string"
-                                    },
-                                    "word": {
-                                        "description": "Card word",
-                                        "type": "string"
-                                    },
-                                    "definition": {
-                                        "description": "Card definition",
-                                        "type": "string"
-                                    },
-                                    "customFieldValues": {
-                                        "description": "Map of custom field names to values",
-                                        "type": "object",
-                                        "propertyNames": {
-                                            "type": "string"
-                                        },
-                                        "additionalProperties": {
-                                            "type": "string"
-                                        }
-                                    },
                                     "url": {
                                         "description": "Card URL - generally autofilled with the URL of the site where the card was mined",
                                         "type": "string"

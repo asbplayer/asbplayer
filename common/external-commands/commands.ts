@@ -61,10 +61,6 @@ export interface GetMiningHistoryResponseBody {
 export interface Card {
     id: string;
     subtitle: SubtitleCue;
-    text?: string;
-    word?: string;
-    definition?: string;
-    customFieldValues?: { [fieldName: string]: string };
     url?: string;
     audio?: AudioModel;
     image?: MediaFragmentModel;

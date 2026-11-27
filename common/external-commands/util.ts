@@ -18,10 +18,6 @@ export const copyHistoryItemsToCards = (copyHistoryItems: CopyHistoryItem[]): Ca
     copyHistoryItems.map((c) => ({
         id: c.id,
         subtitle: toSubtitleCue(c.subtitle),
-        text: c.text,
-        word: c.word,
-        definition: c.definition,
-        customFieldValues: c.customFieldValues,
         url: c.url,
         image: c.image,
         audio: c.audio,

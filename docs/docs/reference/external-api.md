@@ -240,12 +240,6 @@ Queries asbplayer mining history.
                 },
                 // URL field if present
                 "url": "https://www.youtube.com/...",
-                // Word field if present
-                "word": "耳",
-                // Definition field if present
-                "definition": "ear",
-                // Custom field values if present
-                "customFieldValues": {"Reading": "みみ"},
                 // Image if present
                 "image": {
                     // Base64-encoded image
