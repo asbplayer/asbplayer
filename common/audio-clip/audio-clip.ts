@@ -33,7 +33,7 @@ type AudioClipEventCallbacks = { [name in AudioClipEvent]: (() => void)[] };
 
 interface AudioData {
     name: string;
-    extension: string;
+    extension: AudioModel['extension'];
     start: number;
     play: () => Promise<void>;
     stop: () => void;
@@ -63,7 +63,7 @@ const invokeCallbacks = (eventName: AudioClipEvent, callbacks: AudioClipEventCal
 };
 
 function recorderConfiguration() {
-    const AUDIO_TYPES: { [key: string]: string } = {
+    const AUDIO_TYPES: { [key: string]: 'ogg' | 'webm' } = {
         'audio/ogg;codecs=opus': 'ogg',
         'audio/webm;codecs=opus': 'webm',
     };
@@ -78,7 +78,7 @@ class Base64AudioData implements AudioData {
     private readonly _end: number;
     private readonly playbackRate: number;
     private readonly _base64: string;
-    private readonly _extension: string;
+    private readonly _extension: AudioModel['extension'];
     private readonly _error?: AudioErrorCode;
     private readonly _callbacks: AudioClipEventCallbacks = { play: [], pause: [], error: [] };
     private playingAudio?: HTMLAudioElement;
@@ -91,7 +91,7 @@ class Base64AudioData implements AudioData {
         end: number,
         playbackRate: number,
         base64: string,
-        extension: string,
+        extension: AudioModel['extension'],
         error: AudioErrorCode | undefined
     ) {
         this._name = makeFileName(baseName, start);
@@ -107,7 +107,7 @@ class Base64AudioData implements AudioData {
         return this._name;
     }
 
-    get extension(): string {
+    get extension(): AudioModel['extension'] {
         return this._extension;
     }
 
@@ -518,7 +518,7 @@ class FileAudioData implements AudioData {
     private readonly _end: number;
     private readonly _playbackRate: number;
     private readonly _recordAudibly: boolean;
-    private readonly _extension: string;
+    private readonly _extension: 'ogg' | 'webm';
     private readonly _recorderMimeType: string;
     private _callbacks: AudioClipEventCallbacks;
 
@@ -560,7 +560,7 @@ class FileAudioData implements AudioData {
         return this._name;
     }
 
-    get extension(): string {
+    get extension(): AudioModel['extension'] {
         return this._extension;
     }
 
@@ -782,7 +782,7 @@ class Mp3AudioData implements AudioData {
         return this.data.name;
     }
 
-    get extension() {
+    get extension(): AudioModel['extension'] {
         return 'mp3';
     }
 
@@ -851,7 +851,7 @@ class EncodedAudioData implements AudioData {
         return this._data.name;
     }
 
-    get extension() {
+    get extension(): AudioModel['extension'] {
         return 'mp3';
     }
 
@@ -958,7 +958,7 @@ export default class AudioClip {
         end: number,
         playbackRate: number,
         base64: string,
-        extension: string,
+        extension: AudioModel['extension'],
         error: AudioErrorCode | undefined
     ) {
         return new AudioClip(
@@ -1003,9 +1003,7 @@ export default class AudioClip {
     }
 
     /**
-     * The card's serialized audio model: verbatim when already serialized, otherwise extracted
-     * silently from the card's audio source. Extraction failures return empty base64 with the
-     * error set, matching how streamed cards record capture failures.
+     * The card's serialized audio model. Returns already-serialized model if it exist. Otherwise, returns a new serialized model.
      */
     static async audioModelFromCard(
         card: CardModel,
@@ -1032,8 +1030,7 @@ export default class AudioClip {
         try {
             return {
                 base64: await encoded.base64(),
-                // AudioModel only knows webm and mp3; raw recordings are labeled webm, as streamed cards are.
-                extension: encoded.extension === 'mp3' ? 'mp3' : 'webm',
+                extension: encoded.extension,
                 paddingStart,
                 paddingEnd,
                 playbackRate: card.file?.playbackRate ?? 1,

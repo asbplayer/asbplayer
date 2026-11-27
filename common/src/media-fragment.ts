@@ -375,8 +375,7 @@ export default class MediaFragment {
     }
 
     /**
-     * The card's serialized image model: verbatim when already serialized, otherwise rendered
-     * from the card's image source. Rendering failures return empty base64 with the error set.
+     * The card's serialized image model. Returns already-serialized model if it exist. Otherwise, returns a new serialized model.
      */
     static async imageModelFromCard(
         card: CardModel,

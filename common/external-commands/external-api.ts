@@ -290,7 +290,7 @@ export const cardSchema = z.object({
     audio: z
         .object({
             base64: z.string().describe('Base64-encoded audio'),
-            extension: z.enum(['webm', 'mp3']).describe('Audio file extension'),
+            extension: z.enum(['ogg', 'webm', 'mp3']).describe('Audio file extension'),
             paddingStart: z.number().describe('Audio padding start'),
             paddingEnd: z.number().describe('Audio padding end'),
             start: z.number().optional().describe('Start timestamp'),
