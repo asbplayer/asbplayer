@@ -235,6 +235,7 @@ export default class Binding {
 
     private _recordingState: RecordingState = RecordingState.notRecording;
     recordingPostMineAction?: PostMineAction;
+    recordingCardId?: string;
     wasPlayingBeforeRecordingMedia?: boolean;
     postMinePlayback: PostMinePlayback = PostMinePlayback.remember;
     seekableTracks: SeekableTracks = calculateSeekableTracksValue([0]);
@@ -873,7 +874,7 @@ export default class Binding {
         // the playback engine's timing driver is unbound.
         this.recordingPauseListener = () => {
             if (!this.recordingMedia || this.recordingPostMineAction === undefined) return;
-            void this._toggleRecordingMedia(this.recordingPostMineAction);
+            void this._toggleRecordingMedia(this.recordingPostMineAction, this.recordingCardId);
         };
         this.video.addEventListener('pause', this.recordingPauseListener);
 
@@ -1206,7 +1207,10 @@ export default class Binding {
                                     });
                                 }
                             } else {
-                                void this._toggleRecordingMedia(copySubtitleMessage.postMineAction);
+                                void this._toggleRecordingMedia(
+                                    copySubtitleMessage.postMineAction,
+                                    copySubtitleMessage.id
+                                );
                             }
 
                             void this.mobileVideoOverlayController.updateModel();
@@ -1299,6 +1303,8 @@ export default class Binding {
                         break;
                     case 'recording-finished':
                         this.recordingState = RecordingState.notRecording;
+                        this.recordingPostMineAction = undefined;
+                        this.recordingCardId = undefined;
                         this.recordingMediaStartedTimestamp = undefined;
 
                         switch (this.postMinePlayback) {
@@ -1750,12 +1756,17 @@ export default class Binding {
         customFieldValues,
         isBulkExport,
         noteId,
+        id: cardId,
+        forceCapture,
     }: CopySubtitleMessage) {
         if (!subtitle || !surroundingSubtitles) {
             return;
         }
 
-        if (this.recordMedia && this.recordingMedia) {
+        const recordMedia = this.recordMedia || (forceCapture?.includes('audio') ?? false);
+        const takeScreenshot = this.takeScreenshot || (forceCapture?.includes('image') ?? false);
+
+        if (recordMedia && this.recordingMedia) {
             return;
         }
 
@@ -1765,27 +1776,28 @@ export default class Binding {
 
         const mediaTimestamp = subtitleTimestampWithDelay(subtitle, this.imageDelay);
 
-        if (this.takeScreenshot) {
+        if (takeScreenshot) {
             await this._prepareScreenshot();
         }
 
-        if (this.recordMedia && this.recordingMedia) {
+        if (recordMedia && this.recordingMedia) {
             // In case recording state changed during the await above
             return;
         }
 
         let animatedWebpArmed = false;
 
-        if (this.recordMedia) {
+        if (recordMedia) {
             this.recordingState = RecordingState.requested;
             this.recordingPostMineAction = postMineAction;
+            this.recordingCardId = cardId;
             this.wasPlayingBeforeRecordingMedia = !this.video.paused;
             this.recordingMediaStartedTimestamp = this.currentTimeMs;
-            this.recordingMediaWithScreenshot = this.takeScreenshot;
+            this.recordingMediaWithScreenshot = takeScreenshot;
 
             // Negotiate and open the tab-capture stream before seeking, so it's already flowing by the
             // time playback resumes at the padding-adjusted start (see animated-webp-capture.ts).
-            if (this.takeScreenshot && this.mediaFragmentFormat === 'webp' && !isFirefoxBuild) {
+            if (takeScreenshot && this.mediaFragmentFormat === 'webp' && !isFirefoxBuild) {
                 animatedWebpArmed = await this._armAnimatedWebpCapture();
             }
 
@@ -1806,8 +1818,8 @@ export default class Binding {
                 command: 'record-media-and-forward-subtitle',
                 subtitle: subtitle,
                 surroundingSubtitles: surroundingSubtitles,
-                record: this.recordMedia,
-                screenshot: this.takeScreenshot,
+                record: recordMedia,
+                screenshot: takeScreenshot,
                 url: this.url(subtitle.start, subtitle.end),
                 mediaTimestamp,
                 subtitleFileName: this.subtitleFileName(subtitle.track),
@@ -1823,6 +1835,7 @@ export default class Binding {
                 isBulkExport,
                 noteId,
                 animatedWebpArmed,
+                id: cardId,
                 ...this._imageCaptureParams,
             },
             src: this._registeredVideoSrc,
@@ -1836,7 +1849,7 @@ export default class Binding {
         await this._copySubtitle(message);
     }
 
-    async _toggleRecordingMedia(postMineAction: PostMineAction) {
+    async _toggleRecordingMedia(postMineAction: PostMineAction, cardId?: string) {
         if (this.recordingState === RecordingState.requested) {
             return;
         }
@@ -1855,6 +1868,7 @@ export default class Binding {
                     videoDuration: this.video.duration * 1000,
                     url: this.url(this.recordingMediaStartedTimestamp!, currentTimestamp),
                     subtitleFileName: this.subtitleFileName(),
+                    id: cardId,
                     ...this._imageCaptureParams,
                     ...this._surroundingSubtitlesAroundInterval(this.recordingMediaStartedTimestamp!, currentTimestamp),
                 },
@@ -1877,6 +1891,7 @@ export default class Binding {
                 this.recordingMediaStartedTimestamp = timestamp;
                 this.recordingMediaWithScreenshot = this.takeScreenshot;
                 this.recordingPostMineAction = postMineAction;
+                this.recordingCardId = cardId;
 
                 if (this.video.paused) {
                     await this.play();
@@ -1894,6 +1909,7 @@ export default class Binding {
                     url: this.url(timestamp),
                     subtitleFileName: this.subtitleFileName(),
                     imageDelay: this.imageDelay,
+                    id: cardId,
                     ...this._imageCaptureParams,
                 },
                 src: this._registeredVideoSrc,

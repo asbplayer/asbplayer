@@ -2,7 +2,7 @@ import { asbError } from '@project/common/util/log';
 import { download } from '@project/common/util';
 import Mp3Encoder from '@project/common/audio-clip/mp3-encoder';
 
-import type { CardModel, FileModel, TranscodedAudioModel, TranscodedAudioState } from '@project/common';
+import type { AudioModel, CardModel, FileModel, TranscodedAudioModel, TranscodedAudioState } from '@project/common';
 import { AudioErrorCode } from '@project/common';
 import { snapshotMiningAudio } from '@project/common/audio-transcode/mining-audio';
 import { createBlobUrl, isActiveBlobUrl } from '@project/common/blob-url';
@@ -33,7 +33,7 @@ type AudioClipEventCallbacks = { [name in AudioClipEvent]: (() => void)[] };
 
 interface AudioData {
     name: string;
-    extension: string;
+    extension: AudioModel['extension'];
     start: number;
     play: () => Promise<void>;
     stop: () => void;
@@ -63,7 +63,7 @@ const invokeCallbacks = (eventName: AudioClipEvent, callbacks: AudioClipEventCal
 };
 
 function recorderConfiguration() {
-    const AUDIO_TYPES: { [key: string]: string } = {
+    const AUDIO_TYPES: { [key: string]: 'ogg' | 'webm' } = {
         'audio/ogg;codecs=opus': 'ogg',
         'audio/webm;codecs=opus': 'webm',
     };
@@ -78,7 +78,7 @@ class Base64AudioData implements AudioData {
     private readonly _end: number;
     private readonly playbackRate: number;
     private readonly _base64: string;
-    private readonly _extension: string;
+    private readonly _extension: AudioModel['extension'];
     private readonly _error?: AudioErrorCode;
     private readonly _callbacks: AudioClipEventCallbacks = { play: [], pause: [], error: [] };
     private playingAudio?: HTMLAudioElement;
@@ -91,7 +91,7 @@ class Base64AudioData implements AudioData {
         end: number,
         playbackRate: number,
         base64: string,
-        extension: string,
+        extension: AudioModel['extension'],
         error: AudioErrorCode | undefined
     ) {
         this._name = makeFileName(baseName, start);
@@ -107,7 +107,7 @@ class Base64AudioData implements AudioData {
         return this._name;
     }
 
-    get extension(): string {
+    get extension(): AudioModel['extension'] {
         return this._extension;
     }
 
@@ -518,7 +518,7 @@ class FileAudioData implements AudioData {
     private readonly _end: number;
     private readonly _playbackRate: number;
     private readonly _recordAudibly: boolean;
-    private readonly _extension: string;
+    private readonly _extension: 'ogg' | 'webm';
     private readonly _recorderMimeType: string;
     private _callbacks: AudioClipEventCallbacks;
 
@@ -560,7 +560,7 @@ class FileAudioData implements AudioData {
         return this._name;
     }
 
-    get extension(): string {
+    get extension(): AudioModel['extension'] {
         return this._extension;
     }
 
@@ -782,7 +782,7 @@ class Mp3AudioData implements AudioData {
         return this.data.name;
     }
 
-    get extension() {
+    get extension(): AudioModel['extension'] {
         return 'mp3';
     }
 
@@ -851,7 +851,7 @@ class EncodedAudioData implements AudioData {
         return this._data.name;
     }
 
-    get extension() {
+    get extension(): AudioModel['extension'] {
         return 'mp3';
     }
 
@@ -922,6 +922,22 @@ export default class AudioClip {
     }
 
     static fromCard(card: CardModel, paddingStart: number, paddingEnd: number, recordAudibly: boolean) {
+        const preferFile =
+            !card.audio || // No serialized audio - file is the only choice
+            (card.file?.blobUrl && isActiveBlobUrl(card.file.blobUrl)); // File pointer is alive
+
+        if (card.file && preferFile) {
+            if (card.file.transcodedAudio !== undefined && card.file.transcodedAudio.blobUrl === undefined) return;
+            return AudioClip.fromFile(
+                card.file,
+                Math.max(0, card.subtitle.start - paddingStart),
+                card.subtitle.end + paddingEnd,
+                card.file?.playbackRate ?? 1,
+                recordAudibly,
+                card.file?.audioTrack
+            );
+        }
+
         if (card.audio) {
             const start = card.audio.start ?? card.subtitle.start;
             const end = card.audio.end ?? card.subtitle.end;
@@ -937,18 +953,6 @@ export default class AudioClip {
             );
         }
 
-        if (card.file) {
-            if (card.file.transcodedAudio !== undefined && card.file.transcodedAudio.blobUrl === undefined) return;
-            return AudioClip.fromFile(
-                card.file,
-                Math.max(0, card.subtitle.start - paddingStart),
-                card.subtitle.end + paddingEnd,
-                card.file?.playbackRate ?? 1,
-                recordAudibly,
-                card.file?.audioTrack
-            );
-        }
-
         return undefined;
     }
 
@@ -958,7 +962,7 @@ export default class AudioClip {
         end: number,
         playbackRate: number,
         base64: string,
-        extension: string,
+        extension: AudioModel['extension'],
         error: AudioErrorCode | undefined
     ) {
         return new AudioClip(
@@ -1090,3 +1094,50 @@ export default class AudioClip {
         }
     }
 }
+
+/**
+ * The card's serialized audio model. Returns the already-serialized model if it exists, otherwise
+ * extracts a new one. Extraction failures return empty base64 with the error set.
+ */
+export const audioModelFromCard = async (
+    card: CardModel,
+    {
+        paddingStart,
+        paddingEnd,
+        recordAudibly,
+        mp3WorkerFactory,
+    }: {
+        paddingStart: number;
+        paddingEnd: number;
+        recordAudibly: boolean;
+        mp3WorkerFactory?: () => Worker;
+    }
+): Promise<AudioModel | undefined> => {
+    if (card.audio !== undefined) {
+        return card.audio;
+    }
+
+    const clip = AudioClip.fromCard(card, paddingStart, paddingEnd, recordAudibly);
+
+    if (clip === undefined) {
+        return undefined;
+    }
+
+    if (clip.error !== undefined) {
+        return { base64: '', extension: 'webm', paddingStart, paddingEnd, error: clip.error };
+    }
+
+    const encoded = mp3WorkerFactory === undefined ? clip : clip.toMp3(mp3WorkerFactory);
+
+    try {
+        return {
+            base64: await encoded.base64(),
+            extension: encoded.extension,
+            paddingStart,
+            paddingEnd,
+            playbackRate: card.file?.playbackRate ?? 1,
+        };
+    } catch {
+        return { base64: '', extension: 'webm', paddingStart, paddingEnd, error: AudioErrorCode.captureFailed };
+    }
+};

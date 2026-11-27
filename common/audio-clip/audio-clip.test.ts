@@ -1,6 +1,6 @@
-import AudioClip from '@project/common/audio-clip/audio-clip';
+import AudioClip, { audioModelFromCard } from '@project/common/audio-clip/audio-clip';
 import { AudioErrorCode } from '@project/common';
-import type { FileModel } from '@project/common';
+import type { AudioModel, CardModel, FileModel } from '@project/common';
 import { addBlobUrl } from '@project/common/blob-url';
 import { beforeAll, describe, expect, it, jest } from '@jest/globals';
 
@@ -88,6 +88,134 @@ describe('audio clips from a file', () => {
                 blobUrl: 'blob:gone-video',
                 transcodedAudio: { blobUrl: transcodedAudioBlobUrl, complete: true },
             }).error
+        ).toBeUndefined();
+    });
+});
+
+describe('audio clips from card', () => {
+    it('falls back to serialized audio if file pointer is dead', async () => {
+        const card = AudioClip.fromCard(
+            {
+                subtitle: { text: 'test', start: 0, end: 1, originalStart: 0, originalEnd: 1, track: 0 },
+                surroundingSubtitles: [],
+                subtitleFileName: 'asdf.jkl',
+                mediaTimestamp: 0,
+                audio: {
+                    base64: '1234',
+                    extension: 'webm',
+                    paddingStart: 0,
+                    paddingEnd: 0,
+                },
+                file: {
+                    name: 'a.mkv',
+                    blobUrl: 'dead url',
+                },
+            },
+            0,
+            0,
+            false
+        );
+        expect(card).toBeDefined();
+        expect(card?.extension).toBe('webm');
+    });
+
+    it('prefers file pointer if pointer is alive', async () => {
+        const blobUrl = 'active url for live file pointer audio clip test';
+        addBlobUrl(blobUrl);
+        const card = AudioClip.fromCard(
+            {
+                subtitle: { text: 'test', start: 0, end: 1, originalStart: 0, originalEnd: 1, track: 0 },
+                surroundingSubtitles: [],
+                subtitleFileName: 'asdf.jkl',
+                mediaTimestamp: 0,
+                audio: {
+                    base64: '1234',
+                    extension: 'ogg',
+                    paddingStart: 0,
+                    paddingEnd: 0,
+                },
+                file: {
+                    name: 'a.mkv',
+                    blobUrl,
+                },
+            },
+            0,
+            0,
+            false
+        );
+        expect(card).toBeDefined();
+        // Should be the extension of format returned from MediaRecorder
+        expect(card?.extension).toBe('ogg');
+    });
+});
+
+describe('audio model from card', () => {
+    beforeAll(() => {
+        (globalThis as any).MediaRecorder = { isTypeSupported: () => true };
+    });
+
+    const cardFor = (file?: FileModel, audio?: AudioModel): CardModel => ({
+        subtitle: { text: 'ねこ', start: 1000, end: 2000, originalStart: 1000, originalEnd: 2000, track: 0 },
+        surroundingSubtitles: [],
+        subtitleFileName: 'a.srt',
+        mediaTimestamp: 0,
+        file,
+        audio,
+    });
+
+    it('reuses the serialized audio already on the card', async () => {
+        const model = await audioModelFromCard(
+            cardFor(undefined, { base64: base64Mp3, extension: 'mp3', paddingStart: 0, paddingEnd: 500 }),
+            { paddingStart: 0, paddingEnd: 500, recordAudibly: false }
+        );
+
+        expect(model?.base64).toBe(base64Mp3);
+        expect(model?.extension).toBe('mp3');
+        expect(model?.error).toBeUndefined();
+    });
+
+    it('reports a lost file link instead of throwing', async () => {
+        const model = await audioModelFromCard(cardFor({ name: 'a.mkv', blobUrl: 'blob:gone' }), {
+            paddingStart: 0,
+            paddingEnd: 500,
+            recordAudibly: false,
+        });
+
+        expect(model?.base64).toBe('');
+        expect(model?.error).toBe(AudioErrorCode.fileLinkLost);
+    });
+
+    it('reports the error carried by already-serialized audio', async () => {
+        const model = await audioModelFromCard(
+            cardFor(undefined, {
+                base64: '',
+                extension: 'webm',
+                paddingStart: 0,
+                paddingEnd: 0,
+                error: AudioErrorCode.drmProtected,
+            }),
+            { paddingStart: 0, paddingEnd: 0, recordAudibly: false }
+        );
+
+        expect(model?.error).toBe(AudioErrorCode.drmProtected);
+    });
+
+    it('returns undefined when no conversion has emitted audio yet', async () => {
+        const model = await audioModelFromCard(
+            cardFor({
+                name: 'a.mkv',
+                blobUrl: 'blob:live-video',
+                transcodedAudio: { blobUrl: undefined, complete: false },
+            }),
+            { paddingStart: 0, paddingEnd: 500, recordAudibly: false }
+        );
+
+        expect(model).toBeUndefined();
+    });
+
+    it('returns undefined for a card with no audio source', async () => {
+        expect(
+            await audioModelFromCard(cardFor(), { paddingStart: 0, paddingEnd: 500, recordAudibly: false })
         ).toBeUndefined();
     });
 });

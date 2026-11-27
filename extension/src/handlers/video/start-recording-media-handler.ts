@@ -151,6 +151,7 @@ export default class StartRecordingMediaHandler {
                     url: startRecordingCommand.message.url,
                     subtitleFileName: startRecordingCommand.message.subtitleFileName,
                     mediaTimestamp: startRecordingCommand.message.mediaTimestamp,
+                    id: startRecordingCommand.message.id,
                 },
                 startRecordingCommand.message.postMineAction,
                 tabId,

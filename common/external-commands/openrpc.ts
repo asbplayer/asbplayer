@@ -38,12 +38,12 @@ function methodDefinition(method: ExternalApiMethod): MethodDefinition {
     const propertyNames = Object.keys(schema.properties ?? {});
 
     if (propertyNames.length > 0) {
-        params = propertyNames.map((name) => ({
-            name,
-            required: required.includes(name),
-            schema: schema.properties![name],
-            description: method.paramDescriptions?.[name],
-        }));
+        params = propertyNames.map((name) => {
+            const { description, ...paramSchema } = schema.properties![name] as JsonSchemaObject & {
+                description?: string;
+            };
+            return { name, required: required.includes(name), schema: paramSchema, description };
+        });
     }
 
     return {

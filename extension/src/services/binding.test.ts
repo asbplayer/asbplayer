@@ -1939,6 +1939,42 @@ describe('Binding playback mode integration', () => {
         }
     );
 
+    it('forceCapture overrides the recording settings for a single mine', async () => {
+        await storage.set({ streamingRecordMedia: false, streamingTakeScreenshot: false });
+        const video = createVideo();
+        const binding = new Binding(video, bindingOptions(false, false));
+        binding.bind();
+        await jest.advanceTimersByTimeAsync(0);
+        const subtitle = makeSubtitle({ text: 'Original subtitle' });
+        const surroundingSubtitles = [subtitle, makeSubtitle({ text: 'Translation', track: 1, index: 1 })];
+        sendSubtitles(binding, surroundingSubtitles);
+
+        const request = {
+            sender: 'asbplayer-extension-to-video',
+            src: binding.registeredVideoSrc,
+            message: {
+                command: 'copy-subtitle',
+                postMineAction: PostMineAction.none,
+                subtitle,
+                surroundingSubtitles,
+                forceCapture: ['audio', 'image'],
+            },
+        };
+        for (const listener of runtimeListeners) listener(request, {}, () => undefined);
+        await jest.advanceTimersByTimeAsync(0);
+
+        expect(browser.runtime.sendMessage).toHaveBeenCalledWith(
+            expect.objectContaining({
+                message: expect.objectContaining({
+                    command: 'record-media-and-forward-subtitle',
+                    record: true,
+                    screenshot: true,
+                }),
+            })
+        );
+        binding.unbind();
+    });
+
     it('recalculates adaptive playback when annotations arrive and retains the full subtitle collection', async () => {
         const dictionaryTracks: DictionaryTrack[] = JSON.parse(JSON.stringify(defaultSettings.dictionaryTracks));
         dictionaryTracks[0].dictionaryPlaybackConfig.fastForward.onStatuses[TokenStatus.UNCOLLECTED].enabled = true;

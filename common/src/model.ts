@@ -170,7 +170,7 @@ export enum AudioErrorCode {
 
 export interface AudioModel {
     readonly base64: string;
-    readonly extension: 'webm' | 'mp3';
+    readonly extension: 'ogg' | 'webm' | 'mp3';
     readonly paddingStart: number;
     readonly paddingEnd: number;
     readonly start?: number;

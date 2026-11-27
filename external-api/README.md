@@ -29,16 +29,16 @@ data and prose descriptions, never GPL source text.
 
 Standard JSON-RPC 2.0 codes plus server-defined codes in the `-32000..-32099` range:
 
-| Code     | Name             | Meaning                                                                                          | HTTP status (Go server bridge)      |
-| -------- | ---------------- | ------------------------------------------------------------------------------------------------ | ----------------------------------- |
-| `-32700` | Parse error      | Frame was not valid JSON (WebSocket servers and asbplayer's WebSocket client)                    | n/a (bridge builds requests itself) |
-| `-32600` | Invalid request  | A `jsonrpc: "2.0"` frame violated the envelope rules (e.g. a non-string `id`)                    | n/a                                 |
-| `-32601` | Method not found | Unknown method **request**, or an `external-extension-only` method invoked on a WebSocket server | n/a                                 |
-| `-32602` | Invalid params   | Params failed schema validation                                                                  | n/a                                 |
-| `-32603` | Internal error   | Unexpected failure while handling a valid request                                                | 500                                 |
-| `-32000` | Request timeout  | No asbplayer answered before the server's request timeout                                        | 503                                 |
-| `-32001` | No clients       | The server has no connected asbplayers to forward to                                             | 503                                 |
-| `-32002` | Not approved     | External extension sent a command before being approved                                          | n/a (external extension API only)   |
+| Code     | Name             | Meaning                                                                                          | HTTP status (Go server bridge) |
+| -------- | ---------------- | ------------------------------------------------------------------------------------------------ | ------------------------------ |
+| `-32700` | Parse error      | Frame was not valid JSON (WebSocket servers and asbplayer's WebSocket client)                    | 400                            |
+| `-32600` | Invalid request  | A `jsonrpc: "2.0"` frame violated the envelope rules (e.g. a non-string `id`)                    | 400                            |
+| `-32601` | Method not found | Unknown method **request**, or an `external-extension-only` method invoked on a WebSocket server | 501                            |
+| `-32602` | Invalid params   | Params failed schema validation                                                                  | 400                            |
+| `-32603` | Internal error   | Unexpected failure while handling a valid request                                                | 500                            |
+| `-32000` | Request timeout  | No asbplayer answered before the server's request timeout                                        | 503                            |
+| `-32001` | No clients       | The server has no connected asbplayers to forward to                                             | 503                            |
+| `-32002` | Not approved     | External extension sent a command before being approved                                          | n/a                            |
 
 Error responses use `"id": null` when the id cannot be determined, as JSON-RPC 2.0 requires for
 parse errors and for requests whose id is unusable (asbplayer only supports string ids).

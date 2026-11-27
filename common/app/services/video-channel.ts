@@ -46,6 +46,7 @@ import type {
 } from '@project/common';
 import { asbError } from '@project/common/util/log';
 import { PlayMode, PostMineAction } from '@project/common';
+import type { ForceCaptureKind } from '@project/common/external-commands/commands';
 import type {
     AnkiSettings,
     ApplyStrategy,
@@ -82,7 +83,8 @@ export default class VideoChannel {
         url: string | undefined,
         postMineAction: PostMineAction,
         id: string | undefined,
-        mediaTimestamp: number | undefined
+        mediaTimestamp: number | undefined,
+        forceCapture: ForceCaptureKind[] | undefined
     ) => void)[];
     private hideSubtitlePlayerToggleCallbacks: (() => void)[];
     private appBarToggleCallbacks: (() => void)[];
@@ -279,7 +281,8 @@ export default class VideoChannel {
                             copyMessage.url,
                             copyMessage.postMineAction ?? PostMineAction.none,
                             copyMessage.id,
-                            copyMessage.mediaTimestamp
+                            copyMessage.mediaTimestamp,
+                            copyMessage.forceCapture
                         );
                     }
                     break;
@@ -465,7 +468,8 @@ export default class VideoChannel {
             url: string | undefined,
             postMineAction: PostMineAction,
             id: string | undefined,
-            mediaTimestamp: number | undefined
+            mediaTimestamp: number | undefined,
+            forceCapture: ForceCaptureKind[] | undefined
         ) => void
     ) {
         this.copyCallbacks.push(callback);
@@ -898,7 +902,9 @@ export default class VideoChannel {
         postMineAction: PostMineAction,
         subtitle?: SubtitleModel,
         surroundingSubtitles?: SubtitleModel[],
-        cardTextFieldValues?: CardTextFieldValues
+        cardTextFieldValues?: CardTextFieldValues,
+        cardId?: string,
+        forceCapture?: ForceCaptureKind[]
     ) {
         const message: CopyToVideoMessage = {
             command: 'copy',
@@ -906,6 +912,8 @@ export default class VideoChannel {
             subtitle,
             surroundingSubtitles,
             ...(cardTextFieldValues ?? {}),
+            id: cardId,
+            forceCapture,
         };
         this.protocol.postMessage(message);
     }

@@ -27,7 +27,11 @@ Mines from the active tab by default. Set `mediaId` to an ID returned by [`get-b
 
 When `postMineAction` is `2`, `noteId` selects the Anki note to update. If omitted, the last-added note is updated. `noteId` applies to streaming media only and is ignored for local media.
 
+When `forceCapture` lists `audio` or `image`, that media is captured onto the saved card even when the recording settings are off. Failed captures still save the card, with the error code in `audio.error` or `image.error` (see [`get-mining-history`](#get-mining-history)).
+
 > `mediaId` and `noteId` require extension v1.20.0 or later.
+
+> `asbplayerCardId` and `forceCapture` require extension v1.24.0 or later.
 
 ### Request {#mine-subtitle-request}
 
@@ -47,7 +51,12 @@ When `postMineAction` is `2`, `noteId` selects the Anki note to update. If omitt
             // Optional media id from `get-bound-media`
             "mediaId": "a1b2c3d4e5f6",
             // Optional Anki note id to update when postMineAction is 2 (streaming media only)
-            "noteId": 1752856898044
+            "noteId": 1752856898044,
+            // Optional card UUID for card that is saved into asbplayer's mining history.
+            // If the specified card ID already exists in mining history, then the saved card is replaced.
+            "asbplayerCardId": "9cc59267-1a4d-4070-a020-3a4d0d4e508a",
+            // Media to capture onto the saved card even when the recording settings are off.
+            "forceCapture": ["audio", "image"]
         }
     }
     ```
@@ -180,6 +189,81 @@ Returns the media asbplayer is currently tracking, including both `streaming` an
             // Whether the media's tab is the active tab of its window
             "active": true
         }]
+    }
+}
+```
+
+## `get-mining-history` {#get-mining-history}
+
+> Requires extension v1.23.0+
+
+Queries asbplayer mining history.
+
+### Request {#get-mining-history-request}
+
+```javascript
+{
+    "jsonrpc": "2.0",
+    "id": "9f1c2b3a-4d5e-6f70-8190-a1b2c3d4e5f6",
+    "method": "get-mining-history",
+    "params": {
+        // Optional filter to apply to mining history query.
+        "filter": {
+            // Optional card IDs to filter on. If not specified (no cardIds key), means "any card ID."
+            "cardIds": ["0d4016ef-0b86-4259-a9bd-bd881ca55144", "ad6f113c-f84b-4f32-a3a8-c75bfcbcceaf"]
+        },
+        // Required limit
+        "limit": 10
+    }
+}
+```
+
+### Response {#get-mining-history-response}
+
+```javascript
+{
+    "jsonrpc": "2.0",
+    // Same id received in request
+    "id": "9f1c2b3a-4d5e-6f70-8190-a1b2c3d4e5f6",
+    "result": {
+        // Fetched cards
+        "cards": [
+            {
+                // Card ID in asbplayer's mining history
+                "id": "18347f58-9be0-49ef-8177-97e957754f4e",
+                // Subtitle model
+                "subtitle": {
+                    "start": 1920,
+                    "end": 4390,
+                    "text": "LLMについてよく耳にする否定的な意見としては...",
+                    "track": 0
+                },
+                // URL field if present
+                "url": "https://www.youtube.com/...",
+                // Image if present
+                "image": {
+                    // Base64-encoded image
+                    "base64": "UklGRlYfCQBXRUJQVlA4WAoAAAACAAAA1QYA1wM...",
+                    // Image extension
+                    "extension": "webp",
+                    // Optional flag indicating the image is animated
+                    "animated": true
+                },
+                // Audio if present
+                "audio": {
+                    // Base64-encoded audio
+                    "base64": "//u0BAAP8AAAaQAAAAgAAA0g...",
+                    // Audio extension
+                    "extension": "mp3",
+                    // Audio padding start
+                    "paddingStart": 0,
+                    // Audio padding end
+                    "paddingEnd": 500,
+                    // Playback rate
+                    "playbackRate": 1
+                }
+            }
+        ]
     }
 }
 ```

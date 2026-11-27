@@ -3,6 +3,7 @@ import type { WebSocketClientSettings } from '@project/common/settings';
 import type { CardTextFieldValues, PostMineAction } from '@project/common/src/model';
 import type { ExternalCommandMessage } from '@project/common';
 import { WebSocketClient, ExternalCommandDispatcher } from '@project/common/external-commands';
+import type { ForceCaptureKind } from '@project/common/external-commands/commands';
 import type ChromeExtension from '@project/common/app/services/chrome-extension';
 import type { ExtensionMessage } from '@project/common/app/services/chrome-extension';
 import { useEffect, useState } from 'react';
@@ -10,6 +11,9 @@ import { externalExtensionOnlyTag } from '@project/common/external-commands/exte
 
 export interface MineSubtitleParams extends CardTextFieldValues {
     postMineAction: PostMineAction;
+    // Optional, declared card ID that the card should be persisted with in mining history
+    cardId?: string;
+    forceCapture?: ForceCaptureKind[];
 }
 
 // Extensions older than the forwarding release already handle the other commands for this app.

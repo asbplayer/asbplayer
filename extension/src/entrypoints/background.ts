@@ -85,6 +85,7 @@ import BrowserFeaturesHandler from '@/handlers/asbplayerv2/browser-features-hand
 import OpenStatisticsHandler from '@/handlers/video/open-statistics-handler';
 import StatisticsOverlayForwarderHandler from '@/handlers/statistics-overlay/statistics-overlay-forwarder-handler';
 import OpenStatisticsOverlayHandler from '@/handlers/open-statistics-overlay-handler';
+import { ExtensionCopyHistoryRepository } from '@/services/copy-history-repository';
 
 export default defineBackground(() => {
     const logStore = new SessionLogStorage();
@@ -168,12 +169,14 @@ export default defineBackground(() => {
         isFirefoxBuild ? new CaptureStreamAudioRecorder() : new OffscreenAudioRecorder(settings)
     );
     const imageCapturer = new ImageCapturer(settings);
-    const cardPublisher = new CardPublisher(settings, tabRegistry);
+    const copyHistoryRepository = new ExtensionCopyHistoryRepository(settings, tabRegistry);
+    const cardPublisher = new CardPublisher(settings, copyHistoryRepository);
     const dictionaryDB = new DictionaryDB(settings);
     const externalConnectionCoordinator = new ExternalConnectionCoordinator({
         globalStateProvider,
         settings,
         tabRegistry,
+        copyHistoryRepository,
         badgeController,
     });
 
@@ -213,10 +216,10 @@ export default defineBackground(() => {
         new RequestSubtitlesHandler(),
         new RequestCurrentSubtitleHandler(),
         new SaveTokenLocalHandler(),
-        new RequestCopyHistoryHandler(),
-        new SaveCopyHistoryHandler(settings, tabRegistry),
-        new DeleteCopyHistoryHandler(settings, tabRegistry),
-        new ClearCopyHistoryHandler(settings, tabRegistry),
+        new RequestCopyHistoryHandler(copyHistoryRepository),
+        new SaveCopyHistoryHandler(copyHistoryRepository),
+        new DeleteCopyHistoryHandler(copyHistoryRepository),
+        new ClearCopyHistoryHandler(copyHistoryRepository),
         new PublishCardHandler(cardPublisher),
         new CardUpdatedDialogHandler(),
         new CardExportedDialogHandler(),
@@ -225,12 +228,12 @@ export default defineBackground(() => {
         new AckMessageHandler(tabRegistry),
         new AudioBase64Handler(audioRecorder),
         new UpdateMobileOverlayModelHandler(),
-        new RefreshSettingsHandler(tabRegistry, settings),
+        new RefreshSettingsHandler(tabRegistry, settings, copyHistoryRepository),
         new VideoToAsbplayerCommandForwardingHandler(tabRegistry),
         new AsbplayerToVideoCommandForwardingHandler(),
         new AsbplayerHeartbeatHandler(tabRegistry),
         new AckTabsHandler(tabRegistry),
-        new SettingsUpdatedHandler(tabRegistry, settings),
+        new SettingsUpdatedHandler(tabRegistry, settings, copyHistoryRepository),
         new OpenExtensionShortcutsHandler(),
         new ExtensionCommandsHandler(),
         new PageConfigHandler(),
@@ -494,7 +497,7 @@ export default defineBackground(() => {
             .getSingle('webSocketClientEnabled')
             .then(async (webSocketClientEnabled) => {
                 if (webSocketClientEnabled) {
-                    await bindWebSocketClient(settings, tabRegistry);
+                    await bindWebSocketClient(settings, tabRegistry, copyHistoryRepository);
                 } else {
                     unbindWebSocketClient();
                 }

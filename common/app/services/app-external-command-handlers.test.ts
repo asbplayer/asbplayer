@@ -2,6 +2,9 @@ import { describe, expect, it } from '@jest/globals';
 import type { SubtitleModel } from '@project/common/src/model';
 import { appExternalCommandHandlers } from '@project/common/app/services/app-external-command-handlers';
 import { localMediaId } from '@project/common/external-commands/media';
+import { SettingsProvider } from '@project/common/settings';
+import { MockSettingsStorage } from '@project/common/settings/mock-settings-storage';
+import { IndexedDBCopyHistoryRepository } from '@project/common/copy-history/copy-history-repository';
 
 const appId = 'b2c9c0f4-6a7f-4a1a-9d6c-2c1a1d3e4f50';
 
@@ -18,8 +21,11 @@ const handlers = ({
     subtitles = [],
     subtitleFileNames = [],
     active = true,
-}: Partial<{ subtitles: SubtitleModel[]; subtitleFileNames: string[]; active: boolean }> = {}) =>
-    appExternalCommandHandlers({ appId, subtitles, subtitleFileNames, isActive: () => active });
+}: Partial<{ subtitles: SubtitleModel[]; subtitleFileNames: string[]; active: boolean }> = {}) => {
+    const settings = new SettingsProvider(new MockSettingsStorage());
+    const repository = new IndexedDBCopyHistoryRepository(settings);
+    return appExternalCommandHandlers({ appId, subtitles, subtitleFileNames, isActive: () => active }, repository);
+};
 
 describe('get-bound-media', () => {
     it('reports no media when no subtitles are loaded', async () => {

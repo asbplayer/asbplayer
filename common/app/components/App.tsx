@@ -29,10 +29,17 @@ import type {
     RequestSubtitlesResponse,
     ConfirmedVideoDataSubtitleTrack,
 } from '@project/common';
-import { MediaFragment, PostMineAction, MediaFragmentErrorCode, VideoDataUiOpenReason } from '@project/common';
+import {
+    imageModelFromCard,
+    MediaFragment,
+    PostMineAction,
+    MediaFragmentErrorCode,
+    VideoDataUiOpenReason,
+} from '@project/common';
+import type { ForceCaptureKind } from '@project/common/external-commands/commands';
 import { createTheme } from '@project/common/theme';
 import type { AsbplayerSettings, DictionaryTrack, Profile, SettingsProvider } from '@project/common/settings';
-import { AudioClip, Mp3Encoder } from '@project/common/audio-clip';
+import { AudioClip, audioModelFromCard, Mp3Encoder } from '@project/common/audio-clip';
 import type { ExportParams } from '@project/common/anki';
 import { SubtitleReader } from '@project/common/subtitle-reader';
 import { subtitleSourceNames, subtitleSourceStatus } from '@project/common/subtitle-reader/subtitle-stream';
@@ -361,8 +368,8 @@ function App({
             return new ExtensionBridgedCopyHistoryRepository(extension);
         }
 
-        return new IndexedDBCopyHistoryRepository(settings.miningHistoryStorageLimit);
-    }, [extension, settings.miningHistoryStorageLimit]);
+        return new IndexedDBCopyHistoryRepository(settingsProvider);
+    }, [extension, settingsProvider]);
     const {
         copyHistoryItems,
         pendingCopyHistoryItems,
@@ -581,8 +588,38 @@ function App({
     // Avoid unnecessary re-renders by having handleCopy operate on a ref to settings
     const settingsRef = useRef(settings);
     settingsRef.current = settings;
+
+    // Only the saved entry gets the serialized media; the dialog/export flows keep the unserialized card.
+    const saveCopyHistoryItemWithForcedCapture = useCallback(
+        async (card: CopyHistoryItem, forceCapture?: ForceCaptureKind[]) => {
+            const [audio, image] = await Promise.all([
+                forceCapture?.includes('audio')
+                    ? audioModelFromCard(card, {
+                          paddingStart: settingsRef.current.audioPaddingStart,
+                          paddingEnd: settingsRef.current.audioPaddingEnd,
+                          recordAudibly: settingsRef.current.recordWithAudioPlayback,
+                          mp3WorkerFactory: settingsRef.current.preferMp3 ? () => new mp3WorkerFactory() : undefined,
+                      })
+                    : card.audio,
+                forceCapture?.includes('image')
+                    ? imageModelFromCard(card, {
+                          maxWidth: settingsRef.current.maxImageWidth,
+                          maxHeight: settingsRef.current.maxImageHeight,
+                          mediaFragmentFormat: settingsRef.current.mediaFragmentFormat,
+                          trimStart: settingsRef.current.mediaFragmentTrimStart,
+                          trimEnd: settingsRef.current.mediaFragmentTrimEnd,
+                          maxClipLength: settingsRef.current.mediaFragmentMaxClipLength,
+                          trimBlackBars: settingsRef.current.trimBlackBars,
+                      })
+                    : card.image,
+            ]);
+            await saveCopyHistoryItem({ ...card, audio, image });
+        },
+        [saveCopyHistoryItem]
+    );
+
     const handleCopy = useCallback(
-        async (card: CardModel, postMineAction?: PostMineAction, id?: string) => {
+        async (card: CardModel, postMineAction?: PostMineAction, forceCapture?: ForceCaptureKind[]) => {
             if (card.subtitle && settingsRef.current.copyToClipboardOnMine) {
                 void navigator.clipboard.writeText(card.subtitle.text);
             }
@@ -591,11 +628,11 @@ function App({
                 ...card,
                 subtitleFileName: card.subtitleFileName || card.file?.name || '',
                 timestamp: Date.now(),
-                id: id || uuidv4(),
+                id: card.id || uuidv4(),
             };
 
             retainCardAudioSource(newCard);
-            void saveCopyHistoryItem(newCard).catch(handleError);
+            void saveCopyHistoryItemWithForcedCapture(newCard, forceCapture).catch(handleError);
 
             switch (postMineAction ?? PostMineAction.none) {
                 case PostMineAction.none:
@@ -662,7 +699,7 @@ function App({
             miningContext,
             retainCardAudioSource,
             handleError,
-            saveCopyHistoryItem,
+            saveCopyHistoryItemWithForcedCapture,
             handleAnkiDialogProceed,
             handleAnkiDialogRequest,
             t,
@@ -1236,14 +1273,17 @@ function App({
     useEffect(
         () =>
             externalCommands.setHandlers(
-                appExternalCommandHandlers({
-                    appId: extension.id,
-                    subtitles,
-                    subtitleFileNames,
-                    isActive: () => document.visibilityState === 'visible',
-                })
+                appExternalCommandHandlers(
+                    {
+                        appId: extension.id,
+                        subtitles,
+                        subtitleFileNames,
+                        isActive: () => document.visibilityState === 'visible',
+                    },
+                    copyHistoryRepository
+                )
             ),
-        [externalCommands, extension, subtitles, subtitleFileNames]
+        [externalCommands, extension, subtitles, subtitleFileNames, copyHistoryRepository]
     );
 
     useEffect(() => {

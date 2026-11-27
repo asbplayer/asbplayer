@@ -41,6 +41,7 @@ import type {
     SaveTokenLocalToVideoMessage,
     IndexedSubtitleModel,
 } from '@project/common';
+import type { ForceCaptureKind } from '@project/common/external-commands/commands';
 import type { SubtitleSourceUpdate } from '@project/common/subtitle-reader/subtitle-stream';
 import { asbError } from '@project/common/util/log';
 import type {
@@ -87,7 +88,9 @@ export default class PlayerChannel {
         postMineAction: PostMineAction,
         subtitle?: SubtitleModel,
         surroundingSubtitles?: SubtitleModel[],
-        cardTextFieldValues?: CardTextFieldValues
+        cardTextFieldValues?: CardTextFieldValues,
+        cardId?: string,
+        forceCapture?: ForceCaptureKind[]
     ) => void)[];
 
     constructor(channel: string) {
@@ -293,13 +296,15 @@ export default class PlayerChannel {
                     const copyMessage = event.data as CopyToVideoMessage;
 
                     for (const callback of this.copyCallbacks) {
-                        const { text, word, definition, customFieldValues } = copyMessage;
+                        const { text, word, definition, customFieldValues, id: cardId } = copyMessage;
                         const cardTextFieldValues = { text, word, definition, customFieldValues };
                         callback(
                             copyMessage.postMineAction,
                             copyMessage.subtitle,
                             copyMessage.surroundingSubtitles,
-                            cardTextFieldValues
+                            cardTextFieldValues,
+                            cardId,
+                            copyMessage.forceCapture
                         );
                     }
                     break;
@@ -444,7 +449,9 @@ export default class PlayerChannel {
             postMineAction: PostMineAction,
             subtitle?: SubtitleModel,
             surroundingSubtitles?: SubtitleModel[],
-            cardTextFieldValues?: CardTextFieldValues
+            cardTextFieldValues?: CardTextFieldValues,
+            cardId?: string,
+            forceCapture?: ForceCaptureKind[]
         ) => void
     ) {
         this.copyCallbacks.push(callback);
@@ -542,16 +549,20 @@ export default class PlayerChannel {
         cardTextFieldValues: CardTextFieldValues,
         subtitleFileName: string,
         mediaTimestamp: number,
-        postMineAction: PostMineAction
+        postMineAction: PostMineAction,
+        cardId?: string,
+        forceCapture?: ForceCaptureKind[]
     ) {
         const message: CopyMessage = {
             command: 'copy',
+            id: cardId,
             subtitle,
             surroundingSubtitles,
             ...cardTextFieldValues,
             subtitleFileName,
             postMineAction,
             mediaTimestamp,
+            forceCapture,
         };
 
         this.channel?.postMessage(message);

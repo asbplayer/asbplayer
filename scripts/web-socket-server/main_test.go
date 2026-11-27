@@ -301,6 +301,23 @@ func await(t *testing.T, result chan asyncResponse) asyncResponse {
 	}
 }
 
+func (c clientCommand) bodyAsMap(t *testing.T) map[string]any {
+	t.Helper()
+	if m, ok := c.Body.(map[string]any); ok {
+		return m
+	}
+	buf, err := json.Marshal(c.Body)
+	if err != nil {
+		t.Fatalf("failed to convert command body to buf: %v", err)
+	}
+	m := make(map[string]any)
+	err = json.Unmarshal(buf, &m)
+	if err != nil {
+		t.Fatalf("failed to convert command body to map: %v", err)
+	}
+	return m
+}
+
 func TestConcurrentRequestsAnsweredOutOfOrderEachGetTheirOwnResponse(t *testing.T) {
 	h := newHarness(t, 2*time.Second, 0)
 	client := h.connect(t)
@@ -320,7 +337,7 @@ func TestConcurrentRequestsAnsweredOutOfOrderEachGetTheirOwnResponse(t *testing.
 	}
 
 	for i := requestCount - 1; i >= 0; i-- {
-		mediaId := commands[i].Body["mediaId"].(string)
+		mediaId := commands[i].bodyAsMap(t)["mediaId"].(string)
 		client.respond(t, commands[i].MessageId, `{"subtitles":[{"text":"`+mediaId+`","start":0,"end":1,"track":0}]}`)
 	}
 
@@ -501,47 +518,47 @@ func TestCommandShapesAndResponses(t *testing.T) {
 
 	command, response := exchange(http.MethodPost, "/asbplayer/load-subtitles",
 		`{"files":[{"name":"a.srt","base64":"AAA"}]}`, `{}`)
-	file := command.Body["files"].([]interface{})[0].(map[string]interface{})
+	file := command.bodyAsMap(t)["files"].([]interface{})[0].(map[string]interface{})
 
 	if command.Command != "load-subtitles" || file["name"] != "a.srt" || file["base64"] != "AAA" {
 		t.Fatalf("unexpected load-subtitles command: %v", command.Body)
 	}
 
-	if response.status != http.StatusOK || response.body != "" {
-		t.Fatalf("expected an empty 200, got %d %q", response.status, response.body)
+	if response.status != http.StatusOK || response.body != "{}" {
+		t.Fatalf("expected an empty object, got %d %q", response.status, response.body)
 	}
 
-	if _, hasMediaId := command.Body["mediaId"]; hasMediaId {
+	if _, hasMediaId := command.bodyAsMap(t)["mediaId"]; hasMediaId {
 		t.Fatalf("expected no mediaId when none was given: %v", command.Body)
 	}
 
 	command, _ = exchange(http.MethodPost, "/asbplayer/load-subtitles",
 		`{"files":[{"name":"a.srt","base64":"AAA"}],"mediaId":"abc"}`, `{}`)
 
-	if command.Command != "load-subtitles" || command.Body["mediaId"] != "abc" {
+	if command.Command != "load-subtitles" || command.bodyAsMap(t)["mediaId"] != "abc" {
 		t.Fatalf("unexpected targeted load-subtitles command: %v", command.Body)
 	}
 
 	command, response = exchange(http.MethodPost, "/asbplayer/seek", `{"timestamp":12.5,"mediaId":"abc"}`, `{}`)
 
-	if command.Command != "seek-timestamp" || command.Body["timestamp"] != 12.5 || command.Body["mediaId"] != "abc" {
+	if command.Command != "seek-timestamp" || command.bodyAsMap(t)["timestamp"] != 12.5 || command.bodyAsMap(t)["mediaId"] != "abc" {
 		t.Fatalf("unexpected seek-timestamp command: %v", command.Body)
 	}
 
-	if response.status != http.StatusOK || response.body != "" {
-		t.Fatalf("expected an empty 200, got %d %q", response.status, response.body)
+	if response.status != http.StatusOK || response.body != "{}" {
+		t.Fatalf("expected an empty object, got %d %q", response.status, response.body)
 	}
 
 	command, _ = exchange(http.MethodPost, "/asbplayer/seek", `{"timestamp":1}`, `{}`)
 
-	if _, present := command.Body["mediaId"]; present {
+	if _, present := command.bodyAsMap(t)["mediaId"]; present {
 		t.Fatalf("expected no mediaId in the body, got %v", command.Body)
 	}
 
 	boundMedia := `{"media":[{"id":"abc","type":"streaming","loadedSubtitles":[],"active":true}]}`
 	command, response = exchange(http.MethodGet, "/asbplayer/bound-media", "", boundMedia)
 
-	if command.Command != "get-bound-media" || len(command.Body) != 0 {
+	if command.Command != "get-bound-media" || len(command.bodyAsMap(t)) != 0 {
 		t.Fatalf("unexpected get-bound-media command: %v", command.Body)
 	}
 
@@ -551,9 +568,9 @@ func TestCommandShapesAndResponses(t *testing.T) {
 
 	subtitles := `{"subtitles":[{"text":"ねこ","start":0,"end":1000,"track":1}]}`
 	command, response = exchange(http.MethodGet, "/asbplayer/subtitles?mediaId=abc&trackNumbers=1,%202", "", subtitles)
-	trackNumbers := command.Body["trackNumbers"].([]interface{})
+	trackNumbers := command.bodyAsMap(t)["trackNumbers"].([]interface{})
 
-	if command.Command != "get-subtitles" || command.Body["mediaId"] != "abc" {
+	if command.Command != "get-subtitles" || command.bodyAsMap(t)["mediaId"] != "abc" {
 		t.Fatalf("unexpected get-subtitles command: %v", command.Body)
 	}
 
@@ -567,8 +584,121 @@ func TestCommandShapesAndResponses(t *testing.T) {
 
 	command, _ = exchange(http.MethodGet, "/asbplayer/subtitles", "", `{"subtitles":[]}`)
 
-	if len(command.Body) != 0 {
+	if len(command.bodyAsMap(t)) != 0 {
 		t.Fatalf("expected an empty body, got %v", command.Body)
+	}
+}
+
+func TestAsbplayerMineSubtitleRequest(t *testing.T) {
+	h := newHarness(t, 2*time.Second, 0)
+	client := h.connect(t)
+	h.waitForClients(t, 1)
+
+	result := h.requestAsync(t, http.MethodPost, "/asbplayer/mine-subtitle",
+		`{"fields":{"Word":"ねこ"},"postMineAction":2,"mediaId":"abc","noteId":42,"asbplayerCardId":"c1","forceCapture":["audio","image"]}`)
+	command := client.nextCommand(t)
+	body := command.bodyAsMap(t)
+
+	if command.Command != "mine-subtitle" || body["fields"].(map[string]any)["Word"] != "ねこ" ||
+		body["postMineAction"] != float64(2) || body["mediaId"] != "abc" ||
+		body["noteId"] != float64(42) || body["asbplayerCardId"] != "c1" {
+		t.Fatalf("unexpected mine-subtitle command: %v", command.Body)
+	}
+
+	forceCapture, ok := body["forceCapture"].([]any)
+
+	if !ok || len(forceCapture) != 2 || forceCapture[0] != "audio" || forceCapture[1] != "image" {
+		t.Fatalf("expected the forced capture kinds, got %v", body["forceCapture"])
+	}
+
+	client.respond(t, command.MessageId, `{"published":true}`)
+
+	if response := await(t, result); response.status != http.StatusOK || response.body != `{"published":true}` {
+		t.Fatalf("expected the client body verbatim, got %d %s", response.status, response.body)
+	}
+
+	result = h.requestAsync(t, http.MethodPost, "/asbplayer/mine-subtitle", `{"fields":{},"postMineAction":0}`)
+	command = client.nextCommand(t)
+	body = command.bodyAsMap(t)
+
+	for _, field := range []string{"mediaId", "noteId", "asbplayerCardId"} {
+		if _, ok := body[field]; ok {
+			t.Fatalf("expected no %s when none was given, got %v", field, command.Body)
+		}
+	}
+
+	client.respond(t, command.MessageId, `{}`)
+	await(t, result)
+
+	if status, _ := h.request(t, http.MethodPost, "/asbplayer/mine-subtitle", `not-json`); status != http.StatusBadRequest {
+		t.Fatalf("expected 400 for a malformed body, got %d", status)
+	}
+
+	// The typed request struct must also marshal as JSON-RPC params.
+	jsonRpcClient := h.connect(t)
+	h.waitForClients(t, 2)
+	h.announceJsonRpc(t, jsonRpcClient)
+
+	result = h.requestAsync(t, http.MethodPost, "/asbplayer/mine-subtitle", `{"fields":{"Word":"ねこ"},"postMineAction":1}`)
+	request := jsonRpcClient.nextJsonRpcRequest(t)
+	params, ok := request.Params.(map[string]any)
+
+	if !ok || request.Method != "mine-subtitle" || params["fields"].(map[string]any)["Word"] != "ねこ" {
+		t.Fatalf("unexpected JSON-RPC request: %+v", request)
+	}
+
+	jsonRpcClient.respondJsonRpc(t, request.Id, `{"published":true}`)
+
+	if response := await(t, result); response.status != http.StatusOK || response.body != `{"published":true}` {
+		t.Fatalf("expected the JSON-RPC result verbatim, got %d %s", response.status, response.body)
+	}
+}
+
+func TestAsbplayerMiningHistoryRequest(t *testing.T) {
+	h := newHarness(t, 2*time.Second, 0)
+	client := h.connect(t)
+	h.waitForClients(t, 1)
+
+	exchange := func(path string) (clientCommand, asyncResponse) {
+		result := h.requestAsync(t, http.MethodGet, path, "")
+		command := client.nextCommand(t)
+		client.respond(t, command.MessageId, `{"cards":[{"id":"c1"}]}`)
+		return command, await(t, result)
+	}
+
+	command, response := exchange("/asbplayer/mining-history?limit=10")
+	body := command.bodyAsMap(t)
+
+	if command.Command != "get-mining-history" || body["limit"] != float64(10) {
+		t.Fatalf("unexpected get-mining-history command: %v", command.Body)
+	}
+
+	if _, ok := body["filter"]; ok {
+		t.Fatalf("expected no filter when cardIds is absent, got %v", command.Body)
+	}
+
+	if response.status != http.StatusOK || response.body != `{"cards":[{"id":"c1"}]}` {
+		t.Fatalf("expected the client body verbatim, got %d %s", response.status, response.body)
+	}
+
+	command, _ = exchange("/asbplayer/mining-history?limit=5&cardIds=a,%20b,c")
+	body = command.bodyAsMap(t)
+	filter, ok := body["filter"].(map[string]any)
+
+	if !ok || body["limit"] != float64(5) {
+		t.Fatalf("unexpected get-mining-history command: %v", command.Body)
+	}
+
+	cardIds, ok := filter["cardIds"].([]any)
+
+	if !ok || len(cardIds) != 3 || cardIds[0] != "a" || cardIds[1] != "b" || cardIds[2] != "c" {
+		t.Fatalf("expected trimmed card ids, got %v", filter["cardIds"])
+	}
+
+	for _, path := range []string{"/asbplayer/mining-history", "/asbplayer/mining-history?limit=abc"} {
+		if status, _ := h.request(t, http.MethodGet, path, ""); status != http.StatusBadRequest {
+			t.Fatalf("expected 400 for %q, got %d", path, status)
+		}
 	}
 }
 
@@ -748,17 +878,55 @@ func TestJsonRpcRequestsAndResponses(t *testing.T) {
 }
 
 func TestJsonRpcErrorRoutesToHttpStatus(t *testing.T) {
-	h := newHarness(t, 2*time.Second, 0)
-	client := h.connect(t)
-	h.waitForClients(t, 1)
-	h.announceJsonRpc(t, client)
+	// Timeout and no-clients never arrive as client answers (see TestHttpStatusForRpcError).
+	cases := []struct {
+		code   int
+		status int
+	}{
+		{jsonRpcInternalError, http.StatusInternalServerError},
+		{jsonRpcParseError, http.StatusBadRequest},
+		{jsonRpcInvalidRequest, http.StatusBadRequest},
+		{jsonRpcInvalidParams, http.StatusBadRequest},
+		{jsonRpcMethodNotFound, http.StatusNotImplemented},
+	}
 
-	result := h.requestAsync(t, http.MethodGet, "/asbplayer/bound-media", "")
-	request := client.nextJsonRpcRequest(t)
-	client.respondJsonRpcError(t, request.Id, jsonRpcInternalError, "handler failed")
+	for _, testCase := range cases {
+		h := newHarness(t, 2*time.Second, 0)
+		client := h.connect(t)
+		h.waitForClients(t, 1)
+		h.announceJsonRpc(t, client)
 
-	if response := await(t, result); response.status != http.StatusInternalServerError {
-		t.Fatalf("expected 500 for an internal JSON-RPC error, got %d", response.status)
+		result := h.requestAsync(t, http.MethodGet, "/asbplayer/bound-media", "")
+		request := client.nextJsonRpcRequest(t)
+		client.respondJsonRpcError(t, request.Id, testCase.code, "handler failed")
+
+		if response := await(t, result); response.status != testCase.status {
+			t.Fatalf("expected %d for JSON-RPC error %d, got %d", testCase.status, testCase.code, response.status)
+		} else if !strings.Contains(response.body, "handler failed") {
+			t.Fatalf("expected the JSON-RPC error message in the body, got %q", response.body)
+		}
+	}
+}
+
+func TestHttpStatusForRpcError(t *testing.T) {
+	cases := []struct {
+		code   int
+		status int
+	}{
+		{jsonRpcParseError, http.StatusBadRequest},
+		{jsonRpcInvalidRequest, http.StatusBadRequest},
+		{jsonRpcInvalidParams, http.StatusBadRequest},
+		{jsonRpcMethodNotFound, http.StatusNotImplemented},
+		{jsonRpcInternalError, http.StatusInternalServerError},
+		{jsonRpcRequestTimeout, http.StatusServiceUnavailable},
+		{jsonRpcNoClients, http.StatusServiceUnavailable},
+		{-32099, http.StatusInternalServerError},
+	}
+
+	for _, testCase := range cases {
+		if status := httpStatusForRpcError(&rpcError{Code: testCase.code}); status != testCase.status {
+			t.Fatalf("expected %d for code %d, got %d", testCase.status, testCase.code, status)
+		}
 	}
 }
 
@@ -831,9 +999,9 @@ func TestMineSubtitleReportsPublished(t *testing.T) {
 
 	result := h.requestAsync(t, http.MethodPost, "/", `{"action":"addNote","params":{"note":{"fields":{"Word":"ねこ"}}}}`)
 	command := client.nextCommand(t)
-	fields := command.Body["fields"].(map[string]interface{})
+	fields := command.bodyAsMap(t)["fields"].(map[string]interface{})
 
-	if command.Command != "mine-subtitle" || fields["Word"] != "ねこ" || command.Body["postMineAction"] != float64(1) {
+	if command.Command != "mine-subtitle" || fields["Word"] != "ねこ" || command.bodyAsMap(t)["postMineAction"] != float64(1) {
 		t.Fatalf("unexpected mine-subtitle command: %v", command.Body)
 	}
 
