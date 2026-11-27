@@ -635,6 +635,9 @@ export interface PageSettings {
 export const streamingMediaFragmentFormats = ['jpeg', 'webp'] as const;
 export type StreamingMediaFragmentFormatSetting = (typeof streamingMediaFragmentFormats)[number];
 
+export const streamingOverlayPositions = ['auto', 'top', 'bottom', 'left', 'right'] as const;
+export type StreamingOverlayPosition = (typeof streamingOverlayPositions)[number];
+
 export interface StreamingVideoSettings {
     readonly streamingAppUrl: string;
     readonly streamingDisplaySubtitles: boolean;
@@ -654,6 +657,7 @@ export interface StreamingVideoSettings {
     readonly streamingAnimatedImageQuality: number;
     readonly streamingSubtitleListPreference: SubtitleListPreference;
     readonly streamingEnableOverlay: boolean;
+    readonly streamingOverlayPosition: StreamingOverlayPosition;
     readonly streamingPages: PageSettings;
 }
 

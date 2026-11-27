@@ -130,7 +130,7 @@ import BulkExportController from '@project/extension/src/controllers/bulk-export
 import VideoDataSyncController from '@project/extension/src/controllers/video-data-sync-controller';
 import AudioRecorder, { TimedRecordingInProgressError } from '@project/extension/src/services/audio-recorder';
 import { isMobile } from '@project/common/device-detection/mobile';
-import { OffsetAnchor } from '@project/extension/src/services/element-overlay';
+import { OffsetAnchor, overlayOffsetAnchor } from '@project/extension/src/services/element-overlay';
 import { ExtensionSettingsStorage } from '@project/extension/src/services/extension-settings-storage';
 import { i18nInit } from '@project/extension/src/services/i18n';
 import i18n from 'i18next';
@@ -1585,8 +1585,10 @@ export default class Binding {
             this.dragController.unbind();
         }
 
-        this.mobileVideoOverlayController.offsetAnchor =
-            currentSettings.subtitleAlignment === 'bottom' ? OffsetAnchor.top : OffsetAnchor.bottom;
+        this.mobileVideoOverlayController.offsetAnchor = overlayOffsetAnchor(
+            currentSettings.streamingOverlayPosition,
+            currentSettings.subtitleAlignment
+        );
         this.mobileVideoOverlayController.enabled = currentSettings.streamingEnableOverlay;
         if (currentSettings.streamingEnableOverlay) {
             void this.mobileVideoOverlayController.updateModel();

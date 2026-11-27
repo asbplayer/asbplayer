@@ -12,7 +12,13 @@ import TableRowWithHoverEffect from '@project/common/components/TableRowWithHove
 import TableCell from '@mui/material/TableCell';
 import SwitchLabelWithHoverEffect from '@project/common/components/SwitchLabelWithHoverEffect';
 import { useTranslation } from 'react-i18next';
-import type { AsbplayerSettings, Page, PageSettings, YoutubePage } from '@project/common/settings';
+import type {
+    AsbplayerSettings,
+    Page,
+    PageSettings,
+    StreamingOverlayPosition,
+    YoutubePage,
+} from '@project/common/settings';
 import { SubtitleListPreference } from '@project/common/settings';
 import Paper from '@mui/material/Paper';
 import { pageMetadata } from '@project/common/pages';
@@ -43,6 +49,7 @@ interface Props {
     onSettingsChanged: (settings: Partial<AsbplayerSettings>) => void;
     insideApp?: boolean;
     extensionSupportsOverlay?: boolean;
+    extensionSupportsOverlayPosition?: boolean;
     extensionSupportsPageSettings?: boolean;
     extensionSupportsAnimatedImageCapture?: boolean;
     pageConfigs?: PageConfigMap;
@@ -54,6 +61,7 @@ const StreamingVideoSettingsTab: React.FC<Props> = ({
     onSettingsChanged,
     insideApp,
     extensionSupportsOverlay,
+    extensionSupportsOverlayPosition,
     extensionSupportsPageSettings,
     extensionSupportsAnimatedImageCapture,
     pageConfigs,
@@ -62,6 +70,7 @@ const StreamingVideoSettingsTab: React.FC<Props> = ({
     const {
         streamingSubtitleListPreference,
         streamingEnableOverlay,
+        streamingOverlayPosition,
         streamingDisplaySubtitles,
         streamingRecordMedia,
         streamingTakeScreenshot,
@@ -133,6 +142,25 @@ const StreamingVideoSettingsTab: React.FC<Props> = ({
                         label={t('extension.settings.enableOverlay')}
                         labelPlacement="start"
                     />
+                )}
+                {extensionSupportsOverlay && extensionSupportsOverlayPosition && (
+                    <SettingsTextField
+                        select
+                        fullWidth
+                        color="primary"
+                        disabled={!streamingEnableOverlay}
+                        label={t('extension.settings.overlayPosition')}
+                        value={streamingOverlayPosition}
+                        onChange={(e) =>
+                            onSettingChanged('streamingOverlayPosition', e.target.value as StreamingOverlayPosition)
+                        }
+                    >
+                        <MenuItem value="auto">{t('extension.settings.overlayPositionAuto')}</MenuItem>
+                        <MenuItem value="top">{t('extension.settings.overlayPositionTop')}</MenuItem>
+                        <MenuItem value="bottom">{t('extension.settings.overlayPositionBottom')}</MenuItem>
+                        <MenuItem value="left">{t('extension.settings.overlayPositionLeft')}</MenuItem>
+                        <MenuItem value="right">{t('extension.settings.overlayPositionRight')}</MenuItem>
+                    </SettingsTextField>
                 )}
                 <SwitchLabelWithHoverEffect
                     control={

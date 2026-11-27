@@ -24,6 +24,12 @@ it('validates the default settings', () => {
     validateSettings(defaultSettings);
 });
 
+it('validates streamingOverlayPosition values and rejects invalid values', () => {
+    expect(validateSettings({ streamingOverlayPosition: 'left' }).streamingOverlayPosition).toBe('left');
+    expect(validateSettings({ streamingOverlayPosition: 'right' }).streamingOverlayPosition).toBe('right');
+    expect(() => validateSettings({ streamingOverlayPosition: 'center' })).toThrow();
+});
+
 it('imports a file old enough to exercise the consistency migration paths', () => {
     // Hand-built export from before annotation configs, playback settings,
     // recipes, and newer key binds.

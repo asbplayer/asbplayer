@@ -24,6 +24,7 @@ import { useMobileVideoOverlayLocation } from '@project/extension/src/ui/hooks/u
 import { SettingsProvider } from '@project/common/settings';
 import { ExtensionSettingsStorage } from '@project/extension/src/services/extension-settings-storage';
 import MobileVideoOverlay from '@project/common/components/MobileVideoOverlay';
+import type { Anchor } from '@project/common/components/MobileVideoOverlay';
 import { useI18n } from '@project/extension/src/ui/hooks/use-i18n';
 import { isMobile } from '@project/common/device-detection/mobile';
 import useLastScrollableControlType from '@project/common/hooks/use-last-scrollable-control-type';
@@ -32,10 +33,12 @@ import { StyledEngineProvider } from '@mui/material/styles';
 
 const settings = new SettingsProvider(new ExtensionSettingsStorage());
 const params = new URLSearchParams(location.search);
-const anchor = params.get('anchor') as 'top' | 'bottom';
+const anchor = (params.get('anchor') ?? 'top') as Anchor;
+const isVertical = anchor === 'left' || anchor === 'right';
 const tooltipsEnabled = params.get('tooltips') === 'true';
 const containerHeight = 48;
 const scrollBufferHeight = 100;
+const verticalDismissThreshold = 20;
 const lastControlTypeKey = 'lastScrollableControlType';
 
 const fetchLastControlType = async (): Promise<ControlType | undefined> => {
@@ -203,10 +206,13 @@ const MobileVideoOverlayUi = () => {
             }
 
             if (!hiddenRef.current) {
-                if (
+                const dismissed =
                     (anchor === 'top' && document.body.scrollTop >= containerHeight) ||
-                    (anchor === 'bottom' && document.body.scrollTop <= scrollBufferHeight)
-                ) {
+                    (anchor === 'bottom' && document.body.scrollTop <= scrollBufferHeight) ||
+                    (anchor === 'left' && document.body.scrollLeft >= verticalDismissThreshold) ||
+                    (anchor === 'right' && document.body.scrollLeft <= verticalDismissThreshold);
+
+                if (dismissed) {
                     const command: MobileOverlayToVideoCommand<HiddenMessage> = {
                         sender: 'asbplayer-mobile-overlay-to-video',
                         message: {
@@ -224,18 +230,6 @@ const MobileVideoOverlayUi = () => {
         return () => document.body.removeEventListener('scrollend', scrollListener);
     }, [location]);
 
-    useEffect(() => {
-        // Depending on anchor, the mobile overlay will be at the bottom or top of the scrolling buffer
-        // We need to make sure the iframe is scrolled to the right place so that the overlay shows
-        if (anchor === 'top') {
-            document.documentElement.scrollTop = 0;
-            document.body.scrollTop = 0;
-        } else {
-            document.documentElement.scrollTop = document.documentElement.scrollHeight;
-            document.body.scrollTop = document.body.scrollHeight;
-        }
-    }, []);
-
     const { initialized: i18nInitialized } = useI18n({ language: model?.language ?? project.defaultLanguage });
     const { lastControlType, setLastControlType } = useLastScrollableControlType({
         isMobile,
@@ -247,7 +241,32 @@ const MobileVideoOverlayUi = () => {
         [model?.themeType]
     );
 
-    if (!i18nInitialized || lastControlType === undefined || !theme) {
+    const ready = i18nInitialized && lastControlType !== undefined && theme !== undefined;
+    const hasModel = model !== undefined;
+
+    useEffect(() => {
+        if (!ready || !hasModel || hiddenRef.current) {
+            return;
+        }
+
+        // Depending on anchor, the mobile overlay will be at an edge of the scrolling buffer
+        // We need to make sure the iframe is scrolled to the right place so that the overlay shows
+        if (anchor === 'top') {
+            document.documentElement.scrollTop = 0;
+            document.body.scrollTop = 0;
+        } else if (anchor === 'bottom') {
+            document.documentElement.scrollTop = document.documentElement.scrollHeight;
+            document.body.scrollTop = document.body.scrollHeight;
+        } else if (anchor === 'left') {
+            document.documentElement.scrollLeft = 0;
+            document.body.scrollLeft = 0;
+        } else {
+            document.documentElement.scrollLeft = document.documentElement.scrollWidth;
+            document.body.scrollLeft = document.body.scrollWidth;
+        }
+    }, [ready, hasModel]);
+
+    if (!ready) {
         return null;
     }
 
@@ -260,7 +279,7 @@ const MobileVideoOverlayUi = () => {
                     anchor={anchor}
                     tooltipsEnabled={tooltipsEnabled}
                     initialControlType={lastControlType}
-                    flexDirection="row"
+                    flexDirection={isVertical ? 'column' : 'row'}
                     onScrollToControlType={setLastControlType}
                     onMineSubtitle={handleMineSubtitle}
                     onLoadSubtitles={handleLoadSubtitles}

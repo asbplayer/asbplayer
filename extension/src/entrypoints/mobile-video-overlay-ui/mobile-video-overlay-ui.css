@@ -26,3 +26,31 @@ html {
 .asbplayer-mobile-video-overlay-scroll-buffer {
     height: 200px;
 }
+
+.asbplayer-mobile-video-overlay-inner-container-vertical {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    margin: 0;
+    height: 100vh;
+    width: 100%;
+    overflow-x: scroll;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+}
+
+.asbplayer-mobile-video-overlay-inner-container-vertical > #root {
+    flex: 0 0 auto;
+    min-width: 40px;
+    scroll-snap-align: start;
+}
+
+.asbplayer-mobile-video-overlay-inner-container-vertical-right > #root {
+    scroll-snap-align: end;
+}
+
+.asbplayer-mobile-video-overlay-inner-container-vertical > .asbplayer-mobile-video-overlay-scroll-buffer-horizontal {
+    flex: 0 0 100vw;
+    height: 100%;
+    scroll-snap-align: start;
+}

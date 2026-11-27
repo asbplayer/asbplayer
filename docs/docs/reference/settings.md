@@ -829,6 +829,10 @@ Determines where the extension fetches some configuration, and what URL to open 
 
 Display the overlay UI on video elements with loaded subtitles.
 
+### Controls overlay position {#controls-overlay-position}
+
+Sets where the controls overlay is placed on streaming video elements. **Auto** places the overlay at the top when subtitles are bottom-aligned and at the bottom when subtitles are top-aligned. Choose **Top**, **Bottom**, **Left**, or **Right** to fix the overlay to that edge of the video.
+
 ### Display subtitles {#display-subtitles}
 
 Display loaded subtitles on video elements.

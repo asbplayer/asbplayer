@@ -249,6 +249,7 @@ export const defaultSettings: AsbplayerSettings = {
     streamingAnimatedImageQuality: 0.85,
     streamingSubtitleListPreference: SubtitleListPreference.noSubtitleList,
     streamingEnableOverlay: true,
+    streamingOverlayPosition: 'auto',
     streamingPages: {
         netflix: {},
         youtube: {},

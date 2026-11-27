@@ -179,6 +179,7 @@ interface Props {
     extensionVersion?: string;
     extensionSupportsAppIntegration: boolean;
     extensionSupportsOverlay: boolean;
+    extensionSupportsOverlayPosition: boolean;
     extensionSupportsSidePanel: boolean;
     extensionSupportsOrderableAnkiFields: boolean;
     extensionSupportsTrackSpecificSettings: boolean;
@@ -242,6 +243,7 @@ export default function SettingsForm({
     extensionVersion,
     extensionSupportsAppIntegration,
     extensionSupportsOverlay,
+    extensionSupportsOverlayPosition,
     extensionSupportsSidePanel,
     extensionSupportsSubtitleTrackSelectorInWebApp,
     extensionSupportsSubtitleListCustomization,
@@ -648,6 +650,7 @@ export default function SettingsForm({
                         onSettingsChanged={onSettingsChanged}
                         insideApp={insideApp}
                         extensionSupportsOverlay={extensionSupportsOverlay}
+                        extensionSupportsOverlayPosition={extensionSupportsOverlayPosition}
                         extensionSupportsPageSettings={extensionSupportsPageSettings}
                         extensionSupportsAnimatedImageCapture={extensionSupportsAnimatedImageCapture}
                         pageConfigs={pageConfigs}
