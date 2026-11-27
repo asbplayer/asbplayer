@@ -29,11 +29,17 @@ import type {
     RequestSubtitlesResponse,
     ConfirmedVideoDataSubtitleTrack,
 } from '@project/common';
-import { MediaFragment, PostMineAction, MediaFragmentErrorCode, VideoDataUiOpenReason } from '@project/common';
+import {
+    imageModelFromCard,
+    MediaFragment,
+    PostMineAction,
+    MediaFragmentErrorCode,
+    VideoDataUiOpenReason,
+} from '@project/common';
 import type { ForceCaptureKind } from '@project/common/external-commands/commands';
 import { createTheme } from '@project/common/theme';
 import type { AsbplayerSettings, DictionaryTrack, Profile, SettingsProvider } from '@project/common/settings';
-import { AudioClip, Mp3Encoder } from '@project/common/audio-clip';
+import { AudioClip, audioModelFromCard, Mp3Encoder } from '@project/common/audio-clip';
 import type { ExportParams } from '@project/common/anki';
 import { SubtitleReader } from '@project/common/subtitle-reader';
 import { subtitleSourceNames, subtitleSourceStatus } from '@project/common/subtitle-reader/subtitle-stream';
@@ -589,25 +595,24 @@ function App({
             let { audio, image } = card;
 
             if (forceCapture?.includes('audio')) {
-                audio = await AudioClip.audioModelFromCard(
-                    card,
-                    settingsRef.current.audioPaddingStart,
-                    settingsRef.current.audioPaddingEnd,
-                    settingsRef.current.preferMp3 ? () => new mp3WorkerFactory() : undefined
-                );
+                audio = await audioModelFromCard(card, {
+                    paddingStart: settingsRef.current.audioPaddingStart,
+                    paddingEnd: settingsRef.current.audioPaddingEnd,
+                    recordAudibly: settingsRef.current.recordWithAudioPlayback,
+                    mp3WorkerFactory: settingsRef.current.preferMp3 ? () => new mp3WorkerFactory() : undefined,
+                });
             }
 
             if (forceCapture?.includes('image')) {
-                image = await MediaFragment.imageModelFromCard(
-                    card,
-                    settingsRef.current.maxImageWidth,
-                    settingsRef.current.maxImageHeight,
-                    settingsRef.current.mediaFragmentFormat,
-                    settingsRef.current.mediaFragmentTrimStart,
-                    settingsRef.current.mediaFragmentTrimEnd,
-                    settingsRef.current.mediaFragmentMaxClipLength,
-                    settingsRef.current.trimBlackBars
-                );
+                image = await imageModelFromCard(card, {
+                    maxWidth: settingsRef.current.maxImageWidth,
+                    maxHeight: settingsRef.current.maxImageHeight,
+                    mediaFragmentFormat: settingsRef.current.mediaFragmentFormat,
+                    trimStart: settingsRef.current.mediaFragmentTrimStart,
+                    trimEnd: settingsRef.current.mediaFragmentTrimEnd,
+                    maxClipLength: settingsRef.current.mediaFragmentMaxClipLength,
+                    trimBlackBars: settingsRef.current.trimBlackBars,
+                });
             }
 
             await saveCopyHistoryItem({ ...card, audio, image });

@@ -1002,44 +1002,6 @@ export default class AudioClip {
         );
     }
 
-    /**
-     * The card's serialized audio model. Returns already-serialized model if it exist. Otherwise, returns a new serialized model.
-     */
-    static async audioModelFromCard(
-        card: CardModel,
-        paddingStart: number,
-        paddingEnd: number,
-        mp3WorkerFactory?: () => Worker
-    ): Promise<AudioModel | undefined> {
-        if (card.audio !== undefined) {
-            return card.audio;
-        }
-
-        const clip = AudioClip.fromCard(card, paddingStart, paddingEnd, false);
-
-        if (clip === undefined) {
-            return undefined;
-        }
-
-        if (clip.error !== undefined) {
-            return { base64: '', extension: 'webm', paddingStart, paddingEnd, error: clip.error };
-        }
-
-        const encoded = mp3WorkerFactory === undefined ? clip : clip.toMp3(mp3WorkerFactory);
-
-        try {
-            return {
-                base64: await encoded.base64(),
-                extension: encoded.extension,
-                paddingStart,
-                paddingEnd,
-                playbackRate: card.file?.playbackRate ?? 1,
-            };
-        } catch {
-            return { base64: '', extension: 'webm', paddingStart, paddingEnd, error: AudioErrorCode.captureFailed };
-        }
-    }
-
     get start() {
         return this.data.start;
     }
@@ -1128,3 +1090,50 @@ export default class AudioClip {
         }
     }
 }
+
+/**
+ * The card's serialized audio model. Returns the already-serialized model if it exists, otherwise
+ * extracts a new one. Extraction failures return empty base64 with the error set.
+ */
+export const audioModelFromCard = async (
+    card: CardModel,
+    {
+        paddingStart,
+        paddingEnd,
+        recordAudibly,
+        mp3WorkerFactory,
+    }: {
+        paddingStart: number;
+        paddingEnd: number;
+        recordAudibly: boolean;
+        mp3WorkerFactory?: () => Worker;
+    }
+): Promise<AudioModel | undefined> => {
+    if (card.audio !== undefined) {
+        return card.audio;
+    }
+
+    const clip = AudioClip.fromCard(card, paddingStart, paddingEnd, recordAudibly);
+
+    if (clip === undefined) {
+        return undefined;
+    }
+
+    if (clip.error !== undefined) {
+        return { base64: '', extension: 'webm', paddingStart, paddingEnd, error: clip.error };
+    }
+
+    const encoded = mp3WorkerFactory === undefined ? clip : clip.toMp3(mp3WorkerFactory);
+
+    try {
+        return {
+            base64: await encoded.base64(),
+            extension: encoded.extension,
+            paddingStart,
+            paddingEnd,
+            playbackRate: card.file?.playbackRate ?? 1,
+        };
+    } catch {
+        return { base64: '', extension: 'webm', paddingStart, paddingEnd, error: AudioErrorCode.captureFailed };
+    }
+};

@@ -38,7 +38,7 @@ Standard JSON-RPC 2.0 codes plus server-defined codes in the `-32000..-32099` ra
 | `-32603` | Internal error   | Unexpected failure while handling a valid request                                                | 500                            |
 | `-32000` | Request timeout  | No asbplayer answered before the server's request timeout                                        | 503                            |
 | `-32001` | No clients       | The server has no connected asbplayers to forward to                                             | 503                            |
-| `-32002` | Not approved     | External extension sent a command before being approved                                          | 403                            |
+| `-32002` | Not approved     | External extension sent a command before being approved                                          | n/a                            |
 
 Error responses use `"id": null` when the id cannot be determined, as JSON-RPC 2.0 requires for
 parse errors and for requests whose id is unusable (asbplayer only supports string ids).

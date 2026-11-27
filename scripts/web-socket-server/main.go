@@ -453,8 +453,6 @@ func httpStatusForRpcError(rpcError *rpcError) int {
 		return http.StatusBadRequest
 	case jsonRpcMethodNotFound:
 		return http.StatusNotImplemented
-	case jsonRpcNotApproved:
-		return http.StatusForbidden
 	default:
 		return http.StatusInternalServerError
 	}

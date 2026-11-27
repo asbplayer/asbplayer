@@ -1,3 +1,4 @@
+import '@project/common/copy-history/test-database';
 import { afterEach, describe, expect, it } from '@jest/globals';
 import type { AsbplayerInstance, SubtitleModel, VideoTabModel } from '@project/common';
 import { PostMineAction } from '@project/common';
@@ -9,6 +10,7 @@ import { externalCommandHandlers } from '@project/extension/src/services/externa
 import { localMediaId, streamingMediaId } from '@project/common/external-commands/media';
 import { filterByTracks, toSubtitleCues } from '@project/common/external-commands/util';
 import { IndexedDBCopyHistoryRepository } from '@project/common/copy-history';
+import { ExternalCommandDispatcher } from '@project/common/external-commands/dispatcher';
 
 const subtitle = (text: string, track: number, start: number): SubtitleModel => ({
     text,
@@ -134,8 +136,16 @@ const harness = ({
     } as unknown as TabRegistry;
 
     const settings = new SettingsProvider(new ExtensionSettingsStorage(new MockStorageArea()));
-    const handlers = externalCommandHandlers(settings, tabRegistry, new IndexedDBCopyHistoryRepository(settings));
-    return { handlers, settings, videoElementCommands, asbplayerCommands, videoElementTabCommands };
+    const copyHistoryRepository = new IndexedDBCopyHistoryRepository(settings);
+    const handlers = externalCommandHandlers(settings, tabRegistry, copyHistoryRepository);
+    return {
+        handlers,
+        settings,
+        copyHistoryRepository,
+        videoElementCommands,
+        asbplayerCommands,
+        videoElementTabCommands,
+    };
 };
 
 const mineCommand = (body: any) => ({ command: 'mine-subtitle' as const, messageId: 'm', body });
@@ -600,5 +610,55 @@ describe('load-subtitles', () => {
         await handlers.onLoadSubtitles(loadCommand({}));
 
         expect(asbplayerCommands).toEqual([]);
+    });
+});
+
+describe('get-mining-history', () => {
+    const card = (id: string, overrides: Record<string, unknown> = {}) => ({
+        subtitle: subtitle('ねこ', 0, 1000),
+        surroundingSubtitles: [],
+        subtitleFileName: 'a.srt',
+        mediaTimestamp: 1500,
+        timestamp: 1234,
+        id,
+        ...overrides,
+    });
+
+    it('answers a JSON-RPC request with saved cards mapped to the result schema', async () => {
+        const { handlers, copyHistoryRepository } = harness({
+            asbplayers: [asbplayerInstance('asbplayer-1', 3)],
+            activeTabId: 3,
+        });
+        await copyHistoryRepository.clear();
+        await copyHistoryRepository.save(
+            card('id-1', {
+                url: 'https://example.com/watch',
+                audio: { base64: 'QUJD', extension: 'mp3', paddingStart: 0, paddingEnd: 500, playbackRate: 1 },
+            })
+        );
+        await copyHistoryRepository.save(card('id-2', { image: { base64: 'SUlJ', extension: 'jpeg' } }));
+
+        const dispatcher = new ExternalCommandDispatcher();
+        dispatcher.setHandlers(handlers);
+        const response = (await dispatcher.dispatch(
+            JSON.stringify({
+                jsonrpc: '2.0',
+                id: 'r1',
+                method: 'get-mining-history',
+                params: { filter: { cardIds: ['id-2'] }, limit: 10 },
+            })
+        )) as any;
+
+        expect(response.error).toBeUndefined();
+        expect(response.id).toBe('r1');
+        expect(response.result).toEqual({
+            cards: [
+                {
+                    id: 'id-2',
+                    subtitle: { text: 'ねこ', start: 1000, end: 2000, track: 0 },
+                    image: { base64: 'SUlJ', extension: 'jpeg' },
+                },
+            ],
+        });
     });
 });

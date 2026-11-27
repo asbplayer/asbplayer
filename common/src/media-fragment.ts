@@ -374,53 +374,6 @@ export default class MediaFragment {
         );
     }
 
-    /**
-     * The card's serialized image model. Returns already-serialized model if it exist. Otherwise, returns a new serialized model.
-     */
-    static async imageModelFromCard(
-        card: CardModel,
-        maxWidth: number,
-        maxHeight: number,
-        mediaFragmentFormat: MediaFragmentFormat,
-        trimStart: number,
-        trimEnd: number,
-        maxClipLength: number,
-        trimBlackBars: boolean
-    ): Promise<MediaFragmentModel | undefined> {
-        if (card.image !== undefined) {
-            return card.image;
-        }
-
-        const fragment = MediaFragment.fromCard(
-            card,
-            maxWidth,
-            maxHeight,
-            mediaFragmentFormat,
-            trimStart,
-            trimEnd,
-            maxClipLength,
-            trimBlackBars
-        );
-
-        if (fragment === undefined) {
-            return undefined;
-        }
-
-        if (fragment.error !== undefined) {
-            return { base64: '', extension: 'jpeg', error: fragment.error };
-        }
-
-        try {
-            return {
-                base64: await fragment.base64(),
-                extension: fragment.extension as MediaFragmentModel['extension'],
-                animated: fragment.animated,
-            };
-        } catch {
-            return { base64: '', extension: 'jpeg', error: MediaFragmentErrorCode.captureFailed };
-        }
-    }
-
     get name() {
         return this.data.name;
     }
@@ -514,3 +467,61 @@ export default class MediaFragment {
         });
     }
 }
+
+/**
+ * The card's serialized image model. Returns the already-serialized model if it exists, otherwise
+ * renders a new one. Rendering failures return empty base64 with the error set.
+ */
+export const imageModelFromCard = async (
+    card: CardModel,
+    {
+        maxWidth,
+        maxHeight,
+        mediaFragmentFormat,
+        trimStart,
+        trimEnd,
+        maxClipLength,
+        trimBlackBars,
+    }: {
+        maxWidth: number;
+        maxHeight: number;
+        mediaFragmentFormat: MediaFragmentFormat;
+        trimStart: number;
+        trimEnd: number;
+        maxClipLength: number;
+        trimBlackBars: boolean;
+    }
+): Promise<MediaFragmentModel | undefined> => {
+    if (card.image !== undefined) {
+        return card.image;
+    }
+
+    const fragment = MediaFragment.fromCard(
+        card,
+        maxWidth,
+        maxHeight,
+        mediaFragmentFormat,
+        trimStart,
+        trimEnd,
+        maxClipLength,
+        trimBlackBars
+    );
+
+    if (fragment === undefined) {
+        return undefined;
+    }
+
+    if (fragment.error !== undefined) {
+        return { base64: '', extension: 'jpeg', error: fragment.error };
+    }
+
+    try {
+        return {
+            base64: await fragment.base64(),
+            extension: fragment.extension as MediaFragmentModel['extension'],
+            animated: fragment.animated,
+        };
+    } catch {
+        return { base64: '', extension: 'jpeg', error: MediaFragmentErrorCode.captureFailed };
+    }
+};

@@ -214,17 +214,17 @@ export const mineSubtitleParamsSchema = z.object({
     mediaId: z.string().optional().describe('Optional media id from `get-bound-media`. Defaults to the active tab.'),
     noteId: z.number().optional().describe('Optional Anki note id to update when `postMineAction` is 2'),
     asbplayerCardId: z
-        .uuidv4()
+        .uuid()
         .optional()
         .describe("Optional UUID for card that is saved into asbplayer's mining history."),
     forceCapture: z
         .array(z.enum(['image', 'audio']))
         .optional()
         .describe(
-            'Force capture of the listed media onto the card saved to mining history, overriding the recording ' +
-                'settings for this mine. `audio` is extracted from the video file for local media and recorded from ' +
-                "the tab for streaming media; `image` likewise. Capture failures are reported via the card's " +
-                '`audio.error`/`image.error` fields.'
+            'Media to capture onto the saved card, even when the recording settings are off. ' +
+                'For local video, `audio` is cut from the video file and `image` is rendered from it. ' +
+                'For streaming video, `audio` is recorded from the tab and `image` is captured from it. ' +
+                'If capture fails, the card is saved with the error code in `audio.error` or `image.error`.'
         ),
 });
 
@@ -374,14 +374,13 @@ export const externalApiMethods = {
             'note is updated. `noteId` applies to streaming media only and is ignored for local media.\n\n' +
             "When `asbplayerCardId` is set, the card is saved into asbplayer's mining history under that id, " +
             'replacing any existing card with the same id.\n\n' +
-            'When `forceCapture` lists `audio` and/or `image`, that media is captured onto the saved card for ' +
-            'this mine regardless of the recording settings: local media is extracted from the video file, ' +
-            "streaming media is recorded from the tab. Capture failures are reported via the card's " +
-            '`audio.error`/`image.error` fields.\n\n' +
+            'When `forceCapture` lists `audio` or `image`, that media is captured onto the saved card even when ' +
+            'the recording settings are off. Failed captures still save the card, with the error code in ' +
+            '`audio.error` or `image.error`.\n\n' +
             'The response means the flow was accepted (dispatched), not that a card was completed. Invoked as a ' +
             'notification (no id), it is published fire-and-forget and never answered, even on error.\n\n' +
-            '`mediaId` and `noteId` require extension v1.20.0 or later; `asbplayerCardId` requires extension ' +
-            'v1.23.0 or later; `forceCapture` requires extension v1.24.0 or later.',
+            '`mediaId` and `noteId` require extension v1.20.0+. `asbplayerCardId`and `forceCapture` require' +
+            ' extension v1.24.0+.',
         tags: [],
         paramsSchema: mineSubtitleParamsSchema,
         resultSchema: mineSubtitleResultSchema,
@@ -394,7 +393,7 @@ export const externalApiMethods = {
             "Loads the files into the active tab's media by default, showing the video selector when the tab " +
             'has more than one video. Set `mediaId` to an ID returned by `get-bound-media` to load the files ' +
             'directly into that media.\n\n' +
-            '`mediaId` requires extension v1.23.0 or later. Earlier versions load the files into every tab with ' +
+            '`mediaId` requires extension v1.23.0+. Earlier versions load the files into every tab with ' +
             'a bound video.',
         tags: [],
         paramsSchema: loadSubtitlesParamsSchema,
@@ -442,7 +441,7 @@ export const externalApiMethods = {
         summary: "List cards stored in asbplayer's mining history",
         description:
             "Returns cards stored in asbplayer's mining history, subject to optional filtering.\n\n" +
-            'Requires extension v1.23.0+',
+            'Requires extension v1.24.0+',
         tags: [],
         paramsSchema: getMiningHistoryParamsSchema,
         resultSchema: getMiningHistoryResultSchema,
