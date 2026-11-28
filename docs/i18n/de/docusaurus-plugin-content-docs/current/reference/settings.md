@@ -202,6 +202,7 @@ Mit Tastaturkürzeln können Sie auf die meisten Funktionen von asbplayer zugrei
 | Untere Untertitel nach unten verschieben |                |
 | Obere Untertitel nach oben verschieben |                  |
 | Obere Untertitel nach unten verschieben |                |
+| Aktuellen Untertitel kopieren |                  |
 
 ### <a href={new URL('?view=settings#mining-settings', project.urls.app).href}>Mining</a>-Tastaturkürzel {#mining-keyboard-shortcuts}
 

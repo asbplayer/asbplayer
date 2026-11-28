@@ -202,6 +202,7 @@ asbplayer 可以同时加载多个字幕轨道。此下拉菜单用于选择以�
 | 下移底部字幕                          |                  |
 | 上移顶部字幕                          |                  |
 | 下移顶部字幕                          |                  |
+| 复制当前字幕 |                  |
 
 ### <a href={new URL('?view=settings#mining-settings', project.urls.app).href}>挖掘</a>键盘快捷键 {#mining-keyboard-shortcuts}
 

@@ -202,6 +202,7 @@ asbplayer может одновременно загружать несколь�
 | Переместить нижние субтитры вниз | |
 | Переместить верхние субтитры вверх | |
 | Переместить верхние субтитры вниз | |
+| Копировать текущий субтитр |                  |
 
 ### <a href={new URL('?view=settings#mining-settings', project.urls.app).href}>Майнинг</a> keyboard shortcuts {#mining-keyboard-shortcuts}
 

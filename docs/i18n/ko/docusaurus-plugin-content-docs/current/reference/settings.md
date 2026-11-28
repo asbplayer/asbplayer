@@ -202,6 +202,7 @@ asbplayer는 여러 자막 트랙을 동시에 불러올 수 있습니다. 이 �
 | 아래쪽 자막 아래로 이동           |                  |
 | 위쪽 자막 위로 이동                |                  |
 | 위쪽 자막 아래로 이동              |                  |
+| 현재 자막 복사 |                  |
 
 ### <a href={new URL('?view=settings#mining-settings', project.urls.app).href}>마이닝</a> 키보드 단축키 {#mining-keyboard-shortcuts}
 

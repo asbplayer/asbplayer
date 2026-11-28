@@ -202,6 +202,7 @@ Skróty klawiszowe umożliwiają korzystanie z większości funkcji asbplayera.
 | Przesuń dolne napisy w dół            |                  |
 | Przesuń górne napisy w górę           |                  |
 | Przesuń górne napisy w dół            |                  |
+| Skopiuj bieżący napis |                  |
 
 ### <a href={new URL('?view=settings#mining-settings', project.urls.app).href}>Kopanie</a> — skróty klawiszowe {#mining-keyboard-shortcuts}
 

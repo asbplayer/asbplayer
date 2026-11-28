@@ -202,6 +202,7 @@ Useimpia asbplayerin ominaisuuksia voi käyttää pikanäppäimillä.
 | Siirrä alareunan tekstityksiä alas   |                  |
 | Siirrä yläreunan tekstityksiä ylös   |                  |
 | Siirrä yläreunan tekstityksiä alas   |                  |
+| Kopioi nykyinen tekstitys |                  |
 
 ### <a href={new URL('?view=settings#mining-settings', project.urls.app).href}>Louhinnan</a> pikanäppäimet {#mining-keyboard-shortcuts}
 

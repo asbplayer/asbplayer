@@ -202,6 +202,7 @@ Puoi usare le scorciatoie da tastiera per accedere alla maggior parte delle funz
 | Sposta in basso i sottotitoli inferiori |                  |
 | Sposta in alto i sottotitoli superiori |                  |
 | Sposta in basso i sottotitoli superiori |                  |
+| Copia il sottotitolo corrente |                  |
 
 ### <a href={new URL('?view=settings#mining-settings', project.urls.app).href}>Estrazione</a> scorciatoie da tastiera {#mining-keyboard-shortcuts}
 
