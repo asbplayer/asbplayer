@@ -629,6 +629,7 @@ export interface PageSettings {
     okru: Page;
     vkvideo: Page;
     dreaming: Page;
+    npoStart: Page;
 }
 
 // The extension captures animated images from the tab, which the website can't, so it has its own setting

@@ -288,6 +288,16 @@
             "autoSync": {
                 "enabled": true
             }
+        },
+        {
+            "key": "npoStart",
+            "host": "(www\\.)?npo\\.nl",
+            "pageScript": "npo-start-page.js",
+            "syncAllowedAtPath": "^/start/afspelen/",
+            "refreshSubtitleDataOnPickerOpen": true,
+            "autoSync": {
+                "enabled": true
+            }
         }
     ]
 }
