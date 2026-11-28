@@ -638,6 +638,7 @@
         "dictionaryTokenStylingThickness": "Thickness",
         "dictionaryTokenAnnotationTargetVideo": "Video",
         "dictionaryTokenAnnotationTargetSubtitlePlayer": "Subtitle list",
+        "dictionaryTokenAnnotationHoverPerWord": "Per word",
         "dictionaryTokenAnnotationHoverColor": "Only display word color on hover",
         "dictionaryTokenAnnotationHoverReading": "Only display word reading on hover",
         "dictionaryTokenAnnotationHoverFrequency": "Only display word frequency on hover",
@@ -867,7 +868,7 @@
         "empty": "No external extensions to display.",
         "help": "Learn about external extensions <docs>here</docs>.",
         "incomingRequest": "An external extension is requesting to connect to asbplayer.",
-        "warning": "Once approved, extension <0>{{id}}</0> will be able to control asbplayer. Only approve if you recognize it.",
-        "extensionDetailsHelper": "Extension details can be viewed at <0>{{address}}</0>."
+        "extensionDetailsHelper": "Extension details can be viewed at <0>{{address}}</0>.",
+        "warning": "Once approved, extension <0>{{id}}</0> will be able to control asbplayer. Only approve if you recognize it."
     }
 }

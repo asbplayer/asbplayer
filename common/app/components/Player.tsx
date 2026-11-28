@@ -31,7 +31,12 @@ import type { AsbplayerSettings, SettingsProvider } from '@project/common/settin
 
 import type { DictionaryProvider } from '@project/common/dictionary-db';
 import { SubtitleCollection } from '@project/common/subtitle-collection';
-import { HoveredToken, mergeSubtitleAnnotations, SubtitleAnnotations } from '@project/common/annotations';
+import {
+    bindNativeTokenSelection,
+    HoveredToken,
+    mergeSubtitleAnnotations,
+    SubtitleAnnotations,
+} from '@project/common/annotations';
 import type { SubtitleReader } from '@project/common/subtitle-reader';
 import type { KeyBinder } from '@project/common/key-binder';
 import { asbTrace } from '@project/common/util/log';
@@ -942,6 +947,7 @@ function PlayerComponent(
     }, [channel, extension, tab, onSubtitles]);
 
     const hoveredToken = useMemo(() => new HoveredToken(), []);
+    useEffect(() => bindNativeTokenSelection(document), []);
 
     const handleMouseOver = useCallback(
         (e: React.MouseEvent) => hoveredToken.handleMouseOver(e.nativeEvent),

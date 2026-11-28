@@ -604,6 +604,7 @@
         "settings.dictionaryTokenStylingOutlineHelperText": "Helper text shown when the Outline word color style is selected, recommending that Subtitle Outline Thickness be set to 0 in the Subtitle Appearance settings.",
         "settings.dictionaryTokenAnnotationTargetVideo": "Option for where word annotations are displayed: on the subtitles shown over the video.",
         "settings.dictionaryTokenAnnotationTargetSubtitlePlayer": "Option for where word annotations are displayed: in the subtitle list.",
+        "settings.dictionaryTokenAnnotationHoverPerWord": "Option for the on-hover annotation settings that reveals annotations only for the hovered or keyboard-selected word, rather than the entire subtitle line.",
         "settings.dictionaryTokenAnnotationHoverColor": "Annotation styling setting that only displays a word's known-status color while hovering over the word.",
         "settings.dictionaryTokenAnnotationHoverReading": "Annotation styling setting that only displays a word's reading while hovering over the word.",
         "settings.dictionaryTokenAnnotationHoverFrequency": "Annotation styling setting that only displays a word's frequency while hovering over the word.",

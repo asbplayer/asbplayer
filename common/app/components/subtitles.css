@@ -144,17 +144,44 @@
     filter: none;
 }
 
-.asbplayer-subtitle-rich {
+.asb-token-on-cue-hover,
+.asb-token-on-word-hover {
     display: none;
 }
 
 :is(.asb-subtitles, .asbplayer-subtitles, .asbplayer-fullscreen-subtitles):is(:hover, .asb-subtitle-token-selected)
-    .asbplayer-subtitle-text {
+    .asb-token-hover-cue
+    > .asb-token-base {
     display: none;
 }
 
 :is(.asb-subtitles, .asbplayer-subtitles, .asbplayer-fullscreen-subtitles):is(:hover, .asb-subtitle-token-selected)
-    .asbplayer-subtitle-rich {
+    .asb-token-hover-cue
+    > .asb-token-on-cue-hover {
+    display: inline;
+}
+
+:is(.asb-subtitles, .asbplayer-subtitles, .asbplayer-fullscreen-subtitles)
+    .asb-token-hover-word:is(:hover, .asb-token-selected)
+    > :is(.asb-token-base, .asb-token-on-cue-hover) {
+    display: none;
+}
+
+:is(.asb-subtitles, .asbplayer-subtitles, .asbplayer-fullscreen-subtitles)
+    .asb-token-hover-word:is(:hover, .asb-token-selected)
+    > .asb-token-on-word-hover {
+    display: inline;
+}
+
+:is(.asb-subtitles, .asbplayer-subtitles, .asbplayer-fullscreen-subtitles)
+    .asb-token-hover:where(:not(.asb-token-selected)):has(> .asb-token-native-selection)
+    > :not(.asb-token-native-selection) {
+    display: none;
+}
+
+:is(.asb-subtitles, .asbplayer-subtitles, .asbplayer-fullscreen-subtitles)
+    .asb-token-hover:where(:not(.asb-token-selected)):has(> .asb-token-native-selection)
+    > .asb-token-native-selection {
     display: inline;
 }
 

@@ -638,6 +638,7 @@
         "dictionaryTokenStylingThickness": "Thickness",
         "dictionaryTokenAnnotationTargetVideo": "Video",
         "dictionaryTokenAnnotationTargetSubtitlePlayer": "Subtitle list",
+        "dictionaryTokenAnnotationHoverPerWord": "Per word",
         "dictionaryTokenAnnotationHoverColor": "Only display word color on hover",
         "dictionaryTokenAnnotationHoverReading": "Only display word reading on hover",
         "dictionaryTokenAnnotationHoverFrequency": "Only display word frequency on hover",
