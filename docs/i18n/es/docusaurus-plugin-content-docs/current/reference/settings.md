@@ -202,6 +202,7 @@ Puedes usar atajos de teclado para acceder a la mayoría de las funciones de asb
 | Bajar los subtítulos inferiores       |                  |
 | Subir los subtítulos superiores       |                  |
 | Bajar los subtítulos superiores       |                  |
+| Copiar el subtítulo actual |                  |
 
 ### Atajos de teclado para <a href={new URL('?view=settings#mining-settings', project.urls.app).href}>minar</a> {#mining-keyboard-shortcuts}
 

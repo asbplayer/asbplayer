@@ -202,6 +202,7 @@ asbplayerでは複数の字幕トラックを同時に読み込めます。こ�
 | 下側の字幕を下に移動           |                  |
 | 上側の字幕を上に移動                |                  |
 | 上側の字幕を下に移動              |                  |
+| 現在の字幕をコピー |                  |
 
 ### <a href={new URL('?view=settings#mining-settings', project.urls.app).href}>マイニング</a>のキーボードショートカット {#mining-keyboard-shortcuts}
 

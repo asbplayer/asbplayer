@@ -202,6 +202,7 @@ Pintasan keyboard dapat digunakan untuk mengakses sebagian besar fitur asbplayer
 | Turunkan takarir bawah           |                  |
 | Naikkan takarir atas                |                  |
 | Turunkan takarir atas              |                  |
+| Salin takarir saat ini |                  |
 
 ### <a href={new URL('?view=settings#mining-settings', project.urls.app).href} >Penambangan</a> keyboard shortcuts {#mining-keyboard-shortcuts}
 

@@ -202,6 +202,7 @@ Os atalhos de teclado dão acesso à maioria dos recursos do asbplayer.
 | Mover legendas inferiores para baixo  |                  |
 | Mover legendas superiores para cima   |                  |
 | Mover legendas superiores para baixo  |                  |
+| Copiar a legenda atual |                  |
 
 ### Atalhos de teclado para <a href={new URL('?view=settings#mining-settings', project.urls.app).href}>mineração</a> {#mining-keyboard-shortcuts}
 

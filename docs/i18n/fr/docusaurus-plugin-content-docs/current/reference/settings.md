@@ -202,6 +202,7 @@ Les raccourcis clavier permettent d’accéder à la plupart des fonctionnalité
 | Déplacer les sous-titres du bas vers le bas |                  |
 | Déplacer les sous-titres du haut vers le haut |                  |
 | Déplacer les sous-titres du haut vers le bas |                  |
+| Copier le sous-titre actuel |                  |
 
 ### Raccourcis clavier de <a href={new URL('?view=settings#mining-settings', project.urls.app).href}>mining</a> {#mining-keyboard-shortcuts}
 
