@@ -13,6 +13,7 @@ import type {
 import { embeddedSubtitleId, subtitleSourceMatches } from '@project/common/embedded-subtitles/subtitle-source';
 import type { EmbeddedSubtitleDescriptor } from '@project/common/embedded-subtitles/subtitle-source';
 import { asbError } from '@project/common/util/log';
+import { subtitleOutputFormats } from '@project/ffmpeg/protocol';
 import { v4 as uuidv4 } from 'uuid';
 
 export function supportsFileSystemAccess(): boolean {
@@ -95,7 +96,7 @@ export async function restoreSessionFiles(
     const pendingById = new Map<string, EmbeddedSubtitleDescriptor>();
     for (const [id, descriptor] of Object.entries(record.embeddedSubtitles ?? {})) {
         const cached = filesById.get(id);
-        if (descriptor.format !== 'srt') {
+        if (!subtitleOutputFormats.has(descriptor.format)) {
             filesById.delete(id);
             continue;
         }
@@ -148,14 +149,17 @@ export async function restoreSessionFiles(
         files: [
             ...(video ? [video] : []),
             ...record.subtitleTrackIds.flatMap((ids, track) =>
-                (ids.length ? ids : ['-']).map((id) => ({
-                    ...((id === '-' ? undefined : filesById.get(id)) ?? {
-                        id: pendingById.has(id) ? id : '-',
-                        embedded: pendingById.get(id),
-                        file: new File([''], '.srt'),
-                    }),
-                    track,
-                }))
+                (ids.length ? ids : ['-']).map((id) => {
+                    const pending = pendingById.get(id);
+                    return {
+                        ...((id === '-' ? undefined : filesById.get(id)) ?? {
+                            id: pending ? id : '-',
+                            embedded: pending,
+                            file: new File([''], `.${pending?.format ?? 'srt'}`),
+                        }),
+                        track,
+                    };
+                })
             ),
         ],
         missingEmbeddedSubtitles: missing,

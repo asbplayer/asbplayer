@@ -1,5 +1,6 @@
 import type { FileWithId } from '@project/common/file-selector';
 import type { EmbeddedSubtitleTrack } from '@project/common/media-probe/subtitle-probe';
+import type { SubtitleOutputFormat } from '@project/ffmpeg/protocol';
 
 export interface EmbeddedSubtitleDescriptor {
     videoId: string;
@@ -8,7 +9,7 @@ export interface EmbeddedSubtitleDescriptor {
     trackIndex: number;
     codec: string;
     /** Requested output representation. Probe outputFormat separately indicates support. */
-    format: 'srt';
+    format: SubtitleOutputFormat;
 }
 
 export interface SubtitleExtractionOptions {
@@ -17,14 +18,14 @@ export interface SubtitleExtractionOptions {
     /** MP4 track IDs or zero-based Matroska subtitle ordinals. */
     trackKeys: number[];
     signal: AbortSignal;
-    /** Arbitrary UTF-8 byte chunks. Consumers must buffer incomplete characters and cues. */
+    /** Arbitrary byte chunks in the selected output format. Consumers must buffer incomplete records. */
     onChunk: (trackKey: number, chunk: ArrayBuffer) => void;
 }
 
 export interface ExtractedSubtitleFile {
     trackKey: number;
     blob: Blob;
-    format: 'srt';
+    format: SubtitleOutputFormat;
 }
 
 /** Shared code requests subtitle data, and the website supplies the FFmpeg implementation. */
@@ -42,11 +43,11 @@ export const embeddedSubtitleId = (videoId: string, trackIndex: number) => `embe
 
 export const embeddedDescriptor = (
     source: FileWithId,
-    track: Pick<EmbeddedSubtitleTrack, 'trackIndex' | 'codec'>
+    track: Pick<EmbeddedSubtitleTrack, 'trackIndex' | 'codec' | 'outputFormat'>
 ): EmbeddedSubtitleDescriptor => ({
     videoId: source.id,
     fingerprint: { name: source.file.name, size: source.file.size, lastModified: source.file.lastModified },
     trackIndex: track.trackIndex,
     codec: track.codec,
-    format: 'srt',
+    format: track.outputFormat ?? 'srt',
 });

@@ -1,4 +1,4 @@
-// Requires a system ffmpeg. Generated media contains only authored text and a solid-color video.
+// Requires a system ffmpeg. Generated media contains authored text/bitmaps and a solid-color video.
 import { execFileSync } from 'node:child_process';
 import { readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -216,6 +216,149 @@ export const generateSubtitleMedia = async (root) => {
     if (firstSampleEntry < 0) throw new Error('Expected a timed text sample entry');
     withWebVtt.write('wvtt', firstSampleEntry);
     await writeFile(resolve(root, 'webvtt-first.mp4'), withWebVtt);
+
+    // Authored PGS display sets: two placed rectangles, transparent and translucent pixels,
+    // followed by clears. System FFmpeg converts these to DVD/DVB for decoder regressions.
+    const pgsClockRateHz = 90000;
+    const pgsPaletteDefinitionSegment = 0x14;
+    const pgsObjectDefinitionSegment = 0x15;
+    const pgsPresentationCompositionSegment = 0x16;
+    const pgsEndDisplaySetSegment = 0x80;
+    const word = (value) => {
+        const buffer = Buffer.alloc(2);
+        buffer.writeUInt16BE(value);
+        return buffer;
+    };
+    const pgsSegment = (type, payload) => {
+        const bytes = Buffer.from(payload);
+        const header = Buffer.alloc(3);
+        header[0] = type;
+        header.writeUInt16BE(bytes.length, 1);
+        return Buffer.concat([header, bytes]);
+    };
+    const displaySegments = (seconds, { clear = false, alpha = 128, screenWidth = 320 } = {}) => {
+        const composition = Buffer.concat([
+            word(screenWidth),
+            word(240),
+            Buffer.from([0x10]),
+            word(seconds),
+            Buffer.from([clear ? 0 : 0x80, 0, 0, clear ? 0 : 2]),
+            ...(clear
+                ? []
+                : [
+                      Buffer.concat([word(0), Buffer.from([0, 0]), word(20), word(180)]),
+                      Buffer.concat([word(1), Buffer.from([0, 0]), word(30), word(182)]),
+                  ]),
+        ]);
+        const parts = [pgsSegment(pgsPresentationCompositionSegment, composition)];
+        if (!clear) {
+            parts.push(
+                pgsSegment(pgsPaletteDefinitionSegment, [
+                    0,
+                    0,
+                    0,
+                    0,
+                    128,
+                    128,
+                    0,
+                    1,
+                    235,
+                    128,
+                    128,
+                    255,
+                    2,
+                    81,
+                    240,
+                    90,
+                    alpha,
+                ])
+            );
+            for (const id of [0, 1]) {
+                const rle = Buffer.from([1, 2, 0, 2, 0, 0, 1, 1, 1, 1, 0, 0]);
+                parts.push(
+                    pgsSegment(
+                        pgsObjectDefinitionSegment,
+                        Buffer.concat([word(id), Buffer.from([0, 0xc0, 0, 0, rle.length + 4]), word(4), word(2), rle])
+                    )
+                );
+            }
+        }
+        parts.push(pgsSegment(pgsEndDisplaySetSegment, []));
+        return parts;
+    };
+    const display = (seconds, options) => {
+        const supHeader = Buffer.alloc(10);
+        supHeader.write('PG');
+        supHeader.writeUInt32BE(seconds * pgsClockRateHz, 2);
+        return Buffer.concat(displaySegments(seconds, options).flatMap((segment) => [supHeader, segment]));
+    };
+    await writeFile(
+        resolve(root, 'bitmap.sup'),
+        Buffer.concat([display(2), display(4, { clear: true }), display(6), display(8, { clear: true })])
+    );
+    for (const [name, codec] of [
+        ['pgs', 'copy'],
+        ['dvd', 'dvdsub'],
+        ['dvb', 'dvbsub'],
+    ]) {
+        run([
+            '-copyts',
+            '-f',
+            'lavfi',
+            '-i',
+            'color=size=320x240:rate=1:duration=10',
+            '-fix_sub_duration',
+            '-i',
+            'bitmap.sup',
+            '-map',
+            '0:v',
+            '-map',
+            '1:s',
+            '-c:v',
+            'libx264',
+            '-c:s',
+            codec,
+            `${name}.mkv`,
+        ]);
+    }
+    // Matroska exposes an attached JPEG as a video stream without a playback timeline.
+    run(['-f', 'lavfi', '-i', 'color=size=16x16:duration=1', '-frames:v', '1', 'cover.jpg']);
+    run([
+        '-i',
+        'dvd.mkv',
+        '-map',
+        '0',
+        '-c',
+        'copy',
+        '-attach',
+        'cover.jpg',
+        '-metadata:s:t',
+        'mimetype=image/jpeg',
+        'dvd-cover.mkv',
+    ]);
+    await writeFile(
+        resolve(root, 'uncleared.sup'),
+        Buffer.concat([display(2), display(4, { clear: true }), display(6)])
+    );
+    run([
+        '-copyts',
+        '-f',
+        'lavfi',
+        '-i',
+        'color=size=320x240:rate=1:duration=10',
+        '-i',
+        'uncleared.sup',
+        '-map',
+        '0:v',
+        '-map',
+        '1:s',
+        '-c:v',
+        'libx264',
+        '-c:s',
+        'copy',
+        'uncleared.mkv',
+    ]);
+    run(['-i', 'dvd.mkv', '-map', '0', '-c', 'copy', 'dvd.mp4']);
     // Minimal Matroska elements exercise compressed subtitle packets.
     const vint = (value) => {
         for (let length = 1; length <= 8; length++) {
@@ -301,24 +444,54 @@ export const generateSubtitleMedia = async (root) => {
         ])
     );
 
-    const subtitleBlock = (ms, cueText) => {
+    const subtitleBlock = (ms, payload, duration = 1000) => {
         const header = Buffer.from([0x81, 0, 0, 0]);
         header.writeInt16BE(ms, 1);
-        return master('a0', element('a1', Buffer.concat([header, Buffer.from(cueText)])), uint('9b', 1000));
+        const block = element('a1', Buffer.concat([header, Buffer.from(payload)]));
+        return duration === 0 ? master('a0', block) : master('a0', block, uint('9b', duration));
     };
-    const subtitleMedia = (...blocks) =>
+    const matroskaSubtitles = (codec, blocks) =>
         Buffer.concat([
             ebml,
             master(
                 '18538067',
                 master('1549a966', uint('2ad7b1', 1000000)),
-                master(
-                    '1654ae6b',
-                    master('ae', uint('d7', 1), uint('73c5', 1), uint('83', 17), text('86', 'S_TEXT/UTF8'))
-                ),
+                master('1654ae6b', master('ae', uint('d7', 1), uint('73c5', 1), uint('83', 17), text('86', codec))),
                 master('1f43b675', uint('e7', 0), ...blocks)
             ),
         ]);
+    const subtitleMedia = (...blocks) => matroskaSubtitles('S_TEXT/UTF8', blocks);
+    const pgsBlock = (seconds, options, duration) =>
+        subtitleBlock(seconds * 1000, Buffer.concat(displaySegments(seconds, options)), duration);
+    const resized = { alpha: 64, screenWidth: 640 };
+    await writeFile(
+        resolve(root, 'repeated-pgs.mkv'),
+        matroskaSubtitles('S_HDMV/PGS', [
+            pgsBlock(2, undefined, 0),
+            pgsBlock(3),
+            pgsBlock(4, { alpha: 64 }),
+            pgsBlock(5, resized),
+            pgsBlock(7, resized),
+            pgsBlock(8, { clear: true }),
+            pgsBlock(8, resized),
+            pgsBlock(9, resized, 0),
+        ])
+    );
+    const truncatedPgs = subtitleBlock(4000, Buffer.from([pgsPresentationCompositionSegment]));
+    const [composition, ...segments] = displaySegments(4);
+    composition[10] = 0; // Normal composition references objects and palette from the preceding display.
+    const dependentPgs = subtitleBlock(4000, Buffer.concat([composition, segments.at(-1)]));
+    await writeFile(
+        resolve(root, 'damaged-pgs.mkv'),
+        matroskaSubtitles('S_HDMV/PGS', [
+            pgsBlock(2, undefined, 0),
+            pgsBlock(3, undefined, 0),
+            truncatedPgs,
+            dependentPgs,
+            pgsBlock(5),
+        ])
+    );
+    await writeFile(resolve(root, 'undecodable-pgs.mkv'), matroskaSubtitles('S_HDMV/PGS', [truncatedPgs]));
     await writeFile(
         resolve(root, 'reordered.mkv'),
         subtitleMedia(subtitleBlock(3000, 'Later cue'), subtitleBlock(2000, 'Earlier cue'))

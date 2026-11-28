@@ -3,11 +3,12 @@ import type { LoadableSubtitleTrack } from '@project/common';
 import type { FileWithId } from '@project/common/file-selector';
 import type SubtitleReader from '@project/common/subtitle-reader/subtitle-reader';
 import { SubtitleCuePublisher } from '@project/common/subtitle-reader/subtitle-stream';
-import type { SubtitleSourceProducer } from '@project/common/subtitle-reader/subtitle-stream';
+import type { SubtitleSourceCue, SubtitleSourceProducer } from '@project/common/subtitle-reader/subtitle-stream';
 import type { EmbeddedSubtitleDescriptor } from '@project/common/embedded-subtitles/subtitle-source';
 import type { EmbeddedSubtitles } from '@project/common/embedded-subtitles/embedded-subtitles';
 import { embeddedSubtitleId } from '@project/common/embedded-subtitles/subtitle-source';
 import { asbError } from '@project/common/util/log';
+import { ffmpegSubtitleFormats } from '@project/ffmpeg/protocol';
 
 /** Hands extraction to the player. Only completed Files are returned to persistence. */
 export const embeddedSubtitleProducer =
@@ -55,13 +56,21 @@ export const embeddedSubtitleProducer =
         const extraction = new AbortController();
         let publicationError: Error | undefined;
         const streamsByTrackIndex = new Map(
-            [...pendingEmbeddedTrackIndexes].map((embeddedTrackIndex) => {
+            pendingDescriptors.map(({ trackIndex: embeddedTrackIndex, format }) => {
                 const targets = pendingSlots.filter((slot) => slot.embeddedTrackIndex === embeddedTrackIndex);
+                let parse: (bytes: ArrayBuffer, final: boolean) => SubtitleSourceCue[];
+                if (format === ffmpegSubtitleFormats.image.extension) {
+                    const parser = reader.createProgressiveImageReader();
+                    parse = (bytes, final) => parser.read(bytes, final);
+                } else {
+                    const decoder = new TextDecoder();
+                    const parser = reader.createProgressiveReader(ffmpegSubtitleFormats.text.extension);
+                    parse = (bytes, final) => parser.read(decoder.decode(bytes, { stream: !final }), final);
+                }
                 return [
                     embeddedTrackIndex,
                     {
-                        decoder: new TextDecoder(),
-                        parser: reader.createProgressiveReader('srt'),
+                        parse,
                         publisher: new SubtitleCuePublisher(
                             (cues) => {
                                 signal.throwIfAborted();
@@ -132,12 +141,12 @@ export const embeddedSubtitleProducer =
                         extraction.signal.throwIfAborted();
                         const stream = streamsByTrackIndex.get(embeddedTrackIndex);
                         if (!stream) throw new Error('Unexpected embedded subtitle track');
-                        stream.publisher.add(stream.parser.read(stream.decoder.decode(bytes, { stream: true }), false));
+                        stream.publisher.add(stream.parse(bytes, false));
                     }
                 );
                 extraction.signal.throwIfAborted();
                 for (const stream of streamsByTrackIndex.values()) {
-                    stream.publisher.add(stream.parser.read(stream.decoder.decode(), true));
+                    stream.publisher.add(stream.parse(new ArrayBuffer(0), true));
                     stream.publisher.flush();
                 }
             } catch (error) {

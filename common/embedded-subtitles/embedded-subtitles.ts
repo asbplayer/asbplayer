@@ -3,6 +3,7 @@ import type { EmbeddedSubtitleTrack } from '@project/common/media-probe/subtitle
 import type { FileWithId } from '@project/common/file-selector';
 import type { EmbeddedSubtitleDescriptor, SubtitleHost } from '@project/common/embedded-subtitles/subtitle-source';
 import { embeddedSubtitleId, subtitleSourceMatches } from '@project/common/embedded-subtitles/subtitle-source';
+import { mimeTypeForSubtitleFormat, subtitleOutputFormats } from '@project/ffmpeg/protocol';
 
 const fileExtensionRegex = /\.[^.]+$/;
 const invalidLanguageSuffixCharactersRegex = /[^\p{L}\p{N}_-]/gu;
@@ -46,7 +47,7 @@ export class EmbeddedSubtitles {
             if (
                 descriptor &&
                 subtitleSourceMatches(source, descriptor) &&
-                descriptor.format === 'srt' &&
+                subtitleOutputFormats.has(descriptor.format) &&
                 file.id === embeddedSubtitleId(source.id, descriptor.trackIndex)
             ) {
                 cached.set(descriptor.trackIndex, file);
@@ -73,7 +74,7 @@ export class EmbeddedSubtitles {
     ): Promise<Map<string, FileWithId>> {
         signal.throwIfAborted();
         if (!descriptors.length) return new Map();
-        if (descriptors.some((d) => !subtitleSourceMatches(source, d) || d.format !== 'srt')) {
+        if (descriptors.some((d) => !subtitleSourceMatches(source, d))) {
             throw new Error('The embedded subtitle source has changed');
         }
         const tracks = await this.discover(source, signal);
@@ -107,9 +108,9 @@ export class EmbeddedSubtitles {
                         embedded: descriptor,
                         file: new File(
                             [],
-                            `${base}.track-${descriptor.trackIndex + 1}${suffix ? '.' + suffix : ''}.srt`,
+                            `${base}.track-${descriptor.trackIndex + 1}${suffix ? '.' + suffix : ''}.${descriptor.format}`,
                             {
-                                type: 'application/x-subrip',
+                                type: mimeTypeForSubtitleFormat(descriptor.format),
                             }
                         ),
                     },
