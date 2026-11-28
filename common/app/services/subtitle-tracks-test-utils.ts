@@ -1,4 +1,10 @@
-import type { LoadableSubtitleTrack, Message, ReadyFromVideoMessage, SubtitlesToVideoMessage } from '@project/common';
+import type {
+    LoadableSubtitleTrack,
+    Message,
+    ReadyFromVideoMessage,
+    SubtitlesToVideoMessage,
+    SubtitleSourceMessage,
+} from '@project/common';
 import type { FileWithId } from '@project/common/file-selector';
 import type { VideoProtocol, VideoProtocolMessage } from '@project/common/app/services/video-protocol';
 import type {
@@ -18,9 +24,11 @@ export class TestVideoProtocol implements VideoProtocol {
         this.sent.push(message);
         if (message.command === 'subtitles') this.onSubtitles?.();
         if (message.command === 'requestSubtitleSource' && this.source) {
-            this.onMessage?.({
-                data: { command: 'subtitleSource', update: { type: 'snapshot', ...this.source, offset: this.offset } },
-            });
+            const response: SubtitleSourceMessage = {
+                command: 'subtitleSource',
+                update: { type: 'snapshot', ...this.source, offset: this.offset },
+            };
+            this.onMessage?.({ data: response });
         }
     }
 

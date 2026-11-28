@@ -11,7 +11,7 @@ it('reads across cache boundaries while keeping small reads bounded', async () =
     const bytes = Uint8Array.from({ length: 32 }, (_, index) => index);
     const blob = new Blob([bytes]);
     const read = jest.spyOn(blob, 'slice');
-    const reader = new ByteReader(blob, 8);
+    const reader = new ByteReader(blob, { windowSize: 8 });
     expect(await reader.bytes(6, 4)).toEqual(bytes.slice(6, 10));
     expect(await reader.bytes(7, 3)).toEqual(bytes.slice(7, 10));
     expect(await reader.bytes(14, 4)).toEqual(bytes.slice(14, 18));
@@ -20,7 +20,7 @@ it('reads across cache boundaries while keeping small reads bounded', async () =
 });
 
 it('supports a requested field larger than its prefetch window', async () => {
-    const reader = new ByteReader(new Blob(['audio-codec']), 4);
+    const reader = new ByteReader(new Blob(['audio-codec']), { windowSize: 4 });
     expect(await reader.ascii(0, 11)).toBe('audio-codec');
     expect(await reader.ascii(6, 5)).toBe('codec');
 });
@@ -30,7 +30,17 @@ it.each([
     [0, -1],
     [2, 2],
     [4, 1],
-])('rejects an out-of-bounds read at %i with length %i', async (offset, length) => {
+    [NaN, 1],
+    [0, NaN],
+    [0.5, 1],
+    [0, 1.5],
+])('rejects an invalid read at %s with length %s', async (offset, length) => {
     const reader = new ByteReader(new Blob(['abc']));
     expect(await reader.bytes(offset, length)).toBeUndefined();
+});
+
+it('decodes UTF-8 metadata across windows and strips only trailing null padding', async () => {
+    const reader = new ByteReader(new Blob(['skip日本語\0name\0\0']), { windowSize: 4 });
+    expect(await reader.utf8(4, reader.size - 4)).toBe('日本語\0name');
+    await expect(reader.utf8(reader.size - 1, 2)).rejects.toThrow('Truncated media metadata');
 });

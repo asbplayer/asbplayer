@@ -1,6 +1,10 @@
 import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
 import CloseIcon from '@mui/icons-material/Close';
+import MovieOutlinedIcon from '@mui/icons-material/MovieOutlined';
+import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
+import CloudOutlinedIcon from '@mui/icons-material/CloudOutlined';
+import SubtitlesOutlinedIcon from '@mui/icons-material/SubtitlesOutlined';
 import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
@@ -27,6 +31,19 @@ import type { GenericParseType, OnlineSubtitleSourceConfig } from '@project/comm
 import OnlineSubtitleSourceDialog from '@project/common/components/OnlineSubtitleSourceDialog';
 import type { TFunction } from 'i18next';
 import type { FileSelector, FileWithId } from '@project/common/file-selector';
+import { AUDIO_EXT_SET, VIDEO_EXT_SET, getExtension } from '@project/common/app/services/media-sources';
+
+const downloadedSubtitleIdPattern = /^https?:/;
+
+const isFileSubtitle = (subtitle: VideoDataSubtitleTrack) =>
+    subtitle.file !== undefined || downloadedSubtitleIdPattern.test(subtitle.id);
+
+const subtitleTrackIcon = (subtitle: VideoDataSubtitleTrack) => {
+    if (subtitle.embedded) return MovieOutlinedIcon;
+    if (downloadedSubtitleIdPattern.test(subtitle.id)) return CloudOutlinedIcon;
+    if (subtitle.url) return SubtitlesOutlinedIcon;
+    return DescriptionOutlinedIcon;
+};
 
 const createClasses = makeStyles(() => ({
     relative: {
@@ -44,12 +61,12 @@ const createClasses = makeStyles(() => ({
 }));
 
 // An auto-calculated video name based on selected track
-function calculateVideoName(baseName: string, label: string, localFile: boolean | undefined) {
+function calculateVideoName(baseName: string, label: string, fileSubtitle: boolean) {
     if (baseName === '' && label) {
         return label;
     }
 
-    if (label && !baseName.includes(label) && localFile !== true) {
+    if (label && !baseName.includes(label) && !fileSubtitle) {
         return `${baseName} - ${label}`;
     }
 
@@ -110,7 +127,7 @@ export const emptySubtitleTrack = (t: TFunction) => {
 
 const initialTrackIds = ['-', '-', '-'];
 
-export const useVideoDataSyncDialogState = (files?: FileWithId[]) => {
+export const useVideoDataSyncDialogState = (files?: readonly (FileWithId | undefined)[]) => {
     const { t } = useTranslation();
     const [subtitleTrackSelectorOpen, setSubtitleTrackSelectorOpen] = useState<boolean>(false);
     const [subtitleTrackSelectorDisabled, setSubtitleTrackSelectorDisabled] = useState<boolean>(false);
@@ -127,13 +144,15 @@ export const useVideoDataSyncDialogState = (files?: FileWithId[]) => {
     const [subtitleTrackSelectorSelectedTrackIds, setSubtitleTrackSelectorSelectedTrackIds] =
         useState<string[]>(initialTrackIds);
     const openSubtitleTrackSelectorWithFiles = useCallback(
-        (candidates?: FileWithId[]) => {
+        (candidates?: readonly (FileWithId | undefined)[]) => {
             if (candidates !== undefined) {
                 const loadedTracks = new Map<string, VideoDataSubtitleTrack>();
-                for (const { file, id } of candidates) {
-                    if (id === '-') continue;
+                for (const candidate of candidates) {
+                    if (!candidate || candidate.id === '-') continue;
+                    const { file, id, embedded } = candidate;
                     loadedTracks.set(id, {
                         id,
+                        embedded,
                         label: file.name,
                         file,
                         extension: file.name.substring(file.name.lastIndexOf('.') + 1),
@@ -176,11 +195,12 @@ interface Props {
     open: boolean;
     disabled: boolean;
     isLoading: boolean;
+    discovering?: boolean;
     // The video name automatically supplied by asbplayer's content script
     // Not to be confused with the auto-calculated video name when user selects a subtitle track
     suggestedName: string;
     subtitleTracks: VideoDataSubtitleTrack[];
-    selectedSubtitleTrackIds: string[];
+    selectedSubtitleTrackIds: readonly string[];
     defaultCheckboxState: boolean;
     error: string;
     openReason: VideoDataUiOpenReason;
@@ -211,6 +231,7 @@ export default function VideoDataSyncDialog({
     open,
     disabled,
     isLoading,
+    discovering,
     suggestedName,
     subtitleTracks,
     selectedSubtitleTrackIds,
@@ -272,7 +293,7 @@ export default function VideoDataSyncDialog({
                 subtitleTracks.find(
                     (track) =>
                         track.url !== '-' &&
-                        name === calculateVideoName(suggestedName, track.label, track.file !== undefined)
+                        name === calculateVideoName(suggestedName, track.label, isFileSubtitle(track))
                 )
             ) {
                 const selectedTrack = subtitleTracks.find((track) => track.id === selectedSubtitleTrackIds[0]);
@@ -281,7 +302,7 @@ export default function VideoDataSyncDialog({
                     return suggestedName;
                 }
 
-                return calculateVideoName(suggestedName, selectedTrack.label, selectedTrack.file !== undefined);
+                return calculateVideoName(suggestedName, selectedTrack.label, isFileSubtitle(selectedTrack));
             }
 
             // Otherwise, let the name be whatever the user set it to
@@ -306,14 +327,21 @@ export default function VideoDataSyncDialog({
     function allSelectedSubtitleTracks() {
         const selectedSubtitleTracks: ConfirmedVideoDataSubtitleTrack[] = selectedSubtitleTrackIds
             .map((selected): ConfirmedVideoDataSubtitleTrack | undefined => {
-                const subtitle = subtitleTracks.find((subtitle) => subtitle.id === selected);
+                const subtitle = subtitleTracks.find((subtitle) => subtitle.id === selected) ??
+                    subtitleTracks.find((subtitle) => subtitle.id === '-') ?? {
+                        id: '-',
+                        label: '',
+                        language: '-',
+                        url: '-',
+                        extension: 'srt',
+                    };
                 if (subtitle) {
                     const { file, label } = subtitle;
-                    const trackName =
-                        file !== undefined
-                            ? // Remove extension. The content script will add it back when rendering the file name on top of the video.
-                              label.substring(0, label.lastIndexOf('.'))
-                            : calculateVideoName(trimmedName, label, false);
+                    if (subtitle.disabledReason) return;
+                    const fileName = file?.name ?? label;
+                    const trackName = isFileSubtitle(subtitle)
+                        ? fileName.substring(0, fileName.lastIndexOf('.')) // Confirmed names omit the extension because download consumers add it back.
+                        : calculateVideoName(trimmedName, label, false);
 
                     return {
                         name: trackName,
@@ -351,17 +379,31 @@ export default function VideoDataSyncDialog({
                                 setFocusOkAfterFileSelection(true);
                             }}
                         >
-                            {subtitleTracks.map((subtitle) => (
-                                <MenuItem value={subtitle.id} key={subtitle.id}>
-                                    {subtitle.label}
-                                </MenuItem>
-                            ))}
+                            {[
+                                ...subtitleTracks.filter((track) => !track.embedded),
+                                ...subtitleTracks.filter((track) => track.embedded),
+                            ].map((subtitle) => {
+                                const Icon = subtitleTrackIcon(subtitle);
+                                return (
+                                    <MenuItem
+                                        value={subtitle.id}
+                                        key={subtitle.id}
+                                        disabled={!!subtitle.disabledReason}
+                                    >
+                                        {subtitle.id !== '-' && (
+                                            <Icon fontSize="small" sx={{ mr: 1, verticalAlign: 'middle' }} />
+                                        )}
+                                        {subtitle.label}
+                                        {subtitle.disabledReason ? ` — ${subtitle.disabledReason}` : ''}
+                                    </MenuItem>
+                                );
+                            })}
                             <MenuItem onClick={() => handleOpenFile(i)}>{t('action.openFiles')}</MenuItem>
                             <MenuItem onClick={() => handleOpenOnline(i)}>
                                 {t('onlineSubtitleSources.searchOnlineSubtitles')}
                             </MenuItem>
                         </TextField>
-                        {isLoading && (
+                        {(isLoading || discovering) && (
                             <span className={classes.spinner}>
                                 <CircularProgress size={20} color="primary" />
                             </span>
@@ -378,6 +420,10 @@ export default function VideoDataSyncDialog({
     const videoNameRef = useRef<HTMLInputElement>(null);
     const [focusOkAfterFileSelection, setFocusOkAfterFileSelection] = useState(false);
 
+    const hasDisabledSelection = selectedSubtitleTrackIds.some((id) =>
+        subtitleTracks.some((track) => track.id === id && Boolean(track.disabledReason))
+    );
+
     useEffect(() => {
         if (!open) {
             setFocusOkAfterFileSelection(false);
@@ -387,12 +433,13 @@ export default function VideoDataSyncDialog({
         if (
             (hideVideoNameTextField || trimmedName) &&
             (focusOkAfterFileSelection || !videoNameRef.current?.contains(document.activeElement)) &&
-            !disabled
+            !disabled &&
+            !hasDisabledSelection
         ) {
             okActionRef.current?.focusVisible();
             setFocusOkAfterFileSelection(false);
         }
-    }, [open, trimmedName, disabled, hideVideoNameTextField, focusOkAfterFileSelection]);
+    }, [open, trimmedName, disabled, hasDisabledSelection, hideVideoNameTextField, focusOkAfterFileSelection]);
 
     const [fileInputTrackNumber, setFileInputTrackNumber] = useState<number>();
     const [onlineDialogOpen, setOnlineDialogOpen] = useState(false);
@@ -407,7 +454,13 @@ export default function VideoDataSyncDialog({
 
             setFocusOkAfterFileSelection(true);
 
-            if (fileInputTrackNumber === undefined) {
+            if (
+                fileInputTrackNumber === undefined ||
+                files.some(({ file }) => {
+                    const extension = getExtension(file.name);
+                    return VIDEO_EXT_SET.has(extension) || AUDIO_EXT_SET.has(extension);
+                })
+            ) {
                 onOpenFiles(files);
             } else {
                 const fileTracks: VideoDataSubtitleTrack[] = [...files].map((fileWithId) => {
@@ -655,7 +708,7 @@ export default function VideoDataSyncDialog({
                     </Button>
                     <Button
                         action={okActionRef}
-                        disabled={(!hideVideoNameTextField && !trimmedName) || disabled}
+                        disabled={(!hideVideoNameTextField && !trimmedName) || disabled || hasDisabledSelection}
                         onClick={handleOkButtonClick}
                     >
                         {t('action.ok')}

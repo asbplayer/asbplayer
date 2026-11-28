@@ -1,0 +1,242 @@
+/** @jest-environment node */
+import { expect, it } from '@jest/globals';
+import { probeSubtitleTracks } from '@project/common/media-probe/subtitle-probe';
+import { box, concat, element, mkv, mkvTrack, mp4Track, utf8 } from '@project/common/media-probe/test-media';
+
+const oversizedTitle = 'x'.repeat(64 * 1024 + 1);
+
+it('reads mixed Matroska track order, UTF-8 metadata and unsupported subtitles', async () => {
+    const bytes = mkv(
+        mkvTrack(3, 'B_BUTTONS'), // The demuxer skips unsupported track types.
+        mkvTrack(1, 'V_MPEG4/ISO/AVC'),
+        mkvTrack(2, 'A_EAC3'),
+        mkvTrack(17, 'S_VOBSUB'),
+        mkvTrack(2, 'A_OPUS'),
+        mkvTrack(
+            17,
+            'S_TEXT/ASS',
+            element('22b59c', utf8('jpn')),
+            element('22b59d', utf8('ja-JP')),
+            element('536e', utf8('日本語'))
+        ),
+        mkvTrack(17, 'S_HDMV/PGS'),
+        mkvTrack(17, 'D_WEBVTT/SUBTITLES'),
+        mkvTrack(1, 'V_VP8'),
+        mkvTrack(17, 'S_TEXT/SSA')
+    );
+    const tracks = await probeSubtitleTracks(new Blob([bytes]), new AbortController().signal);
+    expect(tracks.map(({ trackIndex, codec, outputFormat }) => [trackIndex, codec, outputFormat])).toEqual([
+        [0, 'dvd_subtitle', undefined],
+        [1, 'ass', 'srt'],
+        [2, 'hdmv_pgs_subtitle', undefined],
+        [3, 'webvtt', 'srt'],
+        [4, 'ass', 'srt'],
+    ]);
+    expect(tracks[1]).toMatchObject({ language: 'ja-JP', title: '日本語' });
+});
+
+it('counts Matroska WebVTT metadata tracks in FFmpeg subtitle order', async () => {
+    const bytes = mkv(
+        mkvTrack(1, 'V_VP8'),
+        mkvTrack(1, 'D_WEBVTT/METADATA'),
+        mkvTrack(33, 'S_TEXT/UTF8'),
+        mkvTrack(33, 'D_WEBVTT/UNKNOWN'),
+        mkvTrack(33, 'D_WEBVTT/METADATA'),
+        mkvTrack(17, 'D_WEBVTT/UNKNOWN'),
+        mkvTrack(17, 'S_TEXT/UTF8')
+    );
+    expect(await probeSubtitleTracks(new Blob([bytes]), new AbortController().signal)).toEqual([
+        { trackIndex: 0, trackKey: 0, codec: 'webvtt', language: 'eng', outputFormat: 'srt' },
+        { trackIndex: 1, trackKey: 1, codec: 'D_WEBVTT/UNKNOWN', language: 'eng' },
+        { trackIndex: 2, trackKey: 2, codec: 'subrip', language: 'eng', outputFormat: 'srt' },
+    ]);
+});
+
+it('discovers Matroska subtitles when a video track has an oversized title', async () => {
+    const bytes = mkv(mkvTrack(1, 'V_VP8', element('536e', utf8(oversizedTitle))), mkvTrack(17, 'S_TEXT/UTF8'));
+    expect(await probeSubtitleTracks(new Blob([bytes]), new AbortController().signal)).toEqual([
+        { trackIndex: 0, trackKey: 0, codec: 'subrip', language: 'eng', outputFormat: 'srt' },
+    ]);
+});
+
+it.each([0, 1])('reads MP4 track indexes and language from version %s media headers', async (version) => {
+    const bytes = concat(
+        box('ftyp', utf8('isom')),
+        box('mdat', Buffer.alloc(32)),
+        box(
+            'moov',
+            mp4Track('vide', 'avc1'),
+            mp4Track('subt', 'stpp', version, 4),
+            mp4Track('soun', 'mp4a'),
+            mp4Track('sbtl', 'tx3g', version, 9)
+        )
+    );
+    expect(await probeSubtitleTracks(new Blob([bytes]), new AbortController().signal)).toEqual([
+        { trackIndex: 0, trackKey: 4, codec: 'ttml', language: 'jpn', title: '日本語' },
+        {
+            trackIndex: 1,
+            trackKey: 9,
+            codec: 'mov_text',
+            language: 'jpn',
+            title: '日本語',
+            outputFormat: 'srt',
+        },
+    ]);
+});
+
+it('ignores MP4 chapter and video titles when discovering subtitle tracks', async () => {
+    const video = mp4Track('vide', 'avc1', 0, 1, oversizedTitle);
+    const chapterId = Buffer.alloc(4);
+    chapterId.writeUInt32BE(7);
+    const withChapters = box('trak', video.subarray(8), box('tref', box('chap', chapterId)));
+    const bytes = concat(
+        box('ftyp'),
+        box('moov', mp4Track('text', 'text', 0, 7, oversizedTitle), withChapters, mp4Track('sbtl', 'tx3g', 0, 9))
+    );
+    expect(await probeSubtitleTracks(new Blob([bytes]), new AbortController().signal)).toEqual([
+        { trackIndex: 0, trackKey: 9, codec: 'mov_text', language: 'jpn', title: '日本語', outputFormat: 'srt' },
+    ]);
+});
+
+it('returns no tracks for media outside discovery scope and reports malformed supported containers', async () => {
+    expect(await probeSubtitleTracks(new Blob([mkv(mkvTrack(1, 'V_VP8'))]), new AbortController().signal)).toEqual([]);
+    expect(
+        await probeSubtitleTracks(
+            new Blob([box('ftyp'), box('moov', mp4Track('vide', 'avc1'))]),
+            new AbortController().signal
+        )
+    ).toEqual([]);
+    expect(await probeSubtitleTracks(new Blob([utf8('ID3')]), new AbortController().signal)).toEqual([]);
+    for (const bytes of [element('1a45dfa3'), concat(box('ftyp'), box('moov').subarray(0, 5)), mkv(mkvTrack(17, ''))]) {
+        await expect(probeSubtitleTracks(new Blob([bytes]), new AbortController().signal)).rejects.toThrow();
+    }
+});
+
+it('applies Matroska language defaults and gives IETF tags precedence regardless of field order', async () => {
+    const bytes = mkv(
+        mkvTrack(17, 'S_TEXT/UTF8'),
+        mkvTrack(17, 'S_TEXT/UTF8', element('22b59c', utf8('und'))),
+        mkvTrack(17, 'S_TEXT/UTF8', element('22b59d', utf8('ar-001')), element('22b59c', utf8('ara')))
+    );
+    expect(
+        (await probeSubtitleTracks(new Blob([bytes]), new AbortController().signal)).map(({ language }) => language)
+    ).toEqual(['eng', undefined, 'ar-001']);
+});
+
+it('rejects oversized track titles instead of reading unbounded metadata', async () => {
+    const bytes = concat(
+        box('ftyp'),
+        box(
+            'moov',
+            box('trak', box('mdia', box('hdlr', Buffer.alloc(8), utf8('sbtl'), Buffer.alloc(12), utf8(oversizedTitle))))
+        )
+    );
+    await expect(probeSubtitleTracks(new Blob([bytes]), new AbortController().signal)).rejects.toThrow(
+        'Media metadata string is too large'
+    );
+});
+
+it('rejects a nested box extending beyond its parent even when its bytes exist in the file', async () => {
+    const bytes = concat(box('ftyp'), box('moov', box('trak')), box('free', Buffer.alloc(16)));
+    bytes.writeUInt32BE(16, 16); // Claim bytes from the following top-level box as part of the nested trak.
+    await expect(probeSubtitleTracks(new Blob([bytes]), new AbortController().signal)).rejects.toThrow(
+        'Invalid MP4 metadata'
+    );
+});
+
+it('seeks to MP4 metadata beyond 4 GiB without reading the intervening payload', async () => {
+    const size = 5 * 1024 ** 3;
+    const ftyp = box('ftyp', utf8('isom'));
+    const moov = box('moov', mp4Track('vide', 'avc1'), mp4Track('sbtl', 'tx3g'));
+    const free = Buffer.alloc(16);
+    free.writeUInt32BE(1);
+    free.write('free', 4);
+    free.writeBigUInt64BE(BigInt(size - ftyp.length - moov.length), 8);
+    let readBytes = 0;
+    const regions = [
+        [0, ftyp],
+        [ftyp.length, free],
+        [size - moov.length, moov],
+    ] as const;
+    const sparse = {
+        size,
+        slice(start: number, end: number) {
+            readBytes += end - start;
+            const bytes = Buffer.alloc(end - start);
+            for (const [offset, data] of regions) {
+                const from = Math.max(start, offset),
+                    to = Math.min(end, offset + data.length);
+                if (to > from) data.copy(bytes, from - start, from - offset, to - offset);
+            }
+            return new Blob([bytes]);
+        },
+    } as Blob;
+    expect(
+        (await probeSubtitleTracks(sparse, new AbortController().signal)).map(({ trackIndex }) => trackIndex)
+    ).toEqual([0]);
+    expect(readBytes).toBeLessThan(1024 * 1024);
+});
+
+it('honors cancellation after an outstanding file read', async () => {
+    const controller = new AbortController();
+    let release!: (bytes: ArrayBuffer) => void;
+    const file = {
+        size: 20,
+        slice: () => ({
+            arrayBuffer: () =>
+                new Promise<ArrayBuffer>((resolve) => {
+                    release = resolve;
+                }),
+        }),
+    } as Blob;
+    const discovery = probeSubtitleTracks(file, controller.signal);
+    controller.abort(new Error('cancelled'));
+    release(new ArrayBuffer(20));
+    await expect(discovery).rejects.toThrow('cancelled');
+});
+
+it('recognizes S_TEXT/WEBVTT and counts non-S/D Matroska subtitle codecs in FFmpeg stream order', async () => {
+    const bytes = mkv(
+        mkvTrack(17, 'B_VOBBTN'),
+        mkvTrack(17, 'S_TEXT/WEBVTT', element('536e', utf8(''))),
+        mkvTrack(33, 'S_TEXT/WEBVTT')
+    );
+    expect(await probeSubtitleTracks(new Blob([bytes]), new AbortController().signal)).toEqual([
+        { trackIndex: 0, trackKey: 0, codec: 'B_VOBBTN', language: 'eng' },
+        { trackIndex: 1, trackKey: 1, codec: 'webvtt', language: 'eng', outputFormat: 'srt' },
+        { trackIndex: 2, trackKey: 2, codec: 'webvtt', language: 'eng', outputFormat: 'srt' },
+    ]);
+});
+
+it('decodes QuickTime Pascal-string handler names, omits und MP4 languages, and rejects duplicate MP4 track IDs', async () => {
+    const pascalTitle = Buffer.concat([Buffer.from([7]), utf8('English')]);
+    const undLang = ((21 << 10) | (14 << 5) | 4) & 0x7fff; // 'und'
+    const mdhd = Buffer.alloc(24);
+    mdhd.writeUInt16BE(undLang, 20);
+    const tkhd = (id: number) => {
+        const payload = Buffer.alloc(20);
+        payload.writeUInt32BE(id, 12);
+        return box('tkhd', payload);
+    };
+    const track = (id: number) =>
+        box(
+            'trak',
+            tkhd(id),
+            box(
+                'mdia',
+                box('mdhd', mdhd),
+                box('hdlr', Buffer.alloc(8), utf8('sbtl'), Buffer.alloc(12), pascalTitle),
+                box('minf', box('stbl', box('stsd', Buffer.alloc(8), box('tx3g'))))
+            )
+        );
+    const valid = concat(box('ftyp', utf8('qt  ')), box('moov', track(3)));
+    expect(await probeSubtitleTracks(new Blob([valid]), new AbortController().signal)).toEqual([
+        { trackIndex: 0, trackKey: 3, codec: 'mov_text', title: 'English', outputFormat: 'srt' },
+    ]);
+
+    const duplicate = concat(box('ftyp', utf8('isom')), box('moov', track(3), track(3)));
+    expect(await probeSubtitleTracks(new Blob([duplicate]), new AbortController().signal)).toEqual([
+        { trackIndex: 0, trackKey: 3, codec: 'mov_text', title: 'English', outputFormat: 'srt' },
+        { trackIndex: 1, trackKey: undefined, codec: 'mov_text', title: 'English' },
+    ]);
+});

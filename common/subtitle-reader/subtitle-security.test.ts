@@ -128,6 +128,7 @@ describe('subtitle reader security', () => {
         ]);
 
         expect(subtitle).toEqual({ start: 0, end: 1000, text: 'Hello\n & 語', track: 0 });
+        expect(assertSafeSink(subtitle.text).textContent).toBe('Hello\n & 語');
     });
 
     it.each([

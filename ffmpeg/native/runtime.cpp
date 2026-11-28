@@ -2,6 +2,7 @@
 #include "audio_transcoder.hpp"
 #include "error.hpp"
 #include "runtime_info.hpp"
+#include "subtitles.hpp"
 
 #include <emscripten.h>
 
@@ -17,8 +18,8 @@ EM_JS(int, asb_read_input, (double offset, uint8_t* buffer, int length), {
 
 // Output is copied and transferred to the caller as it is written. The muxer never
 // seeks or retains a complete output in the WASM heap.
-EM_JS(int, asb_write_output, (const uint8_t* buffer, int length), {
-    return Module['asbWriteOutput'](buffer, length);
+EM_JS(int, asb_write_output, (uint32_t track_key, const uint8_t* buffer, int length), {
+    return Module['asbWriteOutput'](track_key >>> 0, buffer, length);
 });
 
 // Diagnostics are buffered by the bridge and travel with the terminal reply.
@@ -53,7 +54,12 @@ extern "C" const char* asb_runtime_info_json(void) noexcept {
 
 extern "C" const char* asb_last_error(void) noexcept { return asb::detail::last_error.c_str(); }
 
-extern "C" double asb_transcode_audio(double input_size, int track_index) noexcept {
+extern "C" double asb_transcode_audio(double input_size, uint32_t track_index) noexcept {
     av_log_set_callback(ffmpeg_diagnostic);
     return asb::detail::transcode_audio(input_size, track_index);
+}
+
+extern "C" const char* asb_extract_subtitles(double input_size, const uint32_t* track_keys, size_t count) noexcept {
+    av_log_set_callback(ffmpeg_diagnostic);
+    return asb::detail::extract_subtitles(input_size, track_keys, count);
 }

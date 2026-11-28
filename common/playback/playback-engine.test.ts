@@ -3082,6 +3082,41 @@ describe('PlaybackEngine', () => {
         }
     );
 
+    it.each([true, false])(
+        'resumes after a partial failure only when surviving subtitles reach the position (%s)',
+        async (coversPosition) => {
+            const harness = await makePlaybackEngine([PlayMode.normal], {
+                timestampMs: 0,
+                paused: true,
+                subtitles: [],
+                durationMs: 90_000,
+                playbackPositionKeys: ['video.mp4'],
+                settings: { lastPlaybackPositions: [{ fileName: 'video.mp4', position: 63_000 }] },
+            });
+            const surviving = { track: 0, loadId: 'embedded', name: 'embedded.srt', status: 'loading' as const };
+            const failing = { track: 1, loadId: 'external', name: 'external.srt', status: 'loading' as const };
+            const failedCue = { ...subtitle, track: 1, start: 61_000, end: 68_000, index: 1 };
+            harness.playbackEngine.subtitlesChanged([subtitle, failedCue], { sources: [surviving, failing] });
+            await harness.playbackEngine.resumePlaybackPosition();
+            expect(harness.seeks).toEqual([]);
+
+            const failed = { ...failing, status: 'failed' as const };
+            harness.playbackEngine.subtitlesChanged([subtitle, failedCue], { sources: [surviving, failed] });
+            expect(harness.playbackPositionChanges).toEqual([63_000]);
+            expect(harness.seeks).toEqual([]);
+
+            const survivingCue = { ...subtitle, start: 62_000, end: coversPosition ? 64_000 : 62_500, index: 2 };
+            harness.playbackEngine.subtitlesChanged([subtitle, failedCue, survivingCue], {
+                sources: [{ ...surviving, status: 'complete' }, failed],
+            });
+            await flushPlaybackSaves();
+            expect(harness.playbackPositionChanges).toEqual([63_000, undefined]);
+            expect(harness.seeks).toEqual(coversPosition ? [survivingCue.start] : []);
+            expect(harness.plays).toHaveLength(coversPosition ? 1 : 0);
+            harness.playbackEngine.unbind();
+        }
+    );
+
     it.each(['coverage', 'clear', 'failure', 'unbind', 'replacement'] as const)(
         'preserves a resume across an empty loading prefix and handles %s',
         async (event) => {

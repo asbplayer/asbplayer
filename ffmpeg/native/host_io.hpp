@@ -10,15 +10,18 @@ extern "C" {
 #include <libavutil/error.h>
 
 int asb_read_input(double offset, uint8_t* buffer, int length);
-int asb_write_output(const uint8_t* buffer, int length);
+int asb_write_output(uint32_t track_key, const uint8_t* buffer, int length);
 }
 
 namespace asb::detail {
 
 inline constexpr int io_buffer_bytes = 32 * 1024;
+inline constexpr double javascript_max_safe_integer = 9007199254740991.0;
 
-inline int write_output(void*, const uint8_t* buffer, int length) {
-    return asb_write_output(buffer, length) == length ? length : AVERROR(EIO);
+/** The AVIO context points to an operation-owned output key. */
+inline int write_output(void* opaque, const uint8_t* buffer, int length) {
+    const auto track_key = *static_cast<const uint32_t*>(opaque);
+    return asb_write_output(track_key, buffer, length) == length ? length : AVERROR(EIO);
 }
 
 struct InputBuffer {

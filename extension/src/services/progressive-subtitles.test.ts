@@ -135,6 +135,25 @@ describe('progressive subtitle responses', () => {
         expect(stream.source.snapshot().subtitles.map((cue) => cue.text)).toEqual(['First']);
     });
 
+    it('cancels a pending read when a timed publication fails', async () => {
+        jest.useFakeTimers();
+        const stream = openResponse();
+        const result = stream.loading.catch((error: Error) => error);
+        stream.response.enqueue(encoder.encode(`${header}${dialogue('First')}\n`));
+        await jest.advanceTimersByTimeAsync(0);
+        const error = new Error('Publication failed');
+        const update = jest.spyOn(stream.source, 'update').mockImplementationOnce(() => {
+            throw error;
+        });
+        stream.response.enqueue(encoder.encode(`${dialogue('Buffered', '0:00:03.00', '0:00:04.00')}\n`));
+        await jest.advanceTimersByTimeAsync(100);
+        expect(await result).toBe(error);
+        expect(stream.cancelled()).toBe(true);
+        expect(stream.source.sourceStates()[0].status).toBe('failed');
+        expect(jest.getTimerCount()).toBe(0);
+        update.mockRestore();
+    });
+
     it('rejects a response that is not ASS instead of silently completing an empty track', async () => {
         const stream = openResponse();
         stream.response.enqueue(encoder.encode('<html>Error</html>'));
@@ -199,4 +218,97 @@ describe('progressive subtitle responses', () => {
             }
         }
     );
+
+    it('does not publish completion when the consumer aborts during the final cue flush', async () => {
+        jest.useFakeTimers();
+        const stream = openResponse();
+        const result = stream.loading.catch((error: Error) => error);
+        stream.response.enqueue(encoder.encode(`${header}${dialogue('First')}\n`));
+        await jest.advanceTimersByTimeAsync(0);
+        const update = jest.spyOn(stream.source, 'update').mockImplementationOnce((event) => {
+            if (event.type === 'cues') stream.abort.abort(new Error('Aborted during final flush'));
+            return true;
+        });
+        stream.response.enqueue(encoder.encode(`${dialogue('Final', '0:00:03.00', '0:00:04.00')}\n`));
+        stream.response.close();
+        await jest.advanceTimersByTimeAsync(0);
+        expect((await result)?.message).toBe('Aborted during final flush');
+        expect(stream.updates.some((event) => event.type === 'complete')).toBe(false);
+        update.mockRestore();
+    });
+
+    it('does not publish failure when the consumer aborts during error-path cue flush', async () => {
+        jest.useFakeTimers();
+        const stream = openResponse();
+        const result = stream.loading.catch((error: Error) => error);
+        stream.response.enqueue(encoder.encode(`${header}${dialogue('First')}\n`));
+        await jest.advanceTimersByTimeAsync(0);
+        const update = jest.spyOn(stream.source, 'update').mockImplementationOnce((event) => {
+            if (event.type === 'cues') stream.abort.abort(new Error('Aborted during error flush'));
+            return true;
+        });
+        stream.response.enqueue(encoder.encode(`${dialogue('Buffered', '0:00:03.00', '0:00:04.00')}\n`));
+        stream.response.error(new Error('Connection lost'));
+        await jest.advanceTimersByTimeAsync(0);
+        expect((await result)?.message).toBe('Connection lost');
+        expect(stream.updates.some((event) => event.type === 'failed')).toBe(false);
+        update.mockRestore();
+    });
+
+    it('preserves abort errors when aborted before an ASS events header arrives', async () => {
+        const stream = openResponse();
+        const result = stream.loading.catch((error: Error) => error);
+        stream.response.enqueue(encoder.encode('[Script Info]\nTitle: Partial\n'));
+        await Promise.resolve();
+        stream.abort.abort(new DOMException('Cancelled', 'AbortError'));
+        const error = await result;
+        expect(error?.name).toBe('AbortError');
+        expect(stream.updates.some((event) => event.type === 'failed')).toBe(false);
+    });
+
+    it('propagates consumer errors thrown during completion without emitting failed', async () => {
+        const stream = openResponse();
+        const update = jest.spyOn(stream.source, 'update').mockImplementation((event) => {
+            if (event.type === 'complete') throw new Error('Complete sink failed');
+            return true;
+        });
+        stream.response.enqueue(encoder.encode(`${header}${dialogue('First')}\n`));
+        stream.response.close();
+        await expect(stream.loading).rejects.toThrow('Complete sink failed');
+        expect(stream.updates.some((event) => event.type === 'failed')).toBe(false);
+        update.mockRestore();
+    });
+
+    it('does not publish completion when aborted while awaiting stream cleanup in finally', async () => {
+        let releaseCancel!: () => void;
+        const originalGetReader = ReadableStream.prototype.getReader;
+        const getReaderSpy = jest.spyOn(ReadableStream.prototype, 'getReader').mockImplementation(function (
+            this: ReadableStream
+        ) {
+            const reader = originalGetReader.call(this);
+            const originalCancel = reader.cancel.bind(reader);
+            reader.cancel = () =>
+                new Promise<void>((resolve) => {
+                    releaseCancel = () => {
+                        void originalCancel().finally(resolve);
+                    };
+                });
+            return reader;
+        });
+        try {
+            const cleanupStream = openResponse();
+            const result = cleanupStream.loading.catch((error: Error) => error);
+            cleanupStream.response.enqueue(encoder.encode(`${header}${dialogue('First')}\n`));
+            cleanupStream.response.close();
+            for (let attempt = 0; !releaseCancel && attempt < 20; attempt++) await Promise.resolve();
+            expect(releaseCancel).toBeDefined();
+            cleanupStream.abort.abort(new DOMException('Cancelled during cleanup', 'AbortError'));
+            releaseCancel();
+            const error = await result;
+            expect(error?.name).toBe('AbortError');
+            expect(cleanupStream.updates.some((event) => event.type === 'complete')).toBe(false);
+        } finally {
+            getReaderSpy.mockRestore();
+        }
+    });
 });

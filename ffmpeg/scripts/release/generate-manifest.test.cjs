@@ -126,7 +126,10 @@ beforeEach(async () => {
             return {
                 _asb_runtime_info_json: () => 0,
                 _asb_transcode_audio: () => 0,
+                _asb_extract_subtitles: () => 0,
                 _asb_last_error: () => 0,
+                _malloc: () => 0,
+                _free: () => {},
                 UTF8ToString: () => ${JSON.stringify(JSON.stringify(info))},
             };
         };
@@ -234,3 +237,25 @@ it('rejects a version 3 candidate that omits the accompanying GPL 3 license text
     await writeManifest(manifest);
     await expect(run('verify/verify-artifacts.mjs', ['--candidate'])).rejects.toThrow('LGPL 3 and GPL 3 license texts');
 });
+
+it.each(['asb_extract_subtitles', 'malloc', 'free'])(
+    'rejects a selected runtime missing the required %s WASM export',
+    async (name) => {
+        const corePath = resolve(runtime, 'ffmpeg-core.js');
+        const stripped = (await readFile(corePath, 'utf8')).replace(`_${name}:`, '_omitted:');
+        await writeFile(corePath, stripped);
+        await run('release/generate-manifest.mjs');
+        await packageRuntime();
+        const body = await readFile(archive);
+        await writeFile(
+            resolve(root, 'artifact-lock.json'),
+            JSON.stringify({
+                schemaVersion: 1,
+                runtimeVersion: version,
+                ffmpegVersion: (await readManifest()).ffmpeg.version,
+                runtimeArchive: { filename: `${stem}-runtime.tar.gz`, bytes: body.byteLength, sha256: digest(body) },
+            })
+        );
+        await expect(run('verify/verify-artifacts.mjs')).rejects.toThrow(`WASM export ${name} is missing`);
+    }
+);

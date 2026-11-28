@@ -20,8 +20,13 @@ export type MediaSourceFile = FileWithId & { track?: number };
 export type SubtitleSourceFile = FileWithId & { track: number };
 
 type MediaSubtitleSource =
-    | { readonly kind: 'files'; readonly tracks: LoadableSubtitleTrack<SubtitleSourceFile>[] }
-    | { readonly kind: 'video'; readonly names: string[]; readonly status: SubtitleSourceStatus };
+    | {
+          readonly kind: 'files';
+          readonly tracks: LoadableSubtitleTrack<SubtitleSourceFile>[];
+          /** The selected files include embedded placeholders. Export waits for their extracted contents. */
+          readonly pendingEmbedded: boolean;
+      }
+    | { readonly kind: 'remote'; readonly names: string[]; readonly status: SubtitleSourceStatus };
 
 export const videoExtensions = ['.mkv', '.mp4', '.m4v', '.avi', '.webm'] as const;
 export const audioExtensions = ['.mp3', '.m4a', '.aac', '.flac', '.ogg', '.wav', '.opus', '.m4b'] as const;
@@ -52,26 +57,112 @@ export const getExtension = (fileName: string) => {
 export class MediaSources {
     readonly subtitleTracks: LoadableSubtitleTrack<SubtitleSourceFile>[];
     readonly subtitleSourceFiles: SubtitleSourceFile[];
-    readonly firstSubtitleSourceFiles: SubtitleSourceFile[];
+    readonly firstSubtitleSourceFiles: (SubtitleSourceFile | undefined)[];
     readonly subtitleFileNames: string[];
     readonly allSourceFiles: FileWithId[];
 
     constructor(
-        readonly subtitleSource: MediaSubtitleSource = { kind: 'files', tracks: [] },
+        readonly subtitleSource: MediaSubtitleSource = { kind: 'files', tracks: [], pendingEmbedded: false },
         readonly videoFile?: FileWithId,
         readonly videoFileUrl?: string
     ) {
         this.subtitleTracks = subtitleSource.kind === 'files' ? subtitleSource.tracks : [];
         this.subtitleSourceFiles = this.subtitleTracks.flatMap(({ fileParts }) => fileParts);
-        this.firstSubtitleSourceFiles = this.subtitleTracks.flatMap(({ fileParts }) => fileParts.slice(0, 1));
+        this.firstSubtitleSourceFiles = this.subtitleTracks.map(({ fileParts }) => fileParts[0]);
         this.subtitleFileNames =
-            subtitleSource.kind === 'video'
+            subtitleSource.kind === 'remote'
                 ? subtitleSource.names
                 : this.subtitleTracks.map(({ fileParts }) => fileParts[0]?.file.name ?? '');
         this.allSourceFiles = videoFile ? [...this.subtitleSourceFiles, videoFile] : this.subtitleSourceFiles;
     }
 
-    static fromFiles(files: MediaSourceFile[]): MediaSources {
+    /** Merge incoming sources with the current state, preserving unchanged media and external subtitles on video-only loads. */
+    merge(
+        incoming: MediaSources,
+        createVideoUrl: (file: File) => string,
+        pendingTrackIndexes: ReadonlySet<number>
+    ): {
+        sources: MediaSources;
+        newVideo: boolean;
+        revokedVideoUrl?: string;
+        loadingSources: FileWithId[];
+        resetJumpToSubtitle: boolean;
+    } {
+        const remoteSubtitles = incoming.subtitleSource.kind === 'remote';
+        const resetJumpToSubtitle = Boolean(remoteSubtitles || incoming.videoFile || incoming.subtitleFileNames.length);
+        const newVideo = Boolean(incoming.videoFile && incoming.videoFile.file !== this.videoFile?.file);
+
+        let videoFile = this.videoFile;
+        let videoFileUrl = this.videoFileUrl;
+        let revokedVideoUrl: string | undefined;
+
+        if (newVideo && incoming.videoFile) {
+            videoFile = incoming.videoFile;
+            videoFileUrl = createVideoUrl(videoFile.file);
+            revokedVideoUrl = this.videoFileUrl;
+        } else if (!incoming.videoFile && remoteSubtitles) {
+            videoFile = undefined;
+            videoFileUrl = undefined;
+            revokedVideoUrl = this.videoFileUrl;
+        }
+
+        // A video-only selection retains file-backed subtitles, while a new video drops embedded tracks
+        // and a same-video reload drops still-pending embedded tracks whose extraction is cancelled.
+        let subtitleSource = incoming.subtitleSource;
+        if (incoming.videoFile && !incoming.subtitleSourceFiles.length && this.subtitleSource.kind === 'files') {
+            if (newVideo) {
+                const tracks = this.subtitleTracks.map(({ fileParts }) => ({
+                    fileParts: fileParts.filter((file) => !file.embedded),
+                }));
+                subtitleSource = {
+                    kind: 'files',
+                    pendingEmbedded: false,
+                    tracks: tracks.some(({ fileParts }) => fileParts.some(({ id }) => id !== '-')) ? tracks : [],
+                };
+            } else if (this.subtitleSource.pendingEmbedded) {
+                const tracks = this.subtitleTracks.map(({ fileParts }) => ({
+                    fileParts: fileParts.filter(
+                        (file) => !file.embedded || !pendingTrackIndexes.has(file.embedded.trackIndex)
+                    ),
+                }));
+                subtitleSource = {
+                    kind: 'files',
+                    pendingEmbedded: false,
+                    tracks: tracks.some(({ fileParts }) => fileParts.some(({ id }) => id !== '-')) ? tracks : [],
+                };
+            } else {
+                subtitleSource = this.subtitleSource;
+            }
+        }
+
+        const sources = new MediaSources(subtitleSource, videoFile, videoFileUrl);
+        const loadingSources = sources.allSourceFiles.filter(
+            (source) => !this.allSourceFiles.some((previous) => source.file === previous.file)
+        );
+        return { sources, newVideo, revokedVideoUrl, loadingSources, resetJumpToSubtitle };
+    }
+
+    /** Keep completed subtitles for standalone playback when their video is unloaded. */
+    withoutVideo(pendingTrackIndexes: ReadonlySet<number>): MediaSources {
+        const source = this.subtitleSource;
+        if (source.kind !== 'files') return new MediaSources(source);
+        if (!source.pendingEmbedded && !this.subtitleSourceFiles.some(({ embedded }) => embedded)) {
+            if (!this.subtitleSourceFiles.some(({ id }) => id !== '-')) return new MediaSources();
+            return new MediaSources(source);
+        }
+        const tracks = source.tracks.map(({ fileParts }) => ({
+            fileParts: fileParts.flatMap((filePart) => {
+                const { embedded, ...file } = filePart;
+                if (!embedded) return [filePart];
+                if (source.pendingEmbedded && pendingTrackIndexes.has(embedded.trackIndex)) return [];
+                return [file];
+            }),
+        }));
+        if (!tracks.some(({ fileParts }) => fileParts.some(({ id }) => id !== '-'))) return new MediaSources();
+        return new MediaSources({ kind: 'files', pendingEmbedded: false, tracks });
+    }
+
+    static fromFiles(files: MediaSourceFile[], { pendingEmbedded }: { pendingEmbedded: boolean }): MediaSources {
         const subtitleSourceFiles: SubtitleSourceFile[] = [];
         let videoFile: FileWithId | undefined;
 
@@ -105,37 +196,50 @@ export class MediaSources {
             subtitleTracks[track].fileParts.push(subtitleSourceFile);
         }
 
-        return new MediaSources({ kind: 'files', tracks: subtitleTracks }, videoFile);
+        return new MediaSources({ kind: 'files', tracks: subtitleTracks, pendingEmbedded }, videoFile);
     }
 
     static fromSync(message: LegacyPlayerSyncMessage | PlayerSyncMessage): MediaSources {
         if (message.command === 'sync') {
-            return MediaSources.fromFiles(decodeSubtitleSourceFiles([message.subtitles]));
+            return MediaSources.fromFiles(decodeSubtitleSourceFiles([message.subtitles]), { pendingEmbedded: false });
         }
         if (message.subtitleSource) {
             return new MediaSources({
-                kind: 'video',
+                kind: 'remote',
                 names: subtitleSourceNames(message.subtitleSource.tracks),
                 status: subtitleSourceStatus(message.subtitleSource.tracks),
             });
         }
-        return MediaSources.fromFiles(decodeSubtitleSourceFiles(message.subtitles, message.flatten));
+        return MediaSources.fromFiles(decodeSubtitleSourceFiles(message.subtitles, message.flatten), {
+            pendingEmbedded: false,
+        });
     }
 
     get canDownloadSubtitles(): boolean {
+        if (this.subtitleSource.kind === 'remote') {
+            return (
+                this.subtitleSource.status === 'complete' &&
+                this.subtitleFileNames.some((name) => name.length > 0 && getExtension(name) !== '.sup')
+            );
+        }
         return (
-            (this.subtitleSource.kind === 'files' || this.subtitleSource.status === 'complete') &&
-            this.subtitleFileNames.some((name) => name.length > 0 && getExtension(name) !== '.sup')
+            !this.subtitleSource.pendingEmbedded &&
+            this.subtitleTracks.some(({ fileParts }) =>
+                fileParts.some(
+                    ({ id, file }) =>
+                        id !== '-' && file.size > 0 && file.name.length > 0 && getExtension(file.name) !== '.sup'
+                )
+            )
         );
     }
 
-    /** Exports completed video-owned text tracks with cues, or reparses files using the current parsing settings. */
+    /** Exports completed remote text tracks with cues, or reparses files using the current parsing settings. */
     async subtitleTracksForExport(
         reader: Pick<SubtitleReader, 'subtitles'>,
         subtitles: readonly IndexedSubtitleModel[]
     ) {
         if (!this.canDownloadSubtitles) return [];
-        if (this.subtitleSource.kind === 'video') {
+        if (this.subtitleSource.kind === 'remote') {
             return this.subtitleFileNames.flatMap((name, track) => {
                 if (name.length === 0 || getExtension(name) === '.sup') return [];
                 const cues = subtitles

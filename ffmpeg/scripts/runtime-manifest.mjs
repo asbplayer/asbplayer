@@ -3,6 +3,8 @@ import { resolve } from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
 import { runtimeFiles, sha256 } from './lib.mjs';
 
+const requiredOperations = ['inspect', 'transcodeAudio', 'extractSubtitles'];
+
 /** Validate the common release contract, independently of local build inputs or the selected lock. */
 export const verifyRuntimeManifest = (manifest, version) => {
     if (
@@ -21,6 +23,14 @@ export const verifyRuntimeManifest = (manifest, version) => {
         !Array.isArray(manifest.runtime)
     ) {
         throw new Error('FFmpeg manifest has an invalid identity or inventory');
+    }
+    if (
+        !Array.isArray(manifest.operations) ||
+        manifest.operations.some((operation) => typeof operation !== 'string' || operation.length === 0) ||
+        new Set(manifest.operations).size !== manifest.operations.length ||
+        requiredOperations.some((operation) => !manifest.operations.includes(operation))
+    ) {
+        throw new Error('FFmpeg manifest is missing required runtime operations');
     }
     if (manifest.ffmpeg.configuration.split(/\s+/).some((argument) => argument.startsWith('--extra-version='))) {
         throw new Error('FFmpeg configuration must not override the upstream version identity');
