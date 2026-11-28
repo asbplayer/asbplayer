@@ -222,7 +222,7 @@ export default defineConfig({
             };
         }
 
-        let permissions = ['tabs', 'storage', 'unlimitedStorage'];
+        let permissions = ['tabs', 'storage', 'unlimitedStorage', 'clipboardWrite'];
 
         if (browser === 'chrome') {
             permissions = [...permissions, 'tabCapture', 'activeTab', 'contextMenus', 'sidePanel', 'offscreen'];
@@ -242,7 +242,7 @@ export default defineConfig({
         }
 
         if (browser === 'firefox') {
-            permissions = [...permissions, 'contextMenus', 'clipboardWrite'];
+            permissions = [...permissions, 'contextMenus'];
 
             commands = {
                 _execute_sidebar_action: {
@@ -273,8 +273,6 @@ export default defineConfig({
         }
 
         if (browser === 'firefox-android') {
-            permissions = [...permissions, 'clipboardWrite'];
-
             const geckoId = isDev
                 ? `${extName}-android-dev-${version}@example.com`
                 : project.extension.firefoxAndroid.id;

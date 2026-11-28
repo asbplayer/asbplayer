@@ -37,6 +37,15 @@ module.exports = [
                 { object: 'console', property: 'debug', message: 'Use the asbplayer logging functions.' },
                 { object: 'console', property: 'trace', message: 'Use the asbplayer logging functions.' },
                 { object: 'console', property: 'assert', message: 'Use the asbplayer logging functions.' },
+                { object: 'clipboard', property: 'write', message: 'Use clipboardWrite.' },
+                { object: 'clipboard', property: 'writeText', message: 'Use clipboardWrite.' },
+            ],
+            'no-restricted-syntax': [
+                'error',
+                {
+                    selector: "MemberExpression[object.property.name='clipboard'][property.name=/^(write|writeText)$/]",
+                    message: 'Use clipboardWrite.',
+                },
             ],
             'no-restricted-syntax': [
                 'error',

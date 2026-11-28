@@ -1,4 +1,5 @@
 import { asbError } from '@project/common/util/log';
+import { encodeClipboardPng } from '@project/common/util/clipboard';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type {
     MediaFragmentModel,
@@ -45,16 +46,6 @@ import LogoIcon from '@project/common/components/LogoIcon';
 interface Props {
     bridge: Bridge;
 }
-
-const blobToDataUrl = async (blob: Blob): Promise<string> => {
-    return new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.onload = () => {
-            resolve(reader.result as string);
-        };
-        reader.readAsDataURL(blob);
-    });
-};
 
 export default function AnkiUi({ bridge }: Props) {
     const [open, setOpen] = useState<boolean>(false);
@@ -273,11 +264,15 @@ export default function AnkiUi({ bridge }: Props) {
 
     const handleCopyToClipboard = useCallback(
         async (blob: Blob) => {
-            const message: CopyToClipboardMessage = {
-                command: 'copy-to-clipboard',
-                dataUrl: await blobToDataUrl(blob),
-            };
-            bridge.sendMessageFromServer(message);
+            try {
+                const message: CopyToClipboardMessage = {
+                    command: 'copy-to-clipboard',
+                    dataUrl: await encodeClipboardPng(blob),
+                };
+                bridge.sendMessageFromServer(message);
+            } catch (error) {
+                asbError('anki/ui', 'Could not copy image', error);
+            }
         },
         [bridge]
     );

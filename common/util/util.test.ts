@@ -3,7 +3,9 @@ import {
     areTokenizationsEqual,
     adjacentSubtitle,
     arrayEquals,
+    setsEqual,
     AsyncSemaphore,
+    autoCopySubtitleText,
     buildSubtitleTracks,
     clamp,
     compareSubtitlesForDisplay,
@@ -18,6 +20,7 @@ import {
     filterAsync,
     formatAsSigned,
     formatAsSignedMs,
+    formatSubtitlesForClipboard,
     fromBatches,
     getContiguousReading,
     getCurrentTimeString,
@@ -57,7 +60,7 @@ import {
 } from '@project/common/util';
 import type { FieldComparators } from '@project/common/util';
 import type { TextSubtitleSettings } from '@project/common/settings';
-import { calculateSeekableTracksValue } from '@project/common/settings';
+import { calculateAutoCopyableTracksValue, calculateSeekableTracksValue } from '@project/common/settings';
 import type { Progress } from '@project/common';
 import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
 
@@ -94,6 +97,64 @@ describe('removeSubtitleHtml', () => {
     });
 });
 
+describe('formatSubtitlesForClipboard', () => {
+    it('returns an empty string for 0 cues or only whitespace cues', () => {
+        expect(formatSubtitlesForClipboard([])).toBe('');
+        expect(formatSubtitlesForClipboard([subtitle('  ', 0, 1000, 0, 0), subtitle('<br>', 0, 1000, 1, 1)])).toBe('');
+    });
+
+    it('groups cues in track slot order with single newlines within a track and blank lines between tracks', () => {
+        expect(formatSubtitlesForClipboard([subtitle('  Only cue \n', 0, 1000, 0, 0)])).toBe('Only cue');
+
+        const cues = [
+            subtitle(' \nTrack 3  ', 0, 1000, 2, 0),
+            subtitle('  Track 1 second\t', 0, 1000, 0, 2),
+            subtitle('   ', 0, 1000, 1, 0),
+            {
+                ...subtitle('<span>Annotated</span>', 0, 1000, 0, 1),
+                originalText: ' <ruby>字幕<rt>じまく</rt></ruby> ',
+            },
+        ];
+        expect(formatSubtitlesForClipboard(cues)).toBe('字幕\nTrack 1 second\n\nTrack 3');
+    });
+});
+
+describe('autoCopySubtitleText', () => {
+    const originalClipboard = Object.getOwnPropertyDescriptor(navigator, 'clipboard');
+
+    afterEach(() => {
+        if (originalClipboard) Object.defineProperty(navigator, 'clipboard', originalClipboard);
+        else Reflect.deleteProperty(navigator, 'clipboard');
+    });
+
+    it('filters to auto-copyable tracks and falls back when the local clipboard fails', async () => {
+        Object.defineProperty(navigator, 'clipboard', {
+            configurable: true,
+            value: { writeText: () => Promise.reject(new DOMException('Not focused', 'NotAllowedError')) },
+        });
+        const fallback = jest.fn<() => Promise<void>>().mockResolvedValue(undefined);
+        const cues = [
+            subtitle('Track 1', 0, 1000, 0, 0),
+            subtitle('Track 2 skipped', 0, 1000, 1, 0),
+            subtitle('Track 3', 0, 1000, 2, 0),
+        ];
+        const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+        expect(autoCopySubtitleText(cues, calculateAutoCopyableTracksValue([1]), fallback)).toBe(true);
+        await flush();
+        expect(fallback).toHaveBeenLastCalledWith('Track 2 skipped');
+
+        fallback.mockClear();
+        expect(autoCopySubtitleText(cues, calculateAutoCopyableTracksValue([0, 2]), fallback)).toBe(true);
+        await flush();
+        expect(fallback).toHaveBeenLastCalledWith('Track 1\n\nTrack 3');
+
+        fallback.mockClear();
+        expect(autoCopySubtitleText(cues, calculateAutoCopyableTracksValue([3]), fallback)).toBe(false);
+        await flush();
+        expect(fallback).not.toHaveBeenCalled();
+    });
+});
 describe('readableCharacterCount', () => {
     it('excludes whitespace and invisible formatting controls', () => {
         expect(readableCharacterCount('')).toBe(0);
@@ -135,6 +196,20 @@ describe('numeric normalization', () => {
         expect(clamp(-1, 0, 10)).toBe(0);
         expect(clamp(5, 0, 10)).toBe(5);
         expect(clamp(11, 0, 10)).toBe(10);
+    });
+});
+
+describe('setsEqual', () => {
+    it('handles undefined, same-reference, empty, equal, and unequal sets', () => {
+        const set = new Set([1, 2]);
+        expect(setsEqual(undefined, undefined)).toBe(true);
+        expect(setsEqual(set, set)).toBe(true);
+        expect(setsEqual(set, undefined)).toBe(false);
+        expect(setsEqual(undefined, set)).toBe(false);
+        expect(setsEqual(new Set(), new Set())).toBe(true);
+        expect(setsEqual(new Set([1, 2]), new Set([2, 1]))).toBe(true);
+        expect(setsEqual(new Set([1, 2]), new Set([1, 3]))).toBe(false);
+        expect(setsEqual(new Set([1]), new Set([1, 2]))).toBe(false);
     });
 });
 

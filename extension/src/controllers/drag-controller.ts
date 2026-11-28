@@ -33,6 +33,7 @@ export default class DragController {
         }
 
         this.dropListener = (e: DragEvent) => {
+            if (!e.isTrusted) return; // Reject synthetic drops so host pages cannot silently load subtitles.
             e.preventDefault();
 
             this.dragEnterElement = null;

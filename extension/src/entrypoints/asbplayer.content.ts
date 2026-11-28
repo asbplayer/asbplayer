@@ -1,5 +1,6 @@
 import project from '@project/common/project';
-import { asbError } from '@project/common/util/log';
+import { asbError, asbTrace } from '@project/common/util/log';
+import { isClipboardText } from '@project/common/util/clipboard';
 import type {
     AddProfileMessage,
     DictionaryBuildAnkiCacheMessage,
@@ -34,6 +35,7 @@ import { ExtensionDictionaryStorage } from '@/services/extension-dictionary-stor
 import { ExtensionSettingsStorage } from '@/services/extension-settings-storage';
 import { ExtensionGlobalStateProvider } from '@/services/extension-global-state-provider';
 import { configureExtensionLogProvider } from '@/services/extension-log-provider';
+import { isClipboardAppOrigin, isClipboardExtensionOrigin } from '@/services/clipboard';
 
 const matches = [`*://${new URL(project.urls.app).hostname}/*`];
 
@@ -77,7 +79,46 @@ export default defineContentScript({
 
                 const command = event.data;
 
-                if (command.sender === 'asbplayer' || command.sender === 'asbplayerv2') {
+                if (command?.sender === 'asbplayer' || command?.sender === 'asbplayerv2') {
+                    if (command.message?.command === 'clipboard-write') {
+                        const { messageId, data } = command.message;
+                        const authorizedOrigin =
+                            event.origin === window.origin &&
+                            (isClipboardAppOrigin(event.origin, { allowDevOrigin: import.meta.env.DEV }) ||
+                                isClipboardExtensionOrigin(event.origin));
+                        // Reject legacy senders, synthetic/untrusted events, cross-origin frames, and any origin
+                        // outside the official web app, configured dev origin, or this extension's own pages so
+                        // untrusted pages or frames cannot hijack background clipboard writes.
+                        if (
+                            command.sender !== 'asbplayerv2' ||
+                            !event.isTrusted ||
+                            !authorizedOrigin ||
+                            typeof messageId !== 'string'
+                        ) {
+                            asbTrace('content/clipboard', 'Rejected unauthorized clipboard request');
+                            return;
+                        }
+
+                        if (!isClipboardText(data)) {
+                            asbTrace('content/clipboard', 'Rejected invalid clipboard payload');
+                            sendMessageToPlayer({ response: false, messageId });
+                            return;
+                        }
+
+                        let written = false;
+                        try {
+                            written =
+                                (await browser.runtime.sendMessage({
+                                    sender: 'asbplayerv2',
+                                    message: { command: 'clipboard-write', data },
+                                })) === true;
+                        } catch (error) {
+                            asbError('content/clipboard', error);
+                        }
+                        sendMessageToPlayer({ response: written, messageId });
+                        return;
+                    }
+
                     switch (command.message.command) {
                         case 'get-settings': {
                             const getSettingsMessage = command.message as GetSettingsMessage;
