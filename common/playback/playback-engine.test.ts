@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { clearAutoPauseTokenSelectionInRoot, selectTokenInRoot } from '@project/common/annotations';
+import { clearAutoPauseTokenSelectionInRoot, selectTokenInRoot } from '@project/common/annotations/dom-token-selection';
 import { AutoPausePreference, PlayMode } from '@project/common';
 import type { IndexedSubtitleModel, PlaybackState } from '@project/common';
 import { AutoPauseResumeMode, defaultSettings, isSaveOnlySettings, SubtitleVisibility } from '@project/common/settings';

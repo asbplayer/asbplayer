@@ -72,14 +72,15 @@ import type {
 
 import { asbTrace } from '@project/common/util/log';
 import {
-    bindNativeTokenSelection,
-    HoveredToken,
     mergeSubtitleAnnotations,
     renderRichTextOntoSubtitles,
     ASB_SUBTITLE_INDEX_ATTRIBUTE,
     ASB_PLAYBACK_PAUSED_CLASS,
     ASB_TOKEN_CONTAINER_CLASS,
 } from '@project/common/annotations';
+import { HoveredToken } from '@project/common/annotations/dom-hovered-token';
+import { registerSubtitleCopyScope } from '@project/common/annotations/dom-native-copy';
+import { bindNativeTokenSelection } from '@project/common/annotations/dom-native-selection';
 import type { TokenJumpMatch } from '@project/common/annotations/token-navigation';
 import Clock from '@project/common/playback/media/clock';
 
@@ -261,6 +262,7 @@ const CachedShowingSubtitle = React.memo(function CachedShowingSubtitle({
     const attach = useCallback(
         (element: HTMLDivElement | null) => {
             if (!element) return;
+            registerSubtitleCopyScope(element, `[${ASB_SUBTITLE_INDEX_ATTRIBUTE}]`);
             while (element.firstChild) domCache.return(element.lastChild! as HTMLElement);
             element.appendChild(domCache.get(key, () => renderHtml(currentSubtitle.current)));
         },

@@ -24,9 +24,10 @@ import {
     sortDictionaryStatisticsSentenceBucketEntries,
 } from '@project/common/dictionary-statistics';
 import type { RichTextWindow, RenderedRichText } from '@project/common/annotations';
+import { registerSubtitleCopyScope } from '@project/common/annotations/dom-native-copy';
+import { bindNativeTokenSelection } from '@project/common/annotations/dom-native-selection';
 import {
     ASB_TOKEN_HIGHLIGHT_CLASS,
-    bindNativeTokenSelection,
     renderRichTextWindow,
     emptyRichTextWindow,
     renderRichTextForSubtitle,
@@ -207,6 +208,7 @@ const SentenceRowCells = React.memo(function SentenceRowCells({
                 }}
             >
                 <span
+                    ref={registerSubtitleCopyScope}
                     style={tokenAnnotationStyleValues(tokenAnnotationConfig)}
                     dangerouslySetInnerHTML={{
                         __html: rendered?.richText ?? sentence.text,

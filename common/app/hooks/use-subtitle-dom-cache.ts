@@ -1,11 +1,8 @@
 import type { IndexedSubtitleModel } from '@project/common';
 import { OffscreenDomCache } from '@project/common';
-import {
-    ASB_SUBTITLE_INDEX_ATTRIBUTE,
-    restorableTokenSelectionInRoot,
-    selectTokenInRoot,
-} from '@project/common/annotations';
-import type { RestorableTokenSelection } from '@project/common/annotations';
+import { ASB_SUBTITLE_INDEX_ATTRIBUTE } from '@project/common/annotations';
+import { restorableTokenSelectionInRoot, selectTokenInRoot } from '@project/common/annotations/dom-token-selection';
+import type { RestorableTokenSelection } from '@project/common/annotations/dom-token-selection';
 import { useEffect, useLayoutEffect, useRef } from 'react';
 import { diffCues, sameSubtitleAppearance, subtitleKey } from '@project/common/subtitle-reader/subtitle-stream';
 

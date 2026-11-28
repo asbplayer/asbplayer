@@ -45,6 +45,7 @@ import {
 import type { SubtitleCollection } from '@project/common/subtitle-collection';
 import type { RichTextWindow, RenderedRichText, SubtitleAnnotations } from '@project/common/annotations';
 import type { TokenJumpMatch, TokenSelectionLocation } from '@project/common/annotations/token-navigation';
+import { registerSubtitleCopyScope } from '@project/common/annotations/dom-native-copy';
 import {
     renderRichTextWindow,
     emptyRichTextWindow,
@@ -450,6 +451,7 @@ const SubtitleRowCells = React.memo(function SubtitleRowCells({
         <SubtitleTextImage availableWidth={window.screen.availWidth / 2} subtitle={subtitle} scale={1} />
     ) : (
         <span
+            ref={registerSubtitleCopyScope}
             className={disabledClassName}
             dangerouslySetInnerHTML={{
                 __html: rendered?.richText ?? subtitle.text,

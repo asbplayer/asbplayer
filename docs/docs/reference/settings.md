@@ -385,6 +385,10 @@ Automatically generate statistics for the current media upon load. This will als
 
 ### Display word readings {#display-word-readings}
 
+:::tip
+When a selection contains only asbplayer subtitle content and includes base text, copying omits the annotations. If you select only annotations, such as a reading, frequency rank, or definition, the browser copies them normally.
+:::
+
 Shows readings (e.g. furigana) above words based on the word status and states.
 
 ### Display word frequency {#display-word-frequency}
@@ -412,6 +416,10 @@ Typically only kanji would receive furigana readings but with this feature enabl
 :::
 
 ### Display word definitions {#display-word-definitions}
+
+:::tip
+When a selection contains only asbplayer subtitle content and includes base text, copying omits the annotations. If you select only annotations, such as a reading, frequency rank, or definition, the browser copies them normally.
+:::
 
 Controls whether short definitions or explanations are displayed for each word based on the word status and states.
 
