@@ -131,6 +131,7 @@
         "adjustOffsetToSubtitle": "Regola il ritardo dei sottotitoli in modo che il sottotitolo precedente/successivo sia al secondo corrente",
         "adjustPlaybackRate": "Regola la velocità di riproduzione di ±0,1",
         "ankiExport": "Estrai il sottotitolo corrente e apri la finestra di dialogo Anki",
+        "copyCurrentSubtitle": "Copy current subtitle",
         "copySubtitle": "Estrai sottotitolo corrente",
         "decreaseOffset": "Regola il ritardo dei sottotitoli di -100ms",
         "decreasePlaybackRate": "Riduci la velocità di riproduzione",

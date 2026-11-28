@@ -12,6 +12,7 @@ import type {
     PlaybackState,
 } from '@project/common';
 import { SubtitleHtml } from '@project/common';
+import { asbError } from '@project/common/util/log';
 import type {
     AutoCopyableTracks,
     DictionaryTrack,
@@ -46,8 +47,9 @@ import type { RestorableTokenSelection, SelectTokenInRootOptions } from '@projec
 import type { TokenSelectionLocation } from '@project/common/annotations/token-navigation';
 import {
     arrayEquals,
-    compareSubtitlesForDisplay,
     computeStyleString,
+    copySubtitleText,
+    enabledSubtitlesInDisplayOrder,
     formatAsSignedMs,
     mapSubtitlesForDisplay,
     surroundingSubtitles,
@@ -568,14 +570,14 @@ export default class SubtitleController {
     refreshShowingSubtitles(): void {
         if (this.showingLoadedMessage) return;
 
-        const showingSubtitles = this.timelineShowingSubtitles
-            .filter((subtitle) => this._trackEnabled(subtitle))
-            .slice()
-            .sort(compareSubtitlesForDisplay);
-        const invisibleSubtitles = this.timelineInvisibleSubtitles
-            .filter((subtitle) => this._trackEnabled(subtitle))
-            .slice()
-            .sort(compareSubtitlesForDisplay);
+        const showingSubtitles = enabledSubtitlesInDisplayOrder(
+            this.timelineShowingSubtitles,
+            this.disabledSubtitleTracks
+        );
+        const invisibleSubtitles = enabledSubtitlesInDisplayOrder(
+            this.timelineInvisibleSubtitles,
+            this.disabledSubtitleTracks
+        );
         const showingSubtitlesAreNew =
             this.showingSubtitles === undefined ||
             !arrayEquals(showingSubtitles, this.showingSubtitles, (left, right) => left.index === right.index);
@@ -678,23 +680,29 @@ export default class SubtitleController {
                 .filter((text) => text !== '')
                 .join('\n');
 
-            if (text !== '') {
-                const command: VideoToExtensionCommand<CopyToClipboardMessage> = {
-                    sender: 'asbplayer-video',
-                    message: {
-                        command: 'copy-to-clipboard',
-                        dataUrl: `data:text/plain,${encodeURIComponent(text)}`,
-                    },
-                    src: this.context.registeredVideoSrc,
-                };
-
-                void browser.runtime.sendMessage(command);
-            }
+            if (text) void this._writeTextToClipboard(text).catch((error) => asbError('video/clipboard', error));
         }
     }
 
-    private _trackEnabled(subtitle: SubtitleModel) {
-        return subtitle.track === undefined || !this.disabledSubtitleTracks[subtitle.track];
+    /** @returns whether non-empty subtitle text was copied. */
+    copyCurrentSubtitle(): boolean {
+        return copySubtitleText(
+            enabledSubtitlesInDisplayOrder(this.timelineShowingSubtitles, this.disabledSubtitleTracks),
+            (text) => this._writeTextToClipboard(text)
+        );
+    }
+
+    private async _writeTextToClipboard(text: string) {
+        const command: VideoToExtensionCommand<CopyToClipboardMessage> = {
+            sender: 'asbplayer-video',
+            message: {
+                command: 'copy-to-clipboard',
+                dataUrl: `data:text/plain,${encodeURIComponent(text)}`,
+            },
+            src: this.context.registeredVideoSrc,
+        };
+
+        await browser.runtime.sendMessage(command);
     }
 
     private _buildSubtitlesHtml(subtitles: readonly IndexedSubtitleModel[]) {

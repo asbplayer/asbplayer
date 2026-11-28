@@ -19,6 +19,11 @@ export interface KeyBinder {
         subtitleGetter: () => T | undefined,
         capture?: boolean
     ): () => void;
+    bindCopyCurrentSubtitle(
+        copyCurrentSubtitle: () => boolean,
+        disabledGetter: () => boolean,
+        capture?: boolean
+    ): () => void;
     bindAnkiExport(
         onAnkiExport: (event: KeyboardEvent) => void,
         disabledGetter: () => boolean,
@@ -188,6 +193,20 @@ export class DefaultKeyBinder implements KeyBinder {
     constructor(keyBindSet: KeyBindSet) {
         this.keyBindSet = keyBindSet;
     }
+
+    bindCopyCurrentSubtitle(copyCurrentSubtitle: () => boolean, disabledGetter: () => boolean, capture = false) {
+        const shortcut = this.keyBindSet.copyCurrentSubtitle.keys;
+        if (!shortcut) return () => {};
+
+        return this._bind(shortcut, capture, (event) => {
+            if (disabledGetter() || !copyCurrentSubtitle()) return false;
+
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            return true;
+        });
+    }
+
     bindCopy<T extends SubtitleModel = SubtitleModel>(
         onCopy: (event: KeyboardEvent, subtitle: T) => void,
         disabledGetter: () => boolean,

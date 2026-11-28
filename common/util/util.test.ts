@@ -12,6 +12,7 @@ import {
     computeStyles,
     computeStyleString,
     download,
+    enabledSubtitlesInDisplayOrder,
     ensureStoragePersisted,
     extractText,
     filterAsync,
@@ -1305,6 +1306,20 @@ it('sorts subtitles by track first, regardless of source index', () => {
         { track: 0, index: 1 },
         { track: 1, index: 0 },
     ]);
+});
+
+it('orders enabled subtitle tracks without mutating the source cues', () => {
+    const cues = [
+        { track: 2, index: 0 },
+        { track: 1, index: 1 },
+        { track: 0, index: 2 },
+    ];
+
+    expect(enabledSubtitlesInDisplayOrder(cues, { 1: true, 2: false })).toEqual([
+        { track: 0, index: 2 },
+        { track: 2, index: 0 },
+    ]);
+    expect(cues.map(({ index }) => index)).toEqual([0, 1, 2]);
 });
 
 it('maps showing and invisible subtitles in display order with their visibility', () => {

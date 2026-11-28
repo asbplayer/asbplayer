@@ -131,6 +131,7 @@
         "adjustOffsetToSubtitle": "Ajuste o atraso da legenda para que a legenda anterior/próxima esteja no timestamp atual",
         "adjustPlaybackRate": "Ajuste a taxa de reprodução em ±0.1",
         "ankiExport": "Minera a legenda atual e abre a caixa de diálogo do Anki",
+        "copyCurrentSubtitle": "Copy current subtitle",
         "copySubtitle": "Minera a legenda atual",
         "decreaseOffset": "Ajusta o atraso da legenda em -100ms",
         "decreasePlaybackRate": "Diminuir a taxa de reprodução",

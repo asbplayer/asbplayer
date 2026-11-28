@@ -131,6 +131,7 @@
         "adjustOffsetToSubtitle": "Untertititeloffset anhand des aktuellen Zeitstempels setzen",
         "adjustPlaybackRate": "Videogeschwindigkeit ±0",
         "ankiExport": "Aktuellen Untertitel extrahieren und Anki-Dialog öffnen",
+        "copyCurrentSubtitle": "Copy current subtitle",
         "copySubtitle": "Aktuellen Untertitel extrahieren",
         "decreaseOffset": "Untertiteloffset -100ms",
         "decreasePlaybackRate": "Wiedergabegeschwindigkeit verringern",

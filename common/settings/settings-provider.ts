@@ -182,6 +182,7 @@ export const defaultSettings: AsbplayerSettings = {
         moveBottomSubtitlesDown: { keys: '' },
         moveTopSubtitlesUp: { keys: '' },
         moveTopSubtitlesDown: { keys: '' },
+        copyCurrentSubtitle: { keys: '' },
         openStatistics: { keys: 'Q+S' },
         jumpToNextToken: { keys: 'Q+E' },
         jumpToPreviousToken: { keys: 'Q+W' },

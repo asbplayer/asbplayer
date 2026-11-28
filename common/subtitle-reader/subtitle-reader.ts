@@ -25,7 +25,6 @@ export const sanitizeSubtitleHtml = (html: string) =>
         ALLOW_ARIA_ATTR: false,
     });
 
-// HTML removal assigns to innerHTML in the active document, so sanitize before parsing.
 // The final sanitization pass is still needed after entity decoding.
 const removeSubtitleHtmlSafely = (html: string) => removeSubtitleHtml(sanitizeSubtitleHtml(html));
 
