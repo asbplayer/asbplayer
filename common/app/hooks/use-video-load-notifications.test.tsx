@@ -3,6 +3,7 @@ import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import type { Root } from 'react-dom/client';
 import type { AudioConversionState } from '@project/common/audio-transcode';
+import type { TranscodedAudioPayload } from '@project/common';
 import { useVideoLoadNotifications } from '@project/common/app/hooks/use-video-load-notifications';
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -14,14 +15,33 @@ let readyState: number;
 let networkState: number;
 let error: MediaError | null;
 
+const conversionFor = (state: AudioConversionState, conversionId = 1): TranscodedAudioPayload => {
+    switch (state) {
+        case 'idle':
+            return { state: 'idle', required: false };
+        case 'failed':
+            return { state: 'failed', required: true };
+        case 'transcoding':
+            return { state: 'transcoding', conversionId, required: true };
+        case 'ready':
+            return { state: 'ready', conversionId, audio: new Blob(['audio']), required: true };
+    }
+};
+
 const Harness = ({
     source = 'blob:video',
     conversionState = 'idle',
+    conversionId = 1,
 }: {
     source?: string;
     conversionState?: AudioConversionState;
+    conversionId?: number;
 }) => {
-    const notices = useVideoLoadNotifications({ video, source, conversionState });
+    const notices = useVideoLoadNotifications({
+        video,
+        source,
+        conversion: conversionFor(conversionState, conversionId),
+    });
     return <output data-loading={notices.loading} data-conversion={notices.conversion} />;
 };
 const render = async (props = {}) => {
@@ -251,4 +271,23 @@ it('detects an already-started idle load with no metadata instead of treating it
     expect(notices().loading).toBe(true);
     await ready();
     expect(notices().loading).toBe(false);
+});
+
+it('shows a fresh 5s conversion notice when switching audio tracks later on the same video', async () => {
+    await render();
+    await ready();
+    await advance(60_000);
+    expect(notices()).toEqual({ loading: false, conversion: false });
+
+    await render({ conversionState: 'transcoding', conversionId: 1 });
+    expect(notices()).toEqual({ loading: false, conversion: true });
+    await advance(4_999);
+    expect(notices()).toEqual({ loading: false, conversion: true });
+    await advance(1);
+    expect(notices()).toEqual({ loading: false, conversion: false });
+
+    await render({ conversionState: 'transcoding', conversionId: 2 });
+    expect(notices()).toEqual({ loading: false, conversion: true });
+    await advance(5_000);
+    expect(notices()).toEqual({ loading: false, conversion: false });
 });

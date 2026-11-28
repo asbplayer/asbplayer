@@ -4,8 +4,19 @@ sidebar_position: 10
 
 # Audio track selection {#audio-track-selection}
 
-Some video files have multiple audio tracks. On the website, an audio track selector is available when the **Experimental Web Platform features** flag is enabled from `chrome://flags` (or equivalent for the current browser).
+## Subtitle picker
+
+When you open a local video with multiple audio tracks, the subtitle picker opens automatically. You can reopen it with **Load Subtitles** in the playback controls. Choose an audio track at the top of the picker.
+
+- **Default** lets your browser choose the audio track. If it can't play any of the tracks, asbplayer can convert one automatically.
+- When you choose a specific track, asbplayer converts it for playback and remembers your choice when you restore your last session.
+
+If the file has one audio track, it appears as the only choice whenever you open the picker. A single audio track never opens the picker on its own.
+
+## Playback controls
+
+With **Default** selected in the subtitle picker, look for the music-note **Select Audio Track** button. It appears when your browser offers at least two tracks and asbplayer doesn't need to convert the audio.
 
 :::warning
-As of this writing **Experimental Web Platform features** completely breaks the browser extension for streaming video (on some websites, maybe all). Enable this flag at your own risk.
+In Chrome, the playback button requires **Experimental Web Platform features** in `chrome://flags`. Enabling this setting can cause many issues with Chrome on various websites. The subtitle picker works with this setting off.
 :::

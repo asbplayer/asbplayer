@@ -359,6 +359,31 @@ export const generateSubtitleMedia = async (root) => {
         'uncleared.mkv',
     ]);
     run(['-i', 'dvd.mkv', '-map', '0', '-c', 'copy', 'dvd.mp4']);
+    // Cropped DVD rip: VOBSUB rectangles at y=180..184 extend past the 320x120 video with unset subtitle tkhd dims.
+    run([
+        '-copyts',
+        '-f',
+        'lavfi',
+        '-i',
+        'color=size=320x120:rate=1:duration=10',
+        '-i',
+        'dvd.mkv',
+        '-map',
+        '0:v',
+        '-map',
+        '1:s',
+        '-c:v',
+        'libx264',
+        '-c:s',
+        'copy',
+        'dvd-cropped.mp4',
+    ]);
+    const croppedMp4Path = resolve(root, 'dvd-cropped.mp4');
+    const croppedMp4 = await readFile(croppedMp4Path);
+    const subtitleTkhd = croppedMp4.indexOf('tkhd', croppedMp4.indexOf('tkhd') + 4);
+    const tkhdSize = croppedMp4.readUInt32BE(subtitleTkhd - 4);
+    croppedMp4.fill(0, subtitleTkhd - 4 + tkhdSize - 8, subtitleTkhd - 4 + tkhdSize);
+    await writeFile(croppedMp4Path, croppedMp4);
     // Minimal Matroska elements exercise compressed subtitle packets.
     const vint = (value) => {
         for (let length = 1; length <= 8; length++) {

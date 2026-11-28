@@ -61,7 +61,7 @@ export default class VideoChannel {
     private time: number;
     private paused: boolean;
     private latestPlaybackState?: PlaybackStateFromVideoMessage;
-    private isReady: boolean;
+    private _isReady: boolean;
     private readyCallbacks: ((paused: boolean) => void)[];
     private playCallbacks: ((echo: boolean) => void)[];
     private pauseCallbacks: ((echo: boolean) => void)[];
@@ -120,7 +120,7 @@ export default class VideoChannel {
         this.time = 0;
         this.paused = true;
         this.duration = 0;
-        this.isReady = false;
+        this._isReady = false;
         this.readyState = HTMLMediaElement.HAVE_NOTHING;
         this._playbackRate = 1;
         this.playModes = new Set([PlayMode.normal]);
@@ -156,7 +156,7 @@ export default class VideoChannel {
                     const readyMessage = event.data as ReadyFromVideoMessage;
                     this.duration = readyMessage.duration;
                     this.paused = readyMessage.paused;
-                    this.isReady = true;
+                    this._isReady = true;
                     this.audioTracks = readyMessage.audioTracks;
                     this.selectedAudioTrack = readyMessage.selectedAudioTrack;
                     this.readyState = HTMLMediaElement.HAVE_ENOUGH_DATA;
@@ -394,6 +394,11 @@ export default class VideoChannel {
     set playbackRate(playbackRate: number) {
         const message: PlaybackRateToVideoMessage = { command: 'playbackRate', value: playbackRate };
         this.protocol.postMessage(message);
+    }
+
+    /** Whether this channel has received its initial ready message and is still open. */
+    get isReady(): boolean {
+        return this._isReady;
     }
 
     onReady(callback: (paused: boolean) => void) {
@@ -916,6 +921,7 @@ export default class VideoChannel {
     }
 
     close() {
+        this._isReady = false;
         this.protocol.postMessage({ command: 'close' });
         this.protocol.close();
         this.readyCallbacks = [];

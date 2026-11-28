@@ -5,7 +5,7 @@ import type { ConfirmedVideoDataSubtitleTrack, DisplaySubtitleModel } from '@pro
 import type { FileWithId } from '@project/common/file-selector';
 import type { FileSessionRecord } from '@project/common/file-system-access';
 import type { FileSessionStore } from '@project/common/app/services/file-session';
-import { MediaSourcesController } from '@project/common/app/services/media-sources-controller';
+import { MediaSourcesController, subtitleSourceOwner } from '@project/common/app/services/media-sources-controller';
 import type { EmbeddedSelection } from '@project/common/app/services/media-sources-controller';
 import { SubtitleTracksController } from '@project/common/app/services/subtitle-tracks-controller';
 import { TestVideoProtocol } from '@project/common/app/services/subtitle-tracks-test-utils';
@@ -18,6 +18,7 @@ import type {
 import { mkv, mkvTrack } from '@project/common/media-probe/test-media';
 import SubtitleReader from '@project/common/subtitle-reader/subtitle-reader';
 import { subtitleKey } from '@project/common/subtitle-reader/subtitle-stream';
+import type { SubtitleSourceState } from '@project/common/subtitle-reader/subtitle-stream';
 
 const encoder = new TextEncoder();
 const srt = '1\n00:00:01,000 --> 00:00:02,000\nFirst\n\n';
@@ -76,8 +77,22 @@ interface DeferredRead {
     reject: (error: Error) => void;
 }
 
-const deferredVideo = (reads: DeferredRead[], id: string, codec: string | undefined = 'S_TEXT/UTF8'): FileWithId => {
-    const bytes = mkv(mkvTrack(1, 'V_VP8'), ...(codec ? [mkvTrack(17, codec)] : []));
+const finishProbeReads = (reads: DeferredRead[], index: number) => {
+    reads[index].finish();
+    reads[index + 1].finish();
+};
+
+const deferredVideo = (
+    reads: DeferredRead[],
+    id: string,
+    codec = 'S_TEXT/UTF8',
+    audioCodecs: string[] = []
+): FileWithId => {
+    const bytes = mkv(
+        mkvTrack(1, 'V_VP8'),
+        ...(codec ? [mkvTrack(17, codec)] : []),
+        ...audioCodecs.map((audioCodec) => mkvTrack(2, audioCodec))
+    );
     const file = new File(['video'], `${id}.mkv`, { lastModified: 1 });
     Object.defineProperty(file, 'size', { value: bytes.length });
     file.slice = () =>
@@ -137,14 +152,30 @@ const attachTracksController = () => {
     let activeSelection: EmbeddedSelection | undefined;
     let activeTracks: unknown;
     const makeSource = () => {
-        const { embeddedSelection, sources } = controller.getState();
+        const state = controller.getState();
+        const { embeddedSelection, sources } = state;
+        const owner = subtitleSourceOwner(state);
+        const onSourcesChanged = (states: readonly SubtitleSourceState[]) =>
+            controller.updateSubtitleSources(owner, states);
         const producer = controller.createProducer(embeddedSelection, {
             reader,
             errorMessage: () => 'Failed to load embedded subtitles',
         });
         return producer
-            ? { kind: 'producer' as const, producer, supportsProgressiveSubtitles: true, onInitialized: () => {} }
-            : { kind: 'local' as const, tracks: sources.subtitleTracks, reader, onInitialized: () => {} };
+            ? {
+                  kind: 'producer' as const,
+                  producer,
+                  supportsProgressiveSubtitles: true,
+                  onInitialized: () => {},
+                  onSourcesChanged,
+              }
+            : {
+                  kind: 'local' as const,
+                  tracks: sources.subtitleTracks,
+                  reader,
+                  onInitialized: () => {},
+                  onSourcesChanged,
+              };
     };
     tracksController = new SubtitleTracksController(
         {
@@ -177,10 +208,14 @@ const attachTracksController = () => {
 
 const emit = (text: string) => extraction.onChunk(0, encoder.encode(text).buffer);
 
-const openAndConfirm = async (tracks: ConfirmedVideoDataSubtitleTrack[], selectedTrackIds?: string[]) => {
+const openAndConfirm = async (
+    tracks: ConfirmedVideoDataSubtitleTrack[],
+    selectedTrackIds?: string[],
+    audioTrackIndex?: number
+) => {
     if (!controller.getState().picker.open) controller.openPicker();
     controller.setPickerSelectedTrackIds(selectedTrackIds ?? tracks.map(({ id }) => id));
-    controller.confirm(tracks);
+    controller.confirm(tracks, audioTrackIndex);
     await flush();
 };
 
@@ -236,7 +271,7 @@ it('opens a video-only import after supported embedded tracks are discovered', a
     controller.importManualFiles([deferredVideo(reads, 'episode')]);
     expect(controller.getState().picker.open).toBe(false);
     expect(controller.getState().picker.discovering).toBe(true);
-    reads[0].finish();
+    finishProbeReads(reads, 0);
     await flush();
     expect(controller.getState().picker.open).toBe(true);
     expect(controller.getState().picker.discovering).toBe(false);
@@ -249,7 +284,7 @@ it.each(['S_HDMV/PGS', 'S_VOBSUB', 'S_DVBSUB'])(
     async (codec) => {
         const reads: DeferredRead[] = [];
         controller.importManualFiles([deferredVideo(reads, 'episode', codec)]);
-        reads[0].finish();
+        finishProbeReads(reads, 0);
         await flush();
         expect(controller.getState().picker.open).toBe(true);
         expect(controller.getState().picker.embeddedTracks?.[0].outputFormat).toBe('asbimg');
@@ -262,7 +297,7 @@ it.each(['S_TEXT/UNKNOWN', ''])(
     async (codec) => {
         const reads: DeferredRead[] = [];
         controller.importManualFiles([deferredVideo(reads, 'episode', codec)]);
-        reads[0].finish();
+        finishProbeReads(reads, 0);
         await flush();
         expect(controller.getState().picker.open).toBe(false);
         if (codec) {
@@ -277,22 +312,24 @@ it.each(['S_TEXT/UNKNOWN', ''])(
                 }),
             ]);
             expect(embeddedTracks![0].outputFormat).toBeUndefined();
-            expect(reads).toHaveLength(1);
+            expect(reads).toHaveLength(2);
         }
         expect(extract).not.toHaveBeenCalled();
     }
 );
 
-it('retains external subtitles without automatic discovery, but still allows explicitly opening the picker', async () => {
+it('retains external subtitles while discovering audio and discovers embedded subtitles on explicit open', async () => {
     const reads: DeferredRead[] = [];
     controller.loadSourceFiles([subtitle('en')]);
     controller.importManualFiles([deferredVideo(reads, 'episode')]);
     await flush();
     expect(controller.getState().picker.open).toBe(false);
-    expect(reads).toHaveLength(0);
+    expect(reads).toHaveLength(1);
+    reads[0].finish();
+    await flush();
 
     controller.openPicker();
-    reads[0].finish();
+    reads[1].finish();
     await flush();
     expect(controller.getState().picker.open).toBe(true);
     expect(controller.getState().picker.selectedTrackIds).toEqual(['en', '-', '-']);
@@ -301,17 +338,55 @@ it('retains external subtitles without automatic discovery, but still allows exp
     expect(extract).not.toHaveBeenCalled();
 });
 
+it('keeps the active discovery and spinner when the picker opens during a full scan', async () => {
+    const reads: DeferredRead[] = [];
+    controller.importManualFiles([deferredVideo(reads, 'episode', 'S_TEXT/UTF8', ['A_AAC', 'A_OPUS'])]);
+
+    controller.openPicker();
+    expect(controller.getState().picker).toMatchObject({ open: true, discovering: true });
+    expect(reads).toHaveLength(2);
+    finishProbeReads(reads, 0);
+    await flush();
+
+    const { picker } = controller.getState();
+    expect(picker).toMatchObject({ open: true, discovering: false });
+    expect(picker.embeddedTracks).toHaveLength(1);
+    expect(picker.audioTracks?.map(({ codec }) => codec)).toEqual(['aac', 'opus']);
+});
+
+it('adds subtitle discovery when the picker opens during an audio-only scan', async () => {
+    const reads: DeferredRead[] = [];
+    controller.loadSourceFiles([subtitle('en')]);
+    controller.importManualFiles([deferredVideo(reads, 'episode', 'S_TEXT/UTF8', ['A_AAC', 'A_OPUS'])]);
+
+    expect(reads).toHaveLength(1);
+    controller.openPicker();
+    reads[0].finish();
+    await flush();
+    expect(controller.getState().picker).toMatchObject({ open: true, discovering: true });
+
+    // The upgraded request shares the audio read and only starts a new subtitle read.
+    expect(reads).toHaveLength(2);
+    reads[1].finish();
+    await flush();
+    const { picker } = controller.getState();
+    expect(picker).toMatchObject({ open: true, discovering: false, selectedTrackIds: ['en', '-', '-'] });
+    expect(picker.embeddedTracks).toHaveLength(1);
+    expect(picker.audioTracks?.map(({ codec }) => codec)).toEqual(['aac', 'opus']);
+});
+
 it('does not reopen after cancellation, ignores late reads, and rediscovers on explicit open', async () => {
     const reads: DeferredRead[] = [];
     controller.importManualFiles([deferredVideo(reads, 'episode')]);
     controller.closePicker();
-    reads[0].finish();
+    finishProbeReads(reads, 0);
     await flush();
     expect(controller.getState().picker.open).toBe(false);
     expect(controller.getState().picker.embeddedTracks).toBeUndefined();
 
     controller.openPicker();
-    reads[1].finish();
+    expect(reads).toHaveLength(3);
+    reads[2].finish();
     await flush();
     expect(controller.getState().picker.open).toBe(true);
     expect(controller.getState().picker.embeddedTracks).toHaveLength(1);
@@ -323,10 +398,11 @@ it.each([false, true])('ignores cancelled discovery for a replacement import (sa
     const original = deferredVideo(reads, 'old');
     controller.importManualFiles([original]);
     controller.importManualFiles([sameFile ? original : deferredVideo(reads, 'replacement')]);
-    reads[0].finish();
+    finishProbeReads(reads, 0);
     await flush();
     expect(controller.getState().picker.open).toBe(false);
-    reads[1].finish();
+    if (sameFile) reads[2].finish();
+    else finishProbeReads(reads, 2);
     await flush();
     expect(controller.getState().picker.open).toBe(true);
     expect(extract).not.toHaveBeenCalled();
@@ -345,10 +421,10 @@ it.each([0, 1, 2])(
         expect(controller.getState().picker.selectedTrackIds).toEqual(
             [0, 1, 2].map((index) => expectedFiles[index]?.id ?? '-')
         );
-        reads[0].finish();
+        finishProbeReads(reads, 0);
         await flush();
         expect(controller.getState().picker.embeddedTracks).toBeUndefined();
-        reads[1].finish();
+        finishProbeReads(reads, 2);
         await flush();
         expect(controller.getState().picker.externalTracks.map((track) => track.label)).toEqual(
             expectedFiles.map(({ file }) => file.name)
@@ -363,7 +439,7 @@ it('reapplies cached embedded choices when reimporting the active video with dif
     const active = deferredVideo(reads, 'active');
     controller.loadSourceFiles([active, subtitle('old')]);
     controller.openPicker();
-    reads[0].finish();
+    finishProbeReads(reads, 0);
     await flush();
 
     controller.stagePickerFiles([active, subtitle('new')]);
@@ -371,7 +447,7 @@ it('reapplies cached embedded choices when reimporting the active video with dif
     expect(controller.getState().picker.selectedTrackIds).toEqual(['new', '-', '-']);
     expect(controller.getState().picker.externalTracks.map((track) => track.label)).toEqual(['new.srt']);
     expect(controller.getState().picker.embeddedTracks).toHaveLength(1);
-    expect(reads).toHaveLength(1);
+    expect(reads).toHaveLength(2);
     expect(extract).not.toHaveBeenCalled();
 });
 
@@ -379,7 +455,7 @@ it('does not reopen if an external subtitle arrives during discovery', async () 
     const reads: DeferredRead[] = [];
     controller.importManualFiles([deferredVideo(reads, 'episode')]);
     controller.importManualFiles([subtitle('en')]);
-    reads[0].finish();
+    finishProbeReads(reads, 0);
     await flush();
     expect(controller.getState().picker.open).toBe(false);
     expect(extract).not.toHaveBeenCalled();
@@ -389,22 +465,62 @@ it('reports failed discovery and retries on explicit open or new video without l
     const reads: DeferredRead[] = [];
     controller.importManualFiles([deferredVideo(reads, 'failed')]);
     reads[0].reject(new Error('File read failed'));
+    reads[1].finish();
     await flush();
     expect(controller.getState().picker.open).toBe(false);
     expect(controller.getState().picker.discoveryError).toBe(true);
 
     controller.openPicker();
     expect(controller.getState().picker.discoveryError).toBe(false);
-    reads[1].reject(new Error('Still failing'));
+    reads[2].reject(new Error('Still failing'));
     await flush();
     expect(controller.getState().picker.discoveryError).toBe(true);
 
     controller.importManualFiles([deferredVideo(reads, 'replacement')]);
-    reads[2].finish();
+    finishProbeReads(reads, 3);
     await flush();
     expect(controller.getState().picker.open).toBe(true);
     expect(controller.getState().picker.discoveryError).toBe(false);
     expect(extract).not.toHaveBeenCalled();
+});
+
+it('can retry audio discovery when the picker opens after an audio read failure', async () => {
+    const reads: DeferredRead[] = [];
+    controller.importManualFiles([deferredVideo(reads, 'episode', '', ['A_AAC', 'A_OPUS'])]);
+    reads[0].finish();
+    reads[1].reject(new Error('Audio read failed'));
+    await flush();
+    expect(controller.getState().picker.open).toBe(false);
+
+    controller.openPicker();
+    reads[2].finish();
+    await flush();
+    expect(controller.getState().picker.audioTracks?.map(({ codec }) => codec)).toEqual(['aac', 'opus']);
+});
+
+it.each([0, 1, 2])('opens for %i audio tracks only when there are multiple choices', async (count) => {
+    const reads: DeferredRead[] = [];
+    controller.importManualFiles([deferredVideo(reads, 'episode', '', Array(count).fill('A_AAC'))]);
+    finishProbeReads(reads, 0);
+    await flush();
+    const { picker } = controller.getState();
+    expect(picker.open).toBe(count > 1);
+    expect(picker.audioTracks?.map(({ codec }) => codec)).toEqual(Array(count).fill('aac'));
+});
+
+it.each([false, true])('opens for multiple audio tracks with external subtitles (imported: %s)', async (imported) => {
+    const reads: DeferredRead[] = [];
+    const file = subtitle('ja');
+    const media = deferredVideo(reads, 'episode', '', ['A_AAC', 'A_OPUS']);
+    if (!imported) controller.loadSourceFiles([file]);
+    controller.importManualFiles(imported ? [media, file] : [media]);
+    reads[0].finish();
+    await flush();
+    expect(controller.getState().picker.open).toBe(true);
+    expect(controller.getState().picker.selectedTrackIds).toEqual(['ja', '-', '-']);
+    expect(controller.getState().picker.audioTracks?.map(({ codec }) => codec)).toEqual(['aac', 'opus']);
+    reads[1].finish();
+    await flush();
 });
 
 // --- Selection resolution & confirmation ---
@@ -698,6 +814,89 @@ it('hands confirmed extraction to the shared controller and persists completion 
     expect(onError).not.toHaveBeenCalled();
 });
 
+it('changes audio and switches back to Default while keeping the active extraction and cue identities', async () => {
+    controller.loadSourceFiles([video]);
+    attachTracksController();
+    protocol.ready();
+    await openAndConfirm([choice]);
+    emit(srt);
+    await flush();
+    const keys = subtitles!.map(subtitleKey);
+    const sources = controller.getState().sources;
+    await openAndConfirm([choice], undefined, 1);
+
+    expect(controller.getState().sources.audioTrackIndex).toBe(1);
+    expect(controller.getState().sources.subtitleSource).toBe(sources.subtitleSource);
+    expect(subtitles!.map(subtitleKey)).toEqual(keys);
+    expect(extraction.signal.aborted).toBe(false);
+    expect(session.retain).toHaveBeenLastCalledWith({
+        audioTrackIndex: 1,
+        videoId: video.id,
+        subtitleTrackIds: [[choice.id]],
+    });
+
+    finishExtraction([{ trackKey: 0, format: 'srt', blob: new Blob([srt]) }]);
+    await flush();
+    expect(controller.getState().sources.audioTrackIndex).toBe(1);
+    const completed = controller.getState().sources;
+    await openAndConfirm([choice]);
+
+    expect(controller.getState().sources.audioTrackIndex).toBeUndefined();
+    expect(controller.getState().sources.subtitleSource).toBe(completed.subtitleSource);
+    expect(subtitles!.map(subtitleKey)).toEqual(keys);
+    expect(extract).toHaveBeenCalledTimes(1);
+});
+
+it('only retries failed subtitles when the audio choice also stays the same', async () => {
+    const local = { ...subtitle('local'), name: 'local', label: 'Local', extension: 'srt' };
+    let readFails = true;
+    Object.defineProperty(local.file, 'text', {
+        value: async () => {
+            if (readFails) throw new Error('Read failed');
+            return srt;
+        },
+    });
+    controller.loadSourceFiles([video, local]);
+    attachTracksController();
+    await flush();
+    expect(onError).toHaveBeenCalledWith(new Error('Read failed'));
+
+    readFails = false;
+    await openAndConfirm([local], undefined, 1);
+    expect(controller.getState().sources.audioTrackIndex).toBe(1);
+    expect(subtitles).toEqual([]);
+    expect(session.setCachedSubtitleFiles).not.toHaveBeenCalled();
+
+    await openAndConfirm([local], undefined, 1);
+    expect(subtitles?.map(({ text }) => text)).toEqual(['First']);
+    expect(session.setCachedSubtitleFiles).toHaveBeenCalledTimes(1);
+});
+
+it('ignores a failed load reported after a different subtitle selection is applied', async () => {
+    controller.loadSourceFiles([subtitle('old')]);
+    const oldOwner = subtitleSourceOwner(controller.getState());
+    const local = { ...subtitle('local'), name: 'local', label: 'Local', extension: 'srt' };
+    controller.loadSourceFiles([local]);
+    controller.updateSubtitleSources(oldOwner, [
+        { track: 0, loadId: 'old', name: 'old.srt', status: 'failed', error: 'Read failed' },
+    ]);
+
+    await openAndConfirm([local]);
+    expect(session.setCachedSubtitleFiles).not.toHaveBeenCalled();
+});
+
+it('retries saving a selection after a session write fails', async () => {
+    const local = { ...subtitle('local'), name: 'local', label: 'Local', extension: 'srt' };
+    session.setCachedSubtitleFiles.mockRejectedValueOnce(new Error('Session save failed'));
+    await openAndConfirm([local]);
+    expect(controller.getState().sources.subtitleSourceFiles[0].id).toBe(local.id);
+    expect(onError).toHaveBeenCalledTimes(1);
+
+    await openAndConfirm([local]);
+    expect(session.setCachedSubtitleFiles).toHaveBeenCalledTimes(2);
+    expect(onError).toHaveBeenCalledTimes(1);
+});
+
 it('keeps the extraction and published cues when confirming the same selection again', async () => {
     controller.loadSourceFiles([video]);
     attachTracksController();
@@ -859,11 +1058,13 @@ it.each([true, false])('restores cached=%s embedded subtitles and extracts only 
         cachedSubtitleFiles: cached ? [{ id: choice.id, file }] : [],
         embeddedSubtitles: { [choice.id]: choice.embedded! },
         subtitleTrackIds: [[choice.id]],
+        audioTrackIndex: 1,
     };
     await controller.restoreSession();
     await flush();
     expect(controller.getState().picker.open).toBe(false);
     expect(controller.getState().sources.videoFile).toEqual(video);
+    expect(controller.getState().sources.audioTrackIndex).toBe(1);
     if (cached) {
         expect(subtitles?.map(({ text }) => text)).toEqual(['First']);
         expect(extract).not.toHaveBeenCalled();

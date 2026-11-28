@@ -2,7 +2,7 @@ import type { EmbeddedSubtitleDescriptor } from '@project/common/embedded-subtit
 import Dexie from 'dexie';
 import { v4 as uuidv4 } from 'uuid';
 import type { FileWithId } from '@project/common/file-selector';
-import { AsyncSemaphore } from '@project/common/util';
+import { AsyncSemaphore, emptySubtitleSlotId, isEmptySubtitleSlot } from '@project/common/util';
 import { asbError, asbWarn } from '@project/common/util/log';
 
 const totalSize = (files: FileWithId[]) => {
@@ -27,6 +27,8 @@ export interface FileSessionRecord {
     // '-' represents an empty placeholder within a group.
     subtitleTrackIds?: string[][];
     embeddedSubtitles?: Record<string, EmbeddedSubtitleDescriptor>;
+    /** Explicit choice among audio tracks. Absent means browser-default playback. */
+    audioTrackIndex?: number;
     timestamp: number;
 }
 
@@ -38,6 +40,7 @@ export interface FileSystemFileHandleWithId {
 export interface FileSessionSourceIds {
     subtitleTrackIds: string[][];
     videoId?: string;
+    audioTrackIndex?: number;
 }
 
 interface CachedSubtitleSelection {
@@ -137,7 +140,9 @@ export class IndexedDBFileSessionRepository implements FileSessionRepository {
             ...next,
             // Preserve slot positions when stored files are removed. Newly selected IDs
             // may still be awaiting their handle/cache save and must be kept.
-            subtitleTrackIds: next.subtitleTrackIds?.map((ids) => ids.map((id) => (discarded.has(id) ? '-' : id))),
+            subtitleTrackIds: next.subtitleTrackIds?.map((ids) =>
+                ids.map((id) => (discarded.has(id) ? emptySubtitleSlotId : id))
+            ),
         };
     }
 
@@ -165,6 +170,10 @@ export class IndexedDBFileSessionRepository implements FileSessionRepository {
             const merged: Omit<FileSessionRecord, 'id' | 'timestamp'> = {
                 ...existing,
                 videoHandle: incoming.videoHandle ?? existing?.videoHandle,
+                audioTrackIndex:
+                    incoming.videoHandle && incoming.videoHandle.id !== existing?.videoHandle?.id
+                        ? undefined
+                        : existing?.audioTrackIndex,
                 subtitleHandles:
                     incoming.subtitleHandles.length > 0 ? incoming.subtitleHandles : (existing?.subtitleHandles ?? []),
                 bufferedSubtitleHandles: [
@@ -182,7 +191,7 @@ export class IndexedDBFileSessionRepository implements FileSessionRepository {
         }
     }
 
-    async retain({ subtitleTrackIds, videoId }: FileSessionSourceIds) {
+    async retain({ subtitleTrackIds, videoId, audioTrackIndex }: FileSessionSourceIds) {
         const permit = await this._semaphore.acquire();
 
         try {
@@ -201,6 +210,7 @@ export class IndexedDBFileSessionRepository implements FileSessionRepository {
                 bufferedSubtitleHandles,
                 cachedSubtitleFiles: cachedSubtitleFiles?.filter((f) => retainedSubtitleIds.has(f.id)),
                 subtitleTrackIds,
+                audioTrackIndex,
                 embeddedSubtitles:
                     existing?.embeddedSubtitles &&
                     Object.fromEntries(
@@ -323,18 +333,34 @@ export class IndexedDBFileSessionRepository implements FileSessionRepository {
                 const fileSizeLimit = this._fileSizeLimit(estimate, totalSize(existing?.cachedSubtitleFiles ?? []));
                 const newTotalFileSize = totalSize(cachedSubtitleFiles);
                 const exceedsLimit = cachedSubtitleFiles.length > 0 && newTotalFileSize >= fileSizeLimit;
+                let keptCachedSubtitleFiles = cachedSubtitleFiles;
                 if (exceedsLimit) {
                     asbWarn('file-session/repository', 'Did not cache file because it exceeds the size limit', {
                         newTotalFileSize,
                         fileSizeLimit,
                     });
+                    // Keep non-embedded tracks first since embedded tracks can be re-extracted from the video on restore.
+                    const isEmbedded = (id: string) => Boolean(embeddedSubtitles?.[id]);
+                    const prioritized = [...cachedSubtitleFiles].sort((a, b) => {
+                        const embeddedOrder = Number(isEmbedded(a.id)) - Number(isEmbedded(b.id));
+                        return embeddedOrder !== 0 ? embeddedOrder : a.file.size - b.file.size;
+                    });
+                    const keptIds = new Set<string>();
+                    let keptSize = 0;
+                    for (const file of prioritized) {
+                        if (keptSize + file.file.size < fileSizeLimit) {
+                            keptIds.add(file.id);
+                            keptSize += file.file.size;
+                        }
+                    }
+                    keptCachedSubtitleFiles = cachedSubtitleFiles.filter(({ id }) => keptIds.has(id));
                 }
 
                 await this._replace(
                     this._clearDiscardedSubtitleSlots(existing, {
                         ...existing,
                         subtitleHandles,
-                        cachedSubtitleFiles: exceedsLimit ? [] : cachedSubtitleFiles,
+                        cachedSubtitleFiles: keptCachedSubtitleFiles,
                         subtitleTrackIds,
                         embeddedSubtitles,
                         id: 1,
@@ -345,7 +371,7 @@ export class IndexedDBFileSessionRepository implements FileSessionRepository {
             });
 
         try {
-            const candidates = files.filter(({ id }) => id !== '-');
+            const candidates = files.filter((file) => !isEmptySubtitleSlot(file));
             const estimate = candidates.length ? await this._storageEstimate() : {};
             return await save(candidates, estimate);
         } catch (e) {

@@ -3,7 +3,7 @@ import SubtitleReader from '@project/common/subtitle-reader/subtitle-reader';
 import { streamSubtitles } from '@project/extension/src/services/progressive-subtitles';
 import { pgsParserWorkerFactory } from '@project/extension/src/services/pgs-parser-worker-factory';
 import project from '@project/common/project';
-import { arrayEquals } from '@project/common/util';
+import { arrayEquals, emptySubtitleSlotId } from '@project/common/util';
 import { asbError, asbTrace } from '@project/common/util/log';
 import type {
     ActiveProfileMessage,
@@ -128,7 +128,7 @@ export default class VideoDataSyncController {
         this._autoSync = false;
         this._lastLanguagesSynced = {};
         this._emptySubtitle = {
-            id: '-',
+            id: emptySubtitleSlotId,
             language: '-',
             url: '-',
             label: i18n.t('extension.videoDataSync.emptySubtitleTrack'),
@@ -319,8 +319,8 @@ export default class VideoDataSyncController {
         const autoSelectedTrackIds = this._isTutorial
             ? // '1' is the ID of the non-empty track in the tutorial
               // See asbplayer-tutorial-page.ts
-              ['1', '-', '-']
-            : autoSelectedTracks.map((subtitle) => subtitle.id || '-');
+              ['1', emptySubtitleSlotId, emptySubtitleSlotId]
+            : autoSelectedTracks.map((subtitle) => subtitle.id || emptySubtitleSlotId);
         const defaultCheckboxState = !this._isTutorial && subs.completeMatch;
         const themeType = await this._context.settings.getSingle('themeType');
         const profilesPromise = this._context.settings.profiles();

@@ -1,15 +1,17 @@
-import { useEffect, useMemo, useRef, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { VideoDataSubtitleTrack } from '@project/common';
 import type { SubtitleReader } from '@project/common/subtitle-reader';
+import type { SubtitleSourceState } from '@project/common/subtitle-reader/subtitle-stream';
 import type { SubtitleHost } from '@project/common/embedded-subtitles/subtitle-source';
 import { embeddedDescriptor, embeddedSubtitleId } from '@project/common/embedded-subtitles/subtitle-source';
 import { genericSubtitleDisplayLabel } from '@project/common/util/subtitle-language';
+import { emptySubtitleSlotId } from '@project/common/util';
 import { subtitleCodecDisplayName } from '@project/common/media-probe';
 import { emptySubtitleTrack } from '@project/common/components/VideoDataSyncDialog';
 import { defaultFileSessionStore } from '@project/common/app/services/file-session';
 import { LocalizedError } from '@project/common/app/components/localized-error';
-import { MediaSourcesController } from '@project/common/app/services/media-sources-controller';
+import { MediaSourcesController, subtitleSourceOwner } from '@project/common/app/services/media-sources-controller';
 import type { SourcesAppliedEvent } from '@project/common/app/services/media-sources-controller';
 
 /** Connects MediaSourcesController to React state, i18n formatting, and the player's subtitle producer. */
@@ -53,10 +55,16 @@ export const useMediaSources = ({
     }, [controller]);
 
     const state = useSyncExternalStore(controller.subscribe, controller.getState);
+    const owner = subtitleSourceOwner(state);
+    const onSubtitleSourcesChanged = useCallback(
+        (sourceStates: readonly SubtitleSourceState[]) => controller.updateSubtitleSources(owner, sourceStates),
+        [controller, owner]
+    );
 
     const pickerTracks = useMemo<VideoDataSubtitleTrack[]>(() => {
         const tracksById = new Map<string, VideoDataSubtitleTrack>();
-        tracksById.set('-', { ...emptySubtitleTrack(t), file: new File([''], '.srt') }); // A zero-byte SRT preserves empty slots without making confirmation fetch the "-" URL.
+        // A zero-byte SRT preserves empty slots without making confirmation fetch the "-" URL.
+        tracksById.set(emptySubtitleSlotId, { ...emptySubtitleTrack(t), file: new File([''], '.srt') });
         for (const track of state.picker.externalTracks) tracksById.set(track.id, track);
         const video = state.sources.videoFile;
         if (video && state.picker.embeddedTracks) {
@@ -109,9 +117,11 @@ export const useMediaSources = ({
         sources: state.sources,
         canRestoreLastSession: state.canRestoreLastSession,
         subtitleProducer,
+        onSubtitleSourcesChanged,
         picker: {
             open: state.picker.open,
             tracks: pickerTracks,
+            audioTracks: state.picker.audioTracks,
             selectedTrackIds: state.picker.selectedTrackIds,
             discovering: state.picker.discovering,
             confirming: state.picker.confirming,

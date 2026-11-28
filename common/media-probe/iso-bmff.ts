@@ -159,10 +159,11 @@ const mpeg4ObjectType = async (reader: ByteReader, children: number, limit: numb
 };
 
 /** mp4a is a generic MPEG-4 audio entry. Its descriptor can identify DTS or Dolby audio. */
-const mp4aFormat = async (reader: ByteReader, entry: Box) => {
+const mp4aFormat = async (reader: ByteReader, entry: Box, stsdVersion: number) => {
     if (entry.dataOffset + audioSampleEntryHeaderBytes > entry.end) return;
     const version = (await reader.unsignedInt(entry.dataOffset + soundVersionOffset, soundVersionBytes))!;
-    const extensionBytes = soundVersionExtensionBytes[version];
+    // ISO BMFF AudioSampleEntryV1 (stsd version 1, entry_version 1) omits QuickTime's 16-byte extension.
+    const extensionBytes = stsdVersion === 1 && version === 1 ? 0 : soundVersionExtensionBytes[version];
     if (extensionBytes === undefined) return;
     const objectType = await mpeg4ObjectType(
         reader,
@@ -178,25 +179,53 @@ const sampleEntryFormat = async (reader: ByteReader, mdia: Box) => {
     const stsd = stbl && (await findBox(reader, 'stsd', stbl.dataOffset, stbl.end));
     if (!stsd) return;
 
+    const stsdVersion = await reader.unsignedInt(stsd.dataOffset, versionBytes);
     const entry = await readBox(
         reader,
         stsd.dataOffset + fullBoxVersionAndFlagsBytes + sampleEntryCountBytes,
         stsd.end
     ); // FullBox version/flags, then entry_count, then the first sample entry.
-    if (!entry) return;
+    if (stsdVersion === undefined || !entry) return;
     if (entry.type === 'mp4s' && entry.dataOffset + genericSampleEntryHeaderBytes <= entry.end) {
         const objectType = await mpeg4ObjectType(reader, entry.dataOffset + genericSampleEntryHeaderBytes, entry.end);
         if (objectType === objectTypeDvdSubtitle) return 'dvd_subtitle';
     }
-    return entry.type === 'mp4a' ? ((await mp4aFormat(reader, entry)) ?? entry.type) : entry.type;
+    return entry.type === 'mp4a' ? ((await mp4aFormat(reader, entry, stsdVersion)) ?? entry.type) : entry.type;
 };
 
-interface IsoBmffSubtitleTrack {
-    id?: number;
+interface IsoBmffTrackMetadata {
     format?: string;
     language?: string;
     title?: string;
 }
+
+type IsoBmffSubtitleTrack = IsoBmffTrackMetadata & { id?: number };
+
+const readTrackMetadata = async (reader: ByteReader, mdia: Box, hdlr: Box): Promise<IsoBmffTrackMetadata> => {
+    const mdhd = await findBox(reader, 'mdhd', mdia.dataOffset, mdia.end);
+    let language: string | undefined;
+    if (mdhd) {
+        const version = await reader.unsignedInt(mdhd.dataOffset, versionBytes);
+        if (version !== 0 && version !== 1) throw new Error('Unsupported MP4 media header');
+        const languageOffset =
+            mdhd.dataOffset + (version === 1 ? mediaLanguageOffsetVersion1 : mediaLanguageOffsetVersion0);
+        if (languageOffset + mediaLanguageBytes > mdhd.end) throw new Error('Truncated MP4 language');
+        const packed = await reader.unsignedInt(languageOffset, mediaLanguageBytes);
+        if (packed && packed >= minimumPackedLanguage && packed < packedLanguageLimit) {
+            const characters = [
+                (packed >> (languageBitsPerCharacter * 2)) & languageCharacterMask,
+                (packed >> languageBitsPerCharacter) & languageCharacterMask,
+                packed & languageCharacterMask,
+            ];
+            if (characters.every((code) => code >= 1 && code <= languageAlphabetSize)) {
+                const decoded = String.fromCharCode(...characters.map((code) => code + languageCharacterCodeOffset));
+                if (decoded !== 'und') language = decoded;
+            }
+        }
+    }
+    const title = await readHandlerName(reader, hdlr);
+    return { format: await sampleEntryFormat(reader, mdia), language, title };
+};
 
 /**
  * Walk track headers by box size, including a moov after a large media payload.
@@ -269,42 +298,16 @@ export const isoBmffSubtitleTracks = async (reader: ByteReader): Promise<IsoBmff
     const tracks: IsoBmffSubtitleTrack[] = [];
     for (const { id, mdia, hdlr } of candidates) {
         if (id !== undefined && chapterIds.has(id)) continue; // Another track can identify a text track as chapters even if it comes later in the file
-        const mdhd = await findBox(reader, 'mdhd', mdia.dataOffset, mdia.end);
-        let language: string | undefined;
-        if (mdhd) {
-            const version = await reader.unsignedInt(mdhd.dataOffset, versionBytes);
-            if (version !== 0 && version !== 1) throw new Error('Unsupported MP4 media header');
-            const languageOffset =
-                mdhd.dataOffset + (version === 1 ? mediaLanguageOffsetVersion1 : mediaLanguageOffsetVersion0);
-            if (languageOffset + mediaLanguageBytes > mdhd.end) throw new Error('Truncated MP4 language');
-            const packed = await reader.unsignedInt(languageOffset, mediaLanguageBytes);
-            if (packed && packed >= minimumPackedLanguage && packed < packedLanguageLimit) {
-                const characters = [
-                    (packed >> (languageBitsPerCharacter * 2)) & languageCharacterMask,
-                    (packed >> languageBitsPerCharacter) & languageCharacterMask,
-                    packed & languageCharacterMask,
-                ];
-                if (characters.every((code) => code >= 1 && code <= languageAlphabetSize)) {
-                    const decoded = String.fromCharCode(
-                        ...characters.map((code) => code + languageCharacterCodeOffset)
-                    );
-                    if (decoded !== 'und') language = decoded;
-                }
-            }
-        }
-        const title = await readHandlerName(reader, hdlr);
-        tracks.push({ id, format: await sampleEntryFormat(reader, mdia), language, title });
+        tracks.push({ id, ...(await readTrackMetadata(reader, mdia, hdlr)) });
     }
     return tracks;
 };
 
-export const isoBmffAudioSampleFormats = async (reader: ByteReader): Promise<string[] | undefined> => {
-    const formats: string[] = [];
+export const isoBmffAudioTracks = async (reader: ByteReader): Promise<IsoBmffTrackMetadata[] | undefined> => {
+    const tracks: IsoBmffTrackMetadata[] = [];
     const found = await forEachTrack(reader, async (track) => {
         const media = await readTrackMedia(reader, track);
-        if (media?.handler !== 'soun') return;
-        const format = await sampleEntryFormat(reader, media.mdia);
-        if (format) formats.push(format);
+        if (media?.handler === 'soun') tracks.push(await readTrackMetadata(reader, media.mdia, media.hdlr));
     });
-    if (found) return formats;
+    if (found) return tracks;
 };

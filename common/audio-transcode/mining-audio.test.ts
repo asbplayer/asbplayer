@@ -104,23 +104,35 @@ it.each<[number, boolean]>([
     [1040, false],
     [2000, false],
 ])('allows mining a subtitle ending at %i ms only with another second of converted audio', async (end, ready) => {
-    const source: TranscodedAudioPayload = { audio: prefix(cluster(1000)), required: true, state: 'transcoding' };
+    const source: TranscodedAudioPayload = {
+        audio: prefix(cluster(1000)),
+        conversionId: 1,
+        required: true,
+        state: 'transcoding',
+    };
     await expect(canMineWithAudio(source, end)).resolves.toBe(ready);
 });
 
 it('blocks mining until complete converted clusters reach the requested boundary', async () => {
     const audio = prefix(cluster(1000), cluster(2000).slice(0, -1));
-    await expect(canMineWithAudio({ audio, required: true, state: 'transcoding' }, 1040)).resolves.toBe(false);
     await expect(
-        canMineWithAudio({ audio: prefix(cluster(1000), cluster(2000)), required: true, state: 'transcoding' }, 1040)
+        canMineWithAudio({ audio, conversionId: 1, required: true, state: 'transcoding' }, 1040)
+    ).resolves.toBe(false);
+    await expect(
+        canMineWithAudio(
+            { audio: prefix(cluster(1000), cluster(2000)), conversionId: 1, required: true, state: 'transcoding' },
+            1040
+        )
     ).resolves.toBe(true);
 });
 
 it('blocks mining before converted audio is available without restricting ordinary audio', async () => {
-    await expect(canMineWithAudio({ required: true, state: 'transcoding' }, 1000)).resolves.toBe(false);
-    await expect(canMineWithAudio({ audio: prefix(), required: true, state: 'transcoding' }, 1000)).resolves.toBe(
+    await expect(canMineWithAudio({ conversionId: 1, required: true, state: 'transcoding' }, 1000)).resolves.toBe(
         false
     );
+    await expect(
+        canMineWithAudio({ audio: prefix(), conversionId: 1, required: true, state: 'transcoding' }, 1000)
+    ).resolves.toBe(false);
     await expect(canMineWithAudio({ required: false, state: 'idle' }, 1000)).resolves.toBe(true);
 });
 
@@ -130,5 +142,7 @@ it.each(['idle', 'failed'] as const)('allows text-only mining when required audi
 
 it('allows mining near the end of a completed file without requiring an extra second', async () => {
     const audio = await finalizeWebmAudio([prefix(cluster(1000))], 3.002);
-    await expect(canMineWithAudio({ audio, required: true, state: 'ready' }, 3000)).resolves.toBe(true);
+    await expect(canMineWithAudio({ audio, conversionId: 1, required: true, state: 'ready' }, 3000)).resolves.toBe(
+        true
+    );
 });

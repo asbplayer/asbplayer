@@ -1,9 +1,14 @@
 import { TextDecoder } from 'util';
 import { beforeAll, describe, expect, it, jest } from '@jest/globals';
-import { audioCodecDisplayName, audioTrackRequiringTranscode } from '@project/common/media-probe/audio-codec-probe';
+import {
+    audioCodecDisplayName,
+    audioTrackRequiringTranscode,
+    probeAudioTracks,
+} from '@project/common/media-probe/audio-codec-probe';
+import { mkv, mkvTrack, element, utf8, box as metadataBox, mp4Track } from '@project/common/media-probe/test-media';
 import ByteReader from '@project/common/media-probe/byte-reader';
-import { matroskaAudioCodecIds } from '@project/common/media-probe/matroska';
-import { isoBmffAudioSampleFormats } from '@project/common/media-probe/iso-bmff';
+import { matroskaAudioTracks } from '@project/common/media-probe/matroska';
+import { isoBmffAudioTracks } from '@project/common/media-probe/iso-bmff';
 
 // jsdom's Blob does not implement arrayBuffer().
 beforeAll(() => {
@@ -186,7 +191,7 @@ describe('audio container parsing', () => {
     it('reads Matroska audio tracks in order, ignoring the video track', async () => {
         for (const audioCodecIds of [[], ['A_EAC3'], ['A_AAC', 'A_EAC3', 'A_DTS']]) {
             const reader = new ByteReader(blobOf(matroskaFile({ audioCodecIds })));
-            expect(await matroskaAudioCodecIds(reader)).toEqual(audioCodecIds);
+            expect((await matroskaAudioTracks(reader))?.map((track) => track.codecId)).toEqual(audioCodecIds);
         }
     });
 
@@ -194,7 +199,7 @@ describe('audio container parsing', () => {
         for (const audioSampleFormats of [[], ['ec-3'], ['mp4a', 'ac-3', 'dtsc']]) {
             for (const moovAtEnd of [false, true]) {
                 const reader = new ByteReader(blobOf(isoBmffFile({ audioSampleFormats, moovAtEnd })));
-                expect(await isoBmffAudioSampleFormats(reader)).toEqual(audioSampleFormats);
+                expect((await isoBmffAudioTracks(reader))?.map((track) => track.format)).toEqual(audioSampleFormats);
             }
         }
     });
@@ -204,7 +209,7 @@ describe('audio container parsing', () => {
         { lengthBytes: 2, esFlags: 0xe0, url: 'u'.repeat(128) },
     ])('reads mp4a descriptors with compact $lengthBytes-byte lengths', async ({ esFlags, url }) => {
         const reader = new ByteReader(blobOf(mp4aFile(0xa9, esFlags, { paddedDescriptors: false, url })));
-        expect(await isoBmffAudioSampleFormats(reader)).toEqual(['dtsc']);
+        expect((await isoBmffAudioTracks(reader))?.map((track) => track.format)).toEqual(['dtsc']);
     });
 
     it.each([
@@ -215,12 +220,39 @@ describe('audio container parsing', () => {
         { soundVersion: 2, wave: true },
     ])('reads QuickTime sound version $soundVersion with wave=$wave', async ({ soundVersion, wave }) => {
         const reader = new ByteReader(blobOf(mp4aFile(0xa9, 0, { soundVersion, wave })));
-        expect(await isoBmffAudioSampleFormats(reader)).toEqual(['dtsc']);
+        expect((await isoBmffAudioTracks(reader))?.map((track) => track.format)).toEqual(['dtsc']);
     });
 
     it('leaves an unsupported QuickTime sound version unresolved', async () => {
         const reader = new ByteReader(blobOf(mp4aFile(0xa9, 0, { soundVersion: 3 })));
-        expect(await isoBmffAudioSampleFormats(reader)).toEqual(['mp4a']);
+        expect((await isoBmffAudioTracks(reader))?.map((track) => track.format)).toEqual(['mp4a']);
+    });
+
+    it('reads ISO BMFF AudioSampleEntryV1 without skipping QuickTime extension bytes', async () => {
+        const decoder = descriptor(4, concat([0xa9, 0x15], new Uint8Array(11)));
+        const es = descriptor(3, concat([0, 1, 0], decoder, descriptor(6, new Uint8Array([2]))));
+        const header = new Uint8Array(28);
+        header.set([0, 1], 8); // entry_version = 1, 0 extension bytes when stsd version = 1
+        const entry = box('mp4a', concat(header, box('esds', concat(new Uint8Array(4), es))));
+        const stsd = box('stsd', concat([1, 0, 0, 0], [0, 0, 0, 1], entry));
+        const media = concat(
+            box('ftyp', ascii('isom')),
+            box(
+                'moov',
+                box(
+                    'trak',
+                    box(
+                        'mdia',
+                        concat(
+                            box('hdlr', concat(new Uint8Array(8), ascii('soun'), new Uint8Array(12))),
+                            box('minf', box('stbl', stsd))
+                        )
+                    )
+                )
+            )
+        );
+        const reader = new ByteReader(blobOf(media));
+        expect((await isoBmffAudioTracks(reader))?.map((track) => track.format)).toEqual(['dtsc']);
     });
 });
 
@@ -230,6 +262,26 @@ describe('audioTrackRequiringTranscode', () => {
         jest
             .spyOn(HTMLMediaElement.prototype, 'canPlayType')
             .mockImplementation((type) => (playableContainers.includes(type) ? 'maybe' : ''));
+
+    it.each([false, true])('shares one metadata read with picker discovery (picker cancelled: %s)', async (cancel) => {
+        playsContainersButNoDolby();
+        const media = blobOf(matroskaFile({ audioCodecIds: ['A_EAC3'] }));
+        const read = jest.spyOn(media, 'slice');
+        const controller = new AbortController();
+        const discovery = probeAudioTracks(media, controller.signal);
+        const playback = audioTrackRequiringTranscode(media);
+
+        if (cancel) {
+            const reason = new Error('Picker closed');
+            controller.abort(reason);
+            await expect(discovery).rejects.toBe(reason);
+        } else {
+            await expect(discovery).resolves.toMatchObject([{ trackIndex: 0, codec: 'eac3' }]);
+        }
+        expect(await playback).toEqual({ trackIndex: 0, codec: 'eac3' });
+        expect(await probeAudioTracks(media)).toMatchObject([{ trackIndex: 0, codec: 'eac3' }]);
+        expect(read).toHaveBeenCalledTimes(1);
+    });
 
     it.each(['MP4', 'Matroska'] as const)(
         'detects Dolby audio despite an oversized subtitle title in %s',
@@ -355,6 +407,21 @@ describe('audioTrackRequiringTranscode', () => {
         expect(track).toEqual({ trackIndex: 0, codec: 'eac3' });
     });
 
+    it('prefers the Matroska default audio track when none are browser-decodable', async () => {
+        playsContainersButNoDolby();
+        const withDefaultSecond = mkv(
+            mkvTrack(2, 'A_EAC3', element('88', new Uint8Array([0]))),
+            mkvTrack(2, 'A_DTS', element('88', new Uint8Array([1])))
+        );
+        expect(await audioTrackRequiringTranscode(blobOf(withDefaultSecond))).toEqual({ trackIndex: 1, codec: 'dts' });
+
+        const allNonDefault = mkv(
+            mkvTrack(2, 'A_EAC3', element('88', new Uint8Array([0]))),
+            mkvTrack(2, 'A_DTS', element('88', new Uint8Array([0])))
+        );
+        expect(await audioTrackRequiringTranscode(blobOf(allNonDefault))).toEqual({ trackIndex: 0, codec: 'eac3' });
+    });
+
     // Browsers fall back to a track they can decode, so these files already play.
     it('leaves files alone when any track is playable', async () => {
         playsContainersButNoDolby();
@@ -389,5 +456,54 @@ describe('audioCodecDisplayName', () => {
 
     it('falls back to the codec name', () => {
         expect(audioCodecDisplayName('vorbis')).toBe('VORBIS');
+    });
+});
+
+describe('audio track discovery', () => {
+    it('retries a failed metadata read for the same file', async () => {
+        const media = blobOf(matroskaFile({ audioCodecIds: ['A_AAC'] }));
+        const read = jest.spyOn(media, 'slice').mockImplementationOnce(() => {
+            throw new Error('File temporarily unavailable');
+        });
+        await expect(probeAudioTracks(media)).rejects.toThrow('File temporarily unavailable');
+        await expect(probeAudioTracks(media)).resolves.toMatchObject([{ trackIndex: 0, codec: 'aac' }]);
+        expect(read).toHaveBeenCalledTimes(2);
+    });
+
+    it.each([0, 1, 2])('discovers %i audio tracks with metadata and audio-relative indexes', async (count) => {
+        const bytes = mkv(
+            mkvTrack(1, 'V_VP8'),
+            mkvTrack(17, 'S_TEXT/UTF8'),
+            ...Array.from({ length: count }, (_, index) =>
+                mkvTrack(
+                    2,
+                    index === 0 ? 'A_AAC' : 'A_UNLISTED',
+                    element('22b59c', utf8('jpn')),
+                    element('536e', utf8('Commentary'))
+                )
+            )
+        );
+        expect(await probeAudioTracks(blobOf(bytes))).toEqual(
+            Array.from({ length: count }, (_, trackIndex) => ({
+                trackIndex,
+                codec: trackIndex === 0 ? 'aac' : 'a_unlisted',
+                language: 'jpn',
+                title: 'Commentary',
+            }))
+        );
+    });
+
+    it('reads MP4 audio names and language independently of subtitle and video tracks', async () => {
+        const bytes = metadataBox(
+            'moov',
+            mp4Track('vide', 'avc1'),
+            mp4Track('sbtl', 'tx3g'),
+            mp4Track('soun', 'Opus'),
+            mp4Track('soun', 'mp4a')
+        );
+        expect(await probeAudioTracks(blobOf(bytes))).toEqual([
+            { trackIndex: 0, codec: 'opus', language: 'jpn', title: '日本語' },
+            { trackIndex: 1, codec: 'aac', language: 'jpn', title: '日本語' },
+        ]);
     });
 });

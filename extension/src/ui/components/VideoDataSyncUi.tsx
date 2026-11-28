@@ -25,6 +25,7 @@ import type { GenericParseType, OnlineSubtitleSourceConfig } from '@project/comm
 import { createTheme } from '@project/common/theme';
 import type { PaletteMode } from '@mui/material/styles';
 import { bufferToBase64 } from '@project/common/base64';
+import { emptySubtitleSlotId } from '@project/common/util';
 import { useTranslation } from 'react-i18next';
 import type { Profile } from '@project/common/settings';
 import { StyledEngineProvider } from '@mui/material/styles';
@@ -150,7 +151,7 @@ export default function VideoDataSyncUi({ bridge }: Props) {
                             return currentSelectedTrackId;
                         }
 
-                        return '-';
+                        return emptySubtitleSlotId;
                     });
                 });
                 setSubtitleTrackSelectorTracks(newSubtitles);

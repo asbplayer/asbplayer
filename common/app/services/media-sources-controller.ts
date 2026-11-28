@@ -7,17 +7,27 @@ import { embeddedSubtitleId } from '@project/common/embedded-subtitles/subtitle-
 import { EmbeddedSubtitles } from '@project/common/embedded-subtitles/embedded-subtitles';
 import { embeddedSubtitleProducer } from '@project/common/embedded-subtitles/embedded-subtitle-producer';
 import type { EmbeddedSubtitleTrack } from '@project/common/media-probe/subtitle-probe';
+import { probeAudioTracks } from '@project/common/media-probe';
+import type { ProbedAudioTrack } from '@project/common/media-probe';
 import { createBlobUrl, revokeBlobUrl } from '@project/common/blob-url';
 import { FileSession } from '@project/common/app/services/file-session';
 import type { FileSessionStore } from '@project/common/app/services/file-session';
 import { MediaSources, getExtension } from '@project/common/app/services/media-sources';
 import type { MediaSourceFile, SubtitleSourceFile } from '@project/common/app/services/media-sources';
 import type { FileSystemFileHandleWithId } from '@project/common/file-system-access';
-import { asbError } from '@project/common/util/log';
+import { emptySubtitleSlotId, isEmptySubtitleSlot } from '@project/common/util';
+import { asbError, asbWarn } from '@project/common/util/log';
 
 class EmbeddedSelectionError extends Error {}
 
-const initialTrackIds: readonly string[] = ['-', '-', '-'];
+const initialTrackIds: readonly string[] = [emptySubtitleSlotId, emptySubtitleSlotId, emptySubtitleSlotId];
+
+interface TrackDiscoveryRequest {
+    readonly file: File;
+    readonly controller: AbortController;
+    readonly probingSubtitles: boolean;
+    autoOpenPicker: boolean;
+}
 
 export type SubtitlePickerError = { readonly kind: 'embedded' } | { readonly kind: 'selection'; readonly error: Error };
 
@@ -26,6 +36,7 @@ export interface SubtitlePickerState {
     /** Non-empty external or online choices, plus any loaded embedded choice before discovery completes. */
     readonly externalTracks: readonly VideoDataSubtitleTrack[];
     readonly embeddedTracks: readonly EmbeddedSubtitleTrack[] | undefined;
+    readonly audioTracks: readonly ProbedAudioTrack[] | undefined;
     readonly selectedTrackIds: readonly string[];
     readonly discovering: boolean;
     readonly discoveryError: boolean;
@@ -46,6 +57,12 @@ export interface MediaSourcesState {
     readonly canRestoreLastSession: boolean;
 }
 
+type SubtitleSourceOwner = EmbeddedSelection | MediaSources['subtitleTracks'] | undefined;
+
+/** Audio changes and saved extraction output preserve this load identity. Remote sources use undefined. */
+export const subtitleSourceOwner = ({ sources, embeddedSelection }: MediaSourcesState): SubtitleSourceOwner =>
+    sources.subtitleSource.kind === 'remote' ? undefined : (embeddedSelection ?? sources.subtitleTracks);
+
 export interface SourcesAppliedEvent {
     readonly sources: MediaSources;
     readonly newVideo: boolean;
@@ -64,6 +81,7 @@ const initialPickerState: SubtitlePickerState = {
     open: false,
     externalTracks: [],
     embeddedTracks: undefined,
+    audioTracks: undefined,
     selectedTrackIds: initialTrackIds,
     discovering: false,
     discoveryError: false,
@@ -74,7 +92,7 @@ const initialPickerState: SubtitlePickerState = {
 const buildExternalTracks = (candidates: readonly (FileWithId | undefined)[]): VideoDataSubtitleTrack[] => {
     const tracksById = new Map<string, VideoDataSubtitleTrack>();
     for (const candidate of candidates) {
-        if (!candidate || candidate.id === '-') continue;
+        if (!candidate || isEmptySubtitleSlot(candidate)) continue;
         const { file, id, embedded } = candidate;
         tracksById.set(id, {
             id,
@@ -114,8 +132,8 @@ const resolveSubtitleSelection = async (
             const file = preparedById?.get(track.id);
             if (!file) throw new EmbeddedSelectionError('Unresolved embedded subtitle');
             files.push(file);
-        } else if (track.id === '-') {
-            files.push({ id: '-', file: new File([''], '.srt') });
+        } else if (isEmptySubtitleSlot(track)) {
+            files.push({ id: emptySubtitleSlotId, file: new File([''], '.srt') });
         } else if (track.file) {
             files.push({ id: track.id, file: track.file });
         } else {
@@ -151,9 +169,11 @@ export class MediaSourcesController {
 
     private sourceLifetime = new AbortController();
     private pickerDraft = new AbortController();
-    private discovery: { file: File; controller: AbortController; openOnSupported: boolean } | undefined;
+    private discovery: TrackDiscoveryRequest | undefined;
     private pendingRequest: { kind: 'confirm' | 'restore'; controller: AbortController } | undefined;
     private draftFileInputSignal: AbortSignal | undefined;
+    private standaloneSubtitlesNeedSaving = false;
+    private subtitleLoadFailed = false;
     private settledSelection = new WeakMap<
         EmbeddedSelection,
         { tracks: LoadableSubtitleTrack<FileWithId>[]; pendingDescriptors: EmbeddedSubtitleDescriptor[] }
@@ -238,20 +258,25 @@ export class MediaSourcesController {
         );
         const tracksById = new Map<string, VideoDataSubtitleTrack>();
         for (const track of tracks) {
-            if (track.id === '-') continue;
+            if (isEmptySubtitleSlot(track)) continue;
             if (track.embedded && discoveredIds.has(track.id)) continue;
             tracksById.set(track.id, track);
         }
         const externalTracks = [...tracksById.values()];
-        const validIds = new Set(['-', ...discoveredIds, ...tracksById.keys()]);
+        const validIds = new Set([emptySubtitleSlotId, ...discoveredIds, ...tracksById.keys()]);
         this.updatePicker({
             externalTracks,
-            selectedTrackIds: this.state.picker.selectedTrackIds.map((id) => (validIds.has(id) ? id : '-')),
+            selectedTrackIds: this.state.picker.selectedTrackIds.map((id) =>
+                validIds.has(id) ? id : emptySubtitleSlotId
+            ),
             selectionError: undefined,
         });
     }
 
-    loadSources(sources: MediaSources, { keepDraftHandles }: { keepDraftHandles: boolean }): void {
+    loadSources(
+        sources: MediaSources,
+        { keepDraftHandles, applyAudioSelection }: { keepDraftHandles: boolean; applyAudioSelection?: boolean }
+    ): void {
         this.sourceLifetime.abort();
         this.sourceLifetime = new AbortController();
         this.resetPickerDraft();
@@ -261,6 +286,7 @@ export class MediaSourcesController {
         this.applySources(sources, {
             clearEmbeddedSelection: true,
             closePicker: true,
+            applyAudioSelection,
         });
     }
 
@@ -276,6 +302,10 @@ export class MediaSourcesController {
         this.cancelPendingRequest();
         revokeBlobUrl(videoFileUrl);
         const nextSources = this.state.sources.withoutVideo(pendingTrackIndexes);
+        const retainedIds = new Set(nextSources.subtitleSourceFiles.map(({ id }) => id));
+        this.standaloneSubtitlesNeedSaving = this.state.sources.subtitleSourceFiles.some(
+            ({ id, embedded }) => embedded && retainedIds.has(id)
+        );
         let externalTracks: VideoDataSubtitleTrack[] = [];
         let selectedTrackIds = initialTrackIds;
         if (this.state.picker.open) {
@@ -292,7 +322,7 @@ export class MediaSourcesController {
                 tracksById.set(track.id, { ...track, file: completed.file, embedded: undefined });
             }
             for (const candidate of nextSources.firstSubtitleSourceFiles) {
-                if (!candidate || candidate.id === '-' || tracksById.has(candidate.id)) continue;
+                if (!candidate || isEmptySubtitleSlot(candidate) || tracksById.has(candidate.id)) continue;
                 tracksById.set(candidate.id, {
                     id: candidate.id,
                     label: candidate.file.name,
@@ -301,8 +331,10 @@ export class MediaSourcesController {
                 });
             }
             externalTracks = [...tracksById.values()];
-            const validIds = new Set(['-', ...externalTracks.map(({ id }) => id)]);
-            selectedTrackIds = this.state.picker.selectedTrackIds.map((id) => (validIds.has(id) ? id : '-'));
+            const validIds = new Set([emptySubtitleSlotId, ...externalTracks.map(({ id }) => id)]);
+            selectedTrackIds = this.state.picker.selectedTrackIds.map((id) =>
+                validIds.has(id) ? id : emptySubtitleSlotId
+            );
         }
         this.embeddedSubtitles.retain([]);
         this.setState({
@@ -314,6 +346,7 @@ export class MediaSourcesController {
                 externalTracks,
                 selectedTrackIds,
                 embeddedTracks: undefined,
+                audioTracks: undefined,
                 discovering: false,
                 discoveryError: false,
                 confirming: false,
@@ -323,11 +356,16 @@ export class MediaSourcesController {
         return true;
     }
 
-    updateRemoteSubtitleSources(sourceStates: readonly SubtitleSourceState[]): void {
+    updateSubtitleSources(owner: SubtitleSourceOwner, sourceStates: readonly SubtitleSourceState[]): void {
+        if (owner !== subtitleSourceOwner(this.state)) return;
+        const status = subtitleSourceStatus(sourceStates);
+        if (owner) {
+            this.subtitleLoadFailed = status === 'failed';
+            return;
+        }
         const current = this.state.sources;
         if (current.subtitleSource.kind !== 'remote') return;
         const names = subtitleSourceNames(sourceStates);
-        const status = subtitleSourceStatus(sourceStates);
         if (
             status === current.subtitleSource.status &&
             names.length === current.subtitleFileNames.length &&
@@ -359,13 +397,14 @@ export class MediaSourcesController {
         if (!imported) return false;
         if (imported.subtitleSourceFiles.length > 1) {
             this.openPickerWithFiles(imported.subtitleSourceFiles);
-        } else if (
-            imported.videoFile &&
-            !imported.subtitleSourceFiles.length &&
-            !this.state.sources.subtitleSourceFiles.some((file) => file.id !== '-')
-        ) {
+        } else if (imported.videoFile) {
             const activeVideo = this.state.sources.videoFile;
-            if (activeVideo) void this.discoverEmbedded(activeVideo, { openOnSupported: true });
+            if (activeVideo) {
+                void this.discoverTracks(activeVideo, {
+                    autoOpenPicker: true,
+                    discoverSubtitles: this.state.sources.subtitleSourceFiles.every(isEmptySubtitleSlot),
+                });
+            }
         }
         return true;
     }
@@ -425,12 +464,12 @@ export class MediaSourcesController {
         }
         this.updatePicker({
             externalTracks: [...tracksById.values()],
-            selectedTrackIds: initialTrackIds.map((_, index) => files[index]?.id ?? '-'),
+            selectedTrackIds: initialTrackIds.map((_, index) => files[index]?.id ?? emptySubtitleSlotId),
             selectionError: undefined,
         });
     }
 
-    confirm(tracks: readonly ConfirmedVideoDataSubtitleTrack[]): void {
+    confirm(tracks: readonly ConfirmedVideoDataSubtitleTrack[], audioTrackIndex?: number): void {
         if (!this.state.picker.open || this.pendingRequest?.kind === 'confirm') return;
         this.cancelPendingRequest();
         const controller = new AbortController();
@@ -447,6 +486,16 @@ export class MediaSourcesController {
                     tracks.some((track, index) => track.id !== selectedTrackIds[index])
                 ) {
                     throw new Error('Subtitle selection has changed');
+                }
+                // Changing only audio preserves subtitles. Confirming the same choices retries a failed subtitle load.
+                if (
+                    !picker.selectionError &&
+                    !this.session.selectionSaveFailed &&
+                    sources.matchesSubtitleSelection(tracks) &&
+                    (audioTrackIndex !== sources.audioTrackIndex || !this.subtitleLoadFailed)
+                ) {
+                    this.confirmUnchangedSubtitles(sources, audioTrackIndex);
+                    return;
                 }
                 const resolvedFiles = await resolveSubtitleSelection(tracks, video, this.embeddedSubtitles, signal);
                 signal.throwIfAborted();
@@ -466,19 +515,26 @@ export class MediaSourcesController {
                 const files = selectedTracks.flatMap(({ fileParts }, track) =>
                     fileParts.map((file) => ({ ...file, track }))
                 );
-                if (pending.length && video && this.matchesActiveExtraction(video, files)) {
-                    this.session.clearDraftHandles();
-                    this.finishConfirmAndClosePicker();
+                if (
+                    pending.length &&
+                    video &&
+                    !this.session.selectionSaveFailed &&
+                    !this.subtitleLoadFailed &&
+                    this.matchesActiveExtraction(video, files)
+                ) {
+                    this.confirmUnchangedSubtitles(sources, audioTrackIndex);
                     return;
                 }
                 const pendingIds = new Set(
                     pending.map((descriptor) => embeddedSubtitleId(descriptor.videoId, descriptor.trackIndex))
                 );
                 // Commit the selection without cancelling the confirmation that owns it.
-                this.applySources(MediaSources.fromFiles(files, { pendingEmbedded: pending.length > 0 }), {
-                    clearEmbeddedSelection: true,
-                    closePicker: false,
-                });
+                this.applySources(
+                    MediaSources.fromFiles(files, { pendingEmbedded: pending.length > 0 }).withAudioTrackIndex(
+                        audioTrackIndex
+                    ),
+                    { clearEmbeddedSelection: true, closePicker: false, applyAudioSelection: true }
+                );
                 this.session.commitSelection({
                     videoId: video?.id,
                     files,
@@ -511,6 +567,7 @@ export class MediaSourcesController {
     async restoreSession(): Promise<void> {
         this.cancelPendingRequest();
         this.cancelDiscovery();
+        if (this.state.picker.discovering) this.updatePicker({ discovering: false });
         const controller = new AbortController();
         this.pendingRequest = { kind: 'restore', controller };
         const { signal } = controller;
@@ -533,7 +590,7 @@ export class MediaSourcesController {
                 );
             }
             this.pendingRequest = undefined; // Restoration has finished preparing files, so the restored sources now own any extraction.
-            this.loadSources(sources, { keepDraftHandles: false });
+            this.loadSources(sources, { keepDraftHandles: false, applyAudioSelection: true });
             if (sources.videoFile && missingEmbeddedSubtitles.length) {
                 this.startEmbedded(sources.videoFile, sources.subtitleTracks, missingEmbeddedSubtitles);
             }
@@ -581,7 +638,8 @@ export class MediaSourcesController {
                                 })),
                             },
                             previous.videoFile,
-                            previous.videoFileUrl
+                            previous.videoFileUrl,
+                            previous.audioTrackIndex
                         ),
                     });
                 }
@@ -613,7 +671,11 @@ export class MediaSourcesController {
 
     private applySources(
         incoming: MediaSources,
-        { clearEmbeddedSelection, closePicker }: { clearEmbeddedSelection: boolean; closePicker: boolean }
+        {
+            clearEmbeddedSelection,
+            closePicker,
+            applyAudioSelection,
+        }: { clearEmbeddedSelection: boolean; closePicker: boolean; applyAudioSelection?: boolean }
     ): void {
         const previous = this.state.sources;
         const pendingTrackIndexes = new Set(
@@ -627,7 +689,7 @@ export class MediaSourcesController {
             revokedVideoUrl,
             loadingSources,
             resetJumpToSubtitle,
-        } = previous.merge(incoming, createBlobUrl, pendingTrackIndexes);
+        } = previous.merge(incoming, createBlobUrl, pendingTrackIndexes, { applyAudioSelection });
         if (revokedVideoUrl) revokeBlobUrl(revokedVideoUrl);
         this.embeddedSubtitles.retain(nextSources.videoFile ? [nextSources.videoFile] : []);
 
@@ -639,6 +701,7 @@ export class MediaSourcesController {
                       nextSources.videoFile?.file === previous.videoFile?.file
                           ? this.state.picker.embeddedTracks
                           : undefined,
+                  audioTracks: newVideo || !nextSources.videoFile ? undefined : this.state.picker.audioTracks,
                   discovering: false,
                   discoveryError: false,
                   confirming: false,
@@ -646,6 +709,7 @@ export class MediaSourcesController {
               }
             : this.state.picker;
 
+        this.standaloneSubtitlesNeedSaving = false;
         this.setState({
             ...this.state,
             sources: nextSources,
@@ -662,34 +726,65 @@ export class MediaSourcesController {
         });
     }
 
-    private async discoverEmbedded(
+    private async discoverTracks(
         video: FileWithId,
-        { openOnSupported }: { openOnSupported: boolean }
+        { autoOpenPicker, discoverSubtitles }: { autoOpenPicker: boolean; discoverSubtitles: boolean }
     ): Promise<void> {
+        const cachedSubtitles = this.embeddedSubtitles.discoveredTracks(video);
+        const cachedAudio = this.state.picker.audioTracks;
+        const needsSubtitleProbe = discoverSubtitles && !cachedSubtitles;
+        const active = this.discovery;
+        // An automatic scan may only be looking for audio. An explicitly opened picker needs subtitles too.
+        if (
+            active?.file === video.file &&
+            !active.controller.signal.aborted &&
+            (!needsSubtitleProbe || active.probingSubtitles)
+        ) {
+            if (!autoOpenPicker) active.autoOpenPicker = false;
+            return;
+        }
+        if (!autoOpenPicker && !needsSubtitleProbe && cachedAudio) return;
+
         this.cancelDiscovery();
         const controller = new AbortController();
-        const entry = { file: video.file, controller, openOnSupported };
+        const entry: TrackDiscoveryRequest = {
+            file: video.file,
+            controller,
+            autoOpenPicker,
+            probingSubtitles: needsSubtitleProbe,
+        };
         this.discovery = entry;
         const { signal } = controller;
         this.updatePicker({ discovering: true, discoveryError: false });
-        try {
-            const tracks = await this.embeddedSubtitles.discover(video, signal);
-            if (signal.aborted || this.discovery !== entry) return;
-            this.discovery = undefined;
-            this.updatePicker({ embeddedTracks: tracks, discovering: false });
-            if (
-                entry.openOnSupported &&
-                tracks.some((track) => track.outputFormat) &&
-                !this.state.sources.subtitleSourceFiles.some((file) => file.id !== '-') &&
-                !this.state.picker.open
-            ) {
-                this.openPicker();
-            }
-        } catch (error) {
-            if (signal.aborted || this.discovery !== entry) return;
-            this.discovery = undefined;
-            asbError('app/subtitles', 'Failed to discover embedded subtitles:', error);
-            this.updatePicker({ discovering: false, discoveryError: true });
+        const [subtitles, audio] = await Promise.allSettled([
+            needsSubtitleProbe ? this.embeddedSubtitles.discover(video, signal) : cachedSubtitles,
+            cachedAudio ?? probeAudioTracks(video.file, signal),
+        ]);
+        if (signal.aborted || this.discovery !== entry) return;
+        this.discovery = undefined;
+        if (subtitles.status === 'rejected') {
+            asbError('app/subtitles', 'Failed to discover embedded subtitles:', subtitles.reason);
+        }
+        if (audio.status === 'rejected') {
+            asbWarn('media/probe', 'Could not discover audio tracks:', audio.reason);
+        }
+        const embeddedTracks = subtitles.status === 'fulfilled' ? subtitles.value : undefined;
+        const audioTracks = audio.status === 'fulfilled' ? audio.value : undefined;
+        this.updatePicker({
+            embeddedTracks,
+            audioTracks,
+            discovering: false,
+            discoveryError: subtitles.status === 'rejected',
+        });
+        if (
+            entry.autoOpenPicker &&
+            !this.state.picker.open &&
+            ((audioTracks?.length ?? 0) > 1 ||
+                (discoverSubtitles &&
+                    embeddedTracks?.some((track) => track.outputFormat) &&
+                    this.state.sources.subtitleSourceFiles.every(isEmptySubtitleSlot)))
+        ) {
+            this.openPicker();
         }
     }
 
@@ -702,21 +797,35 @@ export class MediaSourcesController {
         if (!this.state.picker.open) this.resetPickerDraft();
         const video = this.state.sources.videoFile;
         const cachedTracks = video ? this.embeddedSubtitles.discoveredTracks(video) : undefined;
-        const activeDiscovery =
-            video && this.discovery?.file === video.file && !this.discovery.controller.signal.aborted
-                ? this.discovery
-                : undefined;
-        if (activeDiscovery) activeDiscovery.openOnSupported = false;
         this.updatePicker({
             open: true,
             externalTracks: buildExternalTracks(candidates),
-            selectedTrackIds: initialTrackIds.map((_, index) => candidates[index]?.id ?? '-'),
+            selectedTrackIds: initialTrackIds.map((_, index) => candidates[index]?.id ?? emptySubtitleSlotId),
             embeddedTracks: cachedTracks,
-            discovering: Boolean(activeDiscovery),
             discoveryError: false,
             selectionError: undefined,
         });
-        if (video && !cachedTracks && !activeDiscovery) void this.discoverEmbedded(video, { openOnSupported: false });
+        if (video) void this.discoverTracks(video, { autoOpenPicker: false, discoverSubtitles: true });
+    }
+
+    private confirmUnchangedSubtitles(sources: MediaSources, audioTrackIndex: number | undefined): void {
+        const updated = sources.withAudioTrackIndex(audioTrackIndex);
+        if (updated !== sources) this.setState({ ...this.state, sources: updated });
+        if (updated !== sources || this.standaloneSubtitlesNeedSaving) this.session.retainSources(updated);
+
+        if (this.standaloneSubtitlesNeedSaving) {
+            this.standaloneSubtitlesNeedSaving = false;
+            this.session.commitSelection({
+                videoId: updated.videoFile?.id,
+                files: updated.subtitleSourceFiles,
+                selectedTracks: updated.subtitleTracks,
+                pendingIds: new Set(),
+                signal: this.sourceLifetime.signal,
+            });
+        } else {
+            this.session.clearDraftHandles();
+        }
+        this.finishConfirmAndClosePicker();
     }
 
     private cancelDiscovery(): void {
@@ -752,8 +861,8 @@ export class MediaSourcesController {
         ) {
             return false;
         }
-        const current = subtitleSourceFiles.filter(({ id }) => id !== '-');
-        const selected = files.filter(({ id }) => id !== '-');
+        const current = subtitleSourceFiles.filter((file) => !isEmptySubtitleSlot(file));
+        const selected = files.filter((file) => !isEmptySubtitleSlot(file));
         return (
             current.length === selected.length &&
             selected.every(({ id, track, file, embedded }, index) => {
@@ -787,6 +896,9 @@ export class MediaSourcesController {
     }
 
     private setState(next: MediaSourcesState): void {
+        if (this.subtitleLoadFailed && subtitleSourceOwner(next) !== subtitleSourceOwner(this.state)) {
+            this.subtitleLoadFailed = false;
+        }
         this.state = next;
         for (const listener of this.listeners) listener();
     }

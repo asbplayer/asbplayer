@@ -520,8 +520,11 @@ struct SubtitleOutput {
         if (produced) *produced = got_subtitle != 0;
         if (error < 0) {
             if (this->bitmap) {
-                // The PGS and DVB decoders also return -1 for truncated packets.
-                if (packet->size == 0 || (error != AVERROR_INVALIDDATA && error != -1)) return error;
+                // The PGS and DVB decoders also return -1 for truncated packets; DVB returns PATCHWELCOME on unsupported objects.
+                if (packet->size == 0 ||
+                    (error != AVERROR_INVALIDDATA && error != AVERROR_PATCHWELCOME && error != -1)) {
+                    return error;
+                }
 
                 const int64_t boundary = packet->pts == AV_NOPTS_VALUE
                     ? AV_NOPTS_VALUE
@@ -671,7 +674,7 @@ struct SubtitleOutput {
 
     int finish(int64_t duration) {
         if (this->decode_errors > 0 && this->decoded_cues == 0) return AVERROR_INVALIDDATA;
-        if (this->bitmap) return this->bitmap->finish(duration);
+        if (this->bitmap) return this->bitmap->finish_at_eof(duration);
         const int error = flush_cues(INT64_MAX);
         return error < 0 ? error : av_write_trailer(this->format);
     }

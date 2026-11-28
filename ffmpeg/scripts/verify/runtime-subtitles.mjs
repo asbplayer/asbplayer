@@ -209,6 +209,13 @@ try {
     }
     await load('dvd-cover.mkv');
     assert.equal(imageRecords(0).length, 2, 'Attached cover art must not delay the subtitle timeline');
+    await load('dvd-cropped.mp4');
+    const cropped = imageRecords(2);
+    assert.equal(cropped.length, 2, 'Cropped DVD rips with rectangles past video bounds must still extract');
+    assert.ok(
+        cropped.every(({ textImage }) => textImage.screen.width >= 320 && textImage.screen.height >= 184),
+        'Cropped DVD subtitle screen dimensions must expand to fit rectangles'
+    );
     await load('uncleared.mkv');
     const uncleared = imageRecords(0);
     assert.equal(uncleared.length, 2);

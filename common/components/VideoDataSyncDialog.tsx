@@ -6,6 +6,7 @@ import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
 import CloudOutlinedIcon from '@mui/icons-material/CloudOutlined';
 import SubtitlesOutlinedIcon from '@mui/icons-material/SubtitlesOutlined';
 import Dialog from '@mui/material/Dialog';
+import Divider from '@mui/material/Divider';
 import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
 import DialogContentText from '@mui/material/DialogContentText';
@@ -31,6 +32,10 @@ import type { GenericParseType, OnlineSubtitleSourceConfig } from '@project/comm
 import OnlineSubtitleSourceDialog from '@project/common/components/OnlineSubtitleSourceDialog';
 import type { TFunction } from 'i18next';
 import type { FileSelector, FileWithId } from '@project/common/file-selector';
+import type { ProbedAudioTrack } from '@project/common/media-probe';
+import { audioCodecDisplayName } from '@project/common/media-probe';
+import { emptySubtitleSlotId, isEmptySubtitleSlot } from '@project/common/util';
+import { genericSubtitleDisplayLabel } from '@project/common/util/subtitle-language';
 import { AUDIO_EXT_SET, VIDEO_EXT_SET, getExtension } from '@project/common/app/services/media-sources';
 
 const downloadedSubtitleIdPattern = /^https?:/;
@@ -117,7 +122,7 @@ const normalizeOnlineSubtitleFileName = (name: string, sourceUrl: string) => {
 
 export const emptySubtitleTrack = (t: TFunction) => {
     return {
-        id: '-',
+        id: emptySubtitleSlotId,
         language: '-',
         url: '-',
         label: t('extension.videoDataSync.emptySubtitleTrack'),
@@ -125,7 +130,7 @@ export const emptySubtitleTrack = (t: TFunction) => {
     };
 };
 
-const initialTrackIds = ['-', '-', '-'];
+const initialTrackIds = [emptySubtitleSlotId, emptySubtitleSlotId, emptySubtitleSlotId];
 
 export const useVideoDataSyncDialogState = (files?: readonly (FileWithId | undefined)[]) => {
     const { t } = useTranslation();
@@ -136,7 +141,7 @@ export const useVideoDataSyncDialogState = (files?: readonly (FileWithId | undef
     ]);
     useEffect(() => {
         for (const track of subtitleTrackSelectorTracks) {
-            if (track.id === '-') {
+            if (isEmptySubtitleSlot(track)) {
                 track.label = t('extension.videoDataSync.emptySubtitleTrack');
             }
         }
@@ -148,7 +153,7 @@ export const useVideoDataSyncDialogState = (files?: readonly (FileWithId | undef
             if (candidates !== undefined) {
                 const loadedTracks = new Map<string, VideoDataSubtitleTrack>();
                 for (const candidate of candidates) {
-                    if (!candidate || candidate.id === '-') continue;
+                    if (!candidate || isEmptySubtitleSlot(candidate)) continue;
                     const { file, id, embedded } = candidate;
                     loadedTracks.set(id, {
                         id,
@@ -164,7 +169,7 @@ export const useVideoDataSyncDialogState = (files?: readonly (FileWithId | undef
                     ...loadedTracks.values(),
                 ]);
                 setSubtitleTrackSelectorSelectedTrackIds(
-                    initialTrackIds.map((_, index) => candidates[index]?.id ?? '-')
+                    initialTrackIds.map((_, index) => candidates[index]?.id ?? emptySubtitleSlotId)
                 );
             }
             setSubtitleTrackSelectorOpen(true);
@@ -199,6 +204,8 @@ interface Props {
     // The video name automatically supplied by asbplayer's content script
     // Not to be confused with the auto-calculated video name when user selects a subtitle track
     suggestedName: string;
+    audioTracks?: readonly ProbedAudioTrack[];
+    audioTrackIndex?: number;
     subtitleTracks: VideoDataSubtitleTrack[];
     selectedSubtitleTrackIds: readonly string[];
     defaultCheckboxState: boolean;
@@ -217,7 +224,11 @@ interface Props {
     fileSelector: FileSelector;
     onCancel: () => void;
     onOpenSettings: () => void;
-    onConfirm: (track: ConfirmedVideoDataSubtitleTrack[], shouldRememberTrackChoices: boolean) => void;
+    onConfirm: (
+        track: ConfirmedVideoDataSubtitleTrack[],
+        shouldRememberTrackChoices: boolean,
+        audioTrackIndex?: number
+    ) => void;
     onSetActiveProfile: (profile: string | undefined) => void;
     onOnlineSourceConfigChanged: (state: Partial<OnlineSubtitleSourceConfig>) => void;
     onDismissFtue: () => void;
@@ -233,6 +244,8 @@ export default function VideoDataSyncDialog({
     isLoading,
     discovering,
     suggestedName,
+    audioTracks,
+    audioTrackIndex,
     subtitleTracks,
     selectedSubtitleTrackIds,
     defaultCheckboxState,
@@ -262,6 +275,10 @@ export default function VideoDataSyncDialog({
 }: Props) {
     const { t } = useTranslation();
     const [name, setName] = useState('');
+    const [selectedAudioTrackIndex, setSelectedAudioTrackIndex] = useState(audioTrackIndex);
+    useEffect(() => {
+        if (open) setSelectedAudioTrackIndex(audioTrackIndex);
+    }, [open, audioTrackIndex, audioTracks]);
     const [shouldRememberTrackChoices, setShouldRememberTrackChoices] = useState(false);
     const [genericSubtitleParserChanged, setGenericSubtitleParserChanged] = useState(false);
     const trimmedName = name.trim();
@@ -312,7 +329,11 @@ export default function VideoDataSyncDialog({
 
     function handleOkButtonClick() {
         const selectedSubtitleTracks: ConfirmedVideoDataSubtitleTrack[] = allSelectedSubtitleTracks();
-        onConfirm(selectedSubtitleTracks, shouldRememberTrackChoices);
+        onConfirm(
+            selectedSubtitleTracks,
+            shouldRememberTrackChoices,
+            audioTracks?.length === 1 ? undefined : selectedAudioTrackIndex
+        );
     }
 
     function handleRememberTrackChoices() {
@@ -328,8 +349,8 @@ export default function VideoDataSyncDialog({
         const selectedSubtitleTracks: ConfirmedVideoDataSubtitleTrack[] = selectedSubtitleTrackIds
             .map((selected): ConfirmedVideoDataSubtitleTrack | undefined => {
                 const subtitle = subtitleTracks.find((subtitle) => subtitle.id === selected) ??
-                    subtitleTracks.find((subtitle) => subtitle.id === '-') ?? {
-                        id: '-',
+                    subtitleTracks.find(isEmptySubtitleSlot) ?? {
+                        id: emptySubtitleSlotId,
                         label: '',
                         language: '-',
                         url: '-',
@@ -369,7 +390,10 @@ export default function VideoDataSyncDialog({
                             variant="filled"
                             label={`${t('extension.videoDataSync.subtitleTrack')} ${i + 1}`}
                             helperText={error || ''}
-                            value={subtitleTracks.find((track) => track.id === selectedSubtitleTrackIds[i])?.id ?? '-'}
+                            value={
+                                subtitleTracks.find((track) => track.id === selectedSubtitleTrackIds[i])?.id ??
+                                emptySubtitleSlotId
+                            }
                             disabled={isLoading || disabled}
                             onChange={(e) => {
                                 if (e.target.value === undefined) return;
@@ -390,7 +414,7 @@ export default function VideoDataSyncDialog({
                                         key={subtitle.id}
                                         disabled={!!subtitle.disabledReason}
                                     >
-                                        {subtitle.id !== '-' && (
+                                        {!isEmptySubtitleSlot(subtitle) && (
                                             <Icon fontSize="small" sx={{ mr: 1, verticalAlign: 'middle' }} />
                                         )}
                                         {subtitle.label}
@@ -524,7 +548,7 @@ export default function VideoDataSyncDialog({
             if (onlineDialogTrackNumber !== undefined) {
                 newSelectedSubtitleTrackIds[onlineDialogTrackNumber] = track.id;
             } else {
-                const firstEmptyIndex = newSelectedSubtitleTrackIds.findIndex((id) => id === '-');
+                const firstEmptyIndex = newSelectedSubtitleTrackIds.findIndex((id) => id === emptySubtitleSlotId);
                 if (firstEmptyIndex >= 0) {
                     newSelectedSubtitleTrackIds[firstEmptyIndex] = track.id;
                 } else {
@@ -605,6 +629,52 @@ export default function VideoDataSyncDialog({
                                         }}
                                     />
                                 </Grid>
+                            )}
+                            {audioTracks && audioTracks.length > 0 && (
+                                <>
+                                    <Grid item>
+                                        <TextField
+                                            select
+                                            fullWidth
+                                            color="primary"
+                                            variant="filled"
+                                            label={t('ankiDialog.audio')}
+                                            value={
+                                                audioTracks.length === 1
+                                                    ? audioTracks[0].trackIndex
+                                                    : (selectedAudioTrackIndex ?? '')
+                                            }
+                                            disabled={isLoading || disabled}
+                                            onChange={(event) =>
+                                                setSelectedAudioTrackIndex(
+                                                    event.target.value === '' ? undefined : Number(event.target.value)
+                                                )
+                                            }
+                                            SelectProps={{ displayEmpty: true }}
+                                            InputLabelProps={{ shrink: true }}
+                                        >
+                                            {audioTracks.length > 1 && (
+                                                <MenuItem value="">{t('settings.defaultProfile')}</MenuItem>
+                                            )}
+                                            {audioTracks.map((track) => (
+                                                <MenuItem key={track.trackIndex} value={track.trackIndex}>
+                                                    {[
+                                                        genericSubtitleDisplayLabel(track.title, track.language, ''),
+                                                        audioCodecDisplayName(track.codec),
+                                                        t('settings.subtitleTrackChoice', {
+                                                            trackNumber: track.trackIndex + 1,
+                                                        }),
+                                                    ]
+                                                        .filter(Boolean)
+                                                        .join(' · ')}
+                                                </MenuItem>
+                                            ))}
+                                        </TextField>
+                                    </Grid>
+                                    <Grid item>
+                                        <Divider />
+                                    </Grid>
+                                </>
                             )}
                             {threeSubtitleTrackSelectors}
                             {!hideRememberTrackPreferenceToggle && (

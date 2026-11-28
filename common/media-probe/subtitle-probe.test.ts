@@ -200,16 +200,16 @@ it('honors cancellation after an outstanding file read', async () => {
     await expect(discovery).rejects.toThrow('cancelled');
 });
 
-it('recognizes S_TEXT/WEBVTT and counts non-S/D Matroska subtitle codecs in FFmpeg stream order', async () => {
+it('skips non-S/D Matroska TrackType=17 entries and marks S_TEXT/WEBVTT unsupported in FFmpeg stream order', async () => {
     const bytes = mkv(
         mkvTrack(17, 'B_VOBBTN'),
         mkvTrack(17, 'S_TEXT/WEBVTT', element('536e', utf8(''))),
-        mkvTrack(33, 'S_TEXT/WEBVTT')
+        mkvTrack(33, 'S_TEXT/WEBVTT'),
+        mkvTrack(17, 'S_TEXT/UTF8')
     );
     expect(await probeSubtitleTracks(new Blob([bytes]), new AbortController().signal)).toEqual([
-        { trackIndex: 0, trackKey: 0, codec: 'B_VOBBTN', language: 'eng' },
-        { trackIndex: 1, trackKey: 1, codec: 'webvtt', language: 'eng', outputFormat: 'srt' },
-        { trackIndex: 2, trackKey: 2, codec: 'webvtt', language: 'eng', outputFormat: 'srt' },
+        { trackIndex: 0, trackKey: 0, codec: 'S_TEXT/WEBVTT', language: 'eng' },
+        { trackIndex: 1, trackKey: 1, codec: 'subrip', language: 'eng', outputFormat: 'srt' },
     ]);
 });
 

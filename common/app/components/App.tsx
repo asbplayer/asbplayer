@@ -39,7 +39,6 @@ import type { AsbplayerSettings, DictionaryTrack, Profile, SettingsProvider } fr
 import { AudioClip, Mp3Encoder } from '@project/common/audio-clip';
 import type { ExportParams } from '@project/common/anki';
 import { SubtitleReader } from '@project/common/subtitle-reader';
-import type { SubtitleSourceState } from '@project/common/subtitle-reader/subtitle-stream';
 import { v4 as uuidv4 } from 'uuid';
 import clsx from 'clsx';
 import Alert from '@project/common/app/components/Alert';
@@ -412,6 +411,7 @@ function App({
         sources,
         canRestoreLastSession: canRestoreLastFileSession,
         subtitleProducer,
+        onSubtitleSourcesChanged,
         picker: subtitlePicker,
     } = useMediaSources({
         subtitleHost,
@@ -437,12 +437,6 @@ function App({
             window.removeEventListener('beforeunload', handleBeforeUnload);
         };
     }, [sources.videoFile]);
-    useEffect(() => {
-        if (subtitlePicker.open) videoChannelRef.current?.pause();
-    }, [subtitlePicker.open]);
-    const handleMediaReady = useCallback(() => {
-        if (subtitlePicker.open) videoChannelRef.current?.pause();
-    }, [subtitlePicker.open]);
     const [dragging, setDragging] = useState<boolean>(false);
     const dragEnterRef = useRef<Element | null>(null);
     const [ankiDialogOpen, setAnkiDialogOpen] = useState<boolean>(false);
@@ -1372,12 +1366,6 @@ function App({
         [extension, sources.videoFileUrl, handleUnloadVideo, handleSources]
     );
 
-    const handleSubtitleSourcesChanged = useCallback(
-        (sourceStates: readonly SubtitleSourceState[]) =>
-            mediaSourcesController.updateRemoteSubtitleSources(sourceStates),
-        [mediaSourcesController]
-    );
-
     const handleDownloadSubtitleFilesAsSrt = useCallback(async () => {
         try {
             const tracks = await sources.subtitleTracksForExport(subtitleReader, subtitles);
@@ -1555,7 +1543,8 @@ function App({
         [mediaSourcesController]
     );
     const handleConfirmSubtitleTrackSelection = useCallback(
-        (tracks: ConfirmedVideoDataSubtitleTrack[]) => mediaSourcesController.confirm(tracks),
+        (tracks: ConfirmedVideoDataSubtitleTrack[], _remember: boolean, audioTrackIndex?: number) =>
+            mediaSourcesController.confirm(tracks, audioTrackIndex),
         [mediaSourcesController]
     );
     const handleOpenSubtitleTrackSelection = useCallback(
@@ -1715,6 +1704,8 @@ function App({
                                     isLoading={subtitlePicker.confirming}
                                     discovering={subtitlePicker.discovering}
                                     suggestedName={sources.videoFile?.file.name ?? ''}
+                                    audioTracks={subtitlePicker.audioTracks}
+                                    audioTrackIndex={sources.audioTrackIndex}
                                     subtitleTracks={subtitlePicker.tracks}
                                     selectedSubtitleTrackIds={subtitlePicker.selectedTrackIds}
                                     onSelectedSubtitleTrackIds={handleSelectedSubtitleTrackIds}
@@ -1810,7 +1801,7 @@ function App({
                                 <Player
                                     supportsDictionaryPlayback={supportsDictionaryPlayback}
                                     audioTranscodeHost={audioTranscodeHost}
-                                    onMediaReady={handleMediaReady}
+                                    subtitlePickerOpen={subtitlePicker.open}
                                     ref={playerRef}
                                     origin={origin}
                                     subtitleReader={subtitleReader}
@@ -1827,7 +1818,7 @@ function App({
                                     onError={handleError}
                                     onUnloadVideo={handleUnloadVideo}
                                     onLoaded={handleFilesLoaded}
-                                    onSubtitleSourcesChanged={handleSubtitleSourcesChanged}
+                                    onSubtitleSourcesChanged={onSubtitleSourcesChanged}
                                     onTabSelected={handleTabSelected}
                                     onAnkiDialogRequest={handleAnkiDialogRequest}
                                     onAnkiDialogRewind={handleAnkiDialogRewind}

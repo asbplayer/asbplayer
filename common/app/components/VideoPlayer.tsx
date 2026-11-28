@@ -418,7 +418,7 @@ export default function VideoPlayer({
     const videoLoadNotifications = useVideoLoadNotifications({
         video,
         source: videoFile,
-        conversionState: convertedAudio.state,
+        conversion: convertedAudio,
     });
     const [audioSeekableRange, setAudioSeekableRange] = useState<AudioSeekableRange>();
     const [externalAudio, setExternalAudio] = useState<HTMLAudioElement | null>(null);
@@ -2513,7 +2513,7 @@ export default function VideoPlayer({
                 clock={clock}
                 length={lengthMs}
                 bufferedMs={convertedAudio.state === 'transcoding' ? (audioSeekableRange?.end ?? 0) : undefined}
-                audioTracks={audioTracks}
+                audioTracks={convertedAudio.required ? undefined : audioTracks}
                 selectedAudioTrack={selectedAudioTrack}
                 subtitlesToggle={subtitles && subtitles.length > 0}
                 subtitlesEnabled={displaySubtitles}
