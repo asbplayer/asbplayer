@@ -480,7 +480,11 @@ const SubtitleRowCells = React.memo(function SubtitleRowCells({
             )}
             {showCopyButton && (
                 <TableCell className={classes.copyButton}>
-                    <IconButton disabled={selectionState !== undefined} onClick={(e) => onCopySubtitle(e, index)}>
+                    <IconButton
+                        aria-label={t('action.mineSubtitle')}
+                        disabled={selectionState !== undefined}
+                        onClick={(e) => onCopySubtitle(e, index)}
+                    >
                         <NoteAddIcon fontSize={compressed ? 'small' : 'medium'} />
                     </IconButton>
                 </TableCell>

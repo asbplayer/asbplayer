@@ -1708,6 +1708,7 @@ function PlayerComponent(
                         {statisticsOverlay}
                         <iframe
                             ref={videoFrameRef}
+                            data-testid="video-frame"
                             className={classes.videoFrame}
                             style={{
                                 pointerEvents: subtitlePlayerResizing ? 'none' : 'auto',

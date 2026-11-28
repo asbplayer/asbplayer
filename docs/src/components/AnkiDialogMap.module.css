@@ -1,0 +1,5 @@
+.region {
+    position: absolute;
+    display: block;
+    border-radius: 0;
+}

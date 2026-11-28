@@ -4,7 +4,7 @@ import type { FetchOptions } from '@project/extension/src/services/frame-bridge-
 import FrameBridgeClient from '@project/extension/src/services/frame-bridge-client';
 import { frameColorScheme, frameColorSchemeClass } from '@project/extension/src/services/frame-color-scheme';
 
-export const uiFrameForHtml = (html: (lang: string) => Promise<string>) => {
+export const uiFrameForHtml = (html: (lang: string) => Promise<string>, className?: string) => {
     return new UiFrame(async (frame: HTMLIFrameElement, lang: string) => {
         if (isFirefoxBuild) {
             // Firefox does not allow document.write() into the about:blank iframe.
@@ -17,7 +17,7 @@ export const uiFrameForHtml = (html: (lang: string) => Promise<string>) => {
             doc.write(await html(lang));
             doc.close();
         }
-    });
+    }, className);
 };
 
 export const uiFrameForSrc = (src: string) => {
@@ -31,6 +31,8 @@ type FrameInitializer = (frame: HTMLIFrameElement, lang: string) => Promise<void
 
 export default class UiFrame {
     private readonly _frameInitializer: FrameInitializer;
+    /** Stable class for identifying this frame's iframe (e.g. from end-to-end tests). */
+    private readonly _className: string | undefined;
     private _fetchOptions: FetchOptions | undefined;
     private _client: FrameBridgeClient | undefined;
     private _frame: HTMLIFrameElement | undefined;
@@ -38,8 +40,9 @@ export default class UiFrame {
     private _dirty = true;
     private _bound = false;
 
-    constructor(frameInitializer: FrameInitializer) {
+    constructor(frameInitializer: FrameInitializer, className?: string) {
         this._frameInitializer = frameInitializer;
+        this._className = className;
     }
 
     set fetchOptions(fetchOptions: FetchOptions) {
@@ -93,6 +96,7 @@ export default class UiFrame {
         this._frame = document.createElement('iframe');
         this._frame.classList.add('asbplayer-ui-frame');
         this._frame.classList.add(frameColorSchemeClass());
+        if (this._className !== undefined) this._frame.classList.add(this._className);
         this._frame.setAttribute('allowtransparency', 'true');
 
         this._client = new FrameBridgeClient(this._frame, this._fetchOptions);

@@ -184,7 +184,12 @@ const ScrollableNumberControls = ({
     );
 
     return (
-        <div ref={handleDivRef} onScroll={handleScroll} className={classes.container}>
+        <div
+            ref={handleDivRef}
+            data-testid="overlay-controls"
+            onScroll={handleScroll}
+            className={classes.container}
+        >
             <TimeDisplay
                 currentMilliseconds={currentMilliseconds}
                 totalMilliseconds={totalMilliseconds}

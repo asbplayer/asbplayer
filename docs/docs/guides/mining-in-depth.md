@@ -3,6 +3,8 @@ sidebar_position: 3
 ---
 
 import NoteAddIcon from '@site/src/components/NoteAddIcon';
+import Screenshot from '@site/src/components/Screenshot';
+import AnkiDialogMap from '@site/src/components/AnkiDialogMap';
 import ImageIcon from '@site/src/components/ImageIcon';
 
 # Mining in-depth {#mining-in-depth}
@@ -14,9 +16,32 @@ Sentence mining can be accomplished in a variety of ways, according to your need
 There are multiple ways to open the **Anki Export Dialog**:
 
 1. **Mine Subtitle** <NoteAddIcon /> button that can be found in the **Subtitle List** of the **Side Panel** or on the website.
+
+    <Screenshot
+        src="/img/generated/panel-subtitle-list.png"
+        alt="A subtitle row in the side panel's list with its Mine Subtitle button hovered"
+        width={400}
+        style={{ marginTop: 8 }}
+    />
+
 2. **Mine Subtitle** <NoteAddIcon /> button in the **Overlay UI** on streaming videos or on the mobile website.
+
+    <Screenshot
+        src="/img/generated/overlay-mine-button.png"
+        alt="The video overlay with the Mine Subtitle button hovered"
+        width={434}
+        style={{ marginTop: 8 }}
+    />
+
 3. The **mine current subtitle and open Anki dialog** [Mining keyboard shortcut](../reference/settings.md#mining-keyboard-shortcuts) - `Ctrl + Shift + X` by default.
 4. Right-click → asbplayer → **Mine Subtitle** on streaming video.
+
+    <Screenshot
+        src="/img/asbplayer-right-click-mine.png"
+        alt="The asbplayer extension's right-click menu with the 'mine subtitle' command selected."
+        width={434}
+        style={{ marginTop: 8 }}
+    />
 
 :::info
 Methods #1 and #2 will open the dialog only if the [mining button default action](../reference/settings#mining-button-default-action) is set to "Show Anki dialog."  
@@ -28,7 +53,9 @@ When an _empty_ subtitle track is loaded, and audio recording is enabled, all of
 
 ## Adjusting cards {#adjusting-cards}
 
-Prior to being exported, cards can be adjusted from the dialog.
+Prior to being exported, cards can be adjusted from the dialog. Select a part of the dialog below to jump to its description.
+
+<AnkiDialogMap />
 
 ### Selected time range {#selected-time-range}
 

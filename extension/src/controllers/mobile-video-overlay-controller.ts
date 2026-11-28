@@ -283,7 +283,7 @@ export class MobileVideoOverlayController {
             {
                 key: 'ui',
                 html: () =>
-                    `<iframe class="${colorSchemeClass}" allowtransparency="true" style="border: 0; color-scheme: ${colorScheme}; width: ${width}px; height: ${height}px" src="${browser.runtime.getURL(
+                    `<iframe class="${colorSchemeClass} asbplayer-mobile-video-overlay-frame" allowtransparency="true" style="border: 0; color-scheme: ${colorScheme}; width: ${width}px; height: ${height}px" src="${browser.runtime.getURL(
                         '/mobile-video-overlay-ui.html'
                     )}?src=${src}&anchor=${anchor}&tooltips=${tooltips}&colorScheme=${encodeURIComponent(
                         colorScheme

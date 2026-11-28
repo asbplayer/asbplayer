@@ -2,6 +2,8 @@
 sidebar_position: 2
 ---
 
+import Video from '@site/src/components/Video';
+
 # Subtitle timing {#subtitle-timing}
 
 Subtitle files will very often not be aligned to the video source you load them into. To work around this, asbplayer provides ways to manually adjust subtitle timing.
@@ -26,3 +28,5 @@ The overlay UI provides buttons that perform the same functions as the keyboard 
 1. Scroll the rightmost section to the **middle** control.
 2. Click the left or right button to align the left or right subtitle to the current timestamp.
 3. Click and **hold** the left or right button to move the current timestamp `100ms` to the left or right.
+
+<Video src="/video/generated/overlay-ui.mp4" width={392} />

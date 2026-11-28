@@ -387,12 +387,22 @@ const MobileVideoOverlay = React.forwardRef<HTMLDivElement, Props>(function Mobi
     const containerClassName = className === undefined ? classes.container : `${className} ${classes.container}`;
     return (
         <>
-            <GridContainer ref={ref} direction="row" wrap="nowrap" className={containerClassName}>
+            <GridContainer
+                ref={ref}
+                direction="row"
+                wrap="nowrap"
+                data-testid="overlay-container"
+                className={containerClassName}
+            >
                 {onLoadSubtitles && (
                     <Grid item>
                         <Tooltip {...defaultTooltipProps} title={t('action.loadSubtitles')}>
                             <span>
-                                <IconButton disabled={model.recording} onClick={onLoadSubtitles}>
+                                <IconButton
+                                    aria-label={t('action.loadSubtitles')}
+                                    disabled={model.recording}
+                                    onClick={onLoadSubtitles}
+                                >
                                     <LogoIcon className={model.recording ? classes.inactiveButton : classes.button} />
                                 </IconButton>
                             </span>
@@ -404,7 +414,7 @@ const MobileVideoOverlay = React.forwardRef<HTMLDivElement, Props>(function Mobi
                         {model.emptySubtitleTrack && model.recordingEnabled ? (
                             // Wrap in span so that Tooltip doesn't complain about disabled child. Spacing also looks better.
                             <span>
-                                <IconButton onClick={onMineSubtitle}>
+                                <IconButton aria-label={t('action.mineSubtitle')} onClick={onMineSubtitle}>
                                     <FiberManualRecordIcon
                                         className={model.recording ? classes.recordingButton : classes.button}
                                     />
@@ -412,7 +422,11 @@ const MobileVideoOverlay = React.forwardRef<HTMLDivElement, Props>(function Mobi
                             </span>
                         ) : (
                             <span>
-                                <IconButton disabled={miningButtonDisabled} onClick={onMineSubtitle}>
+                                <IconButton
+                                    aria-label={t('action.mineSubtitle')}
+                                    disabled={miningButtonDisabled}
+                                    onClick={onMineSubtitle}
+                                >
                                     <NoteAddIcon
                                         className={miningButtonDisabled ? classes.inactiveButton : classes.button}
                                     />
@@ -494,6 +508,7 @@ const MobileVideoOverlay = React.forwardRef<HTMLDivElement, Props>(function Mobi
                             <Tooltip {...defaultTooltipProps} title={leftNumberControlTitle}>
                                 <span>
                                     <HoldableIconButton
+                                        aria-label={leftNumberControlTitle}
                                         onClick={handleLeftNumberControl}
                                         onHold={handleHoldLeftNumberControl}
                                         disabled={leftNumberControlDisabled}
@@ -526,6 +541,7 @@ const MobileVideoOverlay = React.forwardRef<HTMLDivElement, Props>(function Mobi
                             <Tooltip {...defaultTooltipProps} title={rightNumberControlTitle}>
                                 <span>
                                     <HoldableIconButton
+                                        aria-label={rightNumberControlTitle}
                                         onClick={handleRightNumberControl}
                                         onHold={handleHoldRightNumberControl}
                                         disabled={rightNumberControlDisabled}

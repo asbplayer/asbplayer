@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <title>Anki card</title>
+        <style>
+            /* Approximates Anki's light-mode reviewer: gray backdrop, centered white card. */
+            html,
+            body {
+                height: 100%;
+            }
+            body {
+                margin: 0;
+                background: #d8d8d8;
+                display: grid;
+                place-items: center;
+                font-family: -apple-system, 'Segoe UI', arial, sans-serif;
+                color: #1f1f1f;
+            }
+            .card {
+                background: #ffffff;
+                max-width: 640px;
+                margin: 24px;
+                padding: 24px 40px 32px;
+                border-radius: 8px;
+                box-shadow: 0 6px 24px rgba(0, 0, 0, 0.18);
+                text-align: center;
+                font-size: 20px;
+                line-height: 1.45;
+            }
+            .sentence {
+                font-size: 24px;
+                margin: 8px 0 16px;
+            }
+            hr#answer {
+                border: none;
+                border-top: 1px solid #cfcfcf;
+                margin: 16px 0;
+            }
+            .definition {
+                margin: 12px 0 16px;
+            }
+            .image img {
+                max-width: 100%;
+                border-radius: 4px;
+            }
+            .audio {
+                margin: 12px 0;
+            }
+            .source,
+            .url {
+                font-size: 14px;
+                color: #6b6b6b;
+                margin: 4px 0;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="card" id="card">
+            <div class="sentence" id="sentence">{{Sentence}}</div>
+            <hr id="answer" />
+            <div class="definition" id="definition">{{Definition}}</div>
+            <div class="image" id="image"></div>
+            <div class="audio" id="audio">
+                <audio controls preload="metadata"></audio>
+            </div>
+            <div class="source" id="source">{{Source}}</div>
+            <div class="url" id="url">{{URL}}</div>
+        </div>
+    </body>
+</html>
